@@ -1,6 +1,8 @@
 import { redirect } from "next/navigation";
+import { Suspense } from "react";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { AppShell } from "@/components/app-shell";
+import { FreshnessBanner } from "@/components/freshness-banner";
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   const supabase = await createSupabaseServerClient();
@@ -17,6 +19,11 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   return (
     <AppShell
       user={{ email: user.email ?? "", displayName: profile?.display_name ?? null, dnascore: profile?.product_dna_score ?? null }}
+      banner={
+        <Suspense fallback={null}>
+          <FreshnessBanner />
+        </Suspense>
+      }
     >
       {children}
     </AppShell>

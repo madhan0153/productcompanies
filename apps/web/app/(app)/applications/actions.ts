@@ -32,6 +32,26 @@ export async function addApplication(formData: FormData) {
   revalidatePath("/dashboard");
 }
 
+export async function updateStatusAction(
+  appId: string,
+  status: ApplicationStatus,
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  const supabase = await createSupabaseServerClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return { ok: false, error: "Not authenticated" };
+
+  const { error } = await supabase.from("applications")
+    .update({ status })
+    .eq("id", appId)
+    .eq("user_id", user.id);
+
+  if (error) return { ok: false, error: error.message };
+
+  revalidatePath("/applications");
+  revalidatePath("/dashboard");
+  return { ok: true };
+}
+
 export async function updateStatus(formData: FormData) {
   const supabase = await createSupabaseServerClient();
   const { data: { user } } = await supabase.auth.getUser();

@@ -6,6 +6,7 @@ import {
 } from "lucide-react";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import Link from "next/link";
+import { CompanyLogo } from "@/components/company-logo";
 
 export const metadata: Metadata = { title: "Dashboard" };
 
@@ -18,6 +19,27 @@ const STATUS_COLORS: Record<string, string> = {
   withdrawn: "bg-zinc-400/10 text-zinc-400",
 };
 
+type RecentMatch = {
+  score: number;
+  job_id: string;
+  jobs: {
+    id: string;
+    title: string;
+    companies: { name: string; logo_url: string | null } | null;
+  } | null;
+};
+
+type RecentApp = {
+  id: string;
+  status: string;
+  applied_at: string | null;
+  job_id: string;
+  jobs: {
+    title: string;
+    companies: { name: string; logo_url: string | null } | null;
+  } | null;
+};
+
 export default async function DashboardPage() {
   const supabase = await createSupabaseServerClient();
   const { data: { user } } = await supabase.auth.getUser();
@@ -27,9 +49,9 @@ export default async function DashboardPage() {
     { data: profile },
     { count: matchCount },
     { count: appCount },
-    { data: recentMatches },
+    { data: recentMatchesRaw },
     { data: appsByStatus },
-    { data: recentApps },
+    { data: recentAppsRaw },
   ] = await Promise.all([
     supabase.from("profiles")
       .select("display_name, resume_storage_path, product_dna_score, years_experience, current_role")
@@ -37,7 +59,7 @@ export default async function DashboardPage() {
     supabase.from("matches").select("*", { count: "exact", head: true }).eq("user_id", user.id),
     supabase.from("applications").select("*", { count: "exact", head: true }).eq("user_id", user.id),
     supabase.from("matches")
-      .select("score, job_id")
+      .select("score, job_id, jobs(id, title, companies(name, logo_url))")
       .eq("user_id", user.id)
       .order("score", { ascending: false })
       .limit(5),
@@ -45,11 +67,14 @@ export default async function DashboardPage() {
       .select("status")
       .eq("user_id", user.id),
     supabase.from("applications")
-      .select("id, status, applied_at, job_id")
+      .select("id, status, applied_at, job_id, jobs(title, companies(name, logo_url))")
       .eq("user_id", user.id)
       .order("created_at", { ascending: false })
       .limit(5),
   ]);
+
+  const recentMatches = (recentMatchesRaw as unknown as RecentMatch[] | null) ?? [];
+  const recentApps = (recentAppsRaw as unknown as RecentApp[] | null) ?? [];
 
   const hasResume = !!profile?.resume_storage_path;
   const dnaScore = profile?.product_dna_score ?? null;
@@ -197,7 +222,7 @@ export default async function DashboardPage() {
         )}
 
         {/* Recent matches */}
-        {(recentMatches ?? []).length > 0 && (
+        {recentMatches.length > 0 && (
           <div className="rounded-2xl border border-border bg-card/40 p-5">
             <div className="mb-4 flex items-center justify-between">
               <h2 className="text-sm font-medium">Top matches</h2>
@@ -205,25 +230,31 @@ export default async function DashboardPage() {
                 View all →
               </Link>
             </div>
-            <div className="space-y-2.5">
-              {(recentMatches ?? []).map((m) => (
-                <div key={m.job_id} className="flex items-center justify-between gap-3 rounded-xl bg-secondary/50 px-3 py-2">
-                  <span className="truncate text-xs text-muted-foreground">Job ID: {m.job_id.slice(0, 8)}…</span>
-                  <ScorePill score={m.score} />
-                </div>
-              ))}
+            <div className="space-y-2">
+              {recentMatches.map((m) => {
+                const job = m.jobs;
+                const company = job?.companies;
+                return (
+                  <Link
+                    key={m.job_id}
+                    href={`/jobs/${m.job_id}`}
+                    className="flex items-center gap-3 rounded-xl border border-transparent bg-secondary/40 px-3 py-2 transition hover:border-primary/30 hover:bg-secondary/70"
+                  >
+                    <CompanyLogo name={company?.name ?? "?"} logoUrl={company?.logo_url ?? null} size={32} />
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-sm font-medium">{job?.title ?? "Role"}</p>
+                      <p className="truncate text-xs text-muted-foreground">{company?.name ?? "—"}</p>
+                    </div>
+                    <ScorePill score={m.score} />
+                  </Link>
+                );
+              })}
             </div>
-            <Link
-              href="/matches"
-              className="mt-4 flex w-full items-center justify-center gap-1.5 rounded-xl border border-border py-2 text-xs font-medium text-muted-foreground transition hover:border-primary/40 hover:text-foreground"
-            >
-              Compute matches <ArrowUpRight className="h-3 w-3" />
-            </Link>
           </div>
         )}
 
         {/* Recent activity */}
-        {(recentApps ?? []).length > 0 && (
+        {recentApps.length > 0 && (
           <div className="rounded-2xl border border-border bg-card/40 p-5">
             <div className="mb-4 flex items-center justify-between">
               <h2 className="text-sm font-medium">Recent activity</h2>
@@ -232,15 +263,23 @@ export default async function DashboardPage() {
               </Link>
             </div>
             <div className="space-y-2">
-              {(recentApps ?? []).map((a) => (
-                <div key={a.id} className="flex items-center justify-between gap-3 rounded-xl bg-secondary/50 px-3 py-2">
-                  <span className="truncate text-xs text-muted-foreground">
-                    {a.applied_at ? formatDate(a.applied_at) : "No date"}
-                  </span>
+              {recentApps.map((a) => (
+                <Link
+                  key={a.id}
+                  href={`/applications/${a.id}`}
+                  className="flex items-center gap-3 rounded-xl border border-transparent bg-secondary/40 px-3 py-2 transition hover:border-primary/30 hover:bg-secondary/70"
+                >
+                  <CompanyLogo name={a.jobs?.companies?.name ?? "?"} logoUrl={a.jobs?.companies?.logo_url ?? null} size={32} />
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm font-medium">{a.jobs?.title ?? "Application"}</p>
+                    <p className="truncate text-xs text-muted-foreground">
+                      {a.jobs?.companies?.name ?? ""} · {a.applied_at ? formatDate(a.applied_at) : "no date"}
+                    </p>
+                  </div>
                   <span className={`shrink-0 rounded-full px-2 py-0.5 text-xs font-medium ${STATUS_COLORS[a.status] ?? ""}`}>
                     {a.status}
                   </span>
-                </div>
+                </Link>
               ))}
             </div>
           </div>

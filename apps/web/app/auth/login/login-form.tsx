@@ -1,10 +1,10 @@
 "use client";
 
-import { motion } from "framer-motion";
-import { useReducedMotion } from "framer-motion";
+import { motion, useReducedMotion } from "framer-motion";
 import { Mail, Loader2 } from "lucide-react";
-import { use, useTransition } from "react";
-import { signInWithEmail, signInWithGoogle } from "./actions";
+import { use, useState, useTransition } from "react";
+import { signInWithEmail } from "./actions";
+import { createSupabaseBrowserClient } from "@/lib/supabase/browser";
 
 const GoogleIcon = () => (
   <svg viewBox="0 0 24 24" className="h-4 w-4" aria-hidden>
@@ -22,7 +22,8 @@ type Props = {
 export function LoginForm({ searchParams }: Props) {
   const params = use(searchParams);
   const [emailPending, startEmail] = useTransition();
-  const [googlePending, startGoogle] = useTransition();
+  const [googlePending, setGooglePending] = useState(false);
+  const [googleError, setGoogleError] = useState<string | null>(null);
   const reduce = useReducedMotion();
 
   const card = {
@@ -30,6 +31,31 @@ export function LoginForm({ searchParams }: Props) {
     animate: { opacity: 1, y: 0 },
     transition: { duration: 0.45, ease: [0.22, 1, 0.36, 1] as const },
   };
+
+  async function handleGoogle() {
+    setGooglePending(true);
+    setGoogleError(null);
+    try {
+      const supabase = createSupabaseBrowserClient();
+      const next = params.next ?? "/dashboard";
+      // window.location.origin guarantees the redirect URL matches the actual deployment.
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: "google",
+        options: {
+          redirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent(next)}`,
+          queryParams: { access_type: "offline", prompt: "consent" },
+        },
+      });
+      if (error) {
+        setGoogleError(error.message);
+        setGooglePending(false);
+      }
+      // On success the browser is being redirected to Google — no need to reset state.
+    } catch (e) {
+      setGoogleError(e instanceof Error ? e.message : "Google sign-in failed");
+      setGooglePending(false);
+    }
+  }
 
   if (params.sent) {
     return (
@@ -47,21 +73,20 @@ export function LoginForm({ searchParams }: Props) {
     );
   }
 
+  const errorMessage = googleError ?? (params.error ? decodeURIComponent(params.error) : null);
+
   return (
     <motion.div {...card} className="rounded-2xl border border-border bg-card/60 p-8 backdrop-blur">
       <h1 className="text-xl font-semibold">Sign in to ProdMatch.ai</h1>
       <p className="mt-1 text-sm text-muted-foreground">We&apos;ll send a magic link to your email.</p>
 
-      {params.error && (
-        <div className="mt-4 rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive">
-          {decodeURIComponent(params.error)}
+      {errorMessage && (
+        <div role="alert" className="mt-4 rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive">
+          {errorMessage}
         </div>
       )}
 
-      <form
-        action={signInWithEmail}
-        className="mt-6 space-y-4"
-      >
+      <form action={signInWithEmail} className="mt-6 space-y-4">
         <input type="hidden" name="next" value={params.next ?? "/dashboard"} />
 
         <div>
@@ -96,16 +121,15 @@ export function LoginForm({ searchParams }: Props) {
         <div className="h-px flex-1 bg-border" />
       </div>
 
-      <form action={() => { startGoogle(() => signInWithGoogle(params.next)); }}>
-        <button
-          type="submit"
-          disabled={googlePending}
-          className="flex w-full items-center justify-center gap-2.5 rounded-xl border border-border bg-background px-4 py-2.5 text-sm font-medium transition hover:bg-secondary active:scale-[0.98] disabled:opacity-60"
-        >
-          {googlePending ? <Loader2 className="h-4 w-4 animate-spin" /> : <GoogleIcon />}
-          {googlePending ? "Redirecting…" : "Continue with Google"}
-        </button>
-      </form>
+      <button
+        type="button"
+        onClick={handleGoogle}
+        disabled={googlePending}
+        className="flex w-full items-center justify-center gap-2.5 rounded-xl border border-border bg-background px-4 py-2.5 text-sm font-medium transition hover:bg-secondary active:scale-[0.98] disabled:opacity-60"
+      >
+        {googlePending ? <Loader2 className="h-4 w-4 animate-spin" /> : <GoogleIcon />}
+        {googlePending ? "Redirecting to Google…" : "Continue with Google"}
+      </button>
     </motion.div>
   );
 }

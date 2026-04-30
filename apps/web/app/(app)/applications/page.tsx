@@ -3,8 +3,10 @@ import { redirect } from "next/navigation";
 import { ExternalLink, StickyNote, ChevronRight } from "lucide-react";
 import Link from "next/link";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { CompanyLogo } from "@/components/company-logo";
 import { AddApplicationButton } from "./add-form";
-import { updateStatus, deleteApplication } from "./actions";
+import { StatusActions } from "./status-actions";
+import { deleteApplication } from "./actions";
 
 export const metadata: Metadata = { title: "Applications" };
 
@@ -21,7 +23,7 @@ const STATUS_COLORS: Record<AppStatus, string> = {
 
 const STATUS_TABS: AppStatus[] = ["saved", "applied", "interviewing", "offer", "rejected", "withdrawn"];
 
-type AppRow = {
+type AppWithJob = {
   id: string;
   status: AppStatus;
   applied_at: string | null;
@@ -29,12 +31,12 @@ type AppRow = {
   next_action_at: string | null;
   created_at: string;
   job_id: string;
-};
-
-type MatchRow = {
-  job_id: string;
-  score: number;
-  jobs: { id: string; title: string; apply_url: string | null; companies: { name: string; slug: string } | null } | null;
+  jobs: {
+    id: string;
+    title: string;
+    apply_url: string | null;
+    companies: { name: string; slug: string; logo_url: string | null } | null;
+  } | null;
 };
 
 export default async function ApplicationsPage({
@@ -49,34 +51,35 @@ export default async function ApplicationsPage({
   const params = await searchParams;
   const activeStatus = (params.status as AppStatus) || null;
 
+  // Join apps → jobs → companies directly (was previously joining through matches,
+  // which caused "Unknown role" for applications added outside the matches list).
   const [{ data: rawApps }, { data: rawMatches }] = await Promise.all([
     supabase.from("applications")
-      .select("id, status, applied_at, notes, next_action_at, created_at, job_id")
+      .select("id, status, applied_at, notes, next_action_at, created_at, job_id, jobs(id, title, apply_url, companies(name, slug, logo_url))")
       .eq("user_id", user.id)
       .order("created_at", { ascending: false }),
     supabase.from("matches")
-      .select("job_id, score, jobs(id, title, apply_url, companies(name, slug))")
+      .select("job_id, score, jobs(id, title, companies(name))")
       .eq("user_id", user.id)
       .order("score", { ascending: false })
       .limit(200),
   ]);
 
-  const apps = (rawApps ?? []) as AppRow[];
-  const matches = (rawMatches as unknown as MatchRow[]) ?? [];
-
-  // Build job map from matches
-  const jobMap = new Map<string, MatchRow["jobs"]>(
-    matches.map((m) => [m.job_id, m.jobs]),
-  );
+  const apps = (rawApps as unknown as AppWithJob[]) ?? [];
 
   const filtered = activeStatus
     ? apps.filter((a) => a.status === activeStatus)
     : apps;
 
-  // Jobs list for add form
-  const jobsForForm = matches
+  // Jobs list for the add form (from matches — these are the user's relevant roles)
+  type MatchForForm = { job_id: string; jobs: { title: string; companies: { name: string } | null } | null };
+  const jobsForForm = ((rawMatches as unknown as MatchForForm[]) ?? [])
     .filter((m) => m.jobs)
-    .map((m) => ({ id: m.job_id, title: m.jobs!.title, company: m.jobs!.companies?.name ?? "" }));
+    .map((m) => ({
+      id: m.job_id,
+      title: m.jobs!.title,
+      company: m.jobs!.companies?.name ?? "",
+    }));
 
   const counts = apps.reduce<Record<string, number>>((acc, a) => {
     acc[a.status] = (acc[a.status] ?? 0) + 1;
@@ -116,10 +119,10 @@ export default async function ApplicationsPage({
       {filtered.length > 0 ? (
         <div className="space-y-3">
           {filtered.map((app) => {
-            const job = jobMap.get(app.job_id);
-            const title = job?.title ?? "Unknown role";
-            const company = job?.companies?.name ?? "Unknown company";
-            const applyUrl = job?.apply_url;
+            const job = app.jobs;
+            const company = job?.companies;
+            const title = job?.title ?? "Role no longer listed";
+            const companyName = company?.name ?? "—";
 
             return (
               <div
@@ -127,30 +130,39 @@ export default async function ApplicationsPage({
                 className="group rounded-2xl border border-border bg-card/40 p-5 transition hover:border-primary/30 hover:bg-card/60"
               >
                 <div className="flex flex-wrap items-start justify-between gap-4">
-                  <div className="min-w-0 flex-1 space-y-1">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <span className="text-xs text-muted-foreground">{company}</span>
-                      <StatusBadge status={app.status} />
-                    </div>
-                    <h3 className="font-medium">{title}</h3>
-                    <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground">
-                      {app.applied_at && <span>Applied {formatDate(app.applied_at)}</span>}
-                      {app.next_action_at && (
-                        <span className="text-amber-400">Follow up {formatDate(app.next_action_at)}</span>
-                      )}
-                      {app.notes && (
-                        <span className="flex items-center gap-1">
-                          <StickyNote className="h-3 w-3" /> {app.notes.slice(0, 60)}{app.notes.length > 60 ? "…" : ""}
-                        </span>
-                      )}
+                  <div className="flex min-w-0 flex-1 items-start gap-3">
+                    <CompanyLogo name={companyName} logoUrl={company?.logo_url ?? null} size={40} />
+                    <div className="min-w-0 flex-1 space-y-1">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className="text-xs text-muted-foreground">{companyName}</span>
+                        <StatusBadge status={app.status} />
+                      </div>
+                      <h3 className="font-medium leading-snug">
+                        {job ? (
+                          <Link href={`/jobs/${job.id}`} className="hover:text-primary transition">
+                            {title}
+                          </Link>
+                        ) : title}
+                      </h3>
+                      <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground">
+                        {app.applied_at && <span>Applied {formatDate(app.applied_at)}</span>}
+                        {app.next_action_at && (
+                          <span className="text-amber-400">Follow up {formatDate(app.next_action_at)}</span>
+                        )}
+                        {app.notes && (
+                          <span className="flex items-center gap-1">
+                            <StickyNote className="h-3 w-3" /> {app.notes.slice(0, 60)}{app.notes.length > 60 ? "…" : ""}
+                          </span>
+                        )}
+                      </div>
                     </div>
                   </div>
 
                   {/* Actions */}
                   <div className="flex items-center gap-2">
-                    {applyUrl && (
+                    {job?.apply_url && (
                       <a
-                        href={applyUrl}
+                        href={job.apply_url}
                         target="_blank"
                         rel="noopener noreferrer"
                         className="flex items-center gap-1 rounded-lg border border-border px-2.5 py-1.5 text-xs text-muted-foreground transition hover:border-primary/40 hover:text-foreground"
@@ -167,21 +179,9 @@ export default async function ApplicationsPage({
                   </div>
                 </div>
 
-                {/* Quick status update */}
+                {/* Quick status update — collapses to a select on mobile, chips on desktop */}
                 <div className="mt-4 flex flex-wrap items-center gap-2 border-t border-border pt-3">
-                  <span className="text-xs text-muted-foreground mr-1">Move to:</span>
-                  {STATUS_TABS.filter((s) => s !== app.status).map((s) => (
-                    <form key={s} action={updateStatus}>
-                      <input type="hidden" name="app_id" value={app.id} />
-                      <input type="hidden" name="status" value={s} />
-                      <button
-                        type="submit"
-                        className="rounded-lg border border-border px-2 py-0.5 text-xs text-muted-foreground transition hover:border-primary/40 hover:text-foreground"
-                      >
-                        {s}
-                      </button>
-                    </form>
-                  ))}
+                  <StatusActions appId={app.id} currentStatus={app.status} />
                   <form action={deleteApplication} className="ml-auto">
                     <input type="hidden" name="app_id" value={app.id} />
                     <button

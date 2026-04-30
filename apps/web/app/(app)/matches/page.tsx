@@ -1,8 +1,11 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
-import { ExternalLink, TrendingUp, AlertTriangle, Zap } from "lucide-react";
+import { ExternalLink, TrendingUp, AlertTriangle, Zap, ChevronRight } from "lucide-react";
+import Link from "next/link";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { CompanyLogo } from "@/components/company-logo";
 import { ComputeButton } from "./compute-button";
+import { MatchFilters } from "./filters";
 
 export const metadata: Metadata = { title: "Matches" };
 
@@ -29,18 +32,36 @@ function scoreRing(score: number) {
   return "stroke-muted-foreground";
 }
 
+type MatchData = {
+  score: number;
+  strengths: string[] | null;
+  gaps: string[] | null;
+  reasoning: string | null;
+  computed_at: string;
+  jobs: {
+    id: string; title: string; location: string | null;
+    hubs: string[] | null; tech_stack: string[] | null;
+    min_experience_years: number | null; max_experience_years: number | null;
+    comp_lpa_min: number | null; comp_lpa_max: number | null;
+    seniority: string | null; apply_url: string | null; posted_at: string | null;
+    companies: { name: string; slug: string; logo_url: string | null } | null;
+  } | null;
+};
+
 export default async function MatchesPage({
   searchParams,
 }: {
-  searchParams: Promise<{ company?: string; hub?: string; min_score?: string }>;
+  searchParams: Promise<{ c?: string; h?: string; min_score?: string }>;
 }) {
   const supabase = await createSupabaseServerClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect("/auth/login");
 
   const params = await searchParams;
+  const selectedCompanies = (params.c ?? "").split(",").filter(Boolean);
+  const selectedHubs = (params.h ?? "").split(",").filter(Boolean);
+  const minScore = params.min_score ? parseInt(params.min_score, 10) : null;
 
-  // Profile check
   const { data: profile } = await supabase
     .from("profiles")
     .select("resume_storage_path, product_dna_score, years_experience")
@@ -49,7 +70,6 @@ export default async function MatchesPage({
 
   const hasResume = !!profile?.resume_storage_path;
 
-  // Fetch matches with job + company info, sorted by score desc
   let query = supabase
     .from("matches")
     .select(`
@@ -64,51 +84,31 @@ export default async function MatchesPage({
     `)
     .eq("user_id", user.id)
     .order("score", { ascending: false })
-    .limit(200);
+    .limit(500);
 
-  if (params.min_score) {
-    query = query.gte("score", parseInt(params.min_score, 10));
-  }
+  if (minScore !== null) query = query.gte("score", minScore);
 
   const { data: rawData } = await query;
+  const matchRows = rawData as unknown as MatchData[] | null;
+  const allRows = (matchRows ?? []).filter((m): m is MatchData & { jobs: NonNullable<MatchData["jobs"]> } => !!m.jobs);
 
-  type MatchData = {
-    score: number;
-    strengths: string[] | null;
-    gaps: string[] | null;
-    reasoning: string | null;
-    computed_at: string;
-    jobs: {
-      id: string; title: string; location: string | null;
-      hubs: string[] | null; tech_stack: string[] | null;
-      min_experience_years: number | null; max_experience_years: number | null;
-      comp_lpa_min: number | null; comp_lpa_max: number | null;
-      seniority: string | null; apply_url: string | null; posted_at: string | null;
-      companies: { name: string; slug: string; logo_url: string | null } | null;
-    } | null;
-  };
-
-  const matchRows = rawData as MatchData[] | null;
-
-  const matches = (matchRows ?? []).filter((m): m is MatchData & { jobs: NonNullable<MatchData["jobs"]> } => {
-    if (!m.jobs) return false;
-    if (params.company) {
-      if (!String(m.jobs.companies?.slug ?? "").includes(params.company)) return false;
-    }
-    if (params.hub) {
-      const hubs = m.jobs.hubs ?? [];
-      if (!hubs.includes(params.hub)) return false;
-    }
+  const matches = allRows.filter((m) => {
+    const slug = m.jobs.companies?.slug ?? "";
+    if (selectedCompanies.length > 0 && !selectedCompanies.includes(slug)) return false;
+    const hubs = m.jobs.hubs ?? [];
+    if (selectedHubs.length > 0 && !hubs.some((h) => selectedHubs.includes(h))) return false;
     return true;
   });
 
-  // Unique companies for filter
+  // Build full filter universes from the unfiltered set
   const companies = [...new Map(
-    (matchRows ?? [])
-      .map((m) => m.jobs?.companies)
-      .filter((c): c is NonNullable<MatchData["jobs"]>["companies"] & object => !!c)
+    allRows
+      .map((m) => m.jobs.companies)
+      .filter((c): c is NonNullable<typeof c> => !!c)
       .map((c) => [c.slug, { slug: c.slug, name: c.name }]),
-  ).values()].slice(0, 20);
+  ).values()].sort((a, b) => a.name.localeCompare(b.name));
+
+  const hubs = [...new Set(allRows.flatMap((m) => m.jobs.hubs ?? []))].sort();
 
   return (
     <div className="space-y-6">
@@ -117,8 +117,8 @@ export default async function MatchesPage({
         <div>
           <h1 className="text-2xl font-semibold">Matches</h1>
           <p className="mt-1 text-sm text-muted-foreground">
-            {matches.length > 0
-              ? `${matches.length} matched roles from 18 product companies`
+            {allRows.length > 0
+              ? `${allRows.length} matched roles from 18 product companies`
               : "Compute your first matches below"}
           </p>
         </div>
@@ -132,31 +132,29 @@ export default async function MatchesPage({
           <p className="mt-1 text-sm text-muted-foreground">
             Upload your PDF resume and we&apos;ll parse it with AI, compute your Product DNA score, and rank every active role across 18 product companies against your profile.
           </p>
-          <a
+          <Link
             href="/profile"
             className="mt-4 inline-flex items-center gap-2 rounded-xl bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition hover:opacity-90"
           >
             Go to Profile →
-          </a>
+          </Link>
         </div>
       )}
 
       {/* Filters */}
-      {matches.length > 0 && (
-        <div className="flex flex-wrap gap-2">
-          <FilterChip href="/matches" active={!params.company && !params.hub && !params.min_score} label="All" />
-          <FilterChip href="/matches?min_score=75" active={params.min_score === "75"} label="Strong matches (75+)" />
-          <FilterChip href="/matches?min_score=55" active={params.min_score === "55"} label="Good matches (55+)" />
-          {companies.slice(0, 6).map((c) => (
-            <FilterChip key={c.slug} href={`/matches?company=${c.slug}`} active={params.company === c.slug} label={c.name} />
-          ))}
-        </div>
+      {allRows.length > 0 && (
+        <MatchFilters
+          allCompanies={companies}
+          allHubs={hubs}
+          totalCount={allRows.length}
+          filteredCount={matches.length}
+        />
       )}
 
       {/* Match cards */}
       {matches.length > 0 ? (
         <div className="space-y-3">
-          {matches.map((m, idx) => {
+          {matches.map((m) => {
             const job = m.jobs;
             const company = job.companies;
             const hubs = job.hubs ?? [];
@@ -168,57 +166,48 @@ export default async function MatchesPage({
 
             return (
               <div
-                key={`${job.id}-${idx}`}
+                key={`${user.id}-${job.id}`}
                 className="group rounded-2xl border border-border bg-card/40 p-5 transition hover:border-primary/30 hover:bg-card/70"
               >
                 <div className="flex flex-wrap items-start justify-between gap-4">
-                  {/* Left: job info */}
-                  <div className="min-w-0 flex-1 space-y-1.5">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <span className="text-xs font-medium text-muted-foreground">
-                        {company?.name}
-                      </span>
-                      {seniority && (
-                        <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${SENIORITY_COLORS[seniority] ?? "bg-secondary text-foreground"}`}>
-                          {seniority}
-                        </span>
-                      )}
-                    </div>
-                    <h3 className="font-medium leading-snug">{job.title}</h3>
-                    <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
-                      {hubs.slice(0, 3).map((h) => (
-                        <span key={h}>{h}</span>
-                      ))}
-                      {job.comp_lpa_max != null && (
-                        <span className="text-primary/70">
-                          Up to {job.comp_lpa_max} LPA
-                        </span>
-                      )}
-                      {job.min_experience_years != null && (
-                        <span>{job.min_experience_years}+ yrs</span>
-                      )}
-                    </div>
-
-                    {/* Tech tags */}
-                    {tech.length > 0 && (
-                      <div className="flex flex-wrap gap-1.5 pt-1">
-                        {tech.slice(0, 8).map((t) => (
-                          <span key={t} className="rounded-md bg-secondary px-2 py-0.5 text-xs text-muted-foreground">
-                            {t}
+                  <div className="flex min-w-0 flex-1 items-start gap-3">
+                    <CompanyLogo name={company?.name ?? "?"} logoUrl={company?.logo_url ?? null} size={44} />
+                    <div className="min-w-0 flex-1 space-y-1.5">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className="text-xs font-medium text-muted-foreground">{company?.name}</span>
+                        {seniority && (
+                          <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${SENIORITY_COLORS[seniority] ?? "bg-secondary text-foreground"}`}>
+                            {seniority}
                           </span>
-                        ))}
-                        {tech.length > 8 && (
-                          <span className="text-xs text-muted-foreground">+{tech.length - 8}</span>
                         )}
                       </div>
-                    )}
+                      <Link href={`/jobs/${job.id}`} className="block">
+                        <h3 className="font-medium leading-snug group-hover:text-primary transition">{job.title}</h3>
+                      </Link>
+                      <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
+                        {hubs.slice(0, 3).map((h) => (<span key={h}>{h}</span>))}
+                        {job.comp_lpa_max != null && (
+                          <span className="text-primary/80">Up to {job.comp_lpa_max} LPA</span>
+                        )}
+                        {job.min_experience_years != null && (<span>{job.min_experience_years}+ yrs</span>)}
+                      </div>
+
+                      {tech.length > 0 && (
+                        <div className="flex flex-wrap gap-1.5 pt-1">
+                          {tech.slice(0, 8).map((t) => (
+                            <span key={t} className="rounded-md bg-secondary px-2 py-0.5 text-xs text-muted-foreground">{t}</span>
+                          ))}
+                          {tech.length > 8 && (
+                            <span className="text-xs text-muted-foreground">+{tech.length - 8}</span>
+                          )}
+                        </div>
+                      )}
+                    </div>
                   </div>
 
-                  {/* Right: score ring */}
                   <ScoreRing score={score} />
                 </div>
 
-                {/* Explanation */}
                 {(strengths.length > 0 || gaps.length > 0 || m.reasoning) && (
                   <div className="mt-4 grid grid-cols-1 gap-3 border-t border-border pt-4 sm:grid-cols-2">
                     {strengths.length > 0 && (
@@ -256,24 +245,36 @@ export default async function MatchesPage({
                   </div>
                 )}
 
-                {/* Apply link */}
-                <div className="mt-4 flex items-center justify-between gap-3">
+                <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
                   <span className="text-xs text-muted-foreground">
                     {job.posted_at ? `Posted ${formatDate(job.posted_at)}` : "Active role"}
                   </span>
-                  <a
-                    href={job.apply_url ?? "#"}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex items-center gap-1.5 rounded-lg border border-border px-3 py-1.5 text-xs font-medium transition hover:border-primary/40 hover:bg-secondary"
-                  >
-                    Apply on official site
-                    <ExternalLink className="h-3 w-3" />
-                  </a>
+                  <div className="flex items-center gap-2">
+                    <Link
+                      href={`/jobs/${job.id}`}
+                      className="flex items-center gap-1.5 rounded-lg border border-border px-3 py-1.5 text-xs font-medium transition hover:border-primary/40 hover:bg-secondary"
+                    >
+                      View details <ChevronRight className="h-3 w-3" />
+                    </Link>
+                    {job.apply_url && (
+                      <a
+                        href={job.apply_url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex items-center gap-1.5 rounded-lg bg-primary/90 px-3 py-1.5 text-xs font-medium text-primary-foreground transition hover:bg-primary"
+                      >
+                        Apply on official site <ExternalLink className="h-3 w-3" />
+                      </a>
+                    )}
+                  </div>
                 </div>
               </div>
             );
           })}
+        </div>
+      ) : allRows.length > 0 ? (
+        <div className="rounded-2xl border border-dashed border-border p-12 text-center text-muted-foreground">
+          <p className="text-sm">No matches with these filters. Try clearing some.</p>
         </div>
       ) : hasResume ? (
         <div className="rounded-2xl border border-dashed border-border p-12 text-center text-muted-foreground">
@@ -283,8 +284,6 @@ export default async function MatchesPage({
     </div>
   );
 }
-
-// ── Sub-components ────────────────────────────────────────────────────────────
 
 function ScoreRing({ score }: { score: number }) {
   const r = 22;
@@ -314,22 +313,6 @@ function ScoreRing({ score }: { score: number }) {
       </svg>
       <span className="text-xs text-muted-foreground">/100</span>
     </div>
-  );
-}
-
-function FilterChip({ href, active, label }: { href: string; active: boolean; label: string }) {
-  return (
-    <a
-      href={href}
-      className={[
-        "rounded-full border px-3 py-1 text-xs font-medium transition",
-        active
-          ? "border-primary bg-primary/10 text-primary"
-          : "border-border text-muted-foreground hover:border-primary/40 hover:text-foreground",
-      ].join(" ")}
-    >
-      {label}
-    </a>
   );
 }
 
