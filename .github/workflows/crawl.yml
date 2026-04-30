@@ -1,0 +1,83 @@
+name: Daily Job Crawl
+
+on:
+  schedule:
+    # 02:00 IST = 20:30 UTC (previous day)
+    - cron: "30 20 * * *"
+  workflow_dispatch:
+    inputs:
+      slugs:
+        description: "Comma-separated company slugs to crawl (leave empty for all)"
+        required: false
+        default: ""
+      dry_run:
+        description: "Dry run (no DB writes)"
+        required: false
+        default: "false"
+        type: boolean
+
+concurrency:
+  group: crawl
+  cancel-in-progress: false
+
+jobs:
+  crawl:
+    name: "Crawl ${{ matrix.name }}"
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: "group-a"
+            slugs: "google,microsoft,meta,amazon,apple,atlassian"
+          - name: "group-b"
+            slugs: "nvidia,oracle,salesforce,sap-labs,razorpay,phonepe"
+          - name: "group-c"
+            slugs: "zerodha,cred,groww,swiggy,zomato,flipkart"
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "pnpm"
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Install Playwright Chromium
+        run: pnpm --filter @prodmatch/crawler exec playwright install --with-deps chromium
+
+      - name: Run crawler
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: |
+          # If workflow_dispatch with specific slugs, use those; otherwise use matrix slugs
+          SLUGS="${{ github.event.inputs.slugs }}"
+          if [ -z "$SLUGS" ]; then
+            SLUGS="${{ matrix.slugs }}"
+          fi
+          DRY_RUN_FLAG=""
+          if [ "${{ github.event.inputs.dry_run }}" = "true" ]; then
+            DRY_RUN_FLAG="--dry-run"
+          fi
+          pnpm --filter @prodmatch/crawler start -- --slugs="$SLUGS" $DRY_RUN_FLAG
+
+      - name: Upload logs on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: crawl-logs-${{ matrix.name }}
+          path: |
+            packages/crawler/*.log
+          retention-days: 7

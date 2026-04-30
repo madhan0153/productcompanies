@@ -1,0 +1,98 @@
+import { createServerClient, type CookieOptions } from "@supabase/ssr";
+import { NextResponse, type NextRequest } from "next/server";
+import { clientEnv } from "@/lib/env";
+
+const PUBLIC_PATHS = ["/", "/auth/login", "/auth/callback", "/api/health"];
+
+// Best-effort per-instance rate limiter — module-level Map persists per Edge worker.
+// Not distributed, but effective deterrence against simple abuse.
+const rl = new Map<string, { n: number; resetAt: number }>();
+
+function isRateLimited(key: string, max: number, windowMs: number): boolean {
+  const now = Date.now();
+  // Prune stale entries to prevent unbounded growth
+  if (rl.size > 10_000) {
+    for (const [k, v] of rl) if (now > v.resetAt) rl.delete(k);
+  }
+  const rec = rl.get(key);
+  if (!rec || now > rec.resetAt) {
+    rl.set(key, { n: 1, resetAt: now + windowMs });
+    return false;
+  }
+  if (rec.n >= max) return true;
+  rec.n++;
+  return false;
+}
+
+export async function middleware(request: NextRequest) {
+  const ip =
+    request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? "anon";
+  const { pathname } = request.nextUrl;
+
+  // 15 requests/min per IP on all auth routes (magic link / OAuth / callback)
+  if (pathname.startsWith("/auth/")) {
+    if (isRateLimited(`auth:${ip}`, 15, 60_000)) {
+      return new NextResponse("Too Many Requests", {
+        status: 429,
+        headers: { "Retry-After": "60" },
+      });
+    }
+  }
+
+  // 5 requests/10 min per IP on the data-export endpoint
+  if (pathname === "/api/export") {
+    if (isRateLimited(`export:${ip}`, 5, 600_000)) {
+      return NextResponse.json(
+        { error: "Rate limit exceeded. Try again in 10 minutes." },
+        { status: 429, headers: { "Retry-After": "600" } },
+      );
+    }
+  }
+
+  let supabaseResponse = NextResponse.next({ request });
+
+  const supabase = createServerClient(
+    clientEnv.NEXT_PUBLIC_SUPABASE_URL,
+    clientEnv.NEXT_PUBLIC_SUPABASE_ANON_KEY,
+    {
+      cookies: {
+        getAll() {
+          return request.cookies.getAll();
+        },
+        setAll(cookiesToSet: Array<{ name: string; value: string; options?: CookieOptions }>) {
+          cookiesToSet.forEach(({ name, value }) => request.cookies.set(name, value));
+          supabaseResponse = NextResponse.next({ request });
+          cookiesToSet.forEach(({ name, value, options }) =>
+            supabaseResponse.cookies.set(name, value, options),
+          );
+        },
+      },
+    },
+  );
+
+  // Refresh session (keeps cookie alive)
+  const { data: { user } } = await supabase.auth.getUser();
+
+  const isPublic = PUBLIC_PATHS.some((p) => pathname === p || pathname.startsWith("/api/"));
+
+  // Redirect unauthenticated users away from protected routes
+  if (!user && !isPublic) {
+    const url = request.nextUrl.clone();
+    url.pathname = "/auth/login";
+    url.searchParams.set("next", pathname);
+    return NextResponse.redirect(url);
+  }
+
+  // Redirect logged-in users away from auth pages
+  if (user && pathname.startsWith("/auth/login")) {
+    const url = request.nextUrl.clone();
+    url.pathname = "/dashboard";
+    return NextResponse.redirect(url);
+  }
+
+  return supabaseResponse;
+}
+
+export const config = {
+  matcher: ["/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)"],
+};
