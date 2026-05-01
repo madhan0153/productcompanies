@@ -6,6 +6,8 @@ import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { CompanyLogo } from "@/components/company-logo";
 import { ScoreRing } from "@/components/score-ring";
 import { StaggerList } from "@/components/stagger-list";
+import { EmptyState } from "@/components/empty-state";
+import { Tooltip } from "@/components/tooltip";
 import { ComputeButton } from "./compute-button";
 import { MatchFilters } from "./filters";
 
@@ -195,7 +197,11 @@ export default async function MatchesPage({
                     </div>
                   </div>
 
-                  <ScoreRing score={score} size="md" />
+                  <Tooltip label="Match score: rules-based (experience, hubs, comp, tech) + model-graded fit. 75+ strong, 55+ good.">
+                    <div className="cursor-help">
+                      <ScoreRing score={score} size="md" />
+                    </div>
+                  </Tooltip>
                 </div>
 
                 {(strengths.length > 0 || gaps.length > 0 || m.reasoning) && (
@@ -263,13 +269,18 @@ export default async function MatchesPage({
           })}
         </StaggerList>
       ) : allRows.length > 0 ? (
-        <div className="rounded-2xl border border-dashed border-border p-12 text-center text-muted-foreground">
-          <p className="text-sm">No matches with these filters. Try clearing some.</p>
-        </div>
+        <EmptyState
+          icon={<ChevronRight className="h-5 w-5" />}
+          title="No matches with these filters"
+          body="Try widening your selection — clear a company filter or lower the minimum score."
+          actions={[{ label: "Clear filters", href: "/matches", variant: "primary" }]}
+        />
       ) : hasResume ? (
-        <div className="rounded-2xl border border-dashed border-border p-12 text-center text-muted-foreground">
-          <p className="text-sm">No matches yet — click &quot;Compute my matches&quot; above.</p>
-        </div>
+        <EmptyState
+          icon={<ChevronRight className="h-5 w-5" />}
+          title="No matches computed yet"
+          body="Click 'Compute my matches' above and we'll score every active role across 18 product companies against your profile."
+        />
       ) : null}
     </div>
   );

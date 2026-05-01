@@ -8,7 +8,10 @@ import {
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { CompanyLogo } from "@/components/company-logo";
 import { ScoreRing } from "@/components/score-ring";
+import { Tooltip } from "@/components/tooltip";
 import { JobActions } from "./job-actions";
+import { StickyApplyBar } from "./sticky-apply-bar";
+import { JobDescription } from "./job-description";
 
 export const dynamic = "force-dynamic";
 
@@ -99,16 +102,27 @@ export default async function JobDetailPage({ params }: { params: Promise<{ id: 
 
   return (
     <div className="space-y-6">
-      {/* Back link */}
-      <Link
-        href="/matches"
-        className="inline-flex items-center gap-1.5 text-xs text-muted-foreground transition hover:text-foreground"
-      >
-        <ArrowLeft className="h-3.5 w-3.5" /> Back to matches
-      </Link>
+      {/* Sticky apply bar — appears once user scrolls past the hero */}
+      <StickyApplyBar
+        companyName={company?.name ?? ""}
+        companyLogoUrl={company?.logo_url ?? null}
+        title={job.title}
+        applyUrl={job.apply_url}
+      />
+
+      {/* Breadcrumb */}
+      <nav aria-label="Breadcrumb" className="flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground">
+        <Link href="/matches" className="inline-flex items-center gap-1 transition hover:text-foreground focus-ring rounded">
+          <ArrowLeft className="h-3 w-3" /> Matches
+        </Link>
+        <span aria-hidden>/</span>
+        {company?.name && <span className="text-foreground/80">{company.name}</span>}
+        <span aria-hidden>/</span>
+        <span className="truncate max-w-xs">{job.title}</span>
+      </nav>
 
       {/* Header */}
-      <div className="rounded-2xl border border-border bg-card/50 p-6 elev-1 backdrop-blur">
+      <div id="job-hero" className="rounded-2xl border border-border bg-card/50 p-6 elev-1 backdrop-blur">
         <div className="flex flex-wrap items-start gap-5">
           <CompanyLogo name={company?.name ?? "?"} logoUrl={company?.logo_url ?? null} size={64} />
           <div className="min-w-0 flex-1">
@@ -128,10 +142,12 @@ export default async function JobDetailPage({ params }: { params: Promise<{ id: 
           </div>
 
           {match && (
-            <div className="flex flex-col items-center gap-1.5">
-              <ScoreRing score={match.score} size="lg" showLabel={false} />
-              <span className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">Match</span>
-            </div>
+            <Tooltip label="Score combines a rules engine (experience, location, comp, tech overlap) with a model-graded fit assessment. 75+ is a strong fit.">
+              <div className="flex cursor-help flex-col items-center gap-1.5">
+                <ScoreRing score={match.score} size="lg" showLabel={false} />
+                <span className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">Match</span>
+              </div>
+            </Tooltip>
           )}
         </div>
 
@@ -199,9 +215,7 @@ export default async function JobDetailPage({ params }: { params: Promise<{ id: 
         <div className="rounded-2xl border border-border bg-card/40 p-6 lg:col-span-2">
           <h2 className="mb-3 text-sm font-medium">Job description</h2>
           {job.description ? (
-            <div className="prose prose-sm prose-invert max-w-none whitespace-pre-wrap text-sm text-muted-foreground">
-              {job.description}
-            </div>
+            <JobDescription text={job.description} />
           ) : (
             <p className="text-sm text-muted-foreground">
               Full description not captured. View on the official site for the latest details.

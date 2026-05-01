@@ -8,6 +8,7 @@ import { createSupabaseServerClient } from "@/lib/supabase/server";
 import Link from "next/link";
 import { CompanyLogo } from "@/components/company-logo";
 import { ScoreRing } from "@/components/score-ring";
+import { Tooltip } from "@/components/tooltip";
 
 export const metadata: Metadata = { title: "Dashboard" };
 
@@ -110,10 +111,12 @@ export default async function DashboardPage() {
 
         {/* DNA score ring */}
         {dnaScore !== null && (
-          <div className="flex flex-col items-center gap-1">
-            <ScoreRing score={dnaScore} size="lg" showLabel={false} />
-            <span className="text-xs font-medium text-muted-foreground">DNA score</span>
-          </div>
+          <Tooltip label="Product DNA score (0–100): how strongly your background fits high-package product-company hiring. Driven by product-co tenure, scale signals, modern stack, and ownership.">
+            <div className="flex cursor-help flex-col items-center gap-1">
+              <ScoreRing score={dnaScore} size="lg" showLabel={false} />
+              <span className="text-xs font-medium text-muted-foreground">DNA score</span>
+            </div>
+          </Tooltip>
         )}
       </div>
 

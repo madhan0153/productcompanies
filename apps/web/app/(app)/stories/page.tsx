@@ -1,8 +1,9 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
-import { Tag, Trash2 } from "lucide-react";
+import { Tag, Trash2, BookOpen } from "lucide-react";
 import Link from "next/link";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { EmptyState } from "@/components/empty-state";
 import { NewStoryButton, EditStoryButton } from "./story-dialog";
 import { deleteStory } from "./actions";
 
@@ -108,14 +109,19 @@ export default async function StoriesPage({
             <StoryCard key={story.id} story={story} />
           ))}
         </div>
+      ) : activeTag ? (
+        <EmptyState
+          icon={<Tag className="h-5 w-5" />}
+          title={`No stories tagged "${activeTag}"`}
+          body="When you tag a story with this label, it'll appear here. Try clearing the tag filter."
+          actions={[{ label: "View all stories", href: "/stories", variant: "primary" }]}
+        />
       ) : (
-        <div className="rounded-2xl border border-dashed border-border p-12 text-center">
-          <p className="text-sm text-muted-foreground">
-            {activeTag
-              ? `No stories tagged "${activeTag}" yet.`
-              : `No stories yet — click "New story" to add your first STAR story.`}
-          </p>
-        </div>
+        <EmptyState
+          icon={<BookOpen className="h-5 w-5" />}
+          title="Build your STAR story bank"
+          body="Capture your best examples once — Situation, Task, Action, Result. We'll suggest which fit each interview round so you don't blank under pressure."
+        />
       )}
     </div>
   );

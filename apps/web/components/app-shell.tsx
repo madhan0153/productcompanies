@@ -63,7 +63,10 @@ export function AppShell({ user, banner, children }: Props) {
   async function signOut() {
     const supabase = createSupabaseBrowserClient();
     await supabase.auth.signOut();
-    router.push("/auth/login");
+    // Land on the marketing homepage so users see the brand on the way out.
+    // Middleware allows "/" anonymously, and the home page redirects authenticated
+    // users back to /dashboard — so this is safe whether sign-out succeeds or not.
+    router.push("/");
     router.refresh();
   }
 

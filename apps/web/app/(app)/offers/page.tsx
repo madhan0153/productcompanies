@@ -1,7 +1,8 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
-import { Trash2 } from "lucide-react";
+import { Trash2, GitCompare } from "lucide-react";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { EmptyState } from "@/components/empty-state";
 import { AddOfferButton, EditOfferButton } from "./offer-dialog";
 import { deleteOffer } from "./actions";
 
@@ -183,11 +184,11 @@ export default async function OffersPage() {
           })()}
         </>
       ) : (
-        <div className="rounded-2xl border border-dashed border-border p-12 text-center">
-          <p className="text-sm text-muted-foreground">
-            No offers yet — add your first offer to start comparing.
-          </p>
-        </div>
+        <EmptyState
+          icon={<GitCompare className="h-5 w-5" />}
+          title="Compare your offers side-by-side"
+          body="Add base, variable, ESOP, and joining bonus to see total CTC at a glance — and which offer truly leads."
+        />
       )}
     </div>
   );

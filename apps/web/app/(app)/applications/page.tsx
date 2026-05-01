@@ -1,10 +1,11 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
-import { ExternalLink, StickyNote, ChevronRight } from "lucide-react";
+import { ExternalLink, StickyNote, ChevronRight, BookOpen } from "lucide-react";
 import Link from "next/link";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { CompanyLogo } from "@/components/company-logo";
 import { StaggerList } from "@/components/stagger-list";
+import { EmptyState } from "@/components/empty-state";
 import { AddApplicationButton } from "./add-form";
 import { StatusActions } from "./status-actions";
 import { deleteApplication } from "./actions";
@@ -197,14 +198,20 @@ export default async function ApplicationsPage({
             );
           })}
         </StaggerList>
+      ) : activeStatus ? (
+        <EmptyState
+          icon={<BookOpen className="h-5 w-5" />}
+          title={`No ${activeStatus} applications yet`}
+          body="As you progress through your job search, applications you move into this stage will show up here."
+          actions={[{ label: "View all", href: "/applications", variant: "primary" }]}
+        />
       ) : (
-        <div className="rounded-2xl border border-dashed border-border p-12 text-center">
-          <p className="text-sm text-muted-foreground">
-            {activeStatus
-              ? `No ${activeStatus} applications yet.`
-              : `No applications tracked yet — click "Add application" to start.`}
-          </p>
-        </div>
+        <EmptyState
+          icon={<BookOpen className="h-5 w-5" />}
+          title="Track your job search end to end"
+          body="Save roles you're considering, log when you apply, capture interview rounds, and compare offers — all in one private workspace."
+          actions={[{ label: "Browse matches", href: "/matches", variant: "primary" }]}
+        />
       )}
     </div>
   );
