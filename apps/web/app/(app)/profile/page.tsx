@@ -58,7 +58,7 @@ export default async function ProfilePage() {
           </div>
           <div>
             <h2 className="font-medium">Upload resume</h2>
-            <p className="text-xs text-muted-foreground">Gemini AI parses it and computes your Product DNA score</p>
+            <p className="text-xs text-muted-foreground">We extract your skills and compute your Product DNA score</p>
           </div>
           {hasResume && (
             <span className="ml-auto rounded-full bg-green-500/10 px-2.5 py-0.5 text-xs font-medium text-green-400">

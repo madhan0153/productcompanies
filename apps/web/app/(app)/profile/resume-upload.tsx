@@ -58,8 +58,8 @@ export function ResumeUpload({ hasExisting, existingRole, existingDnaScore }: Pr
         {pending ? (
           <>
             <Loader2 className="h-8 w-8 animate-spin text-primary" />
-            <p className="text-sm text-muted-foreground">Parsing with Gemini AI…</p>
-            <p className="text-xs text-muted-foreground">This takes 5–15 seconds</p>
+            <p className="text-sm text-muted-foreground">Reading your resume…</p>
+            <p className="text-xs text-muted-foreground">Usually takes 10–20 seconds</p>
           </>
         ) : (
           <>

@@ -1,4 +1,4 @@
-import { geminiFlash, SchemaType, type Schema } from "@/lib/llm/gemini";
+import { runWithRetry, SchemaType, type Schema } from "@/lib/llm/gemini";
 
 export interface ParsedResume {
   name: string;
@@ -88,24 +88,28 @@ Do NOT include PII in summary — only professional summary.
 For estimated_current_lpa: estimate in LPA (lakhs per annum) based on role seniority, company tier, and years of experience in India market. Return null/omit if insufficient data.`;
 
 export async function parseResumePdf(pdfBase64: string): Promise<ParsedResume> {
-  const model = geminiFlash();
-  const result = await model.generateContent({
-    contents: [
-      {
-        role: "user",
-        parts: [
-          { inlineData: { mimeType: "application/pdf", data: pdfBase64 } },
-          { text: PROMPT },
-        ],
+  // Flash is more accurate for structured extraction; flash-lite is the fallback
+  // because it has a separate quota bucket and the schema is strict enough that
+  // the smaller model still produces valid output for resume parsing.
+  const text = await runWithRetry("gemini-2.0-flash", "gemini-2.0-flash-lite", async (model) => {
+    const result = await model.generateContent({
+      contents: [
+        {
+          role: "user",
+          parts: [
+            { inlineData: { mimeType: "application/pdf", data: pdfBase64 } },
+            { text: PROMPT },
+          ],
+        },
+      ],
+      generationConfig: {
+        responseMimeType: "application/json",
+        responseSchema: SCHEMA,
+        temperature: 0.1,
       },
-    ],
-    generationConfig: {
-      responseMimeType: "application/json",
-      responseSchema: SCHEMA,
-      temperature: 0.1,
-    },
+    });
+    return result.response.text();
   });
 
-  const text = result.response.text();
   return JSON.parse(text) as ParsedResume;
 }

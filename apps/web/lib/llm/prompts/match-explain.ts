@@ -1,4 +1,4 @@
-import { geminiFlashLite, SchemaType, type Schema } from "@/lib/llm/gemini";
+import { runWithRetry, SchemaType, type Schema } from "@/lib/llm/gemini";
 import type { ParsedResume } from "./resume-parse";
 
 export interface MatchExplanation {
@@ -57,17 +57,20 @@ Assess the match. Return:
 }
 
 export async function explainMatch(resume: ParsedResume, job: JobSnapshot): Promise<MatchExplanation> {
-  const model = geminiFlashLite();
-  const result = await model.generateContent({
-    contents: [{ role: "user", parts: [{ text: buildPrompt(resume, job) }] }],
-    generationConfig: {
-      responseMimeType: "application/json",
-      responseSchema: SCHEMA,
-      temperature: 0.2,
-    },
+  // Lite first (cheaper, separate quota); fall back to flash if lite is exhausted.
+  const text = await runWithRetry("gemini-2.0-flash-lite", "gemini-2.0-flash", async (model) => {
+    const result = await model.generateContent({
+      contents: [{ role: "user", parts: [{ text: buildPrompt(resume, job) }] }],
+      generationConfig: {
+        responseMimeType: "application/json",
+        responseSchema: SCHEMA,
+        temperature: 0.2,
+      },
+    });
+    return result.response.text();
   });
 
-  const raw = JSON.parse(result.response.text()) as MatchExplanation;
+  const raw = JSON.parse(text) as MatchExplanation;
   return {
     score: Math.max(0, Math.min(40, Math.round(raw.score))),
     strengths: (raw.strengths ?? []).slice(0, 3),

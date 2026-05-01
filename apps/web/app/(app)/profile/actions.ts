@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { parseResumePdf } from "@/lib/llm/prompts/resume-parse";
+import { LlmRunError } from "@/lib/llm/gemini";
 import { getUserConsents } from "@/lib/dpdp/consent";
 import type { SeniorityLevel } from "@/lib/supabase/types";
 import type { Json } from "@/lib/supabase/types";
@@ -42,11 +43,44 @@ export async function saveProfile(formData: FormData) {
   revalidatePath("/profile");
 }
 
-// ── Upload PDF and parse with Gemini ─────────────────────────────────────────
+// ── Upload PDF and parse ──────────────────────────────────────────────────────
 
 export type UploadResult =
   | { ok: true; dnaScore: number; role: string; years: number; techCount: number }
-  | { ok: false; error: string };
+  | { ok: false; error: string; retryable?: boolean };
+
+function friendlyParseError(err: unknown): { message: string; retryable: boolean } {
+  if (err instanceof LlmRunError) {
+    switch (err.detail.kind) {
+      case "rate_limited":
+        return {
+          message: "We're a bit busy right now. Please try again in about a minute.",
+          retryable: true,
+        };
+      case "quota_disabled":
+        return {
+          // limit:0 — the project running the resume parser is misconfigured.
+          // Surface a clear, non-technical message; logs carry the underlying reason.
+          message: "Resume processing is temporarily unavailable. Please try again later.",
+          retryable: true,
+        };
+      case "auth":
+        return {
+          message: "Resume processing is temporarily unavailable. Please try again later.",
+          retryable: false,
+        };
+      default:
+        return {
+          message: "We couldn't read your resume just now. Please try again.",
+          retryable: true,
+        };
+    }
+  }
+  return {
+    message: "We couldn't read your resume just now. Please try again.",
+    retryable: true,
+  };
+}
 
 export async function uploadAndParseResume(formData: FormData): Promise<UploadResult> {
   const supabase = await createSupabaseServerClient();
@@ -76,15 +110,21 @@ export async function uploadAndParseResume(formData: FormData): Promise<UploadRe
     .upload(path, bytes, { contentType: "application/pdf", upsert: false });
   if (storageError) return { ok: false, error: `Storage error: ${storageError.message}` };
 
-  // Parse with Gemini (inline base64)
+  // Parse the PDF (with retry + key rotation + model fallback under the hood).
   let parsed;
   try {
     const base64 = Buffer.from(bytes).toString("base64");
     parsed = await parseResumePdf(base64);
   } catch (err) {
-    // Clean up uploaded file on parse failure
+    // Clean up uploaded file on parse failure so re-upload doesn't accumulate
+    // orphaned blobs in Storage.
     await admin.storage.from("resumes").remove([path]);
-    return { ok: false, error: `Parse failed: ${(err as Error).message}` };
+
+    // Log the raw provider error for ops; never surface it to the user.
+    console.error("[resume-parse] failure", err instanceof LlmRunError ? err.detail : err);
+
+    const { message, retryable } = friendlyParseError(err);
+    return { ok: false, error: message, retryable };
   }
 
   // Delete old resume file if one exists
