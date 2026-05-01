@@ -7,6 +7,7 @@ import {
 } from "lucide-react";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { CompanyLogo } from "@/components/company-logo";
+import { ScoreRing } from "@/components/score-ring";
 import { JobActions } from "./job-actions";
 
 export const dynamic = "force-dynamic";
@@ -107,7 +108,7 @@ export default async function JobDetailPage({ params }: { params: Promise<{ id: 
       </Link>
 
       {/* Header */}
-      <div className="rounded-2xl border border-border bg-card/40 p-6">
+      <div className="rounded-2xl border border-border bg-card/50 p-6 elev-1 backdrop-blur">
         <div className="flex flex-wrap items-start gap-5">
           <CompanyLogo name={company?.name ?? "?"} logoUrl={company?.logo_url ?? null} size={64} />
           <div className="min-w-0 flex-1">
@@ -126,7 +127,12 @@ export default async function JobDetailPage({ params }: { params: Promise<{ id: 
             )}
           </div>
 
-          {match && <MatchScoreBadge score={match.score} />}
+          {match && (
+            <div className="flex flex-col items-center gap-1.5">
+              <ScoreRing score={match.score} size="lg" showLabel={false} />
+              <span className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">Match</span>
+            </div>
+          )}
         </div>
 
         {/* Action bar */}
@@ -147,7 +153,7 @@ export default async function JobDetailPage({ params }: { params: Promise<{ id: 
 
       {/* Match explanation */}
       {match && (match.strengths?.length || match.gaps?.length || match.reasoning) && (
-        <div className="rounded-2xl border border-border bg-card/40 p-6">
+        <div className="rounded-2xl border border-border bg-card/50 p-6 elev-1 backdrop-blur">
           <h2 className="mb-4 flex items-center gap-2 text-sm font-medium">
             <Sparkles className="h-4 w-4 text-primary" /> Why we matched you
           </h2>
@@ -255,18 +261,6 @@ export default async function JobDetailPage({ params }: { params: Promise<{ id: 
           )}
         </div>
       </div>
-    </div>
-  );
-}
-
-function MatchScoreBadge({ score }: { score: number }) {
-  const tone = score >= 75 ? "from-emerald-500/30 to-emerald-500/10 text-emerald-300 border-emerald-500/30"
-    : score >= 55 ? "from-amber-500/30 to-amber-500/10 text-amber-300 border-amber-500/30"
-    : "from-secondary to-secondary text-muted-foreground border-border";
-  return (
-    <div className={`flex flex-col items-center justify-center rounded-2xl border bg-gradient-to-br px-5 py-3 ${tone}`}>
-      <span className="text-2xl font-bold tabular-nums">{Math.round(score)}</span>
-      <span className="text-[10px] uppercase tracking-wider">Match score</span>
     </div>
   );
 }

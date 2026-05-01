@@ -4,6 +4,8 @@ import { ExternalLink, TrendingUp, AlertTriangle, Zap, ChevronRight } from "luci
 import Link from "next/link";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { CompanyLogo } from "@/components/company-logo";
+import { ScoreRing } from "@/components/score-ring";
+import { StaggerList } from "@/components/stagger-list";
 import { ComputeButton } from "./compute-button";
 import { MatchFilters } from "./filters";
 
@@ -19,18 +21,6 @@ const SENIORITY_COLORS: Record<string, string> = {
   manager: "text-fuchsia-400 bg-fuchsia-400/10",
   director: "text-fuchsia-400 bg-fuchsia-400/10",
 };
-
-function scoreColor(score: number) {
-  if (score >= 75) return "text-emerald-400";
-  if (score >= 55) return "text-amber-400";
-  return "text-muted-foreground";
-}
-
-function scoreRing(score: number) {
-  if (score >= 75) return "stroke-emerald-400";
-  if (score >= 55) return "stroke-amber-400";
-  return "stroke-muted-foreground";
-}
 
 type MatchData = {
   score: number;
@@ -153,7 +143,7 @@ export default async function MatchesPage({
 
       {/* Match cards */}
       {matches.length > 0 ? (
-        <div className="space-y-3">
+        <StaggerList className="space-y-3">
           {matches.map((m) => {
             const job = m.jobs;
             const company = job.companies;
@@ -167,7 +157,7 @@ export default async function MatchesPage({
             return (
               <div
                 key={`${user.id}-${job.id}`}
-                className="group rounded-2xl border border-border bg-card/40 p-5 transition hover:border-primary/30 hover:bg-card/70"
+                className="group rounded-2xl border border-border bg-card/40 p-5 lift hover:border-primary/30 hover:bg-card/70"
               >
                 <div className="flex flex-wrap items-start justify-between gap-4">
                   <div className="flex min-w-0 flex-1 items-start gap-3">
@@ -205,7 +195,7 @@ export default async function MatchesPage({
                     </div>
                   </div>
 
-                  <ScoreRing score={score} />
+                  <ScoreRing score={score} size="md" />
                 </div>
 
                 {(strengths.length > 0 || gaps.length > 0 || m.reasoning) && (
@@ -271,7 +261,7 @@ export default async function MatchesPage({
               </div>
             );
           })}
-        </div>
+        </StaggerList>
       ) : allRows.length > 0 ? (
         <div className="rounded-2xl border border-dashed border-border p-12 text-center text-muted-foreground">
           <p className="text-sm">No matches with these filters. Try clearing some.</p>
@@ -281,37 +271,6 @@ export default async function MatchesPage({
           <p className="text-sm">No matches yet — click &quot;Compute my matches&quot; above.</p>
         </div>
       ) : null}
-    </div>
-  );
-}
-
-function ScoreRing({ score }: { score: number }) {
-  const r = 22;
-  const circ = 2 * Math.PI * r;
-  const dash = (Math.min(score, 100) / 100) * circ;
-  return (
-    <div className="flex shrink-0 flex-col items-center gap-1">
-      <svg width="56" height="56" viewBox="0 0 56 56" className="-rotate-90">
-        <circle cx="28" cy="28" r={r} fill="none" stroke="hsl(var(--border))" strokeWidth="5" />
-        <circle
-          cx="28" cy="28" r={r}
-          fill="none"
-          className={scoreRing(score)}
-          strokeWidth="5"
-          strokeDasharray={`${dash} ${circ - dash}`}
-          strokeLinecap="round"
-        />
-        <text
-          x="28" y="28"
-          dominantBaseline="middle"
-          textAnchor="middle"
-          className={`font-bold ${scoreColor(score)}`}
-          style={{ transform: "rotate(90deg)", transformOrigin: "28px 28px", fontSize: "13px", fill: "currentColor" }}
-        >
-          {score}
-        </text>
-      </svg>
-      <span className="text-xs text-muted-foreground">/100</span>
     </div>
   );
 }

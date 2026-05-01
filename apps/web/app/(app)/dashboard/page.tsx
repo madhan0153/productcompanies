@@ -7,6 +7,7 @@ import {
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import Link from "next/link";
 import { CompanyLogo } from "@/components/company-logo";
+import { ScoreRing } from "@/components/score-ring";
 
 export const metadata: Metadata = { title: "Dashboard" };
 
@@ -109,7 +110,10 @@ export default async function DashboardPage() {
 
         {/* DNA score ring */}
         {dnaScore !== null && (
-          <DnaRing score={dnaScore} />
+          <div className="flex flex-col items-center gap-1">
+            <ScoreRing score={dnaScore} size="lg" showLabel={false} />
+            <span className="text-xs font-medium text-muted-foreground">DNA score</span>
+          </div>
         )}
       </div>
 
@@ -308,36 +312,6 @@ export default async function DashboardPage() {
 
 // ── Sub-components ─────────────────────────────────────────────────────────────
 
-function DnaRing({ score }: { score: number }) {
-  const r = 28;
-  const circ = 2 * Math.PI * r;
-  const dash = (Math.min(score, 100) / 100) * circ;
-  return (
-    <div className="flex flex-col items-center gap-1">
-      <svg width="72" height="72" viewBox="0 0 72 72" className="-rotate-90">
-        <circle cx="36" cy="36" r={r} fill="none" stroke="hsl(var(--border))" strokeWidth="6" />
-        <circle
-          cx="36" cy="36" r={r}
-          fill="none"
-          stroke="hsl(var(--primary))"
-          strokeWidth="6"
-          strokeDasharray={`${dash} ${circ - dash}`}
-          strokeLinecap="round"
-        />
-        <text
-          x="36" y="36"
-          dominantBaseline="middle"
-          textAnchor="middle"
-          style={{ transform: "rotate(90deg)", transformOrigin: "36px 36px", fontSize: "16px", fontWeight: 700, fill: "hsl(var(--foreground))" }}
-        >
-          {score}
-        </text>
-      </svg>
-      <span className="text-xs font-medium text-muted-foreground">DNA score</span>
-    </div>
-  );
-}
-
 function StatCard({
   icon, label, value, sub, href, color,
 }: {
@@ -347,7 +321,7 @@ function StatCard({
   return (
     <Link
       href={href}
-      className="group rounded-2xl border border-border bg-card/40 p-5 transition hover:border-primary/30 hover:bg-card/70"
+      className="group rounded-2xl border border-border bg-card/40 p-5 lift hover:border-primary/30 hover:bg-card/70"
     >
       <div className={`mb-3 inline-flex h-9 w-9 items-center justify-center rounded-lg bg-current/10 ${color}`}>
         {icon}

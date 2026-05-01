@@ -4,6 +4,7 @@ import { ExternalLink, StickyNote, ChevronRight } from "lucide-react";
 import Link from "next/link";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { CompanyLogo } from "@/components/company-logo";
+import { StaggerList } from "@/components/stagger-list";
 import { AddApplicationButton } from "./add-form";
 import { StatusActions } from "./status-actions";
 import { deleteApplication } from "./actions";
@@ -117,7 +118,7 @@ export default async function ApplicationsPage({
 
       {/* Application list */}
       {filtered.length > 0 ? (
-        <div className="space-y-3">
+        <StaggerList className="space-y-3">
           {filtered.map((app) => {
             const job = app.jobs;
             const company = job?.companies;
@@ -127,7 +128,7 @@ export default async function ApplicationsPage({
             return (
               <div
                 key={app.id}
-                className="group rounded-2xl border border-border bg-card/40 p-5 transition hover:border-primary/30 hover:bg-card/60"
+                className="group rounded-2xl border border-border bg-card/40 p-5 lift hover:border-primary/30 hover:bg-card/60"
               >
                 <div className="flex flex-wrap items-start justify-between gap-4">
                   <div className="flex min-w-0 flex-1 items-start gap-3">
@@ -195,7 +196,7 @@ export default async function ApplicationsPage({
               </div>
             );
           })}
-        </div>
+        </StaggerList>
       ) : (
         <div className="rounded-2xl border border-dashed border-border p-12 text-center">
           <p className="text-sm text-muted-foreground">

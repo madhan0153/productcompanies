@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { motion, useReducedMotion } from "framer-motion";
+import { LayoutGroup, motion, useReducedMotion } from "framer-motion";
 import {
   LayoutDashboard, Briefcase, BookOpen, GitCompare,
   Bell, ShieldCheck, LogOut, Menu, X, User,
@@ -105,26 +105,36 @@ export function AppShell({ user, banner, children }: Props) {
         </div>
 
         <nav className="flex-1 space-y-0.5 overflow-y-auto px-3 py-4" aria-label="App sections">
-          {NAV.map(({ href, label, icon: Icon }) => {
-            const active = pathname === href || (href !== "/dashboard" && pathname.startsWith(href));
-            return (
-              <Link
-                key={href}
-                href={href}
-                onClick={() => setOpen(false)}
-                aria-current={active ? "page" : undefined}
-                className={cn(
-                  "flex items-center gap-3 rounded-xl px-3 py-2 text-sm font-medium transition focus:outline-none focus-visible:ring-2 focus-visible:ring-ring",
-                  active
-                    ? "bg-primary/10 text-primary"
-                    : "text-muted-foreground hover:bg-secondary hover:text-foreground",
-                )}
-              >
-                <Icon className="h-4 w-4 shrink-0" aria-hidden="true" />
-                {label}
-              </Link>
-            );
-          })}
+          <LayoutGroup id="sidebar-nav">
+            {NAV.map(({ href, label, icon: Icon }) => {
+              const active = pathname === href || (href !== "/dashboard" && pathname.startsWith(href));
+              return (
+                <Link
+                  key={href}
+                  href={href}
+                  onClick={() => setOpen(false)}
+                  aria-current={active ? "page" : undefined}
+                  className={cn(
+                    "relative flex items-center gap-3 rounded-xl px-3 py-2 text-sm font-medium transition focus-ring",
+                    active ? "text-primary" : "text-muted-foreground hover:bg-secondary hover:text-foreground",
+                  )}
+                >
+                  {active && (
+                    <motion.span
+                      layoutId="active-nav-pill"
+                      className="absolute inset-0 rounded-xl bg-primary/10 ring-1 ring-primary/15"
+                      transition={reduce
+                        ? { duration: 0 }
+                        : { type: "spring", stiffness: 360, damping: 32 }}
+                      aria-hidden
+                    />
+                  )}
+                  <Icon className="relative h-4 w-4 shrink-0" aria-hidden="true" />
+                  <span className="relative">{label}</span>
+                </Link>
+              );
+            })}
+          </LayoutGroup>
         </nav>
 
         <div className="border-t border-border px-3 py-4 space-y-1">
