@@ -88,10 +88,9 @@ Do NOT include PII in summary — only professional summary.
 For estimated_current_lpa: estimate in LPA (lakhs per annum) based on role seniority, company tier, and years of experience in India market. Return null/omit if insufficient data.`;
 
 export async function parseResumePdf(pdfBase64: string): Promise<ParsedResume> {
-  // Flash is more accurate for structured extraction; flash-lite is the fallback
-  // because it has a separate quota bucket and the schema is strict enough that
-  // the smaller model still produces valid output for resume parsing.
-  const text = await runWithRetry("gemini-2.0-flash", "gemini-2.0-flash-lite", async (model) => {
+  // 'heavy' tier cascades through 2.5-flash → 2.0-flash → 1.5-flash → lite
+  // variants. PDF input + structured output works on all of them.
+  const text = await runWithRetry("heavy", async (model) => {
     const result = await model.generateContent({
       contents: [
         {

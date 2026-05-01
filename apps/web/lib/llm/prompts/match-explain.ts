@@ -57,8 +57,8 @@ Assess the match. Return:
 }
 
 export async function explainMatch(resume: ParsedResume, job: JobSnapshot): Promise<MatchExplanation> {
-  // Lite first (cheaper, separate quota); fall back to flash if lite is exhausted.
-  const text = await runWithRetry("gemini-2.0-flash-lite", "gemini-2.0-flash", async (model) => {
+  // 'light' tier prioritises lite/8b models (cheaper, separate quotas).
+  const text = await runWithRetry("light", async (model) => {
     const result = await model.generateContent({
       contents: [{ role: "user", parts: [{ text: buildPrompt(resume, job) }] }],
       generationConfig: {

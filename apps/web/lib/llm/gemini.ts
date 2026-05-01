@@ -6,9 +6,11 @@ import {
 } from "@google/generative-ai";
 import { serverEnv } from "@/lib/env";
 
-// Multiple keys can be supplied as a comma-separated value; we rotate across them
-// to spread load and recover from per-key 429s. Each free-tier key has its own
-// quota bucket, so 3 keys gives ~3× the effective throughput.
+// Model availability changes over time and by region. Free tier for
+// gemini-2.0-flash has been spotty for India-region projects (we've
+// observed 'limit: 0' errors). Default to 2.5-flash (current production
+// with broad free-tier coverage), and cascade down through older models
+// before giving up so a single misconfigured project doesn't break parsing.
 
 let _keyIndex = 0;
 
@@ -18,12 +20,6 @@ function allKeys(): string[] {
   return raw.split(",").map((k) => k.trim()).filter(Boolean);
 }
 
-function pickKeyAt(idx: number): string | null {
-  const keys = allKeys();
-  if (keys.length === 0) return null;
-  return keys[idx % keys.length];
-}
-
 function client(apiKey: string) {
   return new GoogleGenerativeAI(apiKey);
 }
@@ -31,15 +27,17 @@ function client(apiKey: string) {
 // ── Public model factories (kept for backwards compatibility) ────────────────
 
 export function geminiFlash(): GenerativeModel {
-  const key = pickKeyAt(_keyIndex++);
-  if (!key) throw new Error("GEMINI_API_KEY is not set");
-  return client(key).getGenerativeModel({ model: "gemini-2.0-flash" });
+  const keys = allKeys();
+  if (keys.length === 0) throw new Error("GEMINI_API_KEY is not set");
+  const key = keys[_keyIndex++ % keys.length];
+  return client(key).getGenerativeModel({ model: HEAVY_MODELS[0] });
 }
 
 export function geminiFlashLite(): GenerativeModel {
-  const key = pickKeyAt(_keyIndex++);
-  if (!key) throw new Error("GEMINI_API_KEY is not set");
-  return client(key).getGenerativeModel({ model: "gemini-2.0-flash-lite" });
+  const keys = allKeys();
+  if (keys.length === 0) throw new Error("GEMINI_API_KEY is not set");
+  const key = keys[_keyIndex++ % keys.length];
+  return client(key).getGenerativeModel({ model: LIGHT_MODELS[0] });
 }
 
 // ── Retry-aware runner ───────────────────────────────────────────────────────
@@ -47,6 +45,7 @@ export function geminiFlashLite(): GenerativeModel {
 export type LlmError =
   | { kind: "rate_limited"; retryAfterMs: number; raw: string }
   | { kind: "quota_disabled"; raw: string }   // limit: 0 → API not enabled / billing
+  | { kind: "model_unavailable"; raw: string } // model name not found / 404 / not supported
   | { kind: "auth"; raw: string }
   | { kind: "unknown"; raw: string };
 
@@ -61,6 +60,9 @@ function classify(err: unknown): LlmError {
   if (/limit:\s*0/i.test(msg)) {
     return { kind: "quota_disabled", raw: msg };
   }
+  if (/\b404\b|not found|is not supported|is not found for API|model.*does not exist|UNSUPPORTED/i.test(msg)) {
+    return { kind: "model_unavailable", raw: msg };
+  }
   if (/\b429\b|Too Many Requests|RESOURCE_EXHAUSTED/i.test(msg)) {
     const m = msg.match(/retry in ([\d.]+)s/i) ?? msg.match(/"retryDelay":\s*"(\d+)s"/);
     const seconds = m ? parseFloat(m[1]) : 5;
@@ -74,25 +76,75 @@ function classify(err: unknown): LlmError {
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
-type ModelName = "gemini-2.0-flash" | "gemini-2.0-flash-lite";
+// Cascade order: try the "best" model first, fall back through older /
+// cheaper variants. Each model has its own quota bucket so this also
+// works around per-model rate limits.
+//
+// HEAVY_MODELS — used for resume parsing (PDF input, structured output).
+//   2.5-flash supports document understanding and is the current free-tier
+//   default. 2.0-flash is widely deployed. 1.5-flash is the legacy fallback
+//   that's still alive and most commonly available on older keys.
+const HEAVY_MODELS = [
+  "gemini-2.5-flash",
+  "gemini-2.0-flash",
+  "gemini-1.5-flash",
+  "gemini-2.5-flash-lite",
+  "gemini-2.0-flash-lite",
+  "gemini-1.5-flash-8b",
+] as const;
+
+// LIGHT_MODELS — used for high-volume match explanations. We start with
+// the cheapest variants that still produce solid JSON.
+const LIGHT_MODELS = [
+  "gemini-2.5-flash-lite",
+  "gemini-2.0-flash-lite",
+  "gemini-1.5-flash-8b",
+  "gemini-2.5-flash",
+  "gemini-2.0-flash",
+  "gemini-1.5-flash",
+] as const;
+
+export type ModelTier = "heavy" | "light";
+
+const CASCADES: Record<ModelTier, readonly string[]> = {
+  heavy: HEAVY_MODELS,
+  light: LIGHT_MODELS,
+};
 
 /**
- * Run a Gemini call with key rotation + 429 retry + optional model fallback.
+ * Run a Gemini call with key rotation + 429 retry + cascading model fallback.
  *
  * Strategy:
- *  1. Try `primary` model with each key in rotation.
- *  2. On per-call 429: sleep up to 8s (capped from server-suggested retryDelay),
- *     advance to the next key, retry.
- *  3. If all keys 429 on the primary model AND a fallback is provided, retry
- *     once on the fallback model (different quota bucket).
- *  4. On `quota_disabled` (limit: 0 — project-level misconfig) we surface
- *     immediately rather than thrashing.
+ *  1. Try the first model in the tier with each key in rotation.
+ *  2. On 429: respect server-suggested retryDelay (capped at 8s), advance
+ *     to the next key, retry.
+ *  3. On 'model_unavailable' or after all keys 429 on a model, move to the
+ *     next model in the cascade (different quota bucket entirely).
+ *  4. On 'quota_disabled' (limit:0 — project-level misconfig) or 'auth',
+ *     surface immediately rather than thrashing every model with a key
+ *     we already know is broken.
  */
 export async function runWithRetry<T>(
-  primary: ModelName,
-  fallback: ModelName | null,
-  build: (model: GenerativeModel) => Promise<T>,
+  tierOrModel: ModelTier | string,
+  fallbackOrBuild: string | null | ((model: GenerativeModel) => Promise<T>),
+  maybeBuild?: (model: GenerativeModel) => Promise<T>,
 ): Promise<T> {
+  // Backwards-compat: support the old (primary, fallback, build) signature.
+  let cascade: readonly string[];
+  let build: (model: GenerativeModel) => Promise<T>;
+
+  if (typeof fallbackOrBuild === "function") {
+    // (tier, build) — new ergonomic shape
+    cascade = CASCADES[tierOrModel as ModelTier] ?? CASCADES.heavy;
+    build = fallbackOrBuild;
+  } else {
+    // (primary, fallback, build) — legacy shape
+    const primary = tierOrModel;
+    const fallback = fallbackOrBuild;
+    build = maybeBuild!;
+    cascade = fallback ? [primary, fallback] : [primary];
+  }
+
   const keys = allKeys();
   if (keys.length === 0) {
     throw new LlmRunError({ kind: "auth", raw: "GEMINI_API_KEY is not set" });
@@ -100,14 +152,14 @@ export async function runWithRetry<T>(
 
   let lastError: LlmError | null = null;
 
-  for (const modelName of (fallback ? [primary, fallback] : [primary]) as ModelName[]) {
+  for (const modelName of cascade) {
+    let modelUnavailable = false;
+
     for (let attempt = 0; attempt < keys.length; attempt++) {
       const key = keys[(_keyIndex + attempt) % keys.length];
       const model = client(key).getGenerativeModel({ model: modelName });
       try {
         const result = await build(model);
-        // Advance the global rotation pointer past the key that succeeded so
-        // the next caller starts on a different key.
         _keyIndex = (_keyIndex + attempt + 1) % keys.length;
         return result;
       } catch (err) {
@@ -115,16 +167,29 @@ export async function runWithRetry<T>(
         lastError = classified;
 
         if (classified.kind === "quota_disabled" || classified.kind === "auth") {
-          // Don't waste other keys on a project-level configuration issue.
-          throw new LlmRunError(classified);
+          // Per-key project-level issue. Don't try other keys with the same
+          // problem on the same model, but DO try the next model in cascade —
+          // a key may have one model enabled but not another.
+          break;
+        }
+        if (classified.kind === "model_unavailable") {
+          // No point hammering other keys — this model just isn't there.
+          modelUnavailable = true;
+          break;
         }
         if (classified.kind === "rate_limited" && attempt < keys.length - 1) {
           await sleep(classified.retryAfterMs);
           continue;
         }
-        // Move on to fallback model (if any) on the next outer iteration.
+        // Otherwise (last attempt 429, or unknown error): move to next model.
         break;
       }
+    }
+
+    // Slight pause between models if we burned through keys, in case the
+    // platform is mid-incident; cheap insurance.
+    if (!modelUnavailable && lastError?.kind === "rate_limited") {
+      await sleep(400);
     }
   }
 

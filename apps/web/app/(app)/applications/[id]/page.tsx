@@ -1,8 +1,11 @@
 import type { Metadata } from "next";
 import { redirect, notFound } from "next/navigation";
-import { ArrowLeft, ExternalLink, MessageSquare, Trash2 } from "lucide-react";
+import {
+  ArrowLeft, ExternalLink, MessageSquare, Trash2, Sparkles, Pencil,
+} from "lucide-react";
 import Link from "next/link";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { CompanyLogo } from "@/components/company-logo";
 import { addInterviewNote, deleteInterviewNote, updateStatus } from "../actions";
 
 export const metadata: Metadata = { title: "Application detail" };
@@ -19,6 +22,73 @@ const STATUS_COLORS: Record<AppStatus, string> = {
   withdrawn: "bg-zinc-400/10 text-zinc-400 border-zinc-400/20",
 };
 
+type AppRow = {
+  id: string;
+  status: AppStatus;
+  applied_at: string | null;
+  notes: string | null;
+  next_action_at: string | null;
+  created_at: string;
+  job_id: string;
+  jobs: {
+    id: string;
+    title: string;
+    apply_url: string | null;
+    location: string | null;
+    tech_stack: string[] | null;
+    seniority: string | null;
+    companies: { name: string; slug: string; logo_url: string | null } | null;
+  } | null;
+};
+
+type StoryRow = {
+  id: string;
+  title: string;
+  situation: string | null;
+  task: string | null;
+  action: string | null;
+  result: string | null;
+  tags: string[] | null;
+};
+
+function tokenise(s: string): Set<string> {
+  return new Set(
+    s.toLowerCase().match(/[a-z][a-z0-9+]{2,}/g) ?? [],
+  );
+}
+
+// Score relevance of a story to a job's signals (title + tech_stack + seniority).
+// Pure heuristic — no LLM call. Returns a 0..N score plus the matching tokens.
+function scoreStoryRelevance(
+  story: StoryRow,
+  signals: { title: string; tech: string[]; seniority: string | null },
+): { score: number; reasons: string[] } {
+  const haystack = [
+    story.title, ...(story.tags ?? []),
+    story.situation ?? "", story.task ?? "", story.action ?? "", story.result ?? "",
+  ].join(" ");
+  const storyTokens = tokenise(haystack);
+
+  const reasons: string[] = [];
+  let score = 0;
+
+  for (const t of signals.tech) {
+    if (storyTokens.has(t.toLowerCase())) {
+      score += 3;
+      reasons.push(t);
+    }
+  }
+  for (const t of tokenise(signals.title)) {
+    if (storyTokens.has(t)) score += 1;
+  }
+  if (signals.seniority && storyTokens.has(signals.seniority.toLowerCase())) {
+    score += 2;
+    reasons.push(signals.seniority);
+  }
+
+  return { score, reasons: [...new Set(reasons)].slice(0, 4) };
+}
+
 export default async function ApplicationDetailPage({
   params,
 }: {
@@ -30,9 +100,14 @@ export default async function ApplicationDetailPage({
 
   const { id } = await params;
 
-  const [{ data: app }, { data: notes }] = await Promise.all([
+  // Join through jobs directly so we don't depend on matches existing.
+  const [{ data: rawApp }, { data: rawNotes }, { data: rawStories }] = await Promise.all([
     supabase.from("applications")
-      .select("id, status, applied_at, notes, next_action_at, created_at, job_id")
+      .select(`
+        id, status, applied_at, notes, next_action_at, created_at, job_id,
+        jobs ( id, title, apply_url, location, tech_stack, seniority,
+               companies (name, slug, logo_url) )
+      `)
       .eq("id", id)
       .eq("user_id", user.id)
       .maybeSingle(),
@@ -40,55 +115,73 @@ export default async function ApplicationDetailPage({
       .select("id, round, interviewer, notes, created_at")
       .eq("application_id", id)
       .order("created_at", { ascending: false }),
+    supabase.from("stories")
+      .select("id, title, situation, task, action, result, tags")
+      .eq("user_id", user.id),
   ]);
+
+  const app = rawApp as unknown as AppRow | null;
+  const notes = rawNotes ?? [];
+  const stories = (rawStories as StoryRow[] | null) ?? [];
 
   if (!app) notFound();
 
-  // Get job info from matches
-  const { data: matchData } = await supabase.from("matches")
-    .select("job_id, jobs(id, title, apply_url, location, companies(name, slug))")
-    .eq("user_id", user.id)
-    .eq("job_id", app.job_id)
-    .maybeSingle();
+  const job = app.jobs;
+  const company = job?.companies;
+  const appStatus = app.status;
 
-  const jobRaw = matchData?.jobs as unknown as {
-    id: string; title: string; apply_url: string | null;
-    location: string | null;
-    companies: { name: string; slug: string } | null;
-  } | null;
-
-  const appStatus = app.status as AppStatus;
+  // Rank stories by relevance to this role
+  const ranked = job
+    ? stories
+        .map((s) => ({
+          story: s,
+          ...scoreStoryRelevance(s, {
+            title: job.title,
+            tech: job.tech_stack ?? [],
+            seniority: job.seniority,
+          }),
+        }))
+        .filter((r) => r.score > 0)
+        .sort((a, b) => b.score - a.score)
+        .slice(0, 4)
+    : [];
 
   return (
-    <div className="mx-auto max-w-2xl space-y-6">
-      {/* Back */}
-      <Link href="/applications" className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition">
+    <div className="mx-auto max-w-3xl space-y-6">
+      <Link href="/applications" className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition focus-ring rounded">
         <ArrowLeft className="h-4 w-4" /> Back to applications
       </Link>
 
       {/* Header */}
-      <div className="rounded-2xl border border-border bg-card/40 p-6">
+      <div className="rounded-2xl border border-border bg-card/50 p-6 elev-1 backdrop-blur">
         <div className="flex flex-wrap items-start justify-between gap-4">
-          <div className="space-y-1">
-            <div className="flex items-center gap-2">
-              <span className="text-sm text-muted-foreground">
-                {jobRaw?.companies?.name ?? "Unknown company"}
-              </span>
-              <span className={`rounded-full border px-2 py-0.5 text-xs font-medium ${STATUS_COLORS[appStatus]}`}>
-                {appStatus}
-              </span>
+          <div className="flex min-w-0 flex-1 items-start gap-3">
+            <CompanyLogo name={company?.name ?? "?"} logoUrl={company?.logo_url ?? null} size={48} />
+            <div className="min-w-0 flex-1 space-y-1">
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="text-sm text-muted-foreground">{company?.name ?? "Unknown company"}</span>
+                <span className={`rounded-full border px-2 py-0.5 text-xs font-medium ${STATUS_COLORS[appStatus]}`}>
+                  {appStatus}
+                </span>
+              </div>
+              <h1 className="font-display text-xl font-semibold leading-tight">
+                {job?.id ? (
+                  <Link href={`/jobs/${job.id}`} className="hover:text-primary transition">
+                    {job.title}
+                  </Link>
+                ) : "Role no longer listed"}
+              </h1>
+              {job?.location && (
+                <p className="text-xs text-muted-foreground">{job.location}</p>
+              )}
             </div>
-            <h1 className="text-xl font-semibold">{jobRaw?.title ?? "Unknown role"}</h1>
-            {jobRaw?.location && (
-              <p className="text-xs text-muted-foreground">{jobRaw.location}</p>
-            )}
           </div>
-          {jobRaw?.apply_url && (
+          {job?.apply_url && (
             <a
-              href={jobRaw.apply_url}
+              href={job.apply_url}
               target="_blank"
               rel="noopener noreferrer"
-              className="flex items-center gap-1.5 rounded-xl border border-border px-3 py-1.5 text-sm text-muted-foreground transition hover:border-primary/40 hover:text-foreground"
+              className="press inline-flex items-center gap-1.5 rounded-xl border border-border px-3 py-1.5 text-sm text-muted-foreground transition hover:border-primary/40 hover:text-foreground focus-ring"
             >
               <ExternalLink className="h-3.5 w-3.5" /> Apply
             </a>
@@ -117,7 +210,7 @@ export default async function ApplicationDetailPage({
               <input type="hidden" name="status" value={s} />
               <button
                 type="submit"
-                className="rounded-lg border border-border px-2.5 py-1 text-xs text-muted-foreground transition hover:border-primary/40 hover:text-foreground"
+                className="press rounded-lg border border-border px-2.5 py-1 text-xs text-muted-foreground transition hover:border-primary/40 hover:text-foreground"
               >
                 {s}
               </button>
@@ -126,14 +219,60 @@ export default async function ApplicationDetailPage({
         </div>
       </div>
 
+      {/* Interview prep — STAR stories that may fit */}
+      {ranked.length > 0 && (
+        <section className="rounded-2xl border border-border bg-gradient-to-br from-primary/5 via-card/40 to-card/40 p-6">
+          <header className="mb-4 flex items-start justify-between gap-3">
+            <div className="flex items-start gap-2">
+              <Sparkles className="mt-0.5 h-4 w-4 text-primary" />
+              <div>
+                <h2 className="font-display text-sm font-semibold">Stories that may fit this role</h2>
+                <p className="mt-0.5 text-xs text-muted-foreground">
+                  Picked from your Story Bank based on the job&apos;s tech, title, and seniority.
+                </p>
+              </div>
+            </div>
+            <Link href="/stories" className="shrink-0 text-xs text-muted-foreground hover:text-foreground transition">
+              All stories →
+            </Link>
+          </header>
+          <ul className="space-y-2">
+            {ranked.map(({ story, reasons }) => (
+              <li key={story.id}>
+                <Link
+                  href={`/stories?highlight=${story.id}`}
+                  className="group flex items-start gap-3 rounded-xl border border-border bg-card/50 p-3 transition hover:border-primary/30 hover:bg-card/80"
+                >
+                  <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                    <Pencil className="h-3.5 w-3.5" />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm font-medium">{story.title}</p>
+                    {reasons.length > 0 && (
+                      <p className="mt-1 flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground">
+                        Matches:
+                        {reasons.map((r) => (
+                          <span key={r} className="rounded-md bg-primary/10 px-1.5 py-0.5 text-[10px] font-medium text-primary">
+                            {r}
+                          </span>
+                        ))}
+                      </p>
+                    )}
+                  </div>
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+
       {/* Interview notes */}
       <div className="rounded-2xl border border-border bg-card/40 p-6">
         <h2 className="mb-4 flex items-center gap-2 text-sm font-medium">
           <MessageSquare className="h-4 w-4 text-muted-foreground" />
-          Interview notes ({notes?.length ?? 0})
+          Interview notes ({notes.length})
         </h2>
 
-        {/* Add note form */}
         <form action={addInterviewNote} className="mb-5 space-y-3 rounded-xl border border-border bg-secondary/30 p-4">
           <input type="hidden" name="app_id" value={app.id} />
           <div className="grid grid-cols-2 gap-3">
@@ -165,16 +304,15 @@ export default async function ApplicationDetailPage({
           </div>
           <button
             type="submit"
-            className="rounded-xl bg-primary px-4 py-1.5 text-sm font-medium text-primary-foreground shadow shadow-primary/20 transition hover:opacity-90"
+            className="press rounded-xl bg-primary px-4 py-1.5 text-sm font-medium text-primary-foreground shadow shadow-primary/20 transition hover:opacity-90 focus-ring"
           >
             Add note
           </button>
         </form>
 
-        {/* Notes list */}
-        {(notes ?? []).length > 0 ? (
+        {notes.length > 0 ? (
           <div className="space-y-3">
-            {(notes ?? []).map((note) => (
+            {notes.map((note) => (
               <div key={note.id} className="group rounded-xl border border-border bg-card/60 p-4">
                 <div className="flex items-start justify-between gap-3">
                   <div className="space-y-0.5">
@@ -194,7 +332,8 @@ export default async function ApplicationDetailPage({
                     <input type="hidden" name="app_id" value={app.id} />
                     <button
                       type="submit"
-                      className="rounded-lg p-1.5 text-muted-foreground opacity-0 transition hover:bg-destructive/10 hover:text-destructive group-hover:opacity-100"
+                      className="rounded-lg p-1.5 text-muted-foreground opacity-0 transition hover:bg-destructive/10 hover:text-destructive group-hover:opacity-100 focus-ring"
+                      aria-label="Delete note"
                     >
                       <Trash2 className="h-3.5 w-3.5" />
                     </button>
