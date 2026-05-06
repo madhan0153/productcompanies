@@ -4,9 +4,5 @@
       "path": "/api/cron/digest",
       "schedule": "30 2 * * 1"
     }
-  ],
-  "functions": {
-    "apps/web/app/(app)/matches/actions.ts": { "maxDuration": 60 },
-    "apps/web/app/(app)/profile/actions.ts": { "maxDuration": 60 }
-  }
+  ]
 }

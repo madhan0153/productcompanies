@@ -12,6 +12,7 @@ import { ComputeButton } from "./compute-button";
 import { MatchFilters } from "./filters";
 
 export const metadata: Metadata = { title: "Matches" };
+export const maxDuration = 60; // compute-matches server action can take up to 60s
 
 const SENIORITY_COLORS: Record<string, string> = {
   intern: "text-sky-400 bg-sky-400/10",

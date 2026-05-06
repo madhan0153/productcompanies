@@ -5,6 +5,7 @@ import { ResumeUpload } from "./resume-upload";
 import { SaveProfileForm } from "./save-profile-form";
 
 export const metadata: Metadata = { title: "My Profile" };
+export const maxDuration = 60; // resume parse server action (Gemini PDF) needs up to 60s
 
 
 
