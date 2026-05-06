@@ -80,7 +80,9 @@ export interface Database {
           target_lpa: number | null; preferred_hubs: string[] | null;
           tech_stack: string[] | null; seniority: SeniorityLevel | null;
           resume_storage_path: string | null; resume_parsed: Json | null;
-          product_dna_score: number | null; created_at: string; updated_at: string;
+          product_dna_score: number | null;
+          coach_plan: Json | null; coach_plan_at: string | null;
+          created_at: string; updated_at: string;
         };
         Insert: {
           id: string; display_name?: string | null; current_role?: string | null;
@@ -88,7 +90,9 @@ export interface Database {
           target_lpa?: number | null; preferred_hubs?: string[] | null;
           tech_stack?: string[] | null; seniority?: SeniorityLevel | null;
           resume_storage_path?: string | null; resume_parsed?: Json | null;
-          product_dna_score?: number | null; created_at?: string; updated_at?: string;
+          product_dna_score?: number | null;
+          coach_plan?: Json | null; coach_plan_at?: string | null;
+          created_at?: string; updated_at?: string;
         };
         Update: {
           id?: string; display_name?: string | null; current_role?: string | null;
@@ -96,7 +100,9 @@ export interface Database {
           target_lpa?: number | null; preferred_hubs?: string[] | null;
           tech_stack?: string[] | null; seniority?: SeniorityLevel | null;
           resume_storage_path?: string | null; resume_parsed?: Json | null;
-          product_dna_score?: number | null; updated_at?: string;
+          product_dna_score?: number | null;
+          coach_plan?: Json | null; coach_plan_at?: string | null;
+          updated_at?: string;
         };
         Relationships: [];
       };

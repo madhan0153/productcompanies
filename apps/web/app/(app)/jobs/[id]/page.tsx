@@ -12,6 +12,7 @@ import { Tooltip } from "@/components/tooltip";
 import { JobActions } from "./job-actions";
 import { StickyApplyBar } from "./sticky-apply-bar";
 import { JobDescription } from "./job-description";
+import { PrepBrief } from "./prep-brief";
 
 export const dynamic = "force-dynamic";
 
@@ -209,6 +210,15 @@ export default async function JobDetailPage({ params }: { params: Promise<{ id: 
           </div>
         </div>
       )}
+
+      {/* Interview prep brief — pure heuristic, instantly available */}
+      <PrepBrief
+        title={job.title}
+        companyName={company?.name ?? "this company"}
+        companySlug={company?.slug ?? null}
+        seniority={job.seniority}
+        techStack={job.tech_stack ?? []}
+      />
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
         {/* Description */}

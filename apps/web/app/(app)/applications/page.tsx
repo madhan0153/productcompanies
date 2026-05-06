@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
-import { ExternalLink, StickyNote, ChevronRight, BookOpen } from "lucide-react";
+import { ExternalLink, StickyNote, ChevronRight, BookOpen, CalendarClock, Download, AlertCircle } from "lucide-react";
 import Link from "next/link";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { CompanyLogo } from "@/components/company-logo";
@@ -88,6 +88,18 @@ export default async function ApplicationsPage({
     return acc;
   }, {});
 
+  // Follow-ups: overdue, today, upcoming (within 14 days)
+  const now = Date.now();
+  const day = 86400000;
+  const followups = apps
+    .filter((a) => a.next_action_at && a.status !== "rejected" && a.status !== "withdrawn")
+    .map((a) => ({ app: a, when: new Date(a.next_action_at!).getTime() }))
+    .sort((a, b) => a.when - b.when);
+
+  const overdue = followups.filter((f) => f.when < now - day);
+  const dueToday = followups.filter((f) => f.when >= now - day && f.when < now + day);
+  const upcoming = followups.filter((f) => f.when >= now + day && f.when < now + 14 * day);
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -98,8 +110,70 @@ export default async function ApplicationsPage({
             {apps.length > 0 ? `${apps.length} application${apps.length !== 1 ? "s" : ""} tracked` : "Start tracking your job applications"}
           </p>
         </div>
-        <AddApplicationButton jobs={jobsForForm} />
+        <div className="flex items-center gap-2">
+          {followups.length > 0 && (
+            <a
+              href="/api/applications/calendar"
+              className="inline-flex items-center gap-1.5 rounded-xl border border-border px-3 py-2 text-xs text-muted-foreground transition hover:border-primary/40 hover:text-foreground"
+              title="Download an iCalendar file with all your follow-ups"
+            >
+              <Download className="h-3.5 w-3.5" /> Subscribe (.ics)
+            </a>
+          )}
+          <AddApplicationButton jobs={jobsForForm} />
+        </div>
       </div>
+
+      {/* Follow-ups overview */}
+      {(overdue.length + dueToday.length + upcoming.length) > 0 && (
+        <section className="rounded-2xl border border-border bg-card/40 p-5 lift">
+          <header className="mb-3 flex items-center gap-2">
+            <CalendarClock className="h-4 w-4 text-primary" />
+            <h2 className="font-display text-sm font-semibold">Follow-ups</h2>
+            <span className="ml-auto text-xs text-muted-foreground">
+              {overdue.length} overdue · {dueToday.length} today · {upcoming.length} this fortnight
+            </span>
+          </header>
+          <ul className="grid grid-cols-1 gap-2 lg:grid-cols-2">
+            {[...overdue, ...dueToday, ...upcoming].slice(0, 8).map(({ app: a, when }) => {
+              const job = a.jobs;
+              const company = job?.companies;
+              const isOverdue = when < now - day;
+              const isToday = when >= now - day && when < now + day;
+              return (
+                <li
+                  key={a.id}
+                  className={`flex items-center gap-3 rounded-xl border px-3 py-2.5 text-sm ${
+                    isOverdue
+                      ? "border-rose-500/30 bg-rose-500/5"
+                      : isToday
+                        ? "border-amber-500/30 bg-amber-500/5"
+                        : "border-border bg-card/60"
+                  }`}
+                >
+                  <CompanyLogo name={company?.name ?? "?"} logoUrl={company?.logo_url ?? null} size={28} />
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate font-medium">{job?.title ?? "Role"}</p>
+                    <p className="truncate text-xs text-muted-foreground">{company?.name ?? ""}</p>
+                  </div>
+                  <span className={`shrink-0 inline-flex items-center gap-1 text-xs ${
+                    isOverdue ? "text-rose-400" : isToday ? "text-amber-400" : "text-muted-foreground"
+                  }`}>
+                    {isOverdue && <AlertCircle className="h-3 w-3" />}
+                    {formatRelative(a.next_action_at!)}
+                  </span>
+                  <Link
+                    href={`/applications/${a.id}`}
+                    className="shrink-0 rounded-lg border border-border px-2 py-0.5 text-[11px] text-muted-foreground transition hover:border-primary/40 hover:text-foreground"
+                  >
+                    Open
+                  </Link>
+                </li>
+              );
+            })}
+          </ul>
+        </section>
+      )}
 
       {/* Status tabs */}
       {apps.length > 0 && (
@@ -242,6 +316,19 @@ function TabChip({ href, active, label, count }: { href: string; active: boolean
       </span>
     </Link>
   );
+}
+
+function formatRelative(iso: string) {
+  try {
+    const d = new Date(iso);
+    const diff = Math.round((d.getTime() - Date.now()) / 86400000);
+    if (diff <= -1) return `${Math.abs(diff)}d overdue`;
+    if (diff === 0) return "today";
+    if (diff === 1) return "tomorrow";
+    if (diff < 7) return `in ${diff}d`;
+    if (diff < 30) return `in ${Math.round(diff / 7)}w`;
+    return d.toLocaleDateString("en-IN", { day: "numeric", month: "short" });
+  } catch { return ""; }
 }
 
 function formatDate(iso: string) {

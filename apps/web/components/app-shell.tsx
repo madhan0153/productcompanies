@@ -5,7 +5,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { LayoutGroup, motion, useReducedMotion } from "framer-motion";
 import {
   LayoutDashboard, Briefcase, BookOpen, GitCompare,
-  Bell, ShieldCheck, LogOut, Menu, X, User, Activity,
+  Bell, ShieldCheck, LogOut, Menu, X, User, Activity, Compass,
 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { createSupabaseBrowserClient } from "@/lib/supabase/browser";
@@ -18,6 +18,7 @@ const NAV = [
   { href: "/profile",       label: "My Profile",     icon: User },
   { href: "/matches",       label: "Matches",        icon: Briefcase },
   { href: "/insights",      label: "Insights",       icon: Activity },
+  { href: "/coach",         label: "Coach",          icon: Compass },
   { href: "/applications",  label: "Applications",   icon: BookOpen },
   { href: "/stories",       label: "Story Bank",     icon: BookOpen },
   { href: "/offers",        label: "Offer Compare",  icon: GitCompare },

@@ -221,9 +221,15 @@ create table if not exists public.profiles (
   resume_storage_path text,
   resume_parsed jsonb,
   product_dna_score integer,
+  coach_plan jsonb,
+  coach_plan_at timestamptz,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
+
+-- Phase E migration: backfill columns on existing tables (idempotent)
+alter table public.profiles add column if not exists coach_plan jsonb;
+alter table public.profiles add column if not exists coach_plan_at timestamptz;
 
 create index if not exists idx_profiles_seniority on public.profiles(seniority);
 
