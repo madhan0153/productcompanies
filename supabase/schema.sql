@@ -233,6 +233,17 @@ alter table public.profiles add column if not exists coach_plan_at timestamptz;
 -- current_role is used by the app code; job_title is the original column name kept for compatibility
 alter table public.profiles add column if not exists current_role text;
 
+-- Phase F migration: role-function aware matching (idempotent)
+-- role_function: canonical engineering function (qa_sdet | backend | frontend | ...)
+-- target_role_functions: what the candidate is targeting (up to 3)
+alter table public.profiles add column if not exists role_function text;
+alter table public.profiles add column if not exists target_role_functions text[] not null default '{}';
+-- jobs.role_function: classified by crawler / backfill API
+alter table public.jobs add column if not exists role_function text;
+
+create index if not exists idx_profiles_role_function on public.profiles(role_function);
+create index if not exists idx_jobs_role_function on public.jobs(role_function);
+
 
 create index if not exists idx_profiles_seniority on public.profiles(seniority);
 

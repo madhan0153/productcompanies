@@ -52,8 +52,9 @@ export function ComputeButton({ hasResume }: { hasResume: boolean }) {
       setProgress(100);
       setResult(r);
       if (r.ok) {
-        toast.success(`✅ ${r.total} jobs scored`, {
-          description: `Top ${r.withExplanations} matches have AI explanations.`,
+        const filtered = r.skipped > 0 ? ` · ${r.skipped} irrelevant filtered` : "";
+        toast.success(`✅ ${r.total} matched roles`, {
+          description: `Top ${r.withExplanations} have AI explanations${filtered}.`,
         });
         router.refresh();
       } else {

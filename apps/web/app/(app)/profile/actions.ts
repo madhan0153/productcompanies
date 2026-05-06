@@ -140,12 +140,15 @@ export async function uploadAndParseResume(formData: FormData): Promise<UploadRe
   }
 
   // Update profile with parsed data
-  await supabase.from("profiles").upsert({
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  await (supabase.from("profiles") as any).upsert({
     id: user.id,
     resume_storage_path: path,
     resume_parsed: parsed as unknown as Json,
     display_name: parsed.name || undefined,
     current_role: parsed.current_role || null,
+    role_function: parsed.role_function || null,
+    target_role_functions: parsed.target_role_functions ?? [],
     years_experience: Math.round(parsed.total_years_experience) || null,
     current_lpa: parsed.estimated_current_lpa ?? null,
     tech_stack: parsed.tech_stack ?? [],

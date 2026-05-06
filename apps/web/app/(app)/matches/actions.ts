@@ -7,7 +7,7 @@ import { computeMatchesForUser } from "@/lib/matching/engine";
 import { getUserConsents } from "@/lib/dpdp/consent";
 
 export type ComputeMatchesResult =
-  | { ok: true; total: number; withExplanations: number }
+  | { ok: true; total: number; skipped: number; withExplanations: number }
   | { ok: false; error: string };
 
 export async function computeMatches(): Promise<ComputeMatchesResult> {

@@ -3,7 +3,10 @@ import { computeRulesScore } from "./score";
 import { explainMatch } from "@/lib/llm/prompts/match-explain";
 import type { ParsedResume } from "@/lib/llm/prompts/resume-parse";
 
-const GEMINI_EXPLAIN_TOP_N = 10; // top N by rules score get Gemini explanation
+// Top N by rules score receive Gemini explanation enrichment.
+// Score is NOT changed — only strengths/gaps/reasoning are added.
+// With hard-mismatch filtering, the top 20 are now genuinely good matches.
+const GEMINI_EXPLAIN_TOP_N = 20;
 
 interface JobRow {
   id: string;
@@ -17,6 +20,7 @@ interface JobRow {
   seniority: string | null;
   location: string;
   company_name: string;
+  role_function: string | null; // NEW
 }
 
 interface ProfileRow {
@@ -24,126 +28,181 @@ interface ProfileRow {
   preferred_hubs: string[];
   target_lpa: number | null;
   tech_stack: string[];
+  seniority: string | null;            // NEW
+  target_role_functions: string[];     // NEW
   resume_parsed: ParsedResume | null;
 }
 
 export interface ComputeResult {
   total: number;
+  skipped: number;       // hard-mismatch jobs that were filtered out
   withExplanations: number;
 }
 
 export async function computeMatchesForUser(userId: string): Promise<ComputeResult> {
   const admin = createSupabaseAdminClient();
 
-  // Fetch profile
-  const { data: profileRow } = await admin
+  // ── 1. Fetch profile ────────────────────────────────────────────────────────
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data: profileRow } = await (admin
     .from("profiles")
-    .select("years_experience, preferred_hubs, target_lpa, tech_stack, resume_parsed")
+    .select(
+      "years_experience, preferred_hubs, target_lpa, tech_stack, seniority, target_role_functions, resume_parsed",
+    )
     .eq("id", userId)
-    .maybeSingle();
+    .maybeSingle() as any) as { data: Record<string, unknown> | null };
 
   if (!profileRow) throw new Error("Profile not found");
 
   const profile: ProfileRow = {
-    years_experience: profileRow.years_experience as number | null,
-    preferred_hubs: (profileRow.preferred_hubs as string[] | null) ?? [],
-    target_lpa: profileRow.target_lpa as number | null,
-    tech_stack: (profileRow.tech_stack as string[] | null) ?? [],
-    resume_parsed: profileRow.resume_parsed as ParsedResume | null,
+    years_experience:     profileRow.years_experience as number | null,
+    preferred_hubs:       (profileRow.preferred_hubs as string[] | null) ?? [],
+    target_lpa:           profileRow.target_lpa as number | null,
+    tech_stack:           (profileRow.tech_stack as string[] | null) ?? [],
+    seniority:            (profileRow.seniority as string | null) ?? null,
+    target_role_functions:(profileRow.target_role_functions as string[] | null) ?? [],
+    resume_parsed:        profileRow.resume_parsed as ParsedResume | null,
   };
 
-  // Fetch all active jobs with company name
-  const { data: jobRows } = await admin
-    .from("jobs")
-    .select("id, title, description, hubs, min_experience_years, max_experience_years, comp_lpa_max, tech_stack, seniority, location, companies(name)")
-    .eq("is_active", true)
-    .limit(600);
+  // If we have a parsed resume and target_role_functions is empty,
+  // fall back to what the resume parse extracted.
+  if (
+    profile.target_role_functions.length === 0 &&
+    profile.resume_parsed?.target_role_functions?.length
+  ) {
+    profile.target_role_functions = profile.resume_parsed.target_role_functions;
+  }
 
-  if (!jobRows?.length) return { total: 0, withExplanations: 0 };
+  // ── 2. Fetch all active jobs ────────────────────────────────────────────────
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data: jobRows } = await (admin
+    .from("jobs")
+    .select(
+      "id, title, description, hubs, min_experience_years, max_experience_years, comp_lpa_max, tech_stack, seniority, location, role_function, companies(name)",
+    )
+    .eq("is_active", true)
+    .limit(600) as any) as { data: Array<Record<string, unknown>> | null };
+
+  if (!jobRows?.length) return { total: 0, skipped: 0, withExplanations: 0 };
 
   const jobs: JobRow[] = (jobRows as Array<Record<string, unknown>>).map((r) => ({
-    id: r.id as string,
-    title: r.title as string,
-    description: (r.description as string | null) ?? "",
-    hubs: (r.hubs as string[] | null) ?? [],
+    id:                   r.id as string,
+    title:                r.title as string,
+    description:          (r.description as string | null) ?? "",
+    hubs:                 (r.hubs as string[] | null) ?? [],
     min_experience_years: r.min_experience_years as number | null,
     max_experience_years: r.max_experience_years as number | null,
-    comp_lpa_max: r.comp_lpa_max as number | null,
-    tech_stack: (r.tech_stack as string[] | null) ?? [],
-    seniority: r.seniority as string | null,
-    location: (r.location as string | null) ?? "",
-    company_name: ((r.companies as Record<string, unknown>)?.name as string) ?? "",
+    comp_lpa_max:         r.comp_lpa_max as number | null,
+    tech_stack:           (r.tech_stack as string[] | null) ?? [],
+    seniority:            r.seniority as string | null,
+    location:             (r.location as string | null) ?? "",
+    company_name:         ((r.companies as Record<string, unknown>)?.name as string) ?? "",
+    role_function:        (r.role_function as string | null) ?? null,
   }));
 
-  // Step 1: rules score all jobs
-  const scored = jobs.map((job) => {
-    const rules = computeRulesScore(
-      {
-        years_experience: profile.years_experience,
-        preferred_hubs: profile.preferred_hubs,
-        target_lpa: profile.target_lpa,
-        tech_stack: profile.tech_stack,
-      },
-      {
-        min_experience_years: job.min_experience_years,
-        max_experience_years: job.max_experience_years,
-        hubs: job.hubs,
-        comp_lpa_max: job.comp_lpa_max,
-        tech_stack: job.tech_stack,
-      },
-    );
-    return { job, rules };
-  }).sort((a, b) => b.rules.total - a.rules.total);
+  // ── 3. Rules-score ALL jobs ─────────────────────────────────────────────────
+  const scored = jobs
+    .map((job) => {
+      const rules = computeRulesScore(
+        {
+          target_role_functions: profile.target_role_functions,
+          years_experience:      profile.years_experience,
+          tech_stack:            profile.tech_stack,
+          seniority:             profile.seniority,
+          preferred_hubs:        profile.preferred_hubs,
+          target_lpa:            profile.target_lpa,
+        },
+        {
+          role_function:         job.role_function,
+          min_experience_years:  job.min_experience_years,
+          max_experience_years:  job.max_experience_years,
+          tech_stack:            job.tech_stack,
+          seniority:             job.seniority,
+          hubs:                  job.hubs,
+          comp_lpa_max:          job.comp_lpa_max,
+        },
+      );
+      return { job, rules };
+    })
+    .sort((a, b) => b.rules.total - a.rules.total);
 
-  // Step 2: Gemini explanations for top N — only if resume is parsed
-  const parsedResume = profile.resume_parsed;
-  const topN = scored.slice(0, GEMINI_EXPLAIN_TOP_N);
-  const restN = scored.slice(GEMINI_EXPLAIN_TOP_N);
-  let withExplanations = 0;
+  // ── 4. Separate valid matches from hard mismatches ──────────────────────────
+  const validMatches   = scored.filter((s) => !s.rules.hardMismatch);
+  const hardMismatches = scored.filter((s) => s.rules.hardMismatch);
+  const skipped        = hardMismatches.length;
 
-  // Build upsert rows for all jobs first (rules-only score)
-  // Scale rules total (0–60) proportionally to 0–75 to give a meaningful
-  // initial ranking without Gemini. Top 10 will be enriched to 0–100.
-  const allRows: MatchUpsertRow[] = scored.map(({ job, rules }) => ({
-    user_id: userId,
-    job_id: job.id,
-    score: Math.round((rules.total / 60) * 75),
-    strengths: [] as string[],
-    gaps: [] as string[],
-    reasoning: "Rules-based score — computing AI explanation for top matches.",
+  // ── 5. Upsert all valid matches with rules-only scores ─────────────────────
+  const allRows: MatchUpsertRow[] = validMatches.map(({ job, rules }) => ({
+    user_id:     userId,
+    job_id:      job.id,
+    score:       rules.total,   // 0–100, rules engine owns the number
+    strengths:   [] as string[],
+    gaps:        [] as string[],
+    reasoning:   "Score computed. AI explanation generating for top matches…",
     computed_at: new Date().toISOString(),
   }));
 
-  // Batch upsert rules-only scores first
   await batchUpsert(admin, allRows);
 
-  // If we have a parsed resume, enrich top N with Gemini
+  // ── 6. Delete stale hard-mismatch rows ─────────────────────────────────────
+  // Remove matches for jobs that are now a definite mismatch or no longer active.
+  const validJobIds = new Set(validMatches.map((s) => s.job.id));
+  const staleRows: MatchUpsertRow[] = hardMismatches.map(({ job }) => ({
+    user_id:     userId,
+    job_id:      job.id,
+    score:       0,
+    strengths:   [],
+    gaps:        [],
+    reasoning:   "",
+    computed_at: new Date().toISOString(),
+  }));
+  // Delete hard-mismatch job rows from this user's matches
+  if (hardMismatches.length > 0) {
+    await admin
+      .from("matches")
+      .delete()
+      .eq("user_id", userId)
+      .in("job_id", hardMismatches.map((s) => s.job.id));
+  }
+  // Also delete rows for jobs no longer in the active list at all
+  await admin
+    .from("matches")
+    .delete()
+    .eq("user_id", userId)
+    .not("job_id", "in", `(${jobs.map((j) => `'${j.id}'`).join(",")})`);
+
+  // ── 7. Gemini explanation for top N valid matches ──────────────────────────
+  const parsedResume = profile.resume_parsed;
+  const topN = validMatches.slice(0, GEMINI_EXPLAIN_TOP_N);
+  let withExplanations = 0;
+
   if (parsedResume && topN.length > 0) {
     const geminiRows: MatchUpsertRow[] = [];
     for (const { job, rules } of topN) {
       try {
         const explanation = await explainMatch(parsedResume, {
-          title: job.title,
-          company: job.company_name,
-          location: job.location,
-          description: job.description,
-          tech_stack: job.tech_stack,
-          seniority: job.seniority ?? undefined,
-          min_exp: job.min_experience_years ?? undefined,
-          max_exp: job.max_experience_years ?? undefined,
+          title:         job.title,
+          company:       job.company_name,
+          location:      job.location,
+          description:   job.description,
+          tech_stack:    job.tech_stack,
+          seniority:     job.seniority ?? undefined,
+          min_exp:       job.min_experience_years ?? undefined,
+          max_exp:       job.max_experience_years ?? undefined,
+          role_function: job.role_function ?? undefined,
         });
         geminiRows.push({
-          user_id: userId,
-          job_id: job.id,
-          score: rules.total + explanation.score,
-          strengths: explanation.strengths,
-          gaps: explanation.gaps,
-          reasoning: explanation.reasoning,
+          user_id:     userId,
+          job_id:      job.id,
+          score:       rules.total, // score does NOT change — Gemini is explanation-only
+          strengths:   explanation.strengths,
+          gaps:        explanation.gaps,
+          reasoning:   explanation.reasoning,
           computed_at: new Date().toISOString(),
         });
         withExplanations++;
       } catch {
-        // Keep rules-only score for this job
+        // Keep rules-only score row — don't lose the match just because Gemini failed
       }
     }
     if (geminiRows.length > 0) {
@@ -151,15 +210,10 @@ export async function computeMatchesForUser(userId: string): Promise<ComputeResu
     }
   }
 
-  // Mark stale matches (jobs that are no longer active) — clean up
-  await admin
-    .from("matches")
-    .delete()
-    .eq("user_id", userId)
-    .not("job_id", "in", `(${jobs.map((j) => `'${j.id}'`).join(",")})`);
-
-  return { total: scored.length, withExplanations };
+  return { total: validMatches.length, skipped, withExplanations };
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
 
 type MatchUpsertRow = {
   user_id: string;
@@ -182,8 +236,4 @@ async function batchUpsert(
       onConflict: "user_id,job_id",
     });
   }
-}
-
-function sleep(ms: number) {
-  return new Promise((r) => setTimeout(r, ms));
 }
