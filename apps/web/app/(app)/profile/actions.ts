@@ -153,6 +153,9 @@ export async function uploadAndParseResume(formData: FormData): Promise<UploadRe
 
   revalidatePath("/profile");
   revalidatePath("/dashboard");
+  revalidatePath("/matches");
+  revalidatePath("/coach");
+  revalidatePath("/insights");
 
   return {
     ok: true,

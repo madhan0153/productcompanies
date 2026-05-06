@@ -230,6 +230,9 @@ create table if not exists public.profiles (
 -- Phase E migration: backfill columns on existing tables (idempotent)
 alter table public.profiles add column if not exists coach_plan jsonb;
 alter table public.profiles add column if not exists coach_plan_at timestamptz;
+-- current_role is used by the app code; job_title is the original column name kept for compatibility
+alter table public.profiles add column if not exists current_role text;
+
 
 create index if not exists idx_profiles_seniority on public.profiles(seniority);
 

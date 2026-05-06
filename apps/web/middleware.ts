@@ -90,6 +90,36 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(url);
   }
 
+  // Redirect authenticated users who haven't completed the consent flow.
+  // We only check on protected app routes (not on /consent itself, not on API routes,
+  // not on public routes, not on /auth/*) to avoid infinite redirect loops.
+  const isConsentable =
+    user &&
+    !pathname.startsWith("/consent") &&
+    !pathname.startsWith("/auth/") &&
+    !pathname.startsWith("/api/") &&
+    !PUBLIC_PATHS.some((p) => pathname === p);
+
+  if (isConsentable) {
+    // Lightweight check: look for the mandatory 'account' consent row.
+    // We use the anon client here (already created above) — the user is authed
+    // so RLS allows the select on their own consents row.
+    const { data: consentRow } = await supabase
+      .from("consents")
+      .select("granted")
+      .eq("user_id", user.id)
+      .eq("purpose", "account")
+      .eq("granted", true)
+      .maybeSingle();
+
+    if (!consentRow) {
+      const url = request.nextUrl.clone();
+      url.pathname = "/consent";
+      url.searchParams.set("next", pathname);
+      return NextResponse.redirect(url);
+    }
+  }
+
   return supabaseResponse;
 }
 

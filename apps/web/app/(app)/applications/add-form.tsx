@@ -119,7 +119,7 @@ export function AddApplicationButton({ jobs }: { jobs: Job[] }) {
                 )}
                 {jobs.length === 0 && (
                   <p className="text-xs text-muted-foreground">
-                    No matches computed yet — go to Matches first.
+                    No active jobs found. Check back after the next crawler run.
                   </p>
                 )}
               </div>

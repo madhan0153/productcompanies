@@ -53,17 +53,17 @@ export default async function ApplicationsPage({
   const params = await searchParams;
   const activeStatus = (params.status as AppStatus) || null;
 
-  // Join apps → jobs → companies directly (was previously joining through matches,
-  // which caused "Unknown role" for applications added outside the matches list).
-  const [{ data: rawApps }, { data: rawMatches }] = await Promise.all([
+  const [{ data: rawApps }, { data: rawJobs }] = await Promise.all([
     supabase.from("applications")
       .select("id, status, applied_at, notes, next_action_at, created_at, job_id, jobs(id, title, apply_url, companies(name, slug, logo_url))")
       .eq("user_id", user.id)
       .order("created_at", { ascending: false }),
-    supabase.from("matches")
-      .select("job_id, score, jobs(id, title, companies(name))")
-      .eq("user_id", user.id)
-      .order("score", { ascending: false })
+    // Query active jobs directly so the "Add application" modal always has options,
+    // even before the user computes their first matches.
+    supabase.from("jobs")
+      .select("id, title, companies(name)")
+      .eq("is_active", true)
+      .order("freshness_score", { ascending: false })
       .limit(200),
   ]);
 
@@ -73,15 +73,15 @@ export default async function ApplicationsPage({
     ? apps.filter((a) => a.status === activeStatus)
     : apps;
 
-  // Jobs list for the add form (from matches — these are the user's relevant roles)
-  type MatchForForm = { job_id: string; jobs: { title: string; companies: { name: string } | null } | null };
-  const jobsForForm = ((rawMatches as unknown as MatchForForm[]) ?? [])
-    .filter((m) => m.jobs)
-    .map((m) => ({
-      id: m.job_id,
-      title: m.jobs!.title,
-      company: m.jobs!.companies?.name ?? "",
-    }));
+  // Jobs list for the add form — sourced from all active jobs (not just matches)
+  type JobForForm = { id: string; title: string; companies: { name: string } | null };
+  const jobsForForm = ((rawJobs as unknown as JobForForm[]) ?? []).map((j) => ({
+    id: j.id,
+    title: j.title,
+    company: j.companies?.name ?? "",
+  }));
+
+
 
   const counts = apps.reduce<Record<string, number>>((acc, a) => {
     acc[a.status] = (acc[a.status] ?? 0) + 1;

@@ -1,6 +1,7 @@
 "use client";
 
 import { useRef, useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
 import { motion, useReducedMotion } from "framer-motion";
 import { Upload, FileText, Loader2, CheckCircle2, AlertCircle } from "lucide-react";
 import { uploadAndParseResume, type UploadResult } from "./actions";
@@ -18,6 +19,7 @@ export function ResumeUpload({ hasExisting, existingRole, existingDnaScore }: Pr
   const [result, setResult] = useState<UploadResult | null>(null);
   const [pending, startTransition] = useTransition();
   const reduce = useReducedMotion();
+  const router = useRouter();
 
   function onFile(file: File) {
     if (file.type !== "application/pdf") {
@@ -31,6 +33,7 @@ export function ResumeUpload({ hasExisting, existingRole, existingDnaScore }: Pr
     startTransition(async () => {
       const r = await uploadAndParseResume(fd);
       setResult(r);
+      if (r.ok) router.refresh();
     });
   }
 
