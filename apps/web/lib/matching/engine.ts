@@ -3,8 +3,7 @@ import { computeRulesScore } from "./score";
 import { explainMatch } from "@/lib/llm/prompts/match-explain";
 import type { ParsedResume } from "@/lib/llm/prompts/resume-parse";
 
-const GEMINI_EXPLAIN_TOP_N = 30; // top N by rules score get Gemini explanation
-const GEMINI_DELAY_MS = 200; // stay under 30 RPM Flash-Lite
+const GEMINI_EXPLAIN_TOP_N = 10; // top N by rules score get Gemini explanation
 
 interface JobRow {
   id: string;
@@ -103,13 +102,15 @@ export async function computeMatchesForUser(userId: string): Promise<ComputeResu
   let withExplanations = 0;
 
   // Build upsert rows for all jobs first (rules-only score)
+  // Scale rules total (0–60) proportionally to 0–75 to give a meaningful
+  // initial ranking without Gemini. Top 10 will be enriched to 0–100.
   const allRows: MatchUpsertRow[] = scored.map(({ job, rules }) => ({
     user_id: userId,
     job_id: job.id,
-    score: rules.total + 20, // 20-pt placeholder for Gemini when no resume
+    score: Math.round((rules.total / 60) * 75),
     strengths: [] as string[],
     gaps: [] as string[],
-    reasoning: "Rules-based score only — upload resume for AI explanation.",
+    reasoning: "Rules-based score — computing AI explanation for top matches.",
     computed_at: new Date().toISOString(),
   }));
 
@@ -144,7 +145,6 @@ export async function computeMatchesForUser(userId: string): Promise<ComputeResu
       } catch {
         // Keep rules-only score for this job
       }
-      await sleep(GEMINI_DELAY_MS);
     }
     if (geminiRows.length > 0) {
       await batchUpsert(admin, geminiRows);

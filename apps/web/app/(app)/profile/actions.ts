@@ -41,6 +41,8 @@ export async function saveProfile(formData: FormData) {
   });
 
   revalidatePath("/profile");
+  revalidatePath("/dashboard");
+  revalidatePath("/matches");
 }
 
 // ── Upload PDF and parse ──────────────────────────────────────────────────────

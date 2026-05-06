@@ -1,26 +1,12 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
-import { ShieldCheck } from "lucide-react";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { ResumeUpload } from "./resume-upload";
-import { saveProfile } from "./actions";
+import { SaveProfileForm } from "./save-profile-form";
 
 export const metadata: Metadata = { title: "My Profile" };
 
-const INDIA_HUBS = [
-  "Bengaluru", "Hyderabad", "Pune", "Gurugram",
-  "Noida", "Delhi NCR", "Mumbai", "Chennai", "Remote-India",
-];
 
-const SENIORITY_OPTIONS = [
-  { value: "intern", label: "Intern" },
-  { value: "junior", label: "Junior (0–2 yrs)" },
-  { value: "mid", label: "Mid (3–5 yrs)" },
-  { value: "senior", label: "Senior (6–9 yrs)" },
-  { value: "staff", label: "Staff / Principal" },
-  { value: "manager", label: "Engineering Manager" },
-  { value: "director", label: "Director+" },
-];
 
 export default async function ProfilePage() {
   const supabase = await createSupabaseServerClient();
@@ -104,105 +90,18 @@ export default async function ProfilePage() {
           </div>
         </div>
 
-        <form action={saveProfile} className="space-y-5">
-          {/* Name + Role */}
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <Field label="Full name" name="display_name" defaultValue={profile?.display_name as string ?? ""} placeholder="Priya Sharma" />
-            <Field label="Current role" name="current_role" defaultValue={profile?.current_role as string ?? ""} placeholder="Senior Software Engineer" />
-          </div>
-
-          {/* Seniority + Experience */}
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <div>
-              <label className="mb-1.5 block text-sm font-medium">Seniority level</label>
-              <select
-                name="seniority"
-                defaultValue={profile?.seniority as string ?? ""}
-                className="w-full rounded-xl border border-border bg-background px-3 py-2.5 text-sm outline-none focus:border-primary/60 focus:ring-2 focus:ring-primary/20"
-              >
-                <option value="">Select…</option>
-                {SENIORITY_OPTIONS.map((o) => (
-                  <option key={o.value} value={o.value}>{o.label}</option>
-                ))}
-              </select>
-            </div>
-            <Field
-              label="Total years experience"
-              name="years_experience"
-              type="number"
-              defaultValue={String(profile?.years_experience ?? "")}
-              placeholder="5"
-            />
-          </div>
-
-          {/* LPA */}
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <Field
-              label="Current CTC (LPA)"
-              name="current_lpa"
-              type="number"
-              step="0.5"
-              defaultValue={String(profile?.current_lpa ?? "")}
-              placeholder="28"
-              hint="Lakhs per annum — private, never shown"
-            />
-            <Field
-              label="Target CTC (LPA)"
-              name="target_lpa"
-              type="number"
-              step="0.5"
-              defaultValue={String(profile?.target_lpa ?? "")}
-              placeholder="45"
-              hint="Used to filter low-band roles"
-            />
-          </div>
-
-          {/* Tech stack */}
-          <div>
-            <label className="mb-1.5 block text-sm font-medium">Tech stack</label>
-            <input
-              name="tech_stack"
-              defaultValue={techStack.join(", ")}
-              placeholder="React, Node.js, Python, AWS, PostgreSQL"
-              className="w-full rounded-xl border border-border bg-background px-4 py-2.5 text-sm outline-none focus:border-primary/60 focus:ring-2 focus:ring-primary/20"
-            />
-            <p className="mt-1 text-xs text-muted-foreground">Comma-separated list</p>
-          </div>
-
-          {/* Preferred hubs */}
-          <div>
-            <label className="mb-2 block text-sm font-medium">Preferred locations</label>
-            <div className="flex flex-wrap gap-2">
-              {INDIA_HUBS.map((hub) => {
-                const id = `hub_${hub.replace(/\s+/g, "_")}`;
-                return (
-                  <label key={hub} className="flex cursor-pointer items-center gap-1.5 rounded-full border border-border px-3 py-1 text-xs transition hover:border-primary/40 has-[:checked]:border-primary has-[:checked]:bg-primary/10 has-[:checked]:text-primary">
-                    <input
-                      type="checkbox"
-                      name={id}
-                      defaultChecked={preferredHubs.includes(hub)}
-                      className="sr-only"
-                    />
-                    {hub}
-                  </label>
-                );
-              })}
-            </div>
-          </div>
-
-          {/* DPDP notice */}
-          <p className="flex items-center gap-2 text-xs text-muted-foreground">
-            <ShieldCheck className="h-3.5 w-3.5 shrink-0 text-primary/60" />
-            Stored securely in India · DPDP Act 2023 compliant · delete anytime from Settings
-          </p>
-
-          <button
-            type="submit"
-            className="rounded-xl bg-primary px-6 py-2.5 text-sm font-medium text-primary-foreground shadow shadow-primary/20 transition hover:opacity-90 active:scale-[0.98]"
-          >
-            Save profile
-          </button>
-        </form>
+        <SaveProfileForm
+          defaultValues={{
+            display_name: (profile?.display_name as string) ?? "",
+            current_role: (profile?.current_role as string) ?? "",
+            years_experience: String(profile?.years_experience ?? ""),
+            current_lpa: String(profile?.current_lpa ?? ""),
+            target_lpa: String(profile?.target_lpa ?? ""),
+            tech_stack: techStack.join(", "),
+            preferred_hubs: preferredHubs,
+            seniority: (profile?.seniority as string) ?? "",
+          }}
+        />
       </section>
     </div>
   );

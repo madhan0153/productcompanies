@@ -66,7 +66,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         >
           {children}
           <Toaster
-            position="top-right"
+            position="bottom-right"
             richColors
             closeButton
             toastOptions={{

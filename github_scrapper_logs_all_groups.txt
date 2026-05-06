@@ -1,0 +1,294 @@
+Run # If workflow_dispatch with specific slugs, use those; otherwise use matrix slugs
+
+> @prodmatch/crawler@0.1.0 start /home/runner/work/prodmatchai/prodmatchai/packages/crawler
+> tsx index.ts "--" "--slugs=zerodha,cred,groww,swiggy,zomato,flipkart"
+
+[2026-05-06T12:59:31.543Z] [INFO] Starting crawl for: zerodha, cred, groww, swiggy, zomato, flipkart
+[2026-05-06T12:59:33.623Z] [INFO] [zerodha] Crawling...
+[2026-05-06T12:59:38.857Z] [INFO] [zerodha] Found 0 job links
+[2026-05-06T12:59:38.857Z] [INFO] [zerodha] Total: 0 jobs
+[2026-05-06T12:59:38.857Z] [INFO] [zerodha] Scraped 0 raw jobs
+[2026-05-06T12:59:38.857Z] [INFO] [zerodha] 0 India jobs after normalization
+[2026-05-06T12:59:39.813Z] [INFO] [cred] Crawling...
+[2026-05-06T12:59:40.608Z] [INFO] [cred] Total: 3 jobs
+[2026-05-06T12:59:40.608Z] [INFO] [cred] Scraped 3 raw jobs
+[2026-05-06T12:59:40.611Z] [INFO] [cred] 3 India jobs after normalization
+[2026-05-06T12:59:42.072Z] [WARN] Insert error for job d2c4c3e8-53cb-4457-bcd4-b7e61e5b923e: date/time field value out of range: "1759213235044"
+[2026-05-06T12:59:42.668Z] [WARN] Insert error for job cc10a8ae-9066-44fe-bb0c-d784093960cf: date/time field value out of range: "1756988897484"
+[2026-05-06T12:59:43.262Z] [WARN] Insert error for job 501e8760-91c4-468c-acbc-cc3380d53e5c: date/time field value out of range: "1751613186202"
+[2026-05-06T12:59:43.560Z] [INFO] [cred] Inserted: 0, Updated: 0, Stale: 0
+[2026-05-06T12:59:43.893Z] [INFO] [groww] Crawling...
+[2026-05-06T12:59:44.142Z] [INFO] [groww] Total: 15 jobs
+[2026-05-06T12:59:44.142Z] [INFO] [groww] Scraped 15 raw jobs
+[2026-05-06T12:59:44.147Z] [INFO] [groww] 15 India jobs after normalization
+[2026-05-06T12:59:52.718Z] [WARN] Insert error for job 4784341101: invalid input value for enum seniority_level: "lead"
+[2026-05-06T12:59:53.619Z] [INFO] [groww] Inserted: 14, Updated: 0, Stale: 0
+[2026-05-06T12:59:53.952Z] [INFO] [swiggy] Crawling...
+[2026-05-06T12:59:54.494Z] [INFO] [swiggy] Total: 95 jobs
+[2026-05-06T12:59:54.495Z] [INFO] [swiggy] Scraped 95 raw jobs
+[2026-05-06T12:59:54.525Z] [INFO] [swiggy] 47 India jobs after normalization
+[2026-05-06T13:00:03.021Z] [WARN] Insert error for job 26210: invalid input value for enum seniority_level: "lead"
+[2026-05-06T13:00:03.606Z] [WARN] Insert error for job 26172: invalid input value for enum seniority_level: "lead"
+[2026-05-06T13:00:05.968Z] [WARN] Insert error for job 25977: invalid input value for enum seniority_level: "lead"
+[2026-05-06T13:00:07.725Z] [WARN] Insert error for job 25823: invalid input value for enum seniority_level: "lead"
+[2026-05-06T13:00:09.488Z] [WARN] Insert error for job 25743: invalid input value for enum seniority_level: "lead"
+[2026-05-06T13:00:18.987Z] [WARN] Insert error for job 25326: invalid input value for enum seniority_level: "lead"
+[2026-05-06T13:00:19.584Z] [WARN] Insert error for job 25198: invalid input value for enum seniority_level: "lead"
+[2026-05-06T13:00:22.854Z] [INFO] [swiggy] Inserted: 33, Updated: 7, Stale: 0
+[2026-05-06T13:00:23.189Z] [INFO] [zomato] Crawling...
+Error: 5-06T13:00:23.343Z] [ERROR] [zomato] Crawl failed: page.goto: net::ERR_HTTP2_PROTOCOL_ERROR at https://www.zomato.com/careers
+Call log:
+  - navigating to "https://www.zomato.com/careers", waiting until "networkidle"
+
+[2026-05-06T13:00:23.649Z] [WARN] Failed to record crawl_run: invalid input value for enum crawl_status: "error"
+[2026-05-06T13:00:23.685Z] [INFO] [flipkart] Crawling...
+[2026-05-06T13:00:35.135Z] [INFO] [flipkart] Total: 13 jobs
+[2026-05-06T13:00:35.136Z] [INFO] [flipkart] Total: 13 India jobs
+[2026-05-06T13:00:35.136Z] [INFO] [flipkart] Scraped 13 raw jobs
+[2026-05-06T13:00:35.137Z] [INFO] [flipkart] 13 India jobs after normalization
+[2026-05-06T13:00:39.575Z] [WARN] Insert error for job 991a9708-61e8-48aa-9df6-a66d1bc5eba7: invalid input value for enum seniority_level: "lead"
+[2026-05-06T13:00:40.144Z] [WARN] Insert error for job 6c48be83-4b42-4476-9c4c-39e9195a984c: invalid input value for enum seniority_level: "lead"
+[2026-05-06T13:00:41.299Z] [WARN] Insert error for job 4900c7b4-f890-4dd9-ba07-56e4c9652467: invalid input value for enum seniority_level: "lead"
+[2026-05-06T13:00:43.340Z] [INFO] [flipkart] Inserted: 10, Updated: 0, Stale: 0
+[2026-05-06T13:00:43.663Z] [INFO] ────────────────────────────────────────────────────────────
+[2026-05-06T13:00:43.663Z] [INFO] Crawl complete:
+[2026-05-06T13:00:43.663Z] [INFO]   zerodha         +0 new  ~0 updated  -0 stale
+[2026-05-06T13:00:43.663Z] [INFO]   cred            +0 new  ~0 updated  -0 stale
+[2026-05-06T13:00:43.663Z] [INFO]   groww           +14 new  ~0 updated  -0 stale
+[2026-05-06T13:00:43.663Z] [INFO]   swiggy          +33 new  ~7 updated  -0 stale
+[2026-05-06T13:00:43.663Z] [INFO]   zomato          ERROR: page.goto: net::ERR_HTTP2_PROTOCOL_ERROR at https://www.zomato.com/careers
+Call log:
+  - navigating to "https://www.zomato.com/careers", waiting until "networkidle"
+
+[2026-05-06T13:00:43.663Z] [INFO]   flipkart        +10 new  ~0 updated  -0 stale
+/home/runner/work/prodmatchai/prodmatchai/packages/crawler:
+ ERR_PNPM_RECURSIVE_RUN_FIRST_FAIL  @prodmatch/crawler@0.1.0 start: `tsx index.ts "--" "--slugs=zerodha,cred,groww,swiggy,zomato,flipkart"`
+Exit status 1
+Error: Process completed with exit code 1.
+
+[2026-05-06T13:00:41.898Z] [WARN] Insert error for job Senior-System-Software-Engineer--DRIVE-OS---Linux-and-QNX_JR2011677: invalid input syntax for type timestamp with time zone: "Posted 30+ Days Ago"
+[2026-05-06T13:00:42.482Z] [WARN] Insert error for job Senior-Server-RAS-Engineer_JR2007336: invalid input syntax for type timestamp with time zone: "Posted 30+ Days Ago"
+[2026-05-06T13:00:43.067Z] [WARN] Insert error for job Automotive-Platform-Software-Verification-Engineer--Security_JR2011943: invalid input syntax for type timestamp with time zone: "Posted 30+ Days Ago"
+[2026-05-06T13:00:43.650Z] [WARN] Insert error for job Senior-Circuit-Design-Engineer_JR2011555: invalid input syntax for type timestamp with time zone: "Posted 30+ Days Ago"
+[2026-05-06T13:00:44.244Z] [WARN] Insert error for job DFT-Engineer_JR2011605: invalid input syntax for type timestamp with time zone: "Posted 30+ Days Ago"
+[2026-05-06T13:00:44.835Z] [WARN] Insert error for job Senior-System-Software-Engineer--Linux-Kernel_JR2011711: invalid input syntax for type timestamp with time zone: "Posted 30+ Days Ago"
+[2026-05-06T13:00:45.415Z] [WARN] Insert error for job Chip-Power-Estimation-Engineer_JR2005899: invalid input syntax for type timestamp with time zone: "Posted 30+ Days Ago"
+[2026-05-06T13:00:46.002Z] [WARN] Insert error for job DFT-Engineer_JR2011435: invalid input syntax for type timestamp with time zone: "Posted 30+ Days Ago"
+[2026-05-06T13:00:46.585Z] [WARN] Insert error for job Senior-DFT-Engineer---Hardware_JR2011562: invalid input syntax for type timestamp with time zone: "Posted 30+ Days Ago"
+[2026-05-06T13:00:47.167Z] [WARN] Insert error for job System-Software-Engineer---Deep-Learning_JR2011323: invalid input syntax for type timestamp with time zone: "Posted 30+ Days Ago"
+[2026-05-06T13:00:47.751Z] [WARN] Insert error for job Senior-System-Software-Engineer_JR2011238-1: invalid input syntax for type timestamp with time zone: "Posted 30+ Days Ago"
+[2026-05-06T13:00:48.345Z] [WARN] Insert error for job Senior-Custom-SOC-IP-Verification-Engineer_JR2011519: invalid input syntax for type timestamp with time zone: "Posted 30+ Days Ago"
+[2026-05-06T13:00:48.929Z] [WARN] Insert error for job Senior-System-Software-Engineer_JR1998203: invalid input syntax for type timestamp with time zone: "Posted 30+ Days Ago"
+[2026-05-06T13:00:49.512Z] [WARN] Insert error for job Senior-Tools-Development-Engineer_JR2010525: invalid input syntax for type timestamp with time zone: "Posted 30+ Days Ago"
+[2026-05-06T13:00:50.095Z] [WARN] Insert error for job Senior-Verification-Engineer--PCIE_JR2009763: invalid input syntax for type timestamp with time zone: "Posted 30+ Days Ago"
+[2026-05-06T13:00:50.677Z] [WARN] Insert error for job Senior-SWQA-Test-Developer---Automotive-Traceability-and-Compliance-Platform_JR2009874: invalid input syntax for type timestamp with time zone: "Posted 30+ Days Ago"
+[2026-05-06T13:00:51.258Z] [WARN] Insert error for job Senior-Verification-Engineer--Memory-Subsystem_JR2010068: invalid input syntax for type timestamp with time zone: "Posted 30+ Days Ago"
+[2026-05-06T13:00:51.841Z] [WARN] Insert error for job Power-Architecture-Engineer_JR2010141-1: invalid input syntax for type timestamp with time zone: "Posted 30+ Days Ago"
+[2026-05-06T13:00:52.424Z] [WARN] Insert error for job Senior-ASIC-Engineer--Switch-SoC_JR2010151: invalid input syntax for type timestamp with time zone: "Posted 30+ Days Ago"
+[2026-05-06T13:00:53.008Z] [WARN] Insert error for job Senior-Performance-Verification-Engineer_JR2010221: invalid input syntax for type timestamp with time zone: "Posted 30+ Days Ago"
+[2026-05-06T13:00:53.593Z] [WARN] Insert error for job Senior-System-Software-Engineer---Computer-Vision-Algorithms-and-SDK_JR2010349-1: invalid input syntax for type timestamp with time zone: "Posted 30+ Days Ago"
+[2026-05-06T13:00:54.181Z] [WARN] Insert error for job Senior-System-Software-Engineer---Media-and-Broadcasting_JR2010160: invalid input syntax for type timestamp with time zone: "Posted 30+ Days Ago"
+[2026-05-06T13:00:54.763Z] [WARN] Insert error for job Senior-System-Software-Engineer---Cloud-Storage_JR1999657: invalid input syntax for type timestamp with time zone: "Posted 30+ Days Ago"
+[2026-05-06T13:00:55.345Z] [WARN] Insert error for job Senior-ASIC-Engineer--Switch-SoC_JR2008945: invalid input syntax for type timestamp with time zone: "Posted 30+ Days Ago"
+[2026-05-06T13:00:55.926Z] [WARN] Insert error for job Developer-Relations-Manager---GSI_JR1995349: invalid input syntax for type timestamp with time zone: "Posted 30+ Days Ago"
+[2026-05-06T13:00:56.519Z] [WARN] Insert error for job Director--Regional-Developer-Relations_JR2006111: invalid input syntax for type timestamp with time zone: "Posted 30+ Days Ago"
+[2026-05-06T13:00:57.101Z] [WARN] Insert error for job Senior-Verification-Engineer---HWPM_JR2004389: invalid input syntax for type timestamp with time zone: "Posted 30+ Days Ago"
+[2026-05-06T13:00:57.691Z] [WARN] Insert error for job Senior-Solutions-Architect--Generative-AI_JR2000944: invalid input syntax for type timestamp with time zone: "Posted 30+ Days Ago"
+[2026-05-06T13:00:58.293Z] [WARN] Insert error for job Senior-Site-Reliability-Engineer--HPC-and-LSF_JR2002032-1: invalid input syntax for type timestamp with time zone: "Posted 30+ Days Ago"
+[2026-05-06T13:00:58.875Z] [WARN] Insert error for job System-Software-Engineer---OpenBMC_JR1999967-1: invalid input syntax for type timestamp with time zone: "Posted 30+ Days Ago"
+[2026-05-06T13:00:59.508Z] [WARN] Insert error for job Senior-Verification-Engineer--Memory-Subsystem_JR1999089-1: invalid input syntax for type timestamp with time zone: "Posted 30+ Days Ago"
+[2026-05-06T13:01:00.092Z] [WARN] Insert error for job Verification-Engineer--Low-Power_JR1998903: invalid input syntax for type timestamp with time zone: "Posted 30+ Days Ago"
+[2026-05-06T13:01:00.681Z] [WARN] Insert error for job Senior-SRAM-Circuit-Design-Engineer_JR1997200: invalid input syntax for type timestamp with time zone: "Posted 30+ Days Ago"
+[2026-05-06T13:01:01.264Z] [WARN] Insert error for job Senior-IP-DV-Engineer---NOC-IP_JR1998310-1: invalid input syntax for type timestamp with time zone: "Posted 30+ Days Ago"
+[2026-05-06T13:01:01.854Z] [WARN] Insert error for job Senior-Verification-Engineer--PCIE_JR1998099: invalid input syntax for type timestamp with time zone: "Posted 30+ Days Ago"
+[2026-05-06T13:01:02.443Z] [WARN] Insert error for job Senior-Verification-Engineer--PCIE_JR1998093: invalid input syntax for type timestamp with time zone: "Posted 30+ Days Ago"
+[2026-05-06T13:01:03.024Z] [WARN] Insert error for job Senior-SRAM-Circuit-Design-Engineer_JR1996865: invalid input syntax for type timestamp with time zone: "Posted 30+ Days Ago"
+[2026-05-06T13:01:03.607Z] [WARN] Insert error for job Senior-SRAM-Circuit-Design-Engineer_JR1997193: invalid input syntax for type timestamp with time zone: "Posted 30+ Days Ago"
+[2026-05-06T13:01:04.188Z] [WARN] Insert error for job Senior-SRAM-Circuit-Design-Engineer_JR1997194-1: invalid input syntax for type timestamp with time zone: "Posted 30+ Days Ago"
+[2026-05-06T13:01:04.794Z] [WARN] Insert error for job Senior-SRAM-Circuit-Design-Engineer_JR1996313: invalid input syntax for type timestamp with time zone: "Posted 30+ Days Ago"
+[2026-05-06T13:01:05.375Z] [WARN] Insert error for job Senior-Solutions-Architect---Generative-AI_JR1993430: invalid input syntax for type timestamp with time zone: "Posted 30+ Days Ago"
+[2026-05-06T13:01:05.663Z] [INFO] [nvidia] Inserted: 0, Updated: 0, Stale: 0
+[2026-05-06T13:01:05.991Z] [INFO] [oracle] Crawling...
+[2026-05-06T13:01:05.991Z] [INFO] [oracle] Fetching offset 0 / ?...
+[2026-05-06T13:01:08.254Z] [INFO] [oracle] Total: 20 India jobs
+[2026-05-06T13:01:08.254Z] [INFO] [oracle] Scraped 20 raw jobs
+[2026-05-06T13:01:08.256Z] [INFO] [oracle] 20 India jobs after normalization
+[2026-05-06T13:01:14.899Z] [WARN] Insert error for job 318112: invalid input value for enum seniority_level: "lead"
+[2026-05-06T13:01:15.477Z] [WARN] Insert error for job 320554: invalid input value for enum seniority_level: "lead"
+[2026-05-06T13:01:19.049Z] [WARN] Insert error for job 330110: invalid input value for enum seniority_level: "lead"
+[2026-05-06T13:01:20.491Z] [INFO] [oracle] Inserted: 16, Updated: 1, Stale: 0
+[2026-05-06T13:01:20.820Z] [INFO] [salesforce] Crawling...
+[2026-05-06T13:01:20.820Z] [INFO] [salesforce] Fetching offset 0 / ?...
+[2026-05-06T13:01:21.962Z] [INFO] [salesforce] Fetching offset 20 / 161...
+[2026-05-06T13:01:22.876Z] [INFO] [salesforce] Fetching offset 40 / 161...
+[2026-05-06T13:01:23.806Z] [INFO] [salesforce] Fetching offset 60 / 161...
+[2026-05-06T13:01:24.743Z] [INFO] [salesforce] Fetching offset 80 / 161...
+[2026-05-06T13:01:25.683Z] [INFO] [salesforce] Fetching offset 100 / 161...
+[2026-05-06T13:01:26.614Z] [INFO] [salesforce] Fetching offset 120 / 161...
+[2026-05-06T13:01:27.533Z] [INFO] [salesforce] Fetching offset 140 / 161...
+[2026-05-06T13:01:28.453Z] [INFO] [salesforce] Fetching offset 160 / 161...
+[2026-05-06T13:01:28.849Z] [INFO] [salesforce] Total: 161 India jobs
+[2026-05-06T13:01:28.849Z] [INFO] [salesforce] Scraped 161 raw jobs
+[2026-05-06T13:01:28.854Z] [INFO] [salesforce] 84 India jobs after normalization
+[2026-05-06T13:01:29.770Z] [WARN] Insert error for job Sales-Compensation-Analyst_JR339052: invalid input syntax for type timestamp with time zone: "Posted Today"
+[2026-05-06T13:01:30.312Z] [WARN] Insert error for job Sales-Compensation-Analyst_JR339054: invalid input syntax for type timestamp with time zone: "Posted Today"
+[2026-05-06T13:01:30.854Z] [WARN] Insert error for job Systems-Engineering-Engineer_JR339836: invalid input syntax for type timestamp with time zone: "Posted Today"
+[2026-05-06T13:01:31.399Z] [WARN] Insert error for job Senior-Manager--Global-Compensation-Strategy---Design_JR327302: invalid input syntax for type timestamp with time zone: "Posted Today"
+[2026-05-06T13:01:31.956Z] [WARN] Insert error for job Senior-Success-Guide_JR329267: invalid input syntax for type timestamp with time zone: "Posted Today"
+[2026-05-06T13:01:32.503Z] [WARN] Insert error for job XMLNAME--Senior--Director-Regional-Success-Architecture--Agentforce-_JR335087-1: invalid input syntax for type timestamp with time zone: "Posted Today"
+[2026-05-06T13:01:33.047Z] [WARN] Insert error for job Strategic-Account-Executive---Automotive-Industry_JR324659: invalid input syntax for type timestamp with time zone: "Posted Today"
+[2026-05-06T13:01:33.591Z] [WARN] Insert error for job Director-of-Product-Management---Content-Management-Platform_JR334984: invalid input syntax for type timestamp with time zone: "Posted Yesterday"
+[2026-05-06T13:01:34.133Z] [WARN] Insert error for job SMTS-LMTS---AI-ML-Engineers_JR340537: invalid input syntax for type timestamp with time zone: "Posted Yesterday"
+[2026-05-06T13:01:34.678Z] [WARN] Insert error for job Manager---Accounting_JR337827-1: invalid input syntax for type timestamp with time zone: "Posted Yesterday"
+[2026-05-06T13:01:35.224Z] [WARN] Insert error for job Associate-Proactive-Monitoring-Engineer_JR340699-1: invalid input syntax for type timestamp with time zone: "Posted Yesterday"
+[2026-05-06T13:01:35.773Z] [WARN] Insert error for job Associate-proactive-Monitoring-Engineer_JR341087-2: invalid input syntax for type timestamp with time zone: "Posted Yesterday"
+[2026-05-06T13:01:36.316Z] [WARN] Insert error for job Senior-Financial-Analyst---QA-Testing--SOX--controls-Processes----Training--Advisory-of-controls_JR339236: invalid input syntax for type timestamp with time zone: "Posted Yesterday"
+[2026-05-06T13:01:36.861Z] [WARN] Insert error for job Senior-Financial-Analyst---Data---Automation_JR339989: invalid input syntax for type timestamp with time zone: "Posted Yesterday"
+[2026-05-06T13:01:37.407Z] [WARN] Insert error for job Senior-Financial-Analyst--AI---Process-Transformation-_JR339990: invalid input syntax for type timestamp with time zone: "Posted Yesterday"
+[2026-05-06T13:01:37.955Z] [WARN] Insert error for job Named-Account-Executive---South-India---Sri-Lanka_JR333845: invalid input syntax for type timestamp with time zone: "Posted Yesterday"
+[2026-05-06T13:01:38.501Z] [WARN] Insert error for job Sales-Compensation-Analys_JR339056: invalid input syntax for type timestamp with time zone: "Posted 2 Days Ago"
+[2026-05-06T13:01:39.047Z] [WARN] Insert error for job Technical-Business-Analyst--CPQ---Product---Pricing-Ops_JR338622: invalid input syntax for type timestamp with time zone: "Posted 2 Days Ago"
+[2026-05-06T13:01:39.592Z] [WARN] Insert error for job Success-Architect---DevOps---Industries_JR329680: invalid input syntax for type timestamp with time zone: "Posted 2 Days Ago"
+[2026-05-06T13:01:40.137Z] [WARN] Insert error for job Manager--Success-Guide---Industry-Clouds_JR330806: invalid input syntax for type timestamp with time zone: "Posted 2 Days Ago"
+[2026-05-06T13:01:40.679Z] [WARN] Insert error for job Territory-Account-Executive---SMB_JR340376: invalid input syntax for type timestamp with time zone: "Posted 2 Days Ago"
+[2026-05-06T13:01:41.224Z] [WARN] Insert error for job Account-Executive---IT-ITES_JR326384: invalid input syntax for type timestamp with time zone: "Posted 5 Days Ago"
+[2026-05-06T13:01:41.776Z] [WARN] Insert error for job Data-Analytics-and-AI-Solutions-Lead_JR330311: invalid input syntax for type timestamp with time zone: "Posted 6 Days Ago"
+[2026-05-06T13:01:42.321Z] [WARN] Insert error for job Success-Guide---Informatica_JR338610: invalid input syntax for type timestamp with time zone: "Posted 6 Days Ago"
+[2026-05-06T13:01:42.867Z] [WARN] Insert error for job COMMISSION---Customer-Success-Manager--Associate-Informatica_JR338156: invalid input syntax for type timestamp with time zone: "Posted 6 Days Ago"
+[2026-05-06T13:01:43.412Z] [WARN] Insert error for job COMMISSION---Customer-Success-Manager--Associate-Informatica-FY27-Q2-1_JR338157: invalid input syntax for type timestamp with time zone: "Posted 6 Days Ago"
+[2026-05-06T13:01:43.956Z] [WARN] Insert error for job Regional-Sales-Director_JR336470: invalid input syntax for type timestamp with time zone: "Posted 6 Days Ago"
+[2026-05-06T13:01:44.501Z] [WARN] Insert error for job Software-Engineering---Release-Engineering---Manager--Release-Engineering_JR339504: invalid input syntax for type timestamp with time zone: "Posted 7 Days Ago"
+[2026-05-06T13:01:45.047Z] [WARN] Insert error for job Senior-Technical-Architect_JR334394: invalid input syntax for type timestamp with time zone: "Posted 7 Days Ago"
+[2026-05-06T13:01:45.595Z] [WARN] Insert error for job Software-Engineering-LMTS-SMTS--Bigdata-Spark-and-AI-skills----Informatica_JR339998: invalid input syntax for type timestamp with time zone: "Posted 7 Days Ago"
+[2026-05-06T13:01:46.148Z] [WARN] Insert error for job Sales-Strategy-Analyst_JR340027: invalid input syntax for type timestamp with time zone: "Posted 7 Days Ago"
+[2026-05-06T13:01:46.737Z] [WARN] Insert error for job Named-Account-Executive_JR339859: invalid input syntax for type timestamp with time zone: "Posted 7 Days Ago"
+[2026-05-06T13:01:47.294Z] [WARN] Insert error for job Cloud-Account-Executive_JR328870: invalid input syntax for type timestamp with time zone: "Posted 8 Days Ago"
+[2026-05-06T13:01:47.851Z] [WARN] Insert error for job Territory-Account-Executive_JR340001: invalid input syntax for type timestamp with time zone: "Posted 8 Days Ago"
+[2026-05-06T13:01:48.395Z] [WARN] Insert error for job Territory-Account-Executive_JR339839: invalid input syntax for type timestamp with time zone: "Posted 8 Days Ago"
+[2026-05-06T13:01:48.952Z] [WARN] Insert error for job AI-ML-Software-Engineering-PMTS_JR313327: invalid input syntax for type timestamp with time zone: "Posted 9 Days Ago"
+[2026-05-06T13:01:49.495Z] [WARN] Insert error for job Specialist-Account-Executive_JR339997: invalid input syntax for type timestamp with time zone: "Posted 9 Days Ago"
+[2026-05-06T13:01:50.042Z] [WARN] Insert error for job Workday-System-Analyst--Software-Engineer--SMTS-_JR335225: invalid input syntax for type timestamp with time zone: "Posted 13 Days Ago"
+[2026-05-06T13:01:50.585Z] [WARN] Insert error for job Senior-Workday-Integration-Engineer_JR335222: invalid input syntax for type timestamp with time zone: "Posted 13 Days Ago"
+[2026-05-06T13:01:51.128Z] [WARN] Insert error for job Business-Development-Representative_JR339659: invalid input syntax for type timestamp with time zone: "Posted 13 Days Ago"
+[2026-05-06T13:01:51.670Z] [WARN] Insert error for job Technical-Architect--Migration-exp-mandate-_JR339107: invalid input syntax for type timestamp with time zone: "Posted 13 Days Ago"
+[2026-05-06T13:01:52.217Z] [WARN] Insert error for job Principal-Solution-Engineer---AI-and-Data-Cloud_JR336596: invalid input syntax for type timestamp with time zone: "Posted 14 Days Ago"
+[2026-05-06T13:01:52.762Z] [WARN] Insert error for job Business-Development-Representative_JR338915: invalid input syntax for type timestamp with time zone: "Posted 15 Days Ago"
+[2026-05-06T13:01:53.304Z] [WARN] Insert error for job Territory-Account-Executive---Mid-Market_JR339270-1: invalid input syntax for type timestamp with time zone: "Posted 15 Days Ago"
+[2026-05-06T13:01:53.852Z] [WARN] Insert error for job Enterprise-Account-Executive_JR334440: invalid input syntax for type timestamp with time zone: "Posted 16 Days Ago"
+[2026-05-06T13:01:54.394Z] [WARN] Insert error for job Principal-Software-Engineer---PMTS---Fullstack---Distributed-Systems_JR312170: invalid input syntax for type timestamp with time zone: "Posted 16 Days Ago"
+[2026-05-06T13:01:54.934Z] [WARN] Insert error for job Solution-Architect_JR334393: invalid input syntax for type timestamp with time zone: "Posted 16 Days Ago"
+[2026-05-06T13:01:55.476Z] [WARN] Insert error for job Territory-Account-Executive_JR338200: invalid input syntax for type timestamp with time zone: "Posted 16 Days Ago"
+[2026-05-06T13:01:56.020Z] [WARN] Insert error for job Named-Account-Executive---IT-ITES_JR335230: invalid input syntax for type timestamp with time zone: "Posted 17 Days Ago"
+[2026-05-06T13:01:56.569Z] [WARN] Insert error for job Lead-Solution-Engineer---Financial-Services_JR335060: invalid input syntax for type timestamp with time zone: "Posted 17 Days Ago"
+[2026-05-06T13:01:57.406Z] [WARN] Insert error for job Senior-Manager--Software-Engineering--Core-Finance-_JR335213: invalid input syntax for type timestamp with time zone: "Posted 18 Days Ago"
+[2026-05-06T13:01:57.957Z] [WARN] Insert error for job Sr-Manager--Success-Architecture-Tableau_JR333759: invalid input syntax for type timestamp with time zone: "Posted 21 Days Ago"
+[2026-05-06T13:01:58.512Z] [WARN] Insert error for job Account-Executive---Digital-SMB_JR338182: invalid input syntax for type timestamp with time zone: "Posted 22 Days Ago"
+[2026-05-06T13:01:59.080Z] [WARN] Insert error for job Territory-Account-Executive---Mid-Market---Manufacturing_JR335236: invalid input syntax for type timestamp with time zone: "Posted 30+ Days Ago"
+[2026-05-06T13:01:59.629Z] [WARN] Insert error for job Senior-Success-Guide---Agentforce_JR330005: invalid input syntax for type timestamp with time zone: "Posted 30+ Days Ago"
+[2026-05-06T13:02:00.180Z] [WARN] Insert error for job SMTS--Zuora-Revenue-System-Engineer_JR335227: invalid input syntax for type timestamp with time zone: "Posted 30+ Days Ago"
+[2026-05-06T13:02:00.733Z] [WARN] Insert error for job Principal--Specialist-SE_JR336031: invalid input syntax for type timestamp with time zone: "Posted 30+ Days Ago"
+[2026-05-06T13:02:01.304Z] [WARN] Insert error for job Vertex-Tax-System-Engineer--Software-Engineer--SMTS--_JR335214: invalid input syntax for type timestamp with time zone: "Posted 30+ Days Ago"
+[2026-05-06T13:02:01.857Z] [WARN] Insert error for job MTS--Vertex-Tax-System-Engineer_JR335215: invalid input syntax for type timestamp with time zone: "Posted 30+ Days Ago"
+[2026-05-06T13:02:02.413Z] [WARN] Insert error for job Success-Architect--Life-Sciences-Domain-_JR329679: invalid input syntax for type timestamp with time zone: "Posted 30+ Days Ago"
+[2026-05-06T13:02:02.967Z] [WARN] Insert error for job Named-Account-Executive---Healthcare-Real-Estate-Edtech_JR334864: invalid input syntax for type timestamp with time zone: "Posted 30+ Days Ago"
+[2026-05-06T13:02:03.515Z] [WARN] Insert error for job Named-Account-Executive_JR331444-1: invalid input syntax for type timestamp with time zone: "Posted 30+ Days Ago"
+[2026-05-06T13:02:04.069Z] [WARN] Insert error for job Lead-Solution-Engineer_JR322349: invalid input syntax for type timestamp with time zone: "Posted 30+ Days Ago"
+[2026-05-06T13:02:04.619Z] [WARN] Insert error for job ECS-Account-Executive---HRE_JR334893: invalid input syntax for type timestamp with time zone: "Posted 30+ Days Ago"
+[2026-05-06T13:02:05.170Z] [WARN] Insert error for job Territory-Account-Executive---Mid-Market---ITES_JR333714: invalid input syntax for type timestamp with time zone: "Posted 30+ Days Ago"
+[2026-05-06T13:02:05.719Z] [WARN] Insert error for job LMTS---Lead-Threat-Assessment-Engineer---Cyber-Security---Hyderabad_JR332076: invalid input syntax for type timestamp with time zone: "Posted 30+ Days Ago"
+[2026-05-06T13:02:06.394Z] [WARN] Insert error for job Senior-Success-Guide---Salescloud_JR321315: invalid input syntax for type timestamp with time zone: "Posted 30+ Days Ago"
+[2026-05-06T13:02:06.958Z] [WARN] Insert error for job Strategic-Account-Executive---Telecom-Industry_JR332616: invalid input syntax for type timestamp with time zone: "Posted 30+ Days Ago"
+[2026-05-06T13:02:07.509Z] [WARN] Insert error for job Lead-Solution-Engineer_JR332926: invalid input syntax for type timestamp with time zone: "Posted 30+ Days Ago"
+[2026-05-06T13:02:08.058Z] [WARN] Insert error for job Territory-Account-Executive---Mid-Market---Automotive-Industry_JR332379: invalid input syntax for type timestamp with time zone: "Posted 30+ Days Ago"
+[2026-05-06T13:02:08.608Z] [WARN] Insert error for job Territory-Account-Executive---BFSI_JR318147: invalid input syntax for type timestamp with time zone: "Posted 30+ Days Ago"
+[2026-05-06T13:02:09.158Z] [WARN] Insert error for job Named-Account-Executive_JR331445: invalid input syntax for type timestamp with time zone: "Posted 30+ Days Ago"
+[2026-05-06T13:02:09.712Z] [WARN] Insert error for job Sr-Manager--Sales---Manufacturing-Industry_JR330342: invalid input syntax for type timestamp with time zone: "Posted 30+ Days Ago"
+[2026-05-06T13:02:10.268Z] [WARN] Insert error for job Senior-Success-Guide-Data360-FY27-Q1-2_JR328718: invalid input syntax for type timestamp with time zone: "Posted 30+ Days Ago"
+[2026-05-06T13:02:10.819Z] [WARN] Insert error for job Strategic-Account-Executive---BFSI_JR329917: invalid input syntax for type timestamp with time zone: "Posted 30+ Days Ago"
+[2026-05-06T13:02:11.425Z] [WARN] Insert error for job Territory-Account-Executive_JR329279: invalid input syntax for type timestamp with time zone: "Posted 30+ Days Ago"
+[2026-05-06T13:02:11.976Z] [WARN] Insert error for job Lead--Account-SE_JR307327: invalid input syntax for type timestamp with time zone: "Posted 30+ Days Ago"
+[2026-05-06T13:02:12.533Z] [WARN] Insert error for job Prime-Named-Account-Executive_JR328404: invalid input syntax for type timestamp with time zone: "Posted 30+ Days Ago"
+[2026-05-06T13:02:13.084Z] [WARN] Insert error for job Principal-Software-Engineer---PMTS--Backend---Hyderabad_JR282412: invalid input syntax for type timestamp with time zone: "Posted 30+ Days Ago"
+[2026-05-06T13:02:13.641Z] [WARN] Insert error for job Senior-Success-Guide--FSF-exp-mandatory-_JR322980: invalid input syntax for type timestamp with time zone: "Posted 30+ Days Ago"
+[2026-05-06T13:02:14.198Z] [WARN] Insert error for job Named-Account-Executive_JR320653: invalid input syntax for type timestamp with time zone: "Posted 30+ Days Ago"
+[2026-05-06T13:02:14.753Z] [WARN] Insert error for job Territory-Account-Executive--HRE_JR318174: invalid input syntax for type timestamp with time zone: "Posted 30+ Days Ago"
+[2026-05-06T13:02:15.306Z] [WARN] Insert error for job Senior-Technical-Architect_JR307956: invalid input syntax for type timestamp with time zone: "Posted 30+ Days Ago"
+[2026-05-06T13:02:15.861Z] [WARN] Insert error for job Territory-Account-Executive--HRE_JR318176: invalid input syntax for type timestamp with time zone: "Posted 30+ Days Ago"
+[2026-05-06T13:02:16.137Z] [INFO] [salesforce] Inserted: 0, Updated: 0, Stale: 0
+[2026-05-06T13:02:16.456Z] [INFO] [sap-labs] Crawling...
+[2026-05-06T13:02:17.883Z] [INFO] [sap-labs] Total jobs reported: 148
+[2026-05-06T13:02:17.884Z] [INFO] [sap-labs] Offset 0: 25 jobs (total so far: 25)
+[2026-05-06T13:02:18.247Z] [INFO] [sap-labs] Offset 25: 25 jobs (total so far: 50)
+[2026-05-06T13:02:18.586Z] [INFO] [sap-labs] Offset 50: 25 jobs (total so far: 75)
+[2026-05-06T13:02:18.973Z] [INFO] [sap-labs] Offset 75: 25 jobs (total so far: 100)
+[2026-05-06T13:02:19.340Z] [INFO] [sap-labs] Offset 100: 25 jobs (total so far: 125)
+[2026-05-06T13:02:19.661Z] [INFO] [sap-labs] Offset 125: 23 jobs (total so far: 148)
+[2026-05-06T13:02:19.662Z] [INFO] [sap-labs] Total: 148 India jobs
+[2026-05-06T13:02:19.662Z] [INFO] [sap-labs] Scraped 148 raw jobs
+[2026-05-06T13:02:19.669Z] [INFO] [sap-labs] 143 India jobs after normalization
+[2026-05-06T13:02:25.092Z] [WARN] Insert error for job 1371400433: invalid input value for enum seniority_level: "lead"
+Run # If workflow_dispatch with specific slugs, use those; otherwise use matrix slugs
+> @prodmatch/crawler@0.1.0 start /home/runner/work/prodmatchai/prodmatchai/packages/crawler
+> tsx index.ts "--" "--slugs=google,microsoft,meta,amazon,apple,atlassian"
+[2026-05-06T12:59:22.807Z] [INFO] Starting crawl for: google, microsoft, meta, amazon, apple, atlassian
+[2026-05-06T12:59:24.872Z] [INFO] [google] Crawling...
+[2026-05-06T12:59:24.872Z] [INFO] [google] Loading page 1...
+[2026-05-06T12:59:29.095Z] [INFO] [google] Page 1: 20 jobs (total so far: 20)
+[2026-05-06T12:59:30.594Z] [INFO] [google] Loading page 2...
+[2026-05-06T12:59:34.811Z] [INFO] [google] Page 2: 20 jobs (total so far: 40)
+[2026-05-06T12:59:36.313Z] [INFO] [google] Loading page 3...
+[2026-05-06T12:59:39.673Z] [INFO] [google] Page 3: 20 jobs (total so far: 60)
+[2026-05-06T12:59:41.175Z] [INFO] [google] Loading page 4...
+[2026-05-06T12:59:44.490Z] [INFO] [google] Page 4: 20 jobs (total so far: 80)
+[2026-05-06T12:59:45.992Z] [INFO] [google] Loading page 5...
+[2026-05-06T12:59:49.318Z] [INFO] [google] Page 5: 20 jobs (total so far: 100)
+[2026-05-06T12:59:50.819Z] [INFO] [google] Loading page 6...
+[2026-05-06T12:59:54.128Z] [INFO] [google] Page 6: 20 jobs (total so far: 120)
+[2026-05-06T12:59:55.629Z] [INFO] [google] Loading page 7...
+[2026-05-06T12:59:58.991Z] [INFO] [google] Page 7: 20 jobs (total so far: 140)
+[2026-05-06T13:00:00.493Z] [INFO] [google] Loading page 8...
+[2026-05-06T13:00:03.750Z] [INFO] [google] Page 8: 20 jobs (total so far: 160)
+[2026-05-06T13:00:05.252Z] [INFO] [google] Loading page 9...
+[2026-05-06T13:00:08.594Z] [INFO] [google] Page 9: 20 jobs (total so far: 180)
+[2026-05-06T13:00:10.096Z] [INFO] [google] Loading page 10...
+[2026-05-06T13:00:13.389Z] [INFO] [google] Page 10: 20 jobs (total so far: 200)
+[2026-05-06T13:00:14.890Z] [INFO] [google] Loading page 11...
+[2026-05-06T13:00:18.246Z] [INFO] [google] Page 11: 20 jobs (total so far: 220)
+[2026-05-06T13:00:19.748Z] [INFO] [google] Loading page 12...
+[2026-05-06T13:00:23.074Z] [INFO] [google] Page 12: 20 jobs (total so far: 240)
+[2026-05-06T13:00:24.576Z] [INFO] [google] Loading page 13...
+[2026-05-06T13:00:27.916Z] [INFO] [google] Page 13: 20 jobs (total so far: 260)
+[2026-05-06T13:00:29.418Z] [INFO] [google] Loading page 14...
+[2026-05-06T13:00:39.634Z] [INFO] [google] Page 14: 20 jobs (total so far: 280)
+[2026-05-06T13:00:41.136Z] [INFO] [google] Loading page 15...
+[2026-05-06T13:00:44.438Z] [INFO] [google] Page 15: 20 jobs (total so far: 300)
+[2026-05-06T13:00:45.939Z] [INFO] [google] Loading page 16...
+[2026-05-06T13:00:49.233Z] [INFO] [google] Page 16: 20 jobs (total so far: 320)
+[2026-05-06T13:00:50.734Z] [INFO] [google] Loading page 17...
+[2026-05-06T13:00:54.065Z] [INFO] [google] Page 17: 20 jobs (total so far: 340)
+[2026-05-06T13:00:55.567Z] [INFO] [google] Loading page 18...
+[2026-05-06T13:00:58.897Z] [INFO] [google] Page 18: 20 jobs (total so far: 360)
+[2026-05-06T13:01:00.398Z] [INFO] [google] Loading page 19...
+[2026-05-06T13:01:03.755Z] [INFO] [google] Page 19: 6 jobs (total so far: 366)
+[2026-05-06T13:01:05.257Z] [INFO] [google] Loading page 20...
+[2026-05-06T13:01:08.612Z] [INFO] [google] No new jobs on page 20, stopping
+[2026-05-06T13:01:08.612Z] [INFO] [google] Total: 366 India jobs
+[2026-05-06T13:01:08.612Z] [INFO] [google] Scraped 366 raw jobs
+[2026-05-06T13:01:08.640Z] [INFO] [google] 363 India jobs after normalization
+[2026-05-06T13:01:17.832Z] [WARN] Insert error for job 115088956155929286: invalid input value for enum seniority_level: "lead"
+[2026-05-06T13:01:20.969Z] [WARN] Insert error for job 114601480589058758: invalid input value for enum seniority_level: "lead"
+[2026-05-06T13:01:25.716Z] [WARN] Insert error for job 111132501002330822: invalid input value for enum seniority_level: "lead"
+[2026-05-06T13:01:31.989Z] [WARN] Insert error for job 122380877542892230: invalid input value for enum seniority_level: "lead"
+[2026-05-06T13:01:44.248Z] [WARN] Insert error for job 140230310116631238: invalid input value for enum seniority_level: "lead"
+[2026-05-06T13:01:49.978Z] [WARN] Insert error for job 110908670392312518: invalid input value for enum seniority_level: "lead"
+[2026-05-06T13:01:52.573Z] [WARN] Insert error for job 109241197121151686: invalid input value for enum seniority_level: "lead"
+[2026-05-06T13:01:58.837Z] [WARN] Insert error for job 104469728973464262: invalid input value for enum seniority_level: "lead"
+[2026-05-06T13:02:30.294Z] [WARN] Insert error for job 117783262155154118: invalid input value for enum seniority_level: "lead"
+[2026-05-06T13:02:34.305Z] [WARN] Insert error for job 131646238691861190: invalid input value for enum seniority_level: "lead"
+[2026-05-06T13:02:39.616Z] [WARN] Insert error for job 125929930352403142: invalid input value for enum seniority_level: "lead"
+[2026-05-06T13:03:00.858Z] [WARN] Insert error for job 95937883814142662: invalid input value for enum seniority_level: "lead"
+[2026-05-06T13:03:01.389Z] [WARN] Insert error for job 72451546645701318: invalid input value for enum seniority_level: "lead"
+[2026-05-06T13:03:14.984Z] [WARN] Insert error for job 113485029610267334: invalid input value for enum seniority_level: "lead"
+[2026-05-06T13:03:25.659Z] [WARN] Insert error for job 74539998115701446: invalid input value for enum seniority_level: "lead"
+[2026-05-06T13:03:26.706Z] [WARN] Insert error for job 129770587818992326: invalid input value for enum seniority_level: "lead"
+[2026-05-06T13:03:35.538Z] [WARN] Insert error for job 76244374282740422: invalid input value for enum seniority_level: "lead"

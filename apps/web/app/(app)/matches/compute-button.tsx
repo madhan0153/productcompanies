@@ -9,7 +9,7 @@ import { computeMatches, type ComputeMatchesResult } from "./actions";
 // Approximate progress while the server action runs. The server can't stream
 // progress easily, so we simulate a smooth fill that maxes at 95% until the
 // action returns. Beats a stale spinner with no feedback.
-const ESTIMATED_DURATION_MS = 18_000;
+const ESTIMATED_DURATION_MS = 45_000;
 
 export function ComputeButton({ hasResume }: { hasResume: boolean }) {
   const [pending, start] = useTransition();
@@ -47,17 +47,13 @@ export function ComputeButton({ hasResume }: { hasResume: boolean }) {
 
   function handleClick() {
     setResult(null);
-    const t = toast.loading("Computing your matches…", {
-      description: "This usually takes 10–30 seconds.",
-    });
     start(async () => {
       const r = await computeMatches();
       setProgress(100);
       setResult(r);
-      toast.dismiss(t);
       if (r.ok) {
-        toast.success(`${r.total} jobs scored`, {
-          description: `${r.withExplanations} matches received AI explanations.`,
+        toast.success(`✅ ${r.total} jobs scored`, {
+          description: `Top ${r.withExplanations} matches have AI explanations.`,
         });
         router.refresh();
       } else {
