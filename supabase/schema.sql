@@ -208,44 +208,48 @@ create index if not exists idx_jobs_title_trgm on public.jobs using gin(title gi
 
 -- PROFILES (1:1 with auth.users)
 create table if not exists public.profiles (
-  id uuid primary key references auth.users(id) on delete cascade,
-  display_name text,
-  job_title text,
-  current_company text,
-  years_experience numeric,
-  current_lpa numeric,
-  target_lpa numeric,
-  preferred_hubs text[] not null default '{}',
-  tech_stack text[] not null default '{}',
-  seniority seniority_level,
-  resume_storage_path text,
-  resume_parsed jsonb,
-  product_dna_score integer,
-  coach_plan jsonb,
-  coach_plan_at timestamptz,
-  created_at timestamptz not null default now(),
-  updated_at timestamptz not null default now()
+  id                     uuid primary key references auth.users(id) on delete cascade,
+  display_name           text,
+  job_title              text,
+  "current_role"         text,           -- quoted: current_role is a reserved PG keyword
+  current_company        text,
+  years_experience       numeric,
+  current_lpa            numeric,
+  target_lpa             numeric,
+  preferred_hubs         text[] not null default '{}',
+  tech_stack             text[] not null default '{}',
+  seniority              seniority_level,
+  resume_storage_path    text,
+  resume_parsed          jsonb,
+  product_dna_score      integer,
+  coach_plan             jsonb,
+  coach_plan_at          timestamptz,
+  role_function          text,           -- Phase F: canonical engineering function
+  target_role_functions  text[] not null default '{}',  -- Phase F: what they're targeting
+  created_at             timestamptz not null default now(),
+  updated_at             timestamptz not null default now()
 );
 
--- Phase E migration: backfill columns on existing tables (idempotent)
-alter table public.profiles add column if not exists coach_plan jsonb;
-alter table public.profiles add column if not exists coach_plan_at timestamptz;
--- current_role is used by the app code; job_title is the original column name kept for compatibility
-alter table public.profiles add column if not exists current_role text;
+-- Idempotent ALTER TABLEs for databases created before each migration phase.
+-- Safe to re-run: ADD COLUMN IF NOT EXISTS is a no-op if the column already exists.
 
--- Phase F migration: role-function aware matching (idempotent)
--- role_function: canonical engineering function (qa_sdet | backend | frontend | ...)
--- target_role_functions: what the candidate is targeting (up to 3)
-alter table public.profiles add column if not exists role_function text;
+-- Phase E: coach plan columns (also in CREATE TABLE above for fresh installs)
+alter table public.profiles add column if not exists coach_plan    jsonb;
+alter table public.profiles add column if not exists coach_plan_at timestamptz;
+
+-- Phase E: current_role — must be double-quoted because it is a reserved PG keyword
+alter table public.profiles add column if not exists "current_role" text;
+
+-- Phase F: role-function aware matching
+alter table public.profiles add column if not exists role_function         text;
 alter table public.profiles add column if not exists target_role_functions text[] not null default '{}';
--- jobs.role_function: classified by crawler / backfill API
+
+-- Phase F: jobs role classification (used by backfill API + crawler)
 alter table public.jobs add column if not exists role_function text;
 
 create index if not exists idx_profiles_role_function on public.profiles(role_function);
-create index if not exists idx_jobs_role_function on public.jobs(role_function);
-
-
-create index if not exists idx_profiles_seniority on public.profiles(seniority);
+create index if not exists idx_jobs_role_function     on public.jobs(role_function);
+create index if not exists idx_profiles_seniority     on public.profiles(seniority);
 
 
 -- CONSENTS (DPDP — granular, versioned, append-style with revoked_at)
