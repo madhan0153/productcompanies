@@ -178,6 +178,8 @@ export async function computeMatchesForUser(userId: string): Promise<ComputeResu
           target_lpa:            profile.target_lpa,
         },
         {
+          title:                 job.title,
+          description:           job.description,
           role_function:         job.role_function,
           min_experience_years:  job.min_experience_years,
           max_experience_years:  job.max_experience_years,

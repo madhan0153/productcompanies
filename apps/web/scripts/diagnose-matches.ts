@@ -5,24 +5,31 @@
  * Run: pnpm --filter web exec tsx scripts/diagnose-matches.ts <resume.pdf>
  */
 
-import { readFileSync } from "node:fs";
-import { resolve, dirname } from "node:path";
-import { fileURLToPath } from "node:url";
+import { readFileSync, existsSync } from "node:fs";
+import { resolve } from "node:path";
 
-// Load env from apps/web/.env.local without depending on dotenv as a package.
+// Load env from apps/web/.env.local. Search a few candidate paths because
+// tsx may run with cwd=apps/web or cwd=monorepo-root.
 function loadEnvLocal() {
-  const here = typeof __dirname !== "undefined" ? __dirname : dirname(fileURLToPath(import.meta.url));
-  const path = resolve(here, "..", ".env.local");
-  try {
+  const candidates = [
+    resolve(process.cwd(), ".env.local"),
+    resolve(process.cwd(), "apps", "web", ".env.local"),
+    resolve(__dirname, "..", ".env.local"),
+  ];
+  for (const path of candidates) {
+    if (!existsSync(path)) continue;
     const content = readFileSync(path, "utf8");
-    for (const line of content.split("\n")) {
+    for (const line of content.split(/\r?\n/)) {
       const m = line.match(/^\s*([A-Z0-9_]+)\s*=\s*(.*?)\s*$/);
       if (!m) continue;
       const [, k, vRaw] = m;
       if (process.env[k]) continue;
       process.env[k] = vRaw.replace(/^["']|["']$/g, "");
     }
-  } catch { /* no env.local — fall back to inherited env */ }
+    process.stderr.write(`[diagnose] loaded env from ${path}\n`);
+    return;
+  }
+  process.stderr.write("[diagnose] WARNING: no .env.local found, relying on inherited env\n");
 }
 loadEnvLocal();
 
@@ -98,57 +105,82 @@ async function main() {
   console.log(`  Already JD-parsed: ${jobs.filter((j) => j.jd_parsed_at).length}`);
   console.log(`  Pending parse: ${jobs.filter((j) => !j.jd_parsed_at).length}`);
 
-  // ── 3. Backfill JD parse for any unparsed jobs (capped) ─────────────────────
-  const PARSE_CAP = 50;
+  // ── 3. Backfill JD parse (parallel + per-call timeout + progress) ──────────
+  const PARSE_CAP = parseInt(process.env.PARSE_CAP ?? "80", 10);
+  const PARALLEL = 5;
+  const PER_CALL_TIMEOUT_MS = 25_000;
   const unparsed = jobs.filter((j) => !j.jd_parsed_at && j.description && j.description.length >= 60);
   if (unparsed.length > 0) {
     const target = unparsed.slice(0, PARSE_CAP);
-    console.log(`\n━━━ 3. Parsing ${target.length}/${unparsed.length} JDs (capped at ${PARSE_CAP}) ━━━`);
-    let ok = 0, ghosts = 0, errs = 0;
-    for (const j of target) {
-      try {
-        const parsed = await parseJobDescription({
-          title: j.title,
-          description: j.description ?? "",
-          seniority_hint: j.seniority,
-        });
-        const ghost = detectGhost({
-          posted_at: j.posted_at,
-          last_seen_at: j.last_seen_at,
-          is_boilerplate: parsed.is_boilerplate,
-          ghost_reasons: parsed.ghost_reasons,
-          must_have_skills: parsed.must_have_skills,
-        });
-        if (ghost.is_likely_ghost) ghosts++;
-        // Update local copy (we'll score from memory)
-        j.must_have_skills = parsed.must_have_skills;
-        j.nice_to_have_skills = parsed.nice_to_have_skills;
-        j.jd_min_years = parsed.jd_min_years;
-        j.jd_max_years = parsed.jd_max_years;
-        j.jd_seniority_signal = parsed.jd_seniority_signal;
-        j.jd_summary = parsed.jd_summary;
-        j.is_likely_ghost = ghost.is_likely_ghost;
-        // Persist
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        await (supabase.from("jobs") as any).update({
-          must_have_skills: parsed.must_have_skills,
-          nice_to_have_skills: parsed.nice_to_have_skills,
-          jd_min_years: parsed.jd_min_years,
-          jd_max_years: parsed.jd_max_years,
-          work_mode: parsed.work_mode,
-          jd_seniority_signal: parsed.jd_seniority_signal,
-          jd_summary: parsed.jd_summary,
-          is_likely_ghost: ghost.is_likely_ghost,
-          ghost_signals: ghost.signals,
-          jd_parsed_at: new Date().toISOString(),
-        }).eq("id", j.id);
-        ok++;
-      } catch (e) {
-        errs++;
-        if (errs <= 3) console.log(`  parse err [${j.title.slice(0, 50)}]: ${(e as Error).message.split("\n")[0]}`);
+    console.log(`\n━━━ 3. Parsing ${target.length}/${unparsed.length} JDs (parallel ${PARALLEL}, timeout ${PER_CALL_TIMEOUT_MS}ms) ━━━`);
+    let ok = 0, ghosts = 0, errs = 0, done = 0;
+
+    const queue = [...target];
+    const sample = target.slice(0, 3).map((j) => `[${j.companies?.slug}] ${j.title.slice(0, 48)}`).join("\n  ");
+    console.log(`  Sample of what we'll parse:\n  ${sample}`);
+
+    const withTimeout = <T>(p: Promise<T>, ms: number, label: string): Promise<T> =>
+      Promise.race([
+        p,
+        new Promise<T>((_, rej) => setTimeout(() => rej(new Error(`timeout ${ms}ms: ${label}`)), ms)),
+      ]);
+
+    const worker = async () => {
+      while (queue.length > 0) {
+        const j = queue.shift();
+        if (!j) return;
+        try {
+          const parsed = await withTimeout(
+            parseJobDescription({
+              title: j.title,
+              description: j.description ?? "",
+              seniority_hint: j.seniority,
+            }),
+            PER_CALL_TIMEOUT_MS,
+            j.title.slice(0, 30),
+          );
+          const ghost = detectGhost({
+            posted_at: j.posted_at,
+            last_seen_at: j.last_seen_at,
+            is_boilerplate: parsed.is_boilerplate,
+            ghost_reasons: parsed.ghost_reasons,
+            must_have_skills: parsed.must_have_skills,
+          });
+          if (ghost.is_likely_ghost) ghosts++;
+          j.must_have_skills = parsed.must_have_skills;
+          j.nice_to_have_skills = parsed.nice_to_have_skills;
+          j.jd_min_years = parsed.jd_min_years;
+          j.jd_max_years = parsed.jd_max_years;
+          j.jd_seniority_signal = parsed.jd_seniority_signal;
+          j.jd_summary = parsed.jd_summary;
+          j.is_likely_ghost = ghost.is_likely_ghost;
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          await (supabase.from("jobs") as any).update({
+            must_have_skills: parsed.must_have_skills,
+            nice_to_have_skills: parsed.nice_to_have_skills,
+            jd_min_years: parsed.jd_min_years,
+            jd_max_years: parsed.jd_max_years,
+            work_mode: parsed.work_mode,
+            jd_seniority_signal: parsed.jd_seniority_signal,
+            jd_summary: parsed.jd_summary,
+            is_likely_ghost: ghost.is_likely_ghost,
+            ghost_signals: ghost.signals,
+            jd_parsed_at: new Date().toISOString(),
+          }).eq("id", j.id);
+          ok++;
+        } catch (e) {
+          errs++;
+          if (errs <= 5) console.log(`  err [${j.title.slice(0, 50)}]: ${(e as Error).message.split("\n")[0]}`);
+        }
+        done++;
+        if (done % 10 === 0 || done === target.length) {
+          console.log(`  progress: ${done}/${target.length} | ok=${ok} ghost=${ghosts} err=${errs}`);
+        }
       }
-    }
-    console.log(`Parsed: ${ok}, ghost-flagged: ${ghosts}, errors: ${errs}`);
+    };
+
+    await Promise.allSettled(Array.from({ length: PARALLEL }, worker));
+    console.log(`Done. Parsed: ${ok}, ghost-flagged: ${ghosts}, errors: ${errs}`);
   } else {
     console.log("\n━━━ 3. All JDs already parsed ━━━");
   }
@@ -166,6 +198,8 @@ async function main() {
 
   const scored = jobs.map((job) => {
     const rules = computeRulesScore(profile, {
+      title: job.title,
+      description: job.description,
       role_function: job.role_function,
       min_experience_years: job.min_experience_years,
       max_experience_years: job.max_experience_years,

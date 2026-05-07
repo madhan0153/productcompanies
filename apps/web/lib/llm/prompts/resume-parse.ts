@@ -136,7 +136,11 @@ export async function parseResumePdf(pdfBase64: string): Promise<ParsedResume> {
       generationConfig: {
         responseMimeType: "application/json",
         responseSchema: SCHEMA,
-        temperature: 0.1,
+        // Temperature 0 — deterministic. Re-uploads of the same PDF must yield
+        // the same role_function, target_role_functions, and years_experience,
+        // otherwise downstream matching changes between runs without the
+        // resume actually changing.
+        temperature: 0,
       },
     });
     return result.response.text();

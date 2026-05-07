@@ -80,28 +80,37 @@ const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 // cheaper variants. Each model has its own quota bucket so this also
 // works around per-model rate limits.
 //
+// Model cascade.
+//
+// IMPORTANT: Google's free-tier daily quota is per (project × pinned model
+// name). Calls to a specific version like "gemini-2.5-flash" share a 20/day
+// counter; calls to the alias "gemini-flash-latest" use a SEPARATE counter
+// AND auto-route to whichever underlying model is alive. We've seen all
+// pinned-name quotas burn out in production while the -latest aliases stay
+// responsive — so the aliases are first in cascade.
+//
+// 1.5 family is gone from the v1beta endpoint as of May 2026 (404). Removed.
+//
 // HEAVY_MODELS — used for resume parsing (PDF input, structured output).
-//   2.5-flash supports document understanding and is the current free-tier
-//   default. 2.0-flash is widely deployed. 1.5-flash is the legacy fallback
-//   that's still alive and most commonly available on older keys.
 const HEAVY_MODELS = [
+  "gemini-flash-latest",       // alias: separate quota, current best for PDFs
+  "gemini-flash-lite-latest",  // alias: lighter, also separate quota
   "gemini-2.5-flash",
   "gemini-2.0-flash",
-  "gemini-1.5-flash",
   "gemini-2.5-flash-lite",
   "gemini-2.0-flash-lite",
-  "gemini-1.5-flash-8b",
 ] as const;
 
-// LIGHT_MODELS — used for high-volume match explanations. We start with
-// the cheapest variants that still produce solid JSON.
+// LIGHT_MODELS — used for high-volume match explanations / Fit Cards.
+// Start with the lite alias (cheapest, separate quota), then pinned lites,
+// then escalate to heavier variants if everything else is exhausted.
 const LIGHT_MODELS = [
+  "gemini-flash-lite-latest",
+  "gemini-flash-latest",
   "gemini-2.5-flash-lite",
   "gemini-2.0-flash-lite",
-  "gemini-1.5-flash-8b",
   "gemini-2.5-flash",
   "gemini-2.0-flash",
-  "gemini-1.5-flash",
 ] as const;
 
 export type ModelTier = "heavy" | "light";

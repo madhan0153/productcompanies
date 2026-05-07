@@ -82,22 +82,38 @@ const TECH_KEYWORDS: string[] = [
   "c++", "c#", "kotlin", "swift", "scala", "ruby", "php", "r",
   // Web frameworks
   "react", "next.js", "nextjs", "vue", "angular", "svelte",
-  "node.js", "nodejs", "express", "fastify",
+  "node.js", "nodejs", "express", "fastify", "nestjs",
   "django", "flask", "fastapi", "spring boot", "spring",
   // Mobile
   "android", "ios", "react native", "flutter",
   // Infra / cloud
   "aws", "gcp", "azure", "kubernetes", "k8s", "docker",
-  "terraform", "helm", "ansible",
+  "terraform", "helm", "ansible", "cloudformation",
   // Databases
-  "postgresql", "postgres", "mysql", "mongodb", "redis",
-  "elasticsearch", "cassandra", "dynamodb", "bigquery", "snowflake",
-  // Data / ML
-  "kafka", "spark", "hadoop", "airflow", "dbt",
-  "pytorch", "tensorflow", "scikit-learn", "hugging face", "langchain", "llm",
+  "postgresql", "postgres", "mysql", "mssql", "oracle db", "sqlite",
+  "mongodb", "redis", "elasticsearch", "opensearch", "cassandra",
+  "dynamodb", "bigquery", "snowflake", "redshift", "clickhouse",
+  // Data engineering — Phase G expansion (was missing the modern Indian
+  // stack: nearly every Razorpay/Swiggy/Flipkart/PhonePe DE JD names these,
+  // and they're 80% of what Indian DE candidates list on their resumes.
+  "databricks", "pyspark", "delta lake", "deltalake",
+  "azure data factory", "adf", "adls", "synapse", "fabric",
+  "data factory", "data lake",
+  // Streaming / messaging
+  "kafka", "kinesis", "pub/sub", "pubsub", "rabbitmq", "sqs", "event hubs",
+  // Batch / ETL / orchestration
+  "spark", "hadoop", "hive", "flink", "beam",
+  "airflow", "dbt", "luigi", "dagster", "prefect",
+  // ML / DS
+  "pytorch", "tensorflow", "scikit-learn", "sklearn",
+  "hugging face", "huggingface", "langchain", "langgraph", "llamaindex",
+  "mlflow", "kubeflow", "ray", "vector db", "pinecone", "weaviate", "qdrant",
+  "llm", "openai", "anthropic", "gemini", "rag",
+  // Observability
+  "datadog", "grafana", "prometheus", "splunk", "newrelic", "sentry", "opentelemetry",
   // Practices / tools
-  "graphql", "grpc", "rest api", "microservices",
-  "ci/cd", "jenkins", "github actions", "gitlab ci",
+  "graphql", "grpc", "rest api", "microservices", "event-driven",
+  "ci/cd", "jenkins", "github actions", "gitlab ci", "circleci",
   "git", "linux",
 ];
 
