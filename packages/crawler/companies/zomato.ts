@@ -30,8 +30,24 @@ export const zomatoConfig: CompanyConfig = {
       }
     });
 
-    await page.goto("https://www.zomato.com/careers", { waitUntil: "networkidle", timeout: 60_000 });
-    await sleep(3000);
+    // Zomato's edge has been rejecting HTTP/2 on `networkidle` waits with
+    // `ERR_HTTP2_PROTOCOL_ERROR`. `domcontentloaded` returns as soon as the
+    // initial HTML parses, which is enough for the response interceptor above
+    // to capture the JSON payloads. We then sit and let XHR settle.
+    try {
+      await page.goto("https://www.zomato.com/careers", {
+        waitUntil: "domcontentloaded",
+        timeout: 45_000,
+      });
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      log(`Initial nav failed (${msg.split("\n")[0]}); retrying with no waitUntil`, "warn");
+      await page.goto("https://www.zomato.com/careers", {
+        waitUntil: "commit",
+        timeout: 30_000,
+      });
+    }
+    await sleep(4000);
 
     // Try scrolling to load more
     await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));

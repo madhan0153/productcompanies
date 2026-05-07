@@ -59,6 +59,12 @@ do $$ begin
   create type seniority_level as enum ('intern', 'junior', 'mid', 'senior', 'staff', 'principal', 'manager', 'director');
 exception when duplicate_object then null; end $$;
 
+-- Phase F+: extend seniority_level with values that the normaliser already produces.
+-- ALTER TYPE ... ADD VALUE IF NOT EXISTS is idempotent (PG12+); must run as a
+-- top-level statement (not inside a DO block, hence no exception wrapper).
+alter type seniority_level add value if not exists 'lead';
+alter type seniority_level add value if not exists 'vp';
+
 
 -- -----------------------------------------------------------------------------
 -- 3. HELPER FUNCTIONS

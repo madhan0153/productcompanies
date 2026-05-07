@@ -116,7 +116,7 @@ export interface CrawlRunPayload {
   jobs_new: number;
   jobs_updated: number;
   jobs_marked_stale: number;
-  status: "success" | "partial" | "error";
+  status: "success" | "partial" | "failed";
   error: string | null;
 }
 

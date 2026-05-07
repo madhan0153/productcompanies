@@ -109,6 +109,65 @@ export function extractTechStack(text: string): string[] {
   return TECH_KEYWORDS.filter((t) => TECH_PATTERN_CACHE.get(t)!.test(text));
 }
 
+// ── posted_at sanitiser ────────────────────────────────────────────────────────
+// Different sources emit wildly different formats. Postgres' timestamptz only
+// accepts ISO-ish strings, so anything we can't confidently parse becomes null
+// rather than poisoning the column. Concrete failures we've seen in production:
+//   - Workday: "Posted Today" / "Posted Yesterday" / "Posted N Days Ago" /
+//              "Posted 30+ Days Ago"  (NVIDIA, Salesforce)
+//   - CRED: Unix epoch milliseconds as a string ("1759213235044")
+//   - Sane sources: ISO 8601 strings (already valid)
+
+const WORKDAY_DAYS_AGO = /^\s*posted\s+(\d+)\s*\+?\s*days?\s+ago\s*$/i;
+const WORKDAY_TODAY = /^\s*posted\s+today\s*$/i;
+const WORKDAY_YESTERDAY = /^\s*posted\s+yesterday\s*$/i;
+
+export function parsePostedAt(input: string | number | null | undefined): string | null {
+  if (input == null) return null;
+
+  // Numeric input: epoch seconds or ms
+  if (typeof input === "number") {
+    if (!Number.isFinite(input) || input <= 0) return null;
+    const ms = input < 1e12 ? input * 1000 : input;  // <2001-09 means seconds
+    const d = new Date(ms);
+    return Number.isNaN(d.getTime()) ? null : d.toISOString();
+  }
+
+  const s = input.trim();
+  if (!s) return null;
+
+  // All-digits string → epoch (seconds or ms)
+  if (/^\d{10,13}$/.test(s)) {
+    return parsePostedAt(parseInt(s, 10));
+  }
+
+  // Workday relative phrases
+  if (WORKDAY_TODAY.test(s)) return new Date().toISOString();
+  if (WORKDAY_YESTERDAY.test(s)) {
+    const d = new Date();
+    d.setDate(d.getDate() - 1);
+    return d.toISOString();
+  }
+  const m = s.match(WORKDAY_DAYS_AGO);
+  if (m) {
+    const n = parseInt(m[1], 10);
+    if (Number.isFinite(n) && n >= 0 && n < 3650) {
+      const d = new Date();
+      d.setDate(d.getDate() - n);
+      return d.toISOString();
+    }
+    return null;
+  }
+
+  // ISO 8601 / RFC-2822 / anything Date can parse
+  const parsed = new Date(s);
+  if (!Number.isNaN(parsed.getTime()) && parsed.getFullYear() > 1970) {
+    return parsed.toISOString();
+  }
+
+  return null;
+}
+
 // ── Seniority ──────────────────────────────────────────────────────────────────
 
 export function inferSeniority(title: string): Seniority {
@@ -149,7 +208,7 @@ export function normalizeJob(raw: RawJob, companyId: string): NormalizedJob {
     comp_lpa_max: compMax,
     tech_stack: techStack,
     seniority,
-    posted_at: raw.posted_at ?? null,
+    posted_at: parsePostedAt(raw.posted_at),
     raw: raw.raw,
   };
 }

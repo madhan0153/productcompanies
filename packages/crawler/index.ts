@@ -118,7 +118,7 @@ async function main() {
           jobs_new: inserted,
           jobs_updated: updated,
           jobs_marked_stale: stale,
-          status: crawlError ? "error" : "success",
+          status: crawlError ? "failed" : "success",
           error: crawlError,
         });
       }
