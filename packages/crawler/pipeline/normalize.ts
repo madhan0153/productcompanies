@@ -210,6 +210,12 @@ export function normalizeJob(raw: RawJob, companyId: string): NormalizedJob {
   const seniority = inferSeniority(raw.title);
   const signature = computeSignature(raw.title, raw.location_raw, raw.description);
 
+  // Sanitise apply_url: must look URL-ish and not be empty.
+  const applyUrl =
+    raw.apply_url && /^https?:\/\//i.test(raw.apply_url) && raw.apply_url.length > 8
+      ? raw.apply_url
+      : null;
+
   return {
     company_id: companyId,
     external_id: raw.external_id,
@@ -217,6 +223,7 @@ export function normalizeJob(raw: RawJob, companyId: string): NormalizedJob {
     title: raw.title.trim(),
     description: raw.description,
     location: raw.location_raw,
+    apply_url: applyUrl,
     hubs,
     min_experience_years: expMin,
     max_experience_years: expMax,

@@ -1,5 +1,6 @@
 import type { CompanyConfig, CrawlContext } from "./_types.js";
 import type { RawJob } from "@prodmatch/shared";
+import { enrichDescriptions } from "./_types.js";
 
 // Confirmed: jobs.sap.com/search/?q=&optionsFacetsDD_country=IN is server-rendered HTML
 // Pagination via startrow=0,25,50,...; 25 jobs/page; ~159 India jobs
@@ -11,7 +12,8 @@ const PAGE_SIZE = 25;
 
 export const sapLabsConfig: CompanyConfig = {
   slug: "sap-labs",
-  async crawl({ log }: CrawlContext): Promise<RawJob[]> {
+  async crawl(ctx: CrawlContext): Promise<RawJob[]> {
+    const { log } = ctx;
     const allJobs: RawJob[] = [];
     const seenIds = new Set<string>();
     let offset = 0;
@@ -78,6 +80,17 @@ export const sapLabsConfig: CompanyConfig = {
     }
 
     log(`Total: ${allJobs.length} India jobs`);
+
+    // SAP listing page has no description text; visit each /job/.../{id}/ detail
+    // page. The JD lives in #jobdescription on jobs.sap.com.
+    await enrichDescriptions(ctx, allJobs, () => {
+      const root =
+        document.querySelector("#jobdescription") ??
+        document.querySelector("[class*='job_description']") ??
+        document.querySelector("main");
+      return Promise.resolve((root?.textContent ?? "").trim());
+    });
+
     return allJobs;
   },
 };

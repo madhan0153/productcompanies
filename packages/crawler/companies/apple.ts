@@ -1,6 +1,6 @@
 import type { CompanyConfig, CrawlContext } from "./_types.js";
 import type { RawJob } from "@prodmatch/shared";
-import { sleep } from "./_types.js";
+import { sleep, enrichDescriptions } from "./_types.js";
 
 // Confirmed: jobs.apple.com/en-in/search?location=india-INDC
 // 8 jobs per page, URL pagination via ?page=N, ~30 pages for 236 India jobs
@@ -73,6 +73,15 @@ export const appleConfig: CompanyConfig = {
     }
 
     log(`Total: ${allJobs.length} India jobs`);
+
+    // Enrich with full JD bodies — Apple's listing page has zero description text.
+    await enrichDescriptions({ page, log }, allJobs, () => {
+      const root = document.querySelector(
+        "main [class*='jobdetails'], main [class*='job-detail'], main [data-testid*='description'], main",
+      );
+      return Promise.resolve((root?.textContent ?? "").trim());
+    });
+
     return allJobs;
   },
 };

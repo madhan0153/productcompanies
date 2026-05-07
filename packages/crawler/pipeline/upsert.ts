@@ -37,13 +37,17 @@ export async function upsertJobs(
     for (const job of batch) {
       const found = existingMap.get(job.external_id);
       if (found) {
-        // Update existing row
+        // Update existing row. Include apply_url so existing rows get their
+        // missing link backfilled on the next crawl. Description too — some
+        // crawlers improved their detail-page extraction since the row was
+        // first seen.
         await supabase
           .from("jobs")
           .update({
             title: job.title,
             description: job.description,
             location: job.location,
+            apply_url: job.apply_url,
             hubs: job.hubs,
             tech_stack: job.tech_stack,
             seniority: job.seniority,
@@ -69,7 +73,13 @@ export async function upsertJobs(
         if (bySig) {
           await supabase
             .from("jobs")
-            .update({ external_id: job.external_id, last_seen_at: now, is_active: true })
+            .update({
+              external_id: job.external_id,
+              apply_url: job.apply_url,
+              description: job.description,
+              last_seen_at: now,
+              is_active: true,
+            })
             .eq("id", bySig.id);
           updated++;
         } else {

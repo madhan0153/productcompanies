@@ -24,6 +24,7 @@ export const NormalizedJobSchema = z.object({
   title: z.string(),
   description: z.string(),
   location: z.string(),
+  apply_url: z.string().nullable(),
   hubs: z.array(z.string()),
   min_experience_years: z.number().nullable(),
   max_experience_years: z.number().nullable(),

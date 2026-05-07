@@ -1,6 +1,6 @@
 import type { CompanyConfig, CrawlContext } from "./_types.js";
 import type { RawJob } from "@prodmatch/shared";
-import { sleep } from "./_types.js";
+import { sleep, enrichDescriptions } from "./_types.js";
 
 // Atlassian left Lever. Using Playwright with API interception on their careers page.
 export const atlassianConfig: CompanyConfig = {
@@ -88,6 +88,18 @@ export const atlassianConfig: CompanyConfig = {
     }
 
     log(`Total: ${collected.length} jobs`);
+
+    // Atlassian's listing endpoint gives just title + link; bodies live on the
+    // detail page. They're using a custom careers stack — selectors are loose.
+    await enrichDescriptions({ page, log }, collected, () => {
+      const root =
+        document.querySelector("[data-testid*='job-description']") ??
+        document.querySelector("[class*='JobDescription']") ??
+        document.querySelector("article") ??
+        document.querySelector("main");
+      return Promise.resolve((root?.textContent ?? "").trim());
+    });
+
     return collected;
   },
 };

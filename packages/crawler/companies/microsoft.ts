@@ -1,6 +1,6 @@
 import type { CompanyConfig, CrawlContext } from "./_types.js";
 import type { RawJob } from "@prodmatch/shared";
-import { sleep } from "./_types.js";
+import { sleep, enrichDescriptions } from "./_types.js";
 
 // Confirmed API: apply.careers.microsoft.com/api/pcsx/search
 // 217 India jobs, 10 per page, paginate via `start`
@@ -47,7 +47,8 @@ async function fetchPage(start: number): Promise<MsApiResponse> {
 
 export const microsoftConfig: CompanyConfig = {
   slug: "microsoft",
-  async crawl({ log }: CrawlContext): Promise<RawJob[]> {
+  async crawl(ctx: CrawlContext): Promise<RawJob[]> {
+    const { log } = ctx;
     const jobs: RawJob[] = [];
     let start = 0;
     let total = Infinity;
@@ -81,6 +82,19 @@ export const microsoftConfig: CompanyConfig = {
     }
 
     log(`Total: ${jobs.length} India jobs`);
+
+    // The search API only returns title + department — visit each positionUrl
+    // to grab the full JD body. Microsoft's careers app server-renders the
+    // description into the main element.
+    await enrichDescriptions(ctx, jobs, () => {
+      const root =
+        document.querySelector("[class*='ms-DocumentCard']") ??
+        document.querySelector("[class*='job-detail']") ??
+        document.querySelector("main") ??
+        document.body;
+      return Promise.resolve((root?.textContent ?? "").trim());
+    });
+
     return jobs;
   },
 };

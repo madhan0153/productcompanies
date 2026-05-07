@@ -1,0 +1,61 @@
+name: Parse JDs (manual)
+
+# Standalone JD-parse backfill. Runs the same loop the daily crawl runs as
+# its post-step, but without re-crawling. Use this whenever:
+#   - You've just deployed schema changes and want to backfill existing rows
+#   - The daily crawl was paused for a few days and you want to catch up
+#   - You're debugging a single batch and want to re-trigger fast
+#
+# Required GitHub Actions secrets:
+#   - APP_URL          (e.g. https://prodmatchai.vercel.app)
+#   - CRON_SECRET      (same value as the Vercel env var)
+
+on:
+  workflow_dispatch:
+    inputs:
+      max_iterations:
+        description: "Max batches (each = 25 jobs). 40 = up to 1000 jobs."
+        required: false
+        default: "40"
+
+concurrency:
+  group: parse-jds
+  cancel-in-progress: false
+
+jobs:
+  parse:
+    name: "Parse JDs"
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - name: Loop /api/admin/parse-jds until remaining=0
+        env:
+          APP_URL: ${{ secrets.APP_URL }}
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+          MAX_ITER: ${{ github.event.inputs.max_iterations }}
+        run: |
+          if [ -z "$APP_URL" ] || [ -z "$CRON_SECRET" ]; then
+            echo "::error::APP_URL or CRON_SECRET secret missing"
+            exit 1
+          fi
+
+          iter=0
+          while [ $iter -lt $MAX_ITER ]; do
+            iter=$((iter + 1))
+            resp=$(curl -sS -X POST "${APP_URL}/api/admin/parse-jds" \
+              -H "Authorization: Bearer ${CRON_SECRET}" \
+              -H "Content-Type: application/json" \
+              --max-time 320)
+            echo "iter=$iter $resp"
+            remaining=$(echo "$resp" | python3 -c "import json,sys; d=json.load(sys.stdin); print(d.get('remaining', -1))" 2>/dev/null || echo "-1")
+            processed=$(echo "$resp" | python3 -c "import json,sys; d=json.load(sys.stdin); print(d.get('processed', 0))" 2>/dev/null || echo "0")
+            if [ "$remaining" = "0" ]; then
+              echo "All JDs parsed."
+              break
+            fi
+            if [ "$processed" = "0" ] && [ "$remaining" = "-1" ]; then
+              echo "::warning::No progress this iter — likely auth or endpoint issue"
+              exit 1
+            fi
+            sleep 2
+          done
