@@ -81,15 +81,28 @@ export const sapLabsConfig: CompanyConfig = {
 
     log(`Total: ${allJobs.length} India jobs`);
 
-    // SAP listing page has no description text; visit each /job/.../{id}/ detail
-    // page. The JD lives in #jobdescription on jobs.sap.com.
+    // SAP detail pages are heavily JS-rendered — initial HTML is only the
+    // bootstrap shell, the JD content lands via XHR after load. Use
+    // networkidle and a larger grace period.
     await enrichDescriptions(ctx, allJobs, () => {
-      const root =
-        document.querySelector("#jobdescription") ??
-        document.querySelector("[class*='job_description']") ??
-        document.querySelector("main");
-      return Promise.resolve((root?.textContent ?? "").trim());
-    });
+      const tryEls = [
+        "#jobdescription",
+        ".jobdescription",
+        "[data-bind*='description']",
+        "[data-automation-id*='description']",
+        "[id*='description'i]",
+        "[class*='description'i]",
+        "main",
+      ];
+      for (const sel of tryEls) {
+        const el = document.querySelector(sel);
+        const text = (el?.textContent ?? "").trim();
+        if (text.length >= 200) return Promise.resolve(text);
+      }
+      // Last resort: dump the whole body, strip nav/header chrome
+      const body = (document.body?.textContent ?? "").trim();
+      return Promise.resolve(body.length >= 200 ? body : "");
+    }, { waitUntil: "networkidle", extraWaitMs: 1500, timeoutMs: 35_000 });
 
     return allJobs;
   },

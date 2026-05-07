@@ -1,6 +1,6 @@
 import type { CompanyConfig, CrawlContext } from "./_types.js";
 import type { RawJob } from "@prodmatch/shared";
-import { sleep } from "./_types.js";
+import { sleep, enrichDescriptions } from "./_types.js";
 
 // Nvidia Workday — locationHierarchy1 facet ID confirmed from careers page URL
 const BASE = "https://nvidia.wd5.myworkdayjobs.com";
@@ -41,7 +41,8 @@ async function fetchPage(offset: number): Promise<WdResponse> {
 
 export const nvidiaConfig: CompanyConfig = {
   slug: "nvidia",
-  async crawl({ log }: CrawlContext): Promise<RawJob[]> {
+  async crawl(ctx: CrawlContext): Promise<RawJob[]> {
+    const { log } = ctx;
     const jobs: RawJob[] = [];
     let offset = 0;
     let total = Infinity;
@@ -72,6 +73,24 @@ export const nvidiaConfig: CompanyConfig = {
     }
 
     log(`Total: ${jobs.length} India jobs`);
+
+    // Workday listing API returns only bullet teasers. Enrich with full JD body.
+    await enrichDescriptions(ctx, jobs, () => {
+      const tryEls = [
+        "[data-automation-id='jobPostingDescription']",
+        "[data-automation-id*='description'i]",
+        "[class*='job-description'i]",
+        "main article",
+        "main",
+      ];
+      for (const sel of tryEls) {
+        const el = document.querySelector(sel);
+        const text = (el?.textContent ?? "").trim();
+        if (text.length >= 200) return Promise.resolve(text);
+      }
+      return Promise.resolve("");
+    }, { waitUntil: "networkidle", extraWaitMs: 1500, timeoutMs: 35_000 });
+
     return jobs;
   },
 };

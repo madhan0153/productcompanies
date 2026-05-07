@@ -1,6 +1,6 @@
 import type { CompanyConfig, CrawlContext } from "./_types.js";
 import type { RawJob } from "@prodmatch/shared";
-import { sleep } from "./_types.js";
+import { sleep, enrichDescriptions } from "./_types.js";
 
 // Confirmed: metacareers.com/jobsearch uses GraphQL (POST /graphql, text/html content-type)
 // Response: data.job_search_with_featured_jobs.all_jobs[]
@@ -80,6 +80,27 @@ export const metaConfig: CompanyConfig = {
     }
 
     log(`Total: ${collected.size} India jobs`);
-    return Array.from(collected.values());
+
+    const arr = Array.from(collected.values());
+
+    // Meta listing API only returns team names. Enrich each metacareers.com
+    // detail page for the full JD body. Heavy SPA — needs networkidle + grace.
+    await enrichDescriptions({ page, log }, arr, () => {
+      const tryEls = [
+        "[data-testid*='job-description'i]",
+        "[class*='JobDescription'i]",
+        "[class*='description-content'i]",
+        "main article",
+        "main",
+      ];
+      for (const sel of tryEls) {
+        const el = document.querySelector(sel);
+        const text = (el?.textContent ?? "").trim();
+        if (text.length >= 200) return Promise.resolve(text);
+      }
+      return Promise.resolve("");
+    }, { waitUntil: "networkidle", extraWaitMs: 1500, timeoutMs: 35_000 });
+
+    return arr;
   },
 };

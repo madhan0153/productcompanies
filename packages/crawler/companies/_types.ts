@@ -34,12 +34,14 @@ export interface EnrichOptions {
   concurrency?: number;
   /** Per-page navigation timeout. Default 25s. */
   timeoutMs?: number;
-  /** waitUntil for the page.goto. Default "domcontentloaded" — faster than networkidle. */
+  /** waitUntil for the page.goto. Default "load" — reliable on JS-rendered portals. */
   waitUntil?: "load" | "domcontentloaded" | "networkidle" | "commit";
   /** Total wall-clock budget. Default 6 minutes. */
   budgetMs?: number;
   /** Pause between batches to be nice. Default 200ms. */
   delayMs?: number;
+  /** Grace period after navigation for late-rendering JS content. Default 600ms. */
+  extraWaitMs?: number;
 }
 
 /**
@@ -64,11 +66,27 @@ export async function enrichDescriptions(
 
   const concurrency = opts.concurrency ?? 4;
   const timeoutMs   = opts.timeoutMs ?? 25_000;
-  const waitUntil   = opts.waitUntil ?? "domcontentloaded";
+  // 'load' waits for the document load event — slower than domcontentloaded
+  // but reliable on JS-rendered career portals (SAP, Apple, Atlassian) where
+  // the JD body is injected after initial parse.
+  const waitUntil   = opts.waitUntil ?? "load";
   const budgetMs    = opts.budgetMs ?? 360_000;
   const delayMs     = opts.delayMs ?? 200;
+  const extraWaitMs = opts.extraWaitMs ?? 600; // grace period for late-rendering content
 
-  const queue = jobs.filter((j) => (j.description ?? "").length < 60 && j.apply_url);
+  // Only consider jobs that need a body AND have a navigable URL. We've seen
+  // career APIs ship empty / relative / "n/a" values that crash page.goto with
+  // "Cannot navigate to invalid URL" 184 times in a row.
+  const isValidUrl = (u: string | null | undefined): boolean => {
+    if (!u || typeof u !== "string") return false;
+    if (!/^https?:\/\//i.test(u)) return false;
+    try { new URL(u); return true; } catch { return false; }
+  };
+  const queue = jobs.filter((j) => (j.description ?? "").length < 60 && isValidUrl(j.apply_url));
+  const skippedNoUrl = jobs.filter((j) => (j.description ?? "").length < 60 && !isValidUrl(j.apply_url)).length;
+  if (skippedNoUrl > 0) {
+    log(`enrich: skipping ${skippedNoUrl} jobs with invalid/missing apply_url`, "warn");
+  }
   if (queue.length === 0) return;
 
   const startedAt = Date.now();
@@ -82,7 +100,8 @@ export async function enrichDescriptions(
         const job = queue.shift();
         if (!job?.apply_url) continue;
         try {
-          await detailPage.goto(job.apply_url, { waitUntil, timeout: timeoutMs });
+          await detailPage.goto(job.apply_url!, { waitUntil, timeout: timeoutMs });
+          if (extraWaitMs > 0) await sleep(extraWaitMs);
           const text = await detailPage.evaluate(extractor) as unknown as string;
           if (typeof text === "string" && text.length >= 60) {
             job.description = text.slice(0, 12_000); // cap; some pages dump the entire careers page

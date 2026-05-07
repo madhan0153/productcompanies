@@ -65,12 +65,22 @@ export const microsoftConfig: CompanyConfig = {
 
       for (const p of batch) {
         const location = p.locations?.join("; ") ?? "";
+        // positionUrl from the API can be empty-string or relative; the `??`
+        // fallback only triggers on null/undefined and let those through.
+        // Build an absolute URL ourselves whenever positionUrl isn't a valid
+        // absolute http(s) URL.
+        const positionUrlIsAbs =
+          typeof p.positionUrl === "string" &&
+          /^https?:\/\//i.test(p.positionUrl);
+        const applyUrl = positionUrlIsAbs
+          ? p.positionUrl!
+          : `https://jobs.careers.microsoft.com/global/en/job/${p.displayJobId ?? p.id}`;
         jobs.push({
           external_id: String(p.id),
           title: p.name,
           location_raw: location,
           description: p.department ? `Department: ${p.department}` : "",
-          apply_url: p.positionUrl ?? `https://apply.careers.microsoft.com/careers/${p.displayJobId}`,
+          apply_url: applyUrl,
           posted_at: p.postedTs ? new Date(p.postedTs * 1000).toISOString() : undefined,
           raw: p as unknown as Record<string, unknown>,
         });
@@ -83,17 +93,25 @@ export const microsoftConfig: CompanyConfig = {
 
     log(`Total: ${jobs.length} India jobs`);
 
-    // The search API only returns title + department — visit each positionUrl
-    // to grab the full JD body. Microsoft's careers app server-renders the
-    // description into the main element.
+    // Microsoft's careers SPA loads the JD body asynchronously. networkidle
+    // + grace + broad selectors. URL was rebuilt above to use the canonical
+    // jobs.careers.microsoft.com host instead of relative positionUrl values.
     await enrichDescriptions(ctx, jobs, () => {
-      const root =
-        document.querySelector("[class*='ms-DocumentCard']") ??
-        document.querySelector("[class*='job-detail']") ??
-        document.querySelector("main") ??
-        document.body;
-      return Promise.resolve((root?.textContent ?? "").trim());
-    });
+      const tryEls = [
+        "[class*='description-content'i]",
+        "[data-test-id*='description'i]",
+        "[class*='job-description'i]",
+        "[class*='jobdetail'i]",
+        "[class*='ms-DocumentCard']",
+        "main",
+      ];
+      for (const sel of tryEls) {
+        const el = document.querySelector(sel);
+        const text = (el?.textContent ?? "").trim();
+        if (text.length >= 200) return Promise.resolve(text);
+      }
+      return Promise.resolve("");
+    }, { waitUntil: "networkidle", extraWaitMs: 1500, timeoutMs: 35_000 });
 
     return jobs;
   },

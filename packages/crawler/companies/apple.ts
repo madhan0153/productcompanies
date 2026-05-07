@@ -74,13 +74,24 @@ export const appleConfig: CompanyConfig = {
 
     log(`Total: ${allJobs.length} India jobs`);
 
-    // Enrich with full JD bodies — Apple's listing page has zero description text.
+    // Apple's listing page has zero description text; detail pages are
+    // React-rendered. networkidle + grace period to wait for JD body to mount.
     await enrichDescriptions({ page, log }, allJobs, () => {
-      const root = document.querySelector(
-        "main [class*='jobdetails'], main [class*='job-detail'], main [data-testid*='description'], main",
-      );
-      return Promise.resolve((root?.textContent ?? "").trim());
-    });
+      const tryEls = [
+        "[data-testid*='description'i]",
+        "[class*='jobdetails-description'i]",
+        "[class*='job-description'i]",
+        "[class*='jobdetails'i]",
+        "main article",
+        "main",
+      ];
+      for (const sel of tryEls) {
+        const el = document.querySelector(sel);
+        const text = (el?.textContent ?? "").trim();
+        if (text.length >= 200) return Promise.resolve(text);
+      }
+      return Promise.resolve("");
+    }, { waitUntil: "networkidle", extraWaitMs: 1500, timeoutMs: 35_000 });
 
     return allJobs;
   },
