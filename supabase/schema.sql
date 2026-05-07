@@ -258,6 +258,50 @@ create index if not exists idx_jobs_role_function     on public.jobs(role_functi
 create index if not exists idx_profiles_seniority     on public.profiles(seniority);
 
 
+-- ─────────────────────────────────────────────────────────────────────────────
+-- Phase G: Structured JD parse + Fit Card + Resume Score
+-- All idempotent. Run once per environment; re-running is a no-op.
+-- ─────────────────────────────────────────────────────────────────────────────
+
+-- jobs: structured JD facts written by the Gemini JD parser at ingest time.
+-- These are what scoring + Fit Card actually read. The bag-of-tech `tech_stack`
+-- column stays for backwards-compat / search but is no longer the source of truth.
+alter table public.jobs add column if not exists must_have_skills    text[] not null default '{}';
+alter table public.jobs add column if not exists nice_to_have_skills text[] not null default '{}';
+alter table public.jobs add column if not exists jd_min_years        numeric;
+alter table public.jobs add column if not exists jd_max_years        numeric;
+alter table public.jobs add column if not exists work_mode           text;          -- 'onsite' | 'hybrid' | 'remote' | null
+alter table public.jobs add column if not exists jd_seniority_signal seniority_level;
+alter table public.jobs add column if not exists jd_summary          text;          -- ≤ 280 chars, what this role actually is
+alter table public.jobs add column if not exists jd_parsed_at        timestamptz;
+
+-- Ghost-job detection: cheap heuristic + Gemini boilerplate hint.
+alter table public.jobs add column if not exists is_likely_ghost boolean not null default false;
+alter table public.jobs add column if not exists ghost_signals  jsonb   not null default '{}'::jsonb;
+
+create index if not exists idx_jobs_must_have    on public.jobs using gin(must_have_skills);
+create index if not exists idx_jobs_nice_to_have on public.jobs using gin(nice_to_have_skills);
+create index if not exists idx_jobs_unparsed     on public.jobs(jd_parsed_at) where jd_parsed_at is null;
+create index if not exists idx_jobs_ghost        on public.jobs(is_likely_ghost) where is_likely_ghost = true;
+
+-- matches: replace flat strengths/gaps/reasoning with the structured Fit Card.
+-- Old columns are kept (nullable) for backwards-compat during migration; the UI
+-- reads fit_card first and falls back. Stop writing to them after rollout.
+alter table public.matches add column if not exists verdict        text;            -- strong_fit | stretch | underqualified | mismatch | off_target
+alter table public.matches add column if not exists fit_card       jsonb;           -- the entire structured card; see lib/matching/fit-card.ts
+alter table public.matches add column if not exists fit_card_at    timestamptz;
+alter table public.matches add column if not exists hidden_reason  text;            -- when set: row is filtered out of default list ('mismatch' | 'ghost')
+
+create index if not exists idx_matches_user_verdict on public.matches(user_id, verdict);
+
+-- profiles: standalone resume strength score (Rezi-style 0-100 grounded in
+-- live demand from the 18 approved companies, not generic ATS rules).
+alter table public.profiles add column if not exists resume_score           integer;       -- 0–100
+alter table public.profiles add column if not exists resume_score_breakdown jsonb;         -- per-dimension {label, score, weight}
+alter table public.profiles add column if not exists resume_tips            jsonb;         -- ranked list of {tip, why}
+alter table public.profiles add column if not exists resume_score_at        timestamptz;
+
+
 -- CONSENTS (DPDP — granular, versioned, append-style with revoked_at)
 create table if not exists public.consents (
   user_id uuid not null references auth.users(id) on delete cascade,

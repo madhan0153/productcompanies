@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { ResumeUpload } from "./resume-upload";
 import { SaveProfileForm } from "./save-profile-form";
+import { ResumeScorePanel, type ResumeScorePanelData } from "./resume-score-panel";
 
 export const metadata: Metadata = { title: "My Profile" };
 export const maxDuration = 60; // resume parse server action (Gemini PDF) needs up to 60s
@@ -17,7 +18,7 @@ export default async function ProfilePage() {
   const { data: profile } = await supabase
     .from("profiles")
     .select(
-      "display_name, current_role, years_experience, current_lpa, target_lpa, tech_stack, preferred_hubs, seniority, resume_storage_path, product_dna_score, resume_parsed",
+      "display_name, current_role, years_experience, current_lpa, target_lpa, tech_stack, preferred_hubs, seniority, resume_storage_path, product_dna_score, resume_parsed, resume_score, resume_score_breakdown, resume_tips, resume_score_at",
     )
     .eq("id", user.id)
     .maybeSingle();
@@ -78,6 +79,16 @@ export default async function ProfilePage() {
           existingDnaScore={profile?.product_dna_score as number | null}
         />
       </section>
+
+      {/* Resume Score — Phase G */}
+      {hasResume && (
+        <ResumeScorePanel
+          score={(profile as { resume_score?: number | null } | null)?.resume_score ?? null}
+          breakdown={(profile as { resume_score_breakdown?: ResumeScorePanelData["breakdown"] } | null)?.resume_score_breakdown ?? null}
+          tips={(profile as { resume_tips?: ResumeScorePanelData["tips"] } | null)?.resume_tips ?? null}
+          scoredAt={(profile as { resume_score_at?: string | null } | null)?.resume_score_at ?? null}
+        />
+      )}
 
       {/* Profile fields */}
       <section className="rounded-2xl border border-border bg-card/40 p-6 space-y-4">

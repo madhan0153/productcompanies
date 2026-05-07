@@ -7,8 +7,70 @@ import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { parseResumePdf } from "@/lib/llm/prompts/resume-parse";
 import { LlmRunError } from "@/lib/llm/gemini";
 import { getUserConsents } from "@/lib/dpdp/consent";
+import { computeResumeScore } from "@/lib/matching/resume-score";
+import type { ParsedResume } from "@/lib/llm/prompts/resume-parse";
 import type { SeniorityLevel } from "@/lib/supabase/types";
 import type { Json } from "@/lib/supabase/types";
+
+// Compute the live top-30 most-demanded skills across active jobs. Same
+// algorithm as the Insights page; centralised here so resume-score reads from
+// authoritative market signal rather than guesses.
+async function fetchTop30Demand(admin: ReturnType<typeof createSupabaseAdminClient>): Promise<string[]> {
+  const { data: rows } = await admin
+    .from("jobs")
+    .select("must_have_skills, tech_stack")
+    .eq("is_active", true);
+  const demand = new Map<string, number>();
+  const norm = (s: string) =>
+    s.toLowerCase().replace(/\s+/g, "").replace(/[.\-_]/g, "").replace(/js$/, "");
+  for (const r of (rows as Array<{ must_have_skills: string[] | null; tech_stack: string[] | null }> | null) ?? []) {
+    const seen = new Set<string>();
+    // Prefer JD-parsed must-haves (high-quality signal); fall back to tech_stack
+    const skills = (r.must_have_skills?.length ? r.must_have_skills : r.tech_stack) ?? [];
+    for (const t of skills) {
+      const c = norm(t);
+      if (!c || seen.has(c)) continue;
+      seen.add(c);
+      demand.set(c, (demand.get(c) ?? 0) + 1);
+    }
+  }
+  return [...demand.entries()].sort((a, b) => b[1] - a[1]).slice(0, 30).map(([c]) => c);
+}
+
+export async function refreshResumeScore(): Promise<{ ok: true; score: number } | { ok: false; error: string }> {
+  const supabase = await createSupabaseServerClient();
+  const admin = createSupabaseAdminClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return { ok: false, error: "Not signed in" };
+
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("resume_parsed, target_role_functions")
+    .eq("id", user.id)
+    .maybeSingle();
+
+  const parsed = (profile as { resume_parsed?: ParsedResume | null } | null)?.resume_parsed;
+  if (!parsed) return { ok: false, error: "Upload a resume first." };
+
+  const top30 = await fetchTop30Demand(admin);
+  const result = computeResumeScore({
+    resume: parsed,
+    top30Demand: top30,
+    userTargets: ((profile as { target_role_functions?: string[] | null } | null)?.target_role_functions) ?? [],
+  });
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  await (admin.from("profiles") as any).update({
+    resume_score: result.score,
+    resume_score_breakdown: result.breakdown as unknown as Json,
+    resume_tips: result.tips as unknown as Json,
+    resume_score_at: new Date().toISOString(),
+  }).eq("id", user.id);
+
+  revalidatePath("/profile");
+  revalidatePath("/matches");
+  return { ok: true, score: result.score };
+}
 
 const INDIA_HUBS = ["Bengaluru", "Hyderabad", "Pune", "Gurugram", "Noida", "Delhi NCR", "Mumbai", "Chennai", "Remote-India"];
 
@@ -155,6 +217,26 @@ export async function uploadAndParseResume(formData: FormData): Promise<UploadRe
     preferred_hubs: (parsed.preferred_hubs ?? []).filter((h: string) => INDIA_HUBS.includes(h)),
     product_dna_score: parsed.product_dna_score,
   });
+
+  // Compute resume score immediately so the user sees the gauge on first save.
+  // Runs against current market signal — cheap, no LLM call.
+  try {
+    const top30 = await fetchTop30Demand(admin);
+    const score = computeResumeScore({
+      resume: parsed,
+      top30Demand: top30,
+      userTargets: parsed.target_role_functions ?? [],
+    });
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    await (admin.from("profiles") as any).update({
+      resume_score: score.score,
+      resume_score_breakdown: score.breakdown as unknown as Json,
+      resume_tips: score.tips as unknown as Json,
+      resume_score_at: new Date().toISOString(),
+    }).eq("id", user.id);
+  } catch (err) {
+    console.warn("[resume-score] post-upload compute failed", err);
+  }
 
   revalidatePath("/profile");
   revalidatePath("/dashboard");

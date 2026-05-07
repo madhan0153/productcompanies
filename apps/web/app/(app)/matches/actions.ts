@@ -7,7 +7,14 @@ import { computeMatchesForUser } from "@/lib/matching/engine";
 import { getUserConsents } from "@/lib/dpdp/consent";
 
 export type ComputeMatchesResult =
-  | { ok: true; total: number; skipped: number; withExplanations: number }
+  | {
+      ok: true;
+      total: number;
+      skipped: number;
+      ghost_filtered: number;
+      with_fit_card: number;
+      unparsed_jobs: number;
+    }
   | { ok: false; error: string };
 
 export async function computeMatches(): Promise<ComputeMatchesResult> {

@@ -4,8 +4,8 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { LayoutGroup, motion, useReducedMotion } from "framer-motion";
 import {
-  LayoutDashboard, Briefcase, BookOpen, GitCompare,
-  Bell, ShieldCheck, LogOut, Menu, X, User, Activity, Compass,
+  LayoutDashboard, Briefcase, ShieldCheck, LogOut, Menu, X, User,
+  BarChart3, Compass, ClipboardList,
 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { createSupabaseBrowserClient } from "@/lib/supabase/browser";
@@ -13,16 +13,17 @@ import { useFocusTrap } from "@/hooks/use-focus-trap";
 import { useEscapeKey } from "@/hooks/use-escape-key";
 import { cn } from "@/lib/utils";
 
+// Phase H — focused nav. Dropped Offer Compare, Alerts, Story Bank as
+// top-level pages. Renamed Insights → Market (it's the external view; Coach is
+// the advice view). Stories are now surfaced contextually inside the Fit Card.
+// Alerts are folded into Privacy/Settings.
 const NAV = [
-  { href: "/dashboard",     label: "Dashboard",     icon: LayoutDashboard },
+  { href: "/dashboard",     label: "Dashboard",      icon: LayoutDashboard },
   { href: "/profile",       label: "My Profile",     icon: User },
   { href: "/matches",       label: "Matches",        icon: Briefcase },
-  { href: "/insights",      label: "Insights",       icon: Activity },
   { href: "/coach",         label: "Coach",          icon: Compass },
-  { href: "/applications",  label: "Applications",   icon: BookOpen },
-  { href: "/stories",       label: "Story Bank",     icon: BookOpen },
-  { href: "/offers",        label: "Offer Compare",  icon: GitCompare },
-  { href: "/alerts",        label: "Alerts",         icon: Bell },
+  { href: "/insights",      label: "Market",         icon: BarChart3 },
+  { href: "/applications",  label: "Applications",   icon: ClipboardList },
 ];
 
 type Props = {

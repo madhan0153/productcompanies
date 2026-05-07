@@ -132,14 +132,16 @@ const TECH_DOMAINS: Record<string, string[]> = {
   observability:    ["datadog", "grafana", "prometheus", "newrelic", "splunk", "kibana", "sentry", "opentelemetry"],
 };
 
+function normSkill(s: string): string {
+  return s.toLowerCase().replace(/[^a-z0-9#+.]/g, "").trim();
+}
+
 function skillsToDomains(skills: string[]): Set<string> {
-  const norm = (s: string) =>
-    s.toLowerCase().replace(/[^a-z0-9#+.]/g, "").trim();
   const domains = new Set<string>();
   for (const skill of skills) {
-    const n = norm(skill);
+    const n = normSkill(skill);
     for (const [domain, keywords] of Object.entries(TECH_DOMAINS)) {
-      if (keywords.some((k) => n === norm(k) || n.includes(norm(k)))) {
+      if (keywords.some((k) => n === normSkill(k) || n.includes(normSkill(k)))) {
         domains.add(domain);
       }
     }
@@ -149,17 +151,54 @@ function skillsToDomains(skills: string[]): Set<string> {
   return domains;
 }
 
-/** Score 0–20 using domain-aware semantic Jaccard. */
-export function scoreTechDomain(
+/** Phase G: scoreTechV3 — must-haves are 3× nice-to-haves.
+ *  When JD-parsed must/nice arrays are missing (jobs not yet backfilled), it
+ *  falls back to the legacy bag-of-tech Jaccard against `jobTech`. */
+export function scoreTechV3(
   resumeTech: string[],
-  jobTech: string[],
+  jobMustHave: string[],
+  jobNiceToHave: string[],
+  fallbackJobTech: string[],
 ): number {
-  if (!resumeTech.length || !jobTech.length) return 8; // unknown → partial credit
-  const a = skillsToDomains(resumeTech);
-  const b = skillsToDomains(jobTech);
+  const resumeDomains = skillsToDomains(resumeTech);
+  const has = (skill: string): boolean => {
+    const dom = skillsToDomains([skill]);
+    for (const d of dom) if (resumeDomains.has(d)) return true;
+    return false;
+  };
+
+  // No structured signal AND no fallback — partial credit.
+  const haveStructured = jobMustHave.length > 0 || jobNiceToHave.length > 0;
+  if (!resumeTech.length) return 8;
+
+  if (haveStructured) {
+    const mustHits = jobMustHave.filter(has).length;
+    const niceHits = jobNiceToHave.filter(has).length;
+    const mustTotal = jobMustHave.length;
+    const niceTotal = jobNiceToHave.length;
+
+    // Weight schema:
+    //   - must-have coverage: 0..16 (80% of dimension)
+    //   - nice-to-have coverage: 0..4  (20% of dimension)
+    // Why: a JD with 5/5 must-haves missing should NOT be saved by 8/8 nice-to-have hits.
+    const mustScore = mustTotal === 0 ? 12 : Math.round((mustHits / mustTotal) * 16);
+    const niceScore = niceTotal === 0 ? 2  : Math.round((niceHits / niceTotal) * 4);
+
+    return Math.min(20, mustScore + niceScore);
+  }
+
+  // Fallback to legacy domain Jaccard against the bag-of-tech.
+  if (!fallbackJobTech.length) return 8;
+  const a = resumeDomains;
+  const b = skillsToDomains(fallbackJobTech);
   const inter = [...a].filter((d) => b.has(d)).length;
   const union = new Set([...a, ...b]).size;
   return Math.round((inter / union) * 20);
+}
+
+/** Backwards-compat wrapper for callers still on the old signature. */
+export function scoreTechDomain(resumeTech: string[], jobTech: string[]): number {
+  return scoreTechV3(resumeTech, [], [], jobTech);
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -255,18 +294,37 @@ export function computeRulesScore(
   },
   job: {
     role_function: string | null;
+    // Years requirement: prefer JD-parsed (structured) over crawler-extracted.
     min_experience_years: number | null;
     max_experience_years: number | null;
+    jd_min_years?: number | null;
+    jd_max_years?: number | null;
+    // Tech: prefer JD-parsed must/nice arrays; fall back to bag-of-tech.
     tech_stack: string[];
+    must_have_skills?: string[] | null;
+    nice_to_have_skills?: string[] | null;
     seniority: string | null;
+    jd_seniority_signal?: string | null;
     hubs: string[];
     comp_lpa_max: number | null;
   },
 ): RulesScore {
+  // Use JD-parsed years when available; otherwise fall back to crawler regex.
+  const yMin = job.jd_min_years ?? job.min_experience_years;
+  const yMax = job.jd_max_years ?? job.max_experience_years;
+
+  // Use JD-parsed seniority signal when available; otherwise the crawler tag.
+  const jdSeniority = job.jd_seniority_signal ?? job.seniority;
+
   const role       = scoreRoleFunction(profile.target_role_functions, job.role_function);
-  const experience = scoreExperienceV2(profile.years_experience, job.min_experience_years, job.max_experience_years);
-  const tech       = scoreTechDomain(profile.tech_stack, job.tech_stack);
-  const seniority  = scoreSeniority(profile.seniority, job.seniority);
+  const experience = scoreExperienceV2(profile.years_experience, yMin, yMax);
+  const tech       = scoreTechV3(
+    profile.tech_stack,
+    job.must_have_skills ?? [],
+    job.nice_to_have_skills ?? [],
+    job.tech_stack,
+  );
+  const seniority  = scoreSeniority(profile.seniority, jdSeniority);
   const hub        = scoreHubV2(profile.preferred_hubs, job.hubs);
   const lpa        = scoreLpaV2(profile.target_lpa, job.comp_lpa_max);
   const total      = role + experience + tech + seniority + hub + lpa;

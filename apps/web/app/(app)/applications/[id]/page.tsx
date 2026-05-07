@@ -222,25 +222,19 @@ export default async function ApplicationDetailPage({
       {/* Interview prep — STAR stories that may fit */}
       {ranked.length > 0 && (
         <section className="rounded-2xl border border-border bg-gradient-to-br from-primary/5 via-card/40 to-card/40 p-6">
-          <header className="mb-4 flex items-start justify-between gap-3">
-            <div className="flex items-start gap-2">
-              <Sparkles className="mt-0.5 h-4 w-4 text-primary" />
-              <div>
-                <h2 className="font-display text-sm font-semibold">Stories that may fit this role</h2>
-                <p className="mt-0.5 text-xs text-muted-foreground">
-                  Picked from your Story Bank based on the job&apos;s tech, title, and seniority.
-                </p>
-              </div>
+          <header className="mb-4 flex items-start gap-2">
+            <Sparkles className="mt-0.5 h-4 w-4 text-primary" />
+            <div>
+              <h2 className="font-display text-sm font-semibold">Stories that may fit this role</h2>
+              <p className="mt-0.5 text-xs text-muted-foreground">
+                Picked from your story library based on the job&apos;s tech, title, and seniority.
+              </p>
             </div>
-            <Link href="/stories" className="shrink-0 text-xs text-muted-foreground hover:text-foreground transition">
-              All stories →
-            </Link>
           </header>
           <ul className="space-y-2">
             {ranked.map(({ story, reasons }) => (
               <li key={story.id}>
-                <Link
-                  href={`/stories?highlight=${story.id}`}
+                <div
                   className="group flex items-start gap-3 rounded-xl border border-border bg-card/50 p-3 transition hover:border-primary/30 hover:bg-card/80"
                 >
                   <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
@@ -259,7 +253,7 @@ export default async function ApplicationDetailPage({
                       </p>
                     )}
                   </div>
-                </Link>
+                </div>
               </li>
             ))}
           </ul>

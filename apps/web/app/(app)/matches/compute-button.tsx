@@ -53,8 +53,9 @@ export function ComputeButton({ hasResume }: { hasResume: boolean }) {
       setResult(r);
       if (r.ok) {
         const filtered = r.skipped > 0 ? ` · ${r.skipped} irrelevant filtered` : "";
-        toast.success(`✅ ${r.total} matched roles`, {
-          description: `Top ${r.withExplanations} have AI explanations${filtered}.`,
+        const ghost = r.ghost_filtered > 0 ? ` · ${r.ghost_filtered} likely-ghost hidden` : "";
+        toast.success(`${r.total} roles ranked`, {
+          description: `Top ${r.with_fit_card} have a Fit Card${filtered}${ghost}.`,
         });
         router.refresh();
       } else {

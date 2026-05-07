@@ -3,7 +3,7 @@ import { notFound, redirect } from "next/navigation";
 import Link from "next/link";
 import {
   ArrowLeft, ExternalLink, MapPin, Briefcase, Calendar,
-  TrendingUp, AlertTriangle, Zap, Sparkles,
+  Sparkles,
 } from "lucide-react";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { CompanyLogo } from "@/components/company-logo";
@@ -13,6 +13,7 @@ import { JobActions } from "./job-actions";
 import { StickyApplyBar } from "./sticky-apply-bar";
 import { JobDescription } from "./job-description";
 import { PrepBrief } from "./prep-brief";
+import { FitCardPanel, type FitCardData } from "./fit-card";
 
 export const dynamic = "force-dynamic";
 
@@ -68,7 +69,7 @@ export default async function JobDetailPage({ params }: { params: Promise<{ id: 
       .eq("id", id)
       .maybeSingle(),
     supabase.from("matches")
-      .select("score, strengths, gaps, reasoning, computed_at")
+      .select("score, strengths, gaps, reasoning, computed_at, verdict, fit_card, fit_card_at")
       .eq("user_id", user.id)
       .eq("job_id", id)
       .maybeSingle(),
@@ -96,7 +97,16 @@ export default async function JobDetailPage({ params }: { params: Promise<{ id: 
     .slice(0, 4);
 
   const company = job.companies;
-  const match = matchRaw as { score: number; strengths: string[] | null; gaps: string[] | null; reasoning: string | null; computed_at: string } | null;
+  const match = matchRaw as {
+    score: number;
+    strengths: string[] | null;
+    gaps: string[] | null;
+    reasoning: string | null;
+    computed_at: string;
+    verdict?: string | null;
+    fit_card?: FitCardData | null;
+    fit_card_at?: string | null;
+  } | null;
   const application = appRaw as { id: string; status: string; applied_at: string | null; notes: string | null } | null;
   const compRange = formatComp(job.comp_lpa_min, job.comp_lpa_max);
   const expRange = formatExp(job.min_experience_years, job.max_experience_years);
@@ -168,48 +178,21 @@ export default async function JobDetailPage({ params }: { params: Promise<{ id: 
         </div>
       </div>
 
-      {/* Match explanation */}
-      {match && (match.strengths?.length || match.gaps?.length || match.reasoning) && (
+      {/* Fit Card — primary match analysis */}
+      {match && match.fit_card ? (
+        <FitCardPanel data={match.fit_card} score={match.score} />
+      ) : match && match.reasoning ? (
+        // Pre-Gemini baseline: show one-liner from rules engine until Fit Card lands
         <div className="rounded-2xl border border-border bg-card/50 p-6 elev-1 backdrop-blur">
-          <h2 className="mb-4 flex items-center gap-2 text-sm font-medium">
-            <Sparkles className="h-4 w-4 text-primary" /> Why we matched you
+          <h2 className="mb-2 flex items-center gap-2 text-sm font-medium">
+            <Sparkles className="h-4 w-4 text-primary" /> Match snapshot
           </h2>
-          <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
-            {match.strengths && match.strengths.length > 0 && (
-              <div>
-                <p className="flex items-center gap-1.5 text-xs font-medium text-emerald-400">
-                  <TrendingUp className="h-3.5 w-3.5" /> Your strengths
-                </p>
-                <ul className="mt-2 space-y-1.5">
-                  {match.strengths.map((s, i) => (
-                    <li key={i} className="text-sm text-muted-foreground">· {s}</li>
-                  ))}
-                </ul>
-              </div>
-            )}
-            {match.gaps && match.gaps.length > 0 && (
-              <div>
-                <p className="flex items-center gap-1.5 text-xs font-medium text-amber-400">
-                  <AlertTriangle className="h-3.5 w-3.5" /> Areas to address
-                </p>
-                <ul className="mt-2 space-y-1.5">
-                  {match.gaps.map((g, i) => (
-                    <li key={i} className="text-sm text-muted-foreground">· {g}</li>
-                  ))}
-                </ul>
-              </div>
-            )}
-            {match.reasoning && (
-              <div className="sm:col-span-2">
-                <p className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
-                  <Zap className="h-3.5 w-3.5 text-primary" /> AI reasoning
-                </p>
-                <p className="mt-2 text-sm text-muted-foreground">{match.reasoning}</p>
-              </div>
-            )}
-          </div>
+          <p className="text-sm text-muted-foreground">{match.reasoning}</p>
+          <p className="mt-3 text-xs text-muted-foreground">
+            Score {Math.round(match.score)}. The detailed Fit Card lands shortly after the next match compute.
+          </p>
         </div>
-      )}
+      ) : null}
 
       {/* Interview prep brief — pure heuristic, instantly available */}
       <PrepBrief

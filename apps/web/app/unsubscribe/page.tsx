@@ -33,8 +33,8 @@ export default async function UnsubscribePage({
         <p className="mt-2 text-sm text-muted-foreground">
           This unsubscribe link is invalid or has expired. Please manage your
           email preferences in your{" "}
-          <Link href="/alerts" className="text-primary underline-offset-2 hover:underline">
-            Alerts settings
+          <Link href="/settings/privacy" className="text-primary underline-offset-2 hover:underline">
+            Privacy settings
           </Link>
           .
         </p>
@@ -57,8 +57,8 @@ export default async function UnsubscribePage({
         <p className="mt-2 text-sm text-muted-foreground">
           We couldn&apos;t process your unsubscribe request. Please try again
           or manage preferences in your{" "}
-          <Link href="/alerts" className="text-primary underline-offset-2 hover:underline">
-            Alerts settings
+          <Link href="/settings/privacy" className="text-primary underline-offset-2 hover:underline">
+            Privacy settings
           </Link>
           .
         </p>
@@ -76,10 +76,10 @@ export default async function UnsubscribePage({
       </p>
       <p className="mt-4 text-sm text-muted-foreground">
         Changed your mind?{" "}
-        <Link href="/alerts" className="text-primary underline-offset-2 hover:underline">
+        <Link href="/settings/privacy" className="text-primary underline-offset-2 hover:underline">
           Re-enable digest
         </Link>{" "}
-        in your Alerts settings.
+        from privacy settings.
       </p>
     </UnsubscribeLayout>
   );

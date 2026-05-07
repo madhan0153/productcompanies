@@ -12,7 +12,9 @@ export type DpdpEventType =
   | "export_requested" | "export_delivered"
   | "erasure_requested" | "erasure_completed";
 export type CrawlStatus = "running" | "success" | "partial" | "failed";
-export type SeniorityLevel = "intern" | "junior" | "mid" | "senior" | "staff" | "principal" | "manager" | "director";
+export type SeniorityLevel = "intern" | "junior" | "mid" | "senior" | "staff" | "principal" | "lead" | "manager" | "director" | "vp";
+
+export type Verdict = "strong_fit" | "stretch" | "underqualified" | "mismatch" | "off_target";
 
 export interface Database {
   public: {
@@ -46,6 +48,12 @@ export interface Database {
           last_seen_at: string | null; is_active: boolean;
           applicants_count: number | null; freshness_score: number | null;
           apply_url: string | null; raw: Json | null;
+          role_function: string | null;
+          must_have_skills: string[] | null; nice_to_have_skills: string[] | null;
+          jd_min_years: number | null; jd_max_years: number | null;
+          work_mode: string | null; jd_seniority_signal: SeniorityLevel | null;
+          jd_summary: string | null; jd_parsed_at: string | null;
+          is_likely_ghost: boolean | null; ghost_signals: Json | null;
           created_at: string; updated_at: string;
         };
         Insert: {
@@ -58,6 +66,12 @@ export interface Database {
           last_seen_at?: string | null; is_active?: boolean;
           applicants_count?: number | null; freshness_score?: number | null;
           apply_url?: string | null; raw?: Json | null;
+          role_function?: string | null;
+          must_have_skills?: string[] | null; nice_to_have_skills?: string[] | null;
+          jd_min_years?: number | null; jd_max_years?: number | null;
+          work_mode?: string | null; jd_seniority_signal?: SeniorityLevel | null;
+          jd_summary?: string | null; jd_parsed_at?: string | null;
+          is_likely_ghost?: boolean | null; ghost_signals?: Json | null;
           created_at?: string; updated_at?: string;
         };
         Update: {
@@ -69,7 +83,14 @@ export interface Database {
           seniority?: SeniorityLevel | null; posted_at?: string | null;
           last_seen_at?: string | null; is_active?: boolean;
           applicants_count?: number | null; freshness_score?: number | null;
-          apply_url?: string | null; raw?: Json | null; updated_at?: string;
+          apply_url?: string | null; raw?: Json | null;
+          role_function?: string | null;
+          must_have_skills?: string[] | null; nice_to_have_skills?: string[] | null;
+          jd_min_years?: number | null; jd_max_years?: number | null;
+          work_mode?: string | null; jd_seniority_signal?: SeniorityLevel | null;
+          jd_summary?: string | null; jd_parsed_at?: string | null;
+          is_likely_ghost?: boolean | null; ghost_signals?: Json | null;
+          updated_at?: string;
         };
         Relationships: [];
       };
@@ -82,6 +103,9 @@ export interface Database {
           resume_storage_path: string | null; resume_parsed: Json | null;
           product_dna_score: number | null;
           coach_plan: Json | null; coach_plan_at: string | null;
+          role_function: string | null; target_role_functions: string[] | null;
+          resume_score: number | null; resume_score_breakdown: Json | null;
+          resume_tips: Json | null; resume_score_at: string | null;
           created_at: string; updated_at: string;
         };
         Insert: {
@@ -92,6 +116,9 @@ export interface Database {
           resume_storage_path?: string | null; resume_parsed?: Json | null;
           product_dna_score?: number | null;
           coach_plan?: Json | null; coach_plan_at?: string | null;
+          role_function?: string | null; target_role_functions?: string[] | null;
+          resume_score?: number | null; resume_score_breakdown?: Json | null;
+          resume_tips?: Json | null; resume_score_at?: string | null;
           created_at?: string; updated_at?: string;
         };
         Update: {
@@ -102,6 +129,9 @@ export interface Database {
           resume_storage_path?: string | null; resume_parsed?: Json | null;
           product_dna_score?: number | null;
           coach_plan?: Json | null; coach_plan_at?: string | null;
+          role_function?: string | null; target_role_functions?: string[] | null;
+          resume_score?: number | null; resume_score_breakdown?: Json | null;
+          resume_tips?: Json | null; resume_score_at?: string | null;
           updated_at?: string;
         };
         Relationships: [];
@@ -128,18 +158,25 @@ export interface Database {
           id: string; user_id: string; job_id: string; score: number;
           strengths: string[] | null; gaps: string[] | null;
           reasoning: string | null; computed_at: string;
+          verdict: Verdict | null; fit_card: Json | null;
+          fit_card_at: string | null; hidden_reason: string | null;
           created_at: string; updated_at: string;
         };
         Insert: {
           id?: string; user_id: string; job_id: string; score: number;
           strengths?: string[] | null; gaps?: string[] | null;
           reasoning?: string | null; computed_at?: string;
+          verdict?: Verdict | null; fit_card?: Json | null;
+          fit_card_at?: string | null; hidden_reason?: string | null;
           created_at?: string; updated_at?: string;
         };
         Update: {
           id?: string; user_id?: string; job_id?: string; score?: number;
           strengths?: string[] | null; gaps?: string[] | null;
-          reasoning?: string | null; computed_at?: string; updated_at?: string;
+          reasoning?: string | null; computed_at?: string;
+          verdict?: Verdict | null; fit_card?: Json | null;
+          fit_card_at?: string | null; hidden_reason?: string | null;
+          updated_at?: string;
         };
         Relationships: [];
       };
