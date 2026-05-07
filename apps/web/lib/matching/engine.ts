@@ -18,7 +18,14 @@ import type { Json } from "@/lib/supabase/types";
 
 // Top-K of valid matches that get the (Gemini) Fit Card. Below this rank,
 // rows are saved with score + a deterministic verdict only.
-const FIT_CARD_TOP_K = 25;
+const FIT_CARD_TOP_K = 20;
+
+// Concurrency + wall-clock budget for the Fit Card phase. Vercel functions
+// die at ~300s; we want to return long before that with whatever's done so
+// the user sees a populated list. Remaining Fit Cards land on the next
+// compute (the deterministic verdict is already saved for every match).
+const FIT_CARD_CONCURRENCY = 4;
+const FIT_CARD_BUDGET_MS = 45_000;
 
 interface JobRow {
   id: string;
@@ -242,74 +249,94 @@ export async function computeMatchesForUser(userId: string): Promise<ComputeResu
 
   await batchUpsert(admin, baseline);
 
-  // 7. Gemini Fit Card for top-K (skip ghost-flagged jobs even if they rank high)
+  // 7. Gemini Fit Card for top-K, parallelised under a wall-clock budget.
+  //    Skip ghost-flagged jobs and jobs without a parsed JD (no signal to feed
+  //    the prompt). Save rows incrementally so a timeout still ships partial
+  //    progress.
   const parsedResume = profile.resume_parsed;
   let withFitCard = 0;
 
   if (parsedResume) {
     const candidates = validMatches
       .filter((s) => !s.job.is_likely_ghost)
-      .filter((s) => s.job.jd_parsed_at !== null) // only call Gemini on JDs we've parsed
+      .filter((s) => s.job.jd_parsed_at !== null)
       .slice(0, FIT_CARD_TOP_K);
 
-    const fitCardRows: MatchUpsertRow[] = [];
+    if (candidates.length > 0) {
+      const startedAt = Date.now();
+      const queue = [...candidates];
+      const fitCardRows: MatchUpsertRow[] = [];
 
-    for (const { job, rules } of candidates) {
-      const jd: ParsedJD = {
-        must_have_skills:    job.must_have_skills,
-        nice_to_have_skills: job.nice_to_have_skills,
-        jd_min_years:        job.jd_min_years,
-        jd_max_years:        job.jd_max_years,
-        work_mode:           null,
-        jd_seniority_signal: (job.jd_seniority_signal as ParsedJD["jd_seniority_signal"]) ?? null,
-        jd_summary:          job.jd_summary ?? "",
-        is_boilerplate:      false,
-        ghost_reasons:       [],
+      // Worker — pulls jobs off the shared queue, stops when budget is spent.
+      const worker = async () => {
+        while (queue.length > 0) {
+          if (Date.now() - startedAt > FIT_CARD_BUDGET_MS) return;
+          const next = queue.shift();
+          if (!next) return;
+          const { job, rules } = next;
+
+          const jd: ParsedJD = {
+            must_have_skills:    job.must_have_skills,
+            nice_to_have_skills: job.nice_to_have_skills,
+            jd_min_years:        job.jd_min_years,
+            jd_max_years:        job.jd_max_years,
+            work_mode:           null,
+            jd_seniority_signal: (job.jd_seniority_signal as ParsedJD["jd_seniority_signal"]) ?? null,
+            jd_summary:          job.jd_summary ?? "",
+            is_boilerplate:      false,
+            ghost_reasons:       [],
+          };
+
+          try {
+            const card = await generateFitCard({
+              resume: parsedResume,
+              jd,
+              job: {
+                title:         job.title,
+                company:       job.company_name,
+                seniority:     job.seniority,
+                comp_lpa_min:  job.comp_lpa_min,
+                comp_lpa_max:  job.comp_lpa_max,
+                role_function: job.role_function,
+                location:      job.location,
+              },
+              candidate: {
+                target_lpa:            profile.target_lpa,
+                current_lpa:           profile.current_lpa,
+                seniority:             profile.seniority,
+                target_role_functions: profile.target_role_functions,
+                years:                 profile.years_experience,
+              },
+            });
+
+            fitCardRows.push({
+              user_id:       userId,
+              job_id:        job.id,
+              score:         rules.total,
+              verdict:       card.verdict,
+              fit_card:      card as unknown as Json,
+              fit_card_at:   new Date().toISOString(),
+              hidden_reason: card.verdict === "mismatch" ? "mismatch" : null,
+              strengths:     [],
+              gaps:          [],
+              reasoning:     card.one_liner,
+              computed_at:   now,
+            });
+            withFitCard++;
+          } catch {
+            // Keep the deterministic baseline; remaining work continues.
+          }
+        }
       };
 
-      try {
-        const card = await generateFitCard({
-          resume: parsedResume,
-          jd,
-          job: {
-            title:         job.title,
-            company:       job.company_name,
-            seniority:     job.seniority,
-            comp_lpa_min:  job.comp_lpa_min,
-            comp_lpa_max:  job.comp_lpa_max,
-            role_function: job.role_function,
-            location:      job.location,
-          },
-          candidate: {
-            target_lpa:            profile.target_lpa,
-            current_lpa:           profile.current_lpa,
-            seniority:             profile.seniority,
-            target_role_functions: profile.target_role_functions,
-            years:                 profile.years_experience,
-          },
-        });
+      // Run N workers in parallel. Promise.allSettled so a single rejection
+      // can't take the whole batch down (worker has its own try/catch anyway).
+      const workerCount = Math.min(FIT_CARD_CONCURRENCY, candidates.length);
+      await Promise.allSettled(Array.from({ length: workerCount }, worker));
 
-        fitCardRows.push({
-          user_id:       userId,
-          job_id:        job.id,
-          score:         rules.total,
-          verdict:       card.verdict,
-          fit_card:      card as unknown as Json,
-          fit_card_at:   new Date().toISOString(),
-          hidden_reason: card.verdict === "mismatch" ? "mismatch" : null,
-          strengths:     [],
-          gaps:          [],
-          reasoning:     card.one_liner,
-          computed_at:   now,
-        });
-        withFitCard++;
-      } catch {
-        // Keep the deterministic baseline row.
+      if (fitCardRows.length > 0) {
+        await batchUpsert(admin, fitCardRows);
       }
-    }
-
-    if (fitCardRows.length > 0) {
-      await batchUpsert(admin, fitCardRows);
     }
   }
 

@@ -14,7 +14,10 @@ import { ComputeButton } from "./compute-button";
 import { MatchFilters } from "./filters";
 
 export const metadata: Metadata = { title: "Matches" };
-export const maxDuration = 60;
+// Compute action runs on this route. Bumped to Vercel Pro max so a slow
+// Gemini hour can't 504 the page render. The engine itself wall-clock-budgets
+// at 45s, so this is just safety margin.
+export const maxDuration = 300;
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Verdict design system — single source of truth for colour/label/order.
