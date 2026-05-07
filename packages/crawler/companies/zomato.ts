@@ -1,92 +1,137 @@
+import { chromium } from "playwright";
 import type { CompanyConfig, CrawlContext } from "./_types.js";
 import type { RawJob } from "@prodmatch/shared";
-import { sleep } from "./_types.js";
+import { sleep, enrichDescriptions } from "./_types.js";
 
-// Zomato uses a custom careers page (JS-rendered)
+// Zomato (now part of "Eternal") publishes openings via Zoho Recruit:
+//   https://eternal.zohorecruit.in/jobs/Careers
+// Their own marketing pages (zomato.com/careers, eternal.com/careers/openings)
+// are SPA shells with no actual listings. www.zomato.com itself sits behind
+// Akamai which rejects Playwright's HTTP/2 fingerprint with
+// ERR_HTTP2_PROTOCOL_ERROR — but the Zoho subdomain isn't behind that
+// defence, so a normal Playwright session works there. We still launch a
+// dedicated Chromium with --disable-http2 in case Zoho fronts their CDN
+// the same way later.
+//
+// DOM (confirmed via smoke test):
+//   .cw-filter-joblist          — one element per job
+//   .cw-3-title                 — anchor with title text + href to /jobs/Careers/{id}/{slug}
+//   .cw-filter-joblist-right    — type + posted date
+
+const PORTAL_URL = "https://eternal.zohorecruit.in/jobs/Careers";
+
 export const zomatoConfig: CompanyConfig = {
   slug: "zomato",
-  async crawl({ page, log }: CrawlContext): Promise<RawJob[]> {
-    const jobs: RawJob[] = [];
-    const collected: RawJob[] = [];
+  async crawl(_ctx: CrawlContext): Promise<RawJob[]> {
+    const log = _ctx.log;
 
-    // Intercept their internal jobs API
-    page.on("response", async (resp) => {
-      if (resp.url().includes("zomato.com") && /jobs|careers|openings/i.test(resp.url())) {
-        try {
-          const body = (await resp.json()) as Record<string, unknown>;
-          const items = (body.jobs ?? body.openings ?? body.data ?? []) as Array<Record<string, unknown>>;
-          for (const j of items) {
-            collected.push({
-              external_id: String(j.id ?? j.jobId ?? ""),
-              title: String(j.title ?? j.jobTitle ?? ""),
-              location_raw: String(j.location ?? j.city ?? "Gurugram"),
-              description: String(j.description ?? j.jd ?? ""),
-              apply_url: String(j.applyUrl ?? j.url ?? ""),
-              posted_at: j.postedAt ? String(j.postedAt) : undefined,
-              raw: j,
-            });
-          }
-        } catch { /* ignore */ }
-      }
-    });
-
-    // Zomato's edge has been rejecting HTTP/2 on `networkidle` waits with
-    // `ERR_HTTP2_PROTOCOL_ERROR`. `domcontentloaded` returns as soon as the
-    // initial HTML parses, which is enough for the response interceptor above
-    // to capture the JSON payloads. We then sit and let XHR settle.
+    let browser;
     try {
-      await page.goto("https://www.zomato.com/careers", {
-        waitUntil: "domcontentloaded",
-        timeout: 45_000,
+      browser = await chromium.launch({
+        headless: true,
+        args: [
+          "--no-sandbox",
+          "--disable-setuid-sandbox",
+          "--disable-http2",
+          "--disable-blink-features=AutomationControlled",
+        ],
       });
     } catch (err) {
-      const msg = err instanceof Error ? err.message : String(err);
-      log(`Initial nav failed (${msg.split("\n")[0]}); retrying with no waitUntil`, "warn");
-      await page.goto("https://www.zomato.com/careers", {
-        waitUntil: "commit",
-        timeout: 30_000,
+      log(`failed to launch dedicated browser: ${(err as Error).message}`, "error");
+      return [];
+    }
+
+    try {
+      const browserCtx = await browser.newContext({
+        userAgent:
+          "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36",
+        extraHTTPHeaders: {
+          "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9",
+          "Accept-Language": "en-US,en;q=0.9",
+        },
+        viewport: { width: 1366, height: 900 },
       });
-    }
-    await sleep(4000);
+      const page = await browserCtx.newPage();
 
-    // Try scrolling to load more
-    await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
-    await sleep(1500);
+      try {
+        await page.goto(PORTAL_URL, { waitUntil: "domcontentloaded", timeout: 60_000 });
+      } catch (err) {
+        log(`nav failed: ${(err as Error).message.split("\n")[0]}`, "error");
+        return [];
+      }
 
-    if (collected.length > 0) {
-      log(`Total: ${collected.length} jobs (API intercepted)`);
-      return collected;
-    }
+      // Zoho Recruit fetches the job list via XHR after page load. Wait for
+      // either a result row to appear or a "no openings" indicator.
+      try {
+        await page.waitForSelector(".cw-filter-joblist, .careers-nojob-text", {
+          timeout: 20_000,
+        });
+      } catch { /* fall through — selectors may not have fired */ }
+      await sleep(2000);
 
-    // HTML fallback
-    const links = await page.$$eval(
-      'a[href*="job"], a[href*="career"], [class*="Job"] a, [class*="Opening"] a',
-      (els) =>
-        els
-          .map((el) => ({
-            href: (el as HTMLAnchorElement).href,
-            title:
-              el.closest?.("[class*='Job'], [class*='Opening']")?.querySelector?.("h2, h3, [class*='title']")?.textContent?.trim()
-              ?? el.textContent?.trim() ?? "",
-          }))
-          .filter((l) => l.title.length > 3 && l.href.includes("zomato.com")),
-    );
+      // Try to expand pagination if present (Zoho's "Load more" pattern)
+      for (let i = 0; i < 5; i++) {
+        const more = await page.$(".cw-loadmore-btn, [class*='loadmore']");
+        if (!more) break;
+        try {
+          await more.click({ timeout: 2000 });
+          await sleep(1500);
+        } catch { break; }
+      }
 
-    log(`Found ${links.length} job links (HTML fallback)`);
+      const rawJobs = await page.$$eval(".cw-filter-joblist", (rows) =>
+        rows.map((row) => {
+          const link = row.querySelector(".cw-3-title") as HTMLAnchorElement | null;
+          const title = (link?.textContent ?? "").trim();
+          const href = link?.href ?? "";
+          const right = (row.querySelector(".cw-filter-joblist-right")?.textContent ?? "").trim();
+          // The title sometimes embeds the location: "Senior PM, Bangalore, ZR_1_JOB"
+          const parts = title.split(",").map((s) => s.trim());
+          const cleanTitle = parts[0] ?? title;
+          const location = parts.length > 1 ? parts[1] : "Gurugram";
+          return { title: cleanTitle, href, right, fullTitle: title, location };
+        }).filter((r) => r.title.length > 3 && r.href.length > 10),
+      );
 
-    for (const l of links.slice(0, 200)) {
-      const id = l.href.split("/").at(-1) ?? l.href;
-      jobs.push({
-        external_id: id,
-        title: l.title,
-        location_raw: "Gurugram",
-        description: "",
-        apply_url: l.href,
-        raw: { href: l.href },
+      log(`Found ${rawJobs.length} listings on Zoho Recruit`);
+
+      const jobs: RawJob[] = rawJobs.map((r) => {
+        // Job ID is in the URL path: /jobs/Careers/{numeric-id}/{slug}
+        const m = r.href.match(/\/Careers\/(\d+)/);
+        const id = m?.[1] ?? r.href;
+        return {
+          external_id: id,
+          title: r.title,
+          location_raw: r.location,
+          description: "",
+          apply_url: r.href,
+          raw: { fullTitle: r.fullTitle, right: r.right, href: r.href },
+        };
       });
-    }
 
-    log(`Total: ${jobs.length} jobs`);
-    return jobs;
+      // Visit each detail page for the full JD body. Zoho Recruit's detail
+      // pages mount the description into #cw-rich-description (the rich-text
+      // body) inside the .cw-jobdescription wrapper. Confirmed via DOM probe.
+      await enrichDescriptions({ page, log }, jobs, () => {
+        const tryEls = [
+          "#cw-rich-description",
+          ".cw-jobdescription",
+          ".cw-jobdetails-container",
+          "[class*='jobdescription'i]",
+          "main",
+        ];
+        for (const sel of tryEls) {
+          const el = document.querySelector(sel);
+          const text = (el?.textContent ?? "").trim();
+          if (text.length >= 100) return Promise.resolve(text);
+        }
+        return Promise.resolve("");
+      }, { waitUntil: "networkidle", extraWaitMs: 1500, timeoutMs: 35_000 });
+
+      log(`Total: ${jobs.length} jobs`);
+      return jobs;
+    } finally {
+      try { await browser.close(); } catch { /* ignore */ }
+    }
   },
 };
