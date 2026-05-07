@@ -22,6 +22,7 @@ import { serverEnv } from "@/lib/env";
 import { parseJobDescription } from "@/lib/llm/prompts/jd-parse";
 import { detectGhost } from "@/lib/matching/ghost";
 import { LlmRunError } from "@/lib/llm/gemini";
+import { embed, buildJobEmbedText } from "@/lib/llm/embed";
 import type { Json, SeniorityLevel } from "@/lib/supabase/types";
 
 export const runtime = "nodejs";
@@ -103,6 +104,29 @@ export async function POST(req: NextRequest) {
 
       if (ghost.is_likely_ghost) ghostCount++;
 
+      // Phase I — embed the (now-structured) JD for semantic match later.
+      // If embedding fails (e.g. quota), we still persist the parse and let
+      // a later backfill catch the embedding. matching falls back to a 12-pt
+      // partial-credit score so unembedded jobs don't get instantly buried.
+      let embedding: number[] | null = null;
+      try {
+        embedding = await embed(buildJobEmbedText({
+          title: job.title,
+          jd_summary: parsed.jd_summary,
+          must_have_skills: parsed.must_have_skills,
+          nice_to_have_skills: parsed.nice_to_have_skills,
+          description: job.description ?? undefined,
+          jd_seniority_signal: parsed.jd_seniority_signal,
+        }));
+      } catch (embedErr) {
+        // Soft-fail; parse stamp still lands so we don't re-call Gemini's
+        // structured-JSON endpoint next run.
+        if (errors.length < 5) {
+          const m = embedErr instanceof Error ? embedErr.message.split("\n")[0] : String(embedErr);
+          console.warn(`[parse-jds] embed failed for ${job.id}: ${m}`);
+        }
+      }
+
       const { error: upErr } = await admin
         .from("jobs")
         .update({
@@ -116,6 +140,9 @@ export async function POST(req: NextRequest) {
           is_likely_ghost:     ghost.is_likely_ghost,
           ghost_signals:       ghost.signals as unknown as Json,
           jd_parsed_at:        new Date().toISOString(),
+          ...(embedding && embedding.length > 0
+            ? { embedding, embedding_at: new Date().toISOString() }
+            : {}),
         })
         .eq("id", job.id);
 

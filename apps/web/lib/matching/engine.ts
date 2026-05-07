@@ -12,6 +12,7 @@
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { computeRulesScore } from "./score";
 import { generateFitCard, type FitCard, type Verdict } from "@/lib/llm/prompts/fit-card";
+import { cosineSimilarity } from "@/lib/llm/embed";
 import type { ParsedResume } from "@/lib/llm/prompts/resume-parse";
 import type { ParsedJD } from "@/lib/llm/prompts/jd-parse";
 import type { Json } from "@/lib/supabase/types";
@@ -50,6 +51,8 @@ interface JobRow {
   jd_summary: string | null;
   is_likely_ghost: boolean;
   jd_parsed_at: string | null;
+  // Phase I — semantic
+  embedding: number[] | null;
 }
 
 interface ProfileRow {
@@ -61,6 +64,7 @@ interface ProfileRow {
   seniority: string | null;
   target_role_functions: string[];
   resume_parsed: ParsedResume | null;
+  resume_embedding: number[] | null;
 }
 
 export interface ComputeResult {
@@ -84,8 +88,10 @@ function deterministicVerdict(
   experienceScore: number,
 ): Verdict {
   if (hardMismatch) return "mismatch";
-  if (roleScore === 22 && score >= 60) return "off_target"; // adjacent role, decent fit
-  if (experienceScore <= 3) return "underqualified";
+  // role==10 means adjacent (was 22 in pre-Phase-I weights). experience<=2
+  // means under-qualified by ≥3 yrs (was <=3 with the old 0–20 scale).
+  if (roleScore === 10 && score >= 55) return "off_target";
+  if (experienceScore <= 2) return "underqualified";
   if (score >= 75) return "strong_fit";
   if (score >= 55) return "stretch";
   return "underqualified";
@@ -103,7 +109,7 @@ export async function computeMatchesForUser(userId: string): Promise<ComputeResu
   const { data: profileRow } = await (admin
     .from("profiles")
     .select(
-      "years_experience, preferred_hubs, target_lpa, current_lpa, tech_stack, seniority, target_role_functions, resume_parsed",
+      "years_experience, preferred_hubs, target_lpa, current_lpa, tech_stack, seniority, target_role_functions, resume_parsed, resume_embedding",
     )
     .eq("id", userId)
     .maybeSingle() as any) as { data: Record<string, unknown> | null };
@@ -119,6 +125,7 @@ export async function computeMatchesForUser(userId: string): Promise<ComputeResu
     seniority:             (profileRow.seniority as string | null) ?? null,
     target_role_functions: (profileRow.target_role_functions as string[] | null) ?? [],
     resume_parsed:         profileRow.resume_parsed as ParsedResume | null,
+    resume_embedding:      (profileRow.resume_embedding as number[] | null) ?? null,
   };
 
   if (profile.target_role_functions.length === 0 && profile.resume_parsed?.target_role_functions?.length) {
@@ -130,7 +137,7 @@ export async function computeMatchesForUser(userId: string): Promise<ComputeResu
   const { data: jobRows } = await (admin
     .from("jobs")
     .select(
-      "id, title, description, hubs, min_experience_years, max_experience_years, comp_lpa_min, comp_lpa_max, tech_stack, seniority, location, role_function, must_have_skills, nice_to_have_skills, jd_min_years, jd_max_years, jd_seniority_signal, jd_summary, is_likely_ghost, jd_parsed_at, companies(name)",
+      "id, title, description, hubs, min_experience_years, max_experience_years, comp_lpa_min, comp_lpa_max, tech_stack, seniority, location, role_function, must_have_skills, nice_to_have_skills, jd_min_years, jd_max_years, jd_seniority_signal, jd_summary, is_likely_ghost, jd_parsed_at, embedding, companies(name)",
     )
     .eq("is_active", true)
     .limit(600) as any) as { data: Array<Record<string, unknown>> | null };
@@ -161,13 +168,19 @@ export async function computeMatchesForUser(userId: string): Promise<ComputeResu
     jd_summary:           r.jd_summary as string | null,
     is_likely_ghost:      Boolean(r.is_likely_ghost),
     jd_parsed_at:         r.jd_parsed_at as string | null,
+    embedding:            (r.embedding as number[] | null) ?? null,
   }));
 
   const unparsed = jobs.filter((j) => j.jd_parsed_at === null).length;
 
-  // 3. Rules score every job
+  // 3. Rules score every job (now includes Phase I semantic cosine)
+  const resumeEmbedding = profile.resume_embedding;
   const scored = jobs
     .map((job) => {
+      const cosine =
+        resumeEmbedding && job.embedding
+          ? cosineSimilarity(resumeEmbedding, job.embedding)
+          : null;
       const rules = computeRulesScore(
         {
           target_role_functions: profile.target_role_functions,
@@ -181,6 +194,7 @@ export async function computeMatchesForUser(userId: string): Promise<ComputeResu
           title:                 job.title,
           description:           job.description,
           role_function:         job.role_function,
+          semantic_cosine:       cosine,
           min_experience_years:  job.min_experience_years,
           max_experience_years:  job.max_experience_years,
           jd_min_years:          job.jd_min_years,

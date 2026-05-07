@@ -1,14 +1,20 @@
-// Rules-based scoring layer — redesigned v2.
-// New score composition: 0–100 total (no Gemini score contribution).
-// Gemini is used only for explanations (strengths/gaps/reasoning), not ranking.
+// Rules-based scoring layer — Phase I rebalance (semantic-led).
+//
+// Score composition: 0–100 total. The semantic alignment dimension (cosine
+// similarity between resume embedding and JD embedding) is the biggest weight
+// because a "Senior Data Engineer" title means nothing if the JD is actually
+// about marketing analytics. Title and role_function are still scored, but
+// content compatibility wins ties between similar-titled roles.
 //
 // Dimensions:
-//   Role Function Match  0–40  (most important — eliminates type mismatches)
-//   Experience           0–20  (asymmetric — overqualified OK, underqualified penalised)
-//   Tech Domain          0–20  (semantic grouping, not raw Jaccard)
-//   Seniority Alignment  0–10
-//   Location             0–6
-//   Compensation         0–4   (soft filter only)
+//   Semantic JD↔Resume   0–35  (cosine on Gemini text-embedding-004)
+//   Tech (must/nice)     0–22  (must-have hits weighted 4× nice-to-have)
+//   Role Function        0–18  (still important, no longer dominant)
+//   Experience           0–12  (asymmetric: overqualified OK, under-qualified penalised)
+//   Seniority Alignment  0–7
+//   Location             0–4
+//   Compensation         0–2
+// Total                  0–100
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Role function taxonomy
@@ -50,22 +56,18 @@ const ROLE_ADJACENCY: Record<string, string[]> = {
   other:                  ["other"],
 };
 
-/** Score 0–40 based on whether the job's function matches candidate's target functions. */
+/** Score 0–18 based on whether the job's function matches candidate's targets.
+ *  Phase I: weight reduced from 40 → 18 so semantic alignment can dominate
+ *  ranking among similar-titled roles. Hard-mismatch logic still uses the
+ *  same role_function check, so filtering quality is unaffected. */
 export function scoreRoleFunction(
   candidateFunctions: string[], // target_role_functions from profile
   jobFunction: string | null,
 ): number {
-  // Either side unknown → neutral partial credit (no hard mismatch possible)
-  if (!jobFunction || !candidateFunctions.length) return 15;
-
-  // Exact match
-  if (candidateFunctions.includes(jobFunction)) return 40;
-
-  // Adjacent match
+  if (!jobFunction || !candidateFunctions.length) return 7;
+  if (candidateFunctions.includes(jobFunction)) return 18;
   const adjacent = candidateFunctions.flatMap((f) => ROLE_ADJACENCY[f] ?? []);
-  if (adjacent.includes(jobFunction)) return 22;
-
-  // Complete mismatch
+  if (adjacent.includes(jobFunction)) return 10;
   return 0;
 }
 
@@ -73,35 +75,45 @@ export function scoreRoleFunction(
 // Experience — asymmetric (only penalise under-qualification)
 // ─────────────────────────────────────────────────────────────────────────────
 
-/** Score 0–20. Over-qualification is fine; under-qualification is penalised. */
+/** Score 0–12. Asymmetric — under-qualification is heavily penalised.
+ *  Returns the score AND a `tooFarBelow` flag so the engine can hard-mismatch
+ *  jobs whose JD-stated minimum is way above the candidate's years
+ *  (e.g. JD asks 8+ yrs for a Staff role, candidate has 4). */
 export function scoreExperienceV2(
   resumeYears: number | null,
   minExp: number | null,
   maxExp: number | null,
 ): number {
-  if (resumeYears === null) return 10;
-  if (minExp === null && maxExp === null) return 14; // no requirement stated
+  if (resumeYears === null) return 6;
+  if (minExp === null && maxExp === null) return 8;
 
   const lo = minExp ?? 0;
-  const hi = maxExp ?? 999; // treat open-ended max as unlimited
+  const hi = maxExp ?? 999;
 
-  // In range: full score
-  if (resumeYears >= lo && resumeYears <= hi) return 20;
+  if (resumeYears >= lo && resumeYears <= hi) return 12;
 
   if (resumeYears > hi) {
-    // Over-qualified — can do the job, might be bored
     const over = resumeYears - hi;
-    if (over <= 3) return 18;
-    if (over <= 6) return 14;
-    return 10; // extreme over-qualification but still possible
+    if (over <= 3) return 11;
+    if (over <= 6) return 8;
+    return 6;
   }
 
-  // Under-qualified — might not be able to do the job
   const under = lo - resumeYears;
-  if (under <= 1) return 14;
-  if (under <= 2) return 8;
-  if (under <= 3) return 3;
+  if (under <= 1) return 8;
+  if (under <= 2) return 5;
+  if (under <= 3) return 2;
   return 0;
+}
+
+/** Returns true when the JD's stated minimum is so far above the candidate's
+ *  years that they'd be filtered by an ATS (typically >3 yrs short of floor). */
+export function isYearsGapHardMismatch(
+  resumeYears: number | null,
+  jdMinYears: number | null,
+): boolean {
+  if (resumeYears === null || jdMinYears === null) return false;
+  return jdMinYears - resumeYears > 3;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -151,7 +163,7 @@ function skillsToDomains(skills: string[]): Set<string> {
   return domains;
 }
 
-/** Phase G: scoreTechV3 — must-haves are 4× nice-to-haves.
+/** Phase I: scoreTechV3 — must-haves are 4× nice-to-haves. Max 22.
  *  When JD-parsed must/nice arrays are missing (jobs not yet backfilled), falls
  *  back to a domain-Jaccard between the resume and the union of (jobTech array,
  *  freshly-extracted skills from the JD description). The fresh extraction
@@ -172,7 +184,7 @@ export function scoreTechV3(
     return false;
   };
 
-  if (!resumeTech.length) return 6;
+  if (!resumeTech.length) return 7;
 
   const haveStructured = jobMustHave.length > 0 || jobNiceToHave.length > 0;
 
@@ -181,21 +193,41 @@ export function scoreTechV3(
     const niceHits = jobNiceToHave.filter(has).length;
     const mustTotal = jobMustHave.length;
     const niceTotal = jobNiceToHave.length;
-    const mustScore = mustTotal === 0 ? 12 : Math.round((mustHits / mustTotal) * 16);
-    const niceScore = niceTotal === 0 ? 2  : Math.round((niceHits / niceTotal) * 4);
-    return Math.min(20, mustScore + niceScore);
+    // 80% / 20% split inside the 22-point dimension.
+    const mustScore = mustTotal === 0 ? 13 : Math.round((mustHits / mustTotal) * 18);
+    const niceScore = niceTotal === 0 ?  2 : Math.round((niceHits / niceTotal) *  4);
+    return Math.min(22, mustScore + niceScore);
   }
 
   // Fallback path: union of crawled tech_stack + fresh extraction from JD body.
   const fromDescription = jobDescription ? extractTechFromDescription(jobDescription) : [];
   const merged = [...new Set([...fallbackJobTech, ...fromDescription])];
-  if (merged.length === 0) return 4; // truly no signal — low partial credit
+  if (merged.length === 0) return 5; // truly no signal — low partial credit
 
   const a = resumeDomains;
   const b = skillsToDomains(merged);
   const inter = [...a].filter((d) => b.has(d)).length;
   const union = new Set([...a, ...b]).size;
-  return Math.round((inter / union) * 20);
+  return Math.round((inter / union) * 22);
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Semantic JD ↔ Resume — Phase I
+// ─────────────────────────────────────────────────────────────────────────────
+
+/** Score 0–35 from cosine similarity between resume + JD Gemini embeddings.
+ *  - cosine ≥ 0.85 → 35 (extremely tight match)
+ *  - cosine ≥ 0.70 → linear 22..35
+ *  - cosine ≥ 0.55 → linear 8..22
+ *  - cosine <  0.55 → 0 (semantic mismatch)
+ *  Returns a partial-credit fallback (12) when either side has no embedding,
+ *  so jobs queued for embedding don't get instantly buried. */
+export function scoreSemanticFit(cosine: number | null): number {
+  if (cosine === null || !Number.isFinite(cosine)) return 12;
+  if (cosine >= 0.85) return 35;
+  if (cosine >= 0.70) return Math.round(22 + ((cosine - 0.70) / 0.15) * 13);
+  if (cosine >= 0.55) return Math.round(8  + ((cosine - 0.55) / 0.15) * 14);
+  return 0;
 }
 
 // Quick keyword extraction from a JD description blob. Mirrors the crawler's
@@ -266,20 +298,20 @@ const SENIORITY_LEVEL: Record<string, number> = {
   staff: 4, principal: 4, manager: 4, director: 5,
 };
 
-/** Score 0–10. */
+/** Score 0–7. */
 export function scoreSeniority(
   candidateSeniority: string | null,
   jobSeniority: string | null,
 ): number {
-  if (!candidateSeniority || !jobSeniority) return 5;
+  if (!candidateSeniority || !jobSeniority) return 4;
   const c = SENIORITY_LEVEL[candidateSeniority] ?? 2;
   const j = SENIORITY_LEVEL[jobSeniority] ?? 2;
-  const diff = c - j; // positive = over-levelled, negative = under-levelled
-  if (diff === 0) return 10;
-  if (diff === 1) return 8;  // one level over: very common, totally fine
-  if (diff === 2) return 5;  // two over: manager targeting IC lead, plausible
-  if (diff === -1) return 6; // one under: stretching, borderline
-  if (diff === -2) return 2; // two under: significant stretch
+  const diff = c - j;
+  if (diff === 0) return 7;
+  if (diff === 1) return 6;
+  if (diff === 2) return 4;
+  if (diff === -1) return 4;
+  if (diff === -2) return 1;
   return 0;
 }
 
@@ -289,18 +321,18 @@ export function scoreSeniority(
 
 const NCR_GROUP = new Set(["Gurugram", "Noida", "Delhi NCR"]);
 
-/** Score 0–6. */
+/** Score 0–4. */
 export function scoreHubV2(
   preferredHubs: string[],
   jobHubs: string[],
 ): number {
-  if (!preferredHubs.length || !jobHubs.length) return 3;
-  if (jobHubs.includes("Remote-India")) return 6;
-  if (preferredHubs.some((h) => jobHubs.includes(h))) return 6;
+  if (!preferredHubs.length || !jobHubs.length) return 2;
+  if (jobHubs.includes("Remote-India")) return 4;
+  if (preferredHubs.some((h) => jobHubs.includes(h))) return 4;
   if (
     preferredHubs.some((h) => NCR_GROUP.has(h)) &&
     jobHubs.some((h) => NCR_GROUP.has(h))
-  ) return 4;
+  ) return 3;
   return 0;
 }
 
@@ -308,16 +340,15 @@ export function scoreHubV2(
 // Compensation — soft filter only
 // ─────────────────────────────────────────────────────────────────────────────
 
-/** Score 0–4. */
+/** Score 0–2. */
 export function scoreLpaV2(
   targetLpa: number | null,
   compLpaMax: number | null,
 ): number {
-  if (!compLpaMax || !targetLpa) return 2;
-  if (targetLpa <= compLpaMax) return 4;
+  if (!compLpaMax || !targetLpa) return 1;
+  if (targetLpa <= compLpaMax) return 2;
   const ratio = targetLpa / compLpaMax;
-  if (ratio <= 1.3) return 2;
-  if (ratio <= 1.6) return 1;
+  if (ratio <= 1.3) return 1;
   return 0;
 }
 
@@ -361,8 +392,11 @@ const TITLE_HARD_MISMATCH: TitleRule[] = [
   { pattern: /\b(recruiter|recruiting|talent (?:acquisition|partner)|people operations?|people partner|hr business partner|hrbp|comp(?:ensation)? analyst)\b/i, conflictsWith: ALL_TECH_FUNCTIONS },
   // Finance / Accounting / Tax / Audit / Legal / FinOps
   { pattern: /\b(financial analyst|finance manager|accountant|accounting|tax (?:analyst|manager)|auditor?|treasur(?:y|er)|payroll|legal counsel|compliance officer|finops)\b/i, conflictsWith: ALL_TECH_FUNCTIONS },
-  // Marketing / Comms / PR / Content / Brand
-  { pattern: /\b(marketing manager|brand manager|growth marketer|seo|sem|content marketing|copywriter|pr manager|public relations|communications manager|community manager)\b/i, conflictsWith: ALL_TECH_FUNCTIONS },
+  // Marketing / Comms / PR / Content / Brand / Growth-Manager
+  { pattern: /\b(marketing manager|brand manager|growth manager|growth marketer|marketing analyst|marketing data scientist|business and marketing|seo|sem|content marketing|copywriter|pr manager|public relations|communications manager|community manager|business systems analyst|business analyst|apps specialist|measurement implementation)\b/i, conflictsWith: ALL_TECH_FUNCTIONS },
+  // Program management / TPM / consulting / corp dev (engineering-management
+  // candidates may genuinely target TPM, but pure engineers shouldn't).
+  { pattern: /\b(technical program manager|tpm\b|program manager(?!\s*,?\s*engineering)|scaled delivery manager|digital transformation|corporate development|business systems|gtech|premier?\s+support)\b/i, conflictsWith: ENG_FUNCTIONS },
   // Hardware / Manufacturing — out of scope for software roles
   { pattern: /\b(circuit (?:design|engineer)|sram|asic|dft|hardware engineer|mechanical engineer|electrical engineer|power engineer|chip design|firmware engineer|embedded systems)\b/i, conflictsWith: new Set(["frontend", "fullstack", "backend", "data_engineering", "ml_ai", "qa_sdet", "devops_platform", "engineering_management", "product_management", "design"]) },
 ];
@@ -431,15 +465,20 @@ export function inferRoleFunctionFromTitle(title: string | null | undefined): st
 export interface RulesScore {
   total: number; // 0–100
   breakdown: {
-    role: number;
-    experience: number;
-    tech: number;
-    seniority: number;
-    hub: number;
-    lpa: number;
+    semantic: number;   // 0–35  Phase I — biggest weight
+    tech: number;       // 0–22
+    role: number;       // 0–18
+    experience: number; // 0–12
+    seniority: number;  // 0–7
+    hub: number;        // 0–4
+    lpa: number;        // 0–2
   };
-  /** true when role function is a definite mismatch — caller should skip this job */
+  /** Set when the row should be hidden from the default list. */
   hardMismatch: boolean;
+  /** What triggered the hard-mismatch (for logging / hidden_reason). */
+  hardMismatchReason: "role_function" | "title_pattern" | "years_gap" | null;
+  /** Cosine that fed scoreSemanticFit, exposed for debugging. null when no embedding. */
+  cosine: number | null;
 }
 
 export function computeRulesScore(
@@ -452,15 +491,13 @@ export function computeRulesScore(
     target_lpa: number | null;
   },
   job: {
-    title?: string | null;       // for title-based hard-mismatch + role inference
-    description?: string | null; // for fresh keyword extraction when bag-of-tech is stale
+    title?: string | null;
+    description?: string | null;
     role_function: string | null;
-    // Years requirement: prefer JD-parsed (structured) over crawler-extracted.
     min_experience_years: number | null;
     max_experience_years: number | null;
     jd_min_years?: number | null;
     jd_max_years?: number | null;
-    // Tech: prefer JD-parsed must/nice arrays; fall back to bag-of-tech ∪ fresh extraction.
     tech_stack: string[];
     must_have_skills?: string[] | null;
     nice_to_have_skills?: string[] | null;
@@ -468,53 +505,59 @@ export function computeRulesScore(
     jd_seniority_signal?: string | null;
     hubs: string[];
     comp_lpa_max: number | null;
+    /** Phase I: precomputed cosine(resume_embedding, job.embedding). Caller
+     *  supplies it; null when either side has no embedding yet. */
+    semantic_cosine?: number | null;
   },
 ): RulesScore {
   // Use JD-parsed years when available; otherwise fall back to crawler regex.
   const yMin = job.jd_min_years ?? job.min_experience_years;
   const yMax = job.jd_max_years ?? job.max_experience_years;
 
-  // Use JD-parsed seniority signal when available; otherwise the crawler tag.
   const jdSeniority = job.jd_seniority_signal ?? job.seniority;
-
-  // role_function on jobs is NULL for 88%+ of production rows until the
-  // classifier backfills. Fall back to title-based inference so a clearly
-  // labelled "Senior Data Engineer" gets a real role score now, not the
-  // 15/40 neutral-credit consolation. Marked with a `_inferred` suffix in
-  // tests but the score function doesn't care — same string match.
   const effectiveRoleFunction =
     job.role_function ?? inferRoleFunctionFromTitle(job.title ?? null);
 
-  const role       = scoreRoleFunction(profile.target_role_functions, effectiveRoleFunction);
-  const experience = scoreExperienceV2(profile.years_experience, yMin, yMax);
-  const tech       = scoreTechV3(
-    profile.tech_stack,
-    job.must_have_skills ?? [],
-    job.nice_to_have_skills ?? [],
-    job.tech_stack,
-    job.description ?? undefined,
-  );
-  const seniority  = scoreSeniority(profile.seniority, jdSeniority);
-  const hub        = scoreHubV2(profile.preferred_hubs, job.hubs);
-  const lpa        = scoreLpaV2(profile.target_lpa, job.comp_lpa_max);
-  const total      = role + experience + tech + seniority + hub + lpa;
+  const cosine = job.semantic_cosine ?? null;
 
-  // Hard mismatch:
-  // (a) effective role function is known (DB or title-inferred) and the
-  //     candidate function score is 0 — e.g. a data_engineering candidate vs
-  //     a title-inferred ml_ai role still gets adjacency credit (22), but
-  //     vs a frontend role lands at 0.
-  // (b) explicit pattern-match against obvious non-tech titles (sales,
-  //     facilities, finops, support …) for any tech function.
-  const explicitMismatch =
+  const semantic   = scoreSemanticFit(cosine);                                                   // 0–35
+  const tech       = scoreTechV3(profile.tech_stack, job.must_have_skills ?? [],
+                                 job.nice_to_have_skills ?? [], job.tech_stack,
+                                 job.description ?? undefined);                                  // 0–22
+  const role       = scoreRoleFunction(profile.target_role_functions, effectiveRoleFunction);    // 0–18
+  const experience = scoreExperienceV2(profile.years_experience, yMin, yMax);                    // 0–12
+  const seniority  = scoreSeniority(profile.seniority, jdSeniority);                             // 0–7
+  const hub        = scoreHubV2(profile.preferred_hubs, job.hubs);                               // 0–4
+  const lpa        = scoreLpaV2(profile.target_lpa, job.comp_lpa_max);                           // 0–2
+  const total      = semantic + tech + role + experience + seniority + hub + lpa;
+
+  // Hard mismatch ladder, most-specific first:
+  let hardMismatchReason: RulesScore["hardMismatchReason"] = null;
+
+  // (a) Title pattern matches an obvious non-fit (Sales / Facilities / TPM…)
+  if (titleHardMismatch(job.title ?? "", profile.target_role_functions)) {
+    hardMismatchReason = "title_pattern";
+  }
+  // (b) Effective role function is a known mismatch
+  else if (
     role === 0 &&
     profile.target_role_functions.length > 0 &&
     effectiveRoleFunction !== null &&
-    effectiveRoleFunction !== "other";
+    effectiveRoleFunction !== "other"
+  ) {
+    hardMismatchReason = "role_function";
+  }
+  // (c) JD asks for years far above the candidate's (Phase I).
+  //     "Staff SDE — 8+ yrs" should not show up for a 4-year SDE I.
+  else if (isYearsGapHardMismatch(profile.years_experience, yMin)) {
+    hardMismatchReason = "years_gap";
+  }
 
-  const titleMismatch = titleHardMismatch(job.title ?? "", profile.target_role_functions);
-
-  const hardMismatch = explicitMismatch || titleMismatch;
-
-  return { total, breakdown: { role, experience, tech, seniority, hub, lpa }, hardMismatch };
+  return {
+    total,
+    breakdown: { semantic, tech, role, experience, seniority, hub, lpa },
+    hardMismatch: hardMismatchReason !== null,
+    hardMismatchReason,
+    cosine,
+  };
 }

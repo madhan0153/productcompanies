@@ -8,6 +8,7 @@ import { parseResumePdf } from "@/lib/llm/prompts/resume-parse";
 import { LlmRunError } from "@/lib/llm/gemini";
 import { getUserConsents } from "@/lib/dpdp/consent";
 import { computeResumeScore } from "@/lib/matching/resume-score";
+import { embed, buildResumeEmbedText } from "@/lib/llm/embed";
 import type { ParsedResume } from "@/lib/llm/prompts/resume-parse";
 import type { SeniorityLevel } from "@/lib/supabase/types";
 import type { Json } from "@/lib/supabase/types";
@@ -236,6 +237,21 @@ export async function uploadAndParseResume(formData: FormData): Promise<UploadRe
     }).eq("id", user.id);
   } catch (err) {
     console.warn("[resume-score] post-upload compute failed", err);
+  }
+
+  // Phase I — embed the resume for semantic JD↔resume alignment at match time.
+  // One Gemini text-embedding-004 call per upload; soft-fail if it 429s.
+  try {
+    const resumeEmbedding = await embed(buildResumeEmbedText(parsed));
+    if (resumeEmbedding.length > 0) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      await (admin.from("profiles") as any).update({
+        resume_embedding: resumeEmbedding,
+        resume_embedding_at: new Date().toISOString(),
+      }).eq("id", user.id);
+    }
+  } catch (err) {
+    console.warn("[resume-embed] post-upload embed failed", err);
   }
 
   revalidatePath("/profile");

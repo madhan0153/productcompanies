@@ -54,6 +54,7 @@ export interface Database {
           work_mode: string | null; jd_seniority_signal: SeniorityLevel | null;
           jd_summary: string | null; jd_parsed_at: string | null;
           is_likely_ghost: boolean | null; ghost_signals: Json | null;
+          embedding: number[] | null; embedding_at: string | null;
           created_at: string; updated_at: string;
         };
         Insert: {
@@ -72,6 +73,7 @@ export interface Database {
           work_mode?: string | null; jd_seniority_signal?: SeniorityLevel | null;
           jd_summary?: string | null; jd_parsed_at?: string | null;
           is_likely_ghost?: boolean | null; ghost_signals?: Json | null;
+          embedding?: number[] | null; embedding_at?: string | null;
           created_at?: string; updated_at?: string;
         };
         Update: {
@@ -90,6 +92,7 @@ export interface Database {
           work_mode?: string | null; jd_seniority_signal?: SeniorityLevel | null;
           jd_summary?: string | null; jd_parsed_at?: string | null;
           is_likely_ghost?: boolean | null; ghost_signals?: Json | null;
+          embedding?: number[] | null; embedding_at?: string | null;
           updated_at?: string;
         };
         Relationships: [];
@@ -106,6 +109,7 @@ export interface Database {
           role_function: string | null; target_role_functions: string[] | null;
           resume_score: number | null; resume_score_breakdown: Json | null;
           resume_tips: Json | null; resume_score_at: string | null;
+          resume_embedding: number[] | null; resume_embedding_at: string | null;
           created_at: string; updated_at: string;
         };
         Insert: {
@@ -119,6 +123,7 @@ export interface Database {
           role_function?: string | null; target_role_functions?: string[] | null;
           resume_score?: number | null; resume_score_breakdown?: Json | null;
           resume_tips?: Json | null; resume_score_at?: string | null;
+          resume_embedding?: number[] | null; resume_embedding_at?: string | null;
           created_at?: string; updated_at?: string;
         };
         Update: {
@@ -132,6 +137,7 @@ export interface Database {
           role_function?: string | null; target_role_functions?: string[] | null;
           resume_score?: number | null; resume_score_breakdown?: Json | null;
           resume_tips?: Json | null; resume_score_at?: string | null;
+          resume_embedding?: number[] | null; resume_embedding_at?: string | null;
           updated_at?: string;
         };
         Relationships: [];

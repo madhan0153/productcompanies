@@ -302,6 +302,20 @@ alter table public.profiles add column if not exists resume_tips            json
 alter table public.profiles add column if not exists resume_score_at        timestamptz;
 
 
+-- ─────────────────────────────────────────────────────────────────────────────
+-- Phase I: Semantic JD↔Resume alignment (Gemini text-embedding-004, 768-dim)
+-- ─────────────────────────────────────────────────────────────────────────────
+-- Stored as float8[] for portability — no pgvector extension required.
+-- Cosine is computed in the engine at match time, not in SQL.
+alter table public.jobs     add column if not exists embedding         float8[];
+alter table public.jobs     add column if not exists embedding_at      timestamptz;
+alter table public.profiles add column if not exists resume_embedding  float8[];
+alter table public.profiles add column if not exists resume_embedding_at timestamptz;
+
+create index if not exists idx_jobs_no_embedding
+  on public.jobs (embedding_at) where embedding_at is null;
+
+
 -- CONSENTS (DPDP — granular, versioned, append-style with revoked_at)
 create table if not exists public.consents (
   user_id uuid not null references auth.users(id) on delete cascade,
