@@ -1,6 +1,6 @@
 import type { CompanyConfig, CrawlContext } from "./_types.js";
 import type { RawJob } from "@prodmatch/shared";
-import { sleep } from "./_types.js";
+import { sleep, enrichDescriptions } from "./_types.js";
 
 // Confirmed: Oracle HCM Cloud REST API
 // URL: https://careers.oracle.com/en/sites/jobsearch/jobs?locationId=300000000106947
@@ -41,7 +41,8 @@ async function fetchPage(offset: number): Promise<OracleResponse> {
 
 export const oracleConfig: CompanyConfig = {
   slug: "oracle",
-  async crawl({ log }: CrawlContext): Promise<RawJob[]> {
+  async crawl(ctx: CrawlContext): Promise<RawJob[]> {
+    const { log } = ctx;
     const jobs: RawJob[] = [];
     let offset = 0;
     let total = Infinity;
@@ -57,14 +58,19 @@ export const oracleConfig: CompanyConfig = {
       if (batch.length === 0) break;
 
       for (const j of batch) {
-        const desc = [j.ShortDescriptionStr, j.ExternalResponsibilitiesStr, j.ExternalQualificationsStr]
+        // Listing API gives only ShortDescriptionStr (~500 chars) — that's
+        // why median description was 535 and 15/22 had no must-haves. The
+        // detail page has the full responsibilities + qualifications.
+        const seedDesc = [j.ShortDescriptionStr, j.ExternalResponsibilitiesStr, j.ExternalQualificationsStr]
           .filter(Boolean)
           .join("\n\n");
         jobs.push({
           external_id: j.Id,
           title: j.Title,
           location_raw: j.PrimaryLocation ?? "India",
-          description: desc,
+          // Keep seed only if it's already substantial; otherwise let
+          // enrichDescriptions fetch the full detail page.
+          description: seedDesc.length >= 1500 ? seedDesc : "",
           apply_url: `https://careers.oracle.com/en/sites/jobsearch/job/${j.Id}`,
           posted_at: j.PostedDate,
           raw: j as unknown as Record<string, unknown>,
@@ -77,6 +83,23 @@ export const oracleConfig: CompanyConfig = {
     }
 
     log(`Total: ${jobs.length} India jobs`);
+
+    await enrichDescriptions(ctx, jobs, () => {
+      const tryEls = [
+        "[class*='job-description'i]",
+        "[class*='job-details'i]",
+        "main",
+        "[role='main']",
+        "body",
+      ];
+      for (const sel of tryEls) {
+        const el = document.querySelector(sel);
+        const text = (el?.textContent ?? "").trim();
+        if (text.length >= 400) return Promise.resolve(text);
+      }
+      return Promise.resolve("");
+    }, { waitUntil: "networkidle", extraWaitMs: 1500, timeoutMs: 35_000 });
+
     return jobs;
   },
 };

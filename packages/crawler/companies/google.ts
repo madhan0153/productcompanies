@@ -1,6 +1,6 @@
 import type { CompanyConfig, CrawlContext } from "./_types.js";
 import type { RawJob } from "@prodmatch/shared";
-import { sleep } from "./_types.js";
+import { sleep, enrichDescriptions } from "./_types.js";
 
 // Confirmed URL: https://www.google.com/about/careers/applications/jobs/results?location=India
 // Cards: li.lLd3Je | title: h3.QJPWVe | ID in jsdata attr: "Aiqs8c;{ID};$N"
@@ -9,7 +9,8 @@ const BASE_URL =
 
 export const googleConfig: CompanyConfig = {
   slug: "google",
-  async crawl({ page, log }: CrawlContext): Promise<RawJob[]> {
+  async crawl(ctx: CrawlContext): Promise<RawJob[]> {
+    const { page, log } = ctx;
     const allJobs: RawJob[] = [];
     const seenIds = new Set<string>();
     let pageNum = 1;
@@ -73,7 +74,11 @@ export const googleConfig: CompanyConfig = {
           external_id: j.id,
           title: j.title,
           location_raw: j.location,
-          description: j.description,
+          // The listing card only carries the first paragraph of "Minimum
+          // qualifications" — typically 300-500 chars. Drop it so
+          // enrichDescriptions fetches the full detail page (responsibilities,
+          // preferred quals, about-the-team paragraph).
+          description: "",
           apply_url: j.applyUrl || `https://www.google.com/about/careers/applications/jobs/results/${j.id}`,
           raw: { id: j.id, title: j.title, location: j.location },
         });
@@ -85,6 +90,25 @@ export const googleConfig: CompanyConfig = {
     }
 
     log(`Total: ${allJobs.length} India jobs`);
+
+    // Detail-page sweep. Google's careers page renders the JD in a main
+    // panel after a short hydration; networkidle + grace covers it.
+    await enrichDescriptions(ctx, allJobs, () => {
+      const tryEls = [
+        "main",
+        "[role='main']",
+        "[class*='job-detail'i]",
+        "[class*='description'i]",
+        "body",
+      ];
+      for (const sel of tryEls) {
+        const el = document.querySelector(sel);
+        const text = (el?.textContent ?? "").trim();
+        if (text.length >= 400) return Promise.resolve(text);
+      }
+      return Promise.resolve("");
+    }, { waitUntil: "networkidle", extraWaitMs: 1500, timeoutMs: 35_000 });
+
     return allJobs;
   },
 };
