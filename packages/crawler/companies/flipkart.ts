@@ -1,12 +1,17 @@
 import type { CompanyConfig, CrawlContext } from "./_types.js";
 import type { RawJob } from "@prodmatch/shared";
-import { sleep } from "./_types.js";
+import { sleep, enrichDescriptions } from "./_types.js";
 
-// Confirmed: Flipkart uses TurboHire platform
-// URL: https://flipkart.turbohire.co/dashboardv2?orgId=4d757ba0-3d57-448a-b82c-238ed87ac90f&type=0
-// API requires Bearer JWT obtained by loading the page → use Playwright interception
+// Flipkart uses TurboHire platform.
+// Listings: dashboard page loads filteredjobs API with a Bearer JWT obtained
+// by visiting the page → intercept via Playwright.
+// Detail: TurboHire's public job-details URL deep-links into the dashboard
+// SPA which renders the full JD body. The `JobDescription` field returned
+// by filteredjobs is truncated to a teaser (we observed 22-39 chars).
 const ORG_ID = "4d757ba0-3d57-448a-b82c-238ed87ac90f";
 const CAREER_URL = `https://flipkart.turbohire.co/dashboardv2?orgId=${ORG_ID}&type=0`;
+const detailUrl = (jobId: string) =>
+  `https://flipkart.turbohire.co/dashboardv2/jobs?orgId=${ORG_ID}&type=0&jobId=${jobId}`;
 
 interface TurboLocation {
   Address?: string;
@@ -62,12 +67,14 @@ export const flipkartConfig: CompanyConfig = {
 
       for (const j of batch) {
         const location = j.City ?? extractTurboCity(j.Location) ?? "Bengaluru";
+        // The listing API truncates JobDescription to a 22-39 char teaser.
+        // Drop it so enrichDescriptions kicks in (its <60 char gate).
         jobs.push({
           external_id: j.JobId,
           title: j.JobTitle,
           location_raw: location,
-          description: j.JobDescription ?? (j.Department ? `Department: ${j.Department}` : ""),
-          apply_url: `https://flipkart.turbohire.co/candidatelogin?orgId=${ORG_ID}&jobId=${j.JobId}`,
+          description: "",
+          apply_url: detailUrl(j.JobId),
           posted_at: j.PublishedDate,
           raw: j as unknown as Record<string, unknown>,
         });
@@ -87,8 +94,8 @@ export const flipkartConfig: CompanyConfig = {
             external_id: j.JobId,
             title: j.JobTitle,
             location_raw: j.City ?? extractTurboCity(j.Location) ?? "Bengaluru",
-            description: j.JobDescription ?? "",
-            apply_url: `https://flipkart.turbohire.co/candidatelogin?orgId=${ORG_ID}&jobId=${j.JobId}`,
+            description: "",
+            apply_url: detailUrl(j.JobId),
             posted_at: j.PublishedDate,
             raw: j as unknown as Record<string, unknown>,
           });
@@ -97,6 +104,27 @@ export const flipkartConfig: CompanyConfig = {
     }
 
     log(`Total: ${jobs.length} India jobs`);
+
+    // Pull full JD body. TurboHire's SPA paints the JD into the dashboard
+    // shell when ?jobId=... is in the URL. networkidle + grace period catches
+    // late paints; broad selector chain handles minor DOM variations.
+    await enrichDescriptions({ page, log }, jobs, () => {
+      const tryEls = [
+        "[class*='job-detail'i]",
+        "[class*='description'i]",
+        "[data-testid*='job'i]",
+        "main",
+        "[role='main']",
+        "body",
+      ];
+      for (const sel of tryEls) {
+        const el = document.querySelector(sel);
+        const text = (el?.textContent ?? "").trim();
+        if (text.length >= 200) return Promise.resolve(text);
+      }
+      return Promise.resolve("");
+    }, { waitUntil: "networkidle", extraWaitMs: 2000, timeoutMs: 35_000 });
+
     return jobs;
   },
 };

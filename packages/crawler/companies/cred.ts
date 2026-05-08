@@ -1,8 +1,12 @@
 import type { CompanyConfig, CrawlContext } from "./_types.js";
 import type { RawJob } from "@prodmatch/shared";
+import { enrichDescriptions } from "./_types.js";
 
-// Confirmed: careers.cred.club/openings uses Next.js SSG with all job data in __NEXT_DATA__
-// props.pageProps.data.data[] contains all open roles
+// careers.cred.club/openings uses Next.js SSG with all job data in __NEXT_DATA__.
+// IMPORTANT: the listing's `content.description` is just CRED's company
+// boilerplate ("CRED is an exclusive community…") — identical for every
+// role. The actual JD body lives only on /openings/{id}. We discard the
+// boilerplate and pull the real JD via enrichDescriptions.
 const PAGE_URL = "https://careers.cred.club/openings";
 
 interface CredJob {
@@ -28,7 +32,8 @@ interface NextData {
 
 export const credConfig: CompanyConfig = {
   slug: "cred",
-  async crawl({ log }: CrawlContext): Promise<RawJob[]> {
+  async crawl(ctx: CrawlContext): Promise<RawJob[]> {
+    const { log } = ctx;
     const res = await fetch(PAGE_URL, {
       headers: { "User-Agent": "Mozilla/5.0 (compatible; ProdMatchBot/1.0)" },
     });
@@ -39,20 +44,44 @@ export const credConfig: CompanyConfig = {
     if (!m) throw new Error("CRED: __NEXT_DATA__ not found in page HTML");
 
     const nextData = JSON.parse(m[1]) as NextData;
-    const jobs = nextData.props?.pageProps?.data?.data ?? [];
-    log(`Total: ${jobs.length} jobs`);
+    const listings = nextData.props?.pageProps?.data?.data ?? [];
+    log(`Total: ${listings.length} jobs`);
 
-    return jobs.map((j) => {
+    const jobs: RawJob[] = listings.map((j) => {
       const location = j.categories?.allLocations?.join(", ") ?? j.categories?.location ?? "Bengaluru";
       return {
         external_id: j.id,
         title: j.text,
         location_raw: location,
-        description: j.content?.description ?? "",
+        // Discard listing boilerplate — see file header.
+        description: "",
         apply_url: `https://careers.cred.club/openings/${j.id}`,
         posted_at: j.createdAt,
         raw: j as unknown as Record<string, unknown>,
       };
     });
+
+    // Pull the real JD body. CRED's detail page is a CSR React app; the JD
+    // sits under a heading once hydrated. Use a broad selector and a grace
+    // period to catch the late paint.
+    await enrichDescriptions(ctx, jobs, () => {
+      const tryEls = [
+        "[class*='job-description'i]",
+        "[data-testid*='description'i]",
+        "main article",
+        "main",
+        "body",
+      ];
+      for (const sel of tryEls) {
+        const el = document.querySelector(sel);
+        const text = (el?.textContent ?? "").trim();
+        // Drop the company boilerplate header so the parser doesn't see it.
+        const cleaned = text.replace(/^\s*(what is CRED|CRED is an exclusive community)[^\n]*\n+/i, "");
+        if (cleaned.length >= 200) return Promise.resolve(cleaned);
+      }
+      return Promise.resolve("");
+    }, { waitUntil: "networkidle", extraWaitMs: 1500, timeoutMs: 35_000 });
+
+    return jobs;
   },
 };

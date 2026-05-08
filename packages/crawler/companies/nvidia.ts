@@ -2,9 +2,14 @@ import type { CompanyConfig, CrawlContext } from "./_types.js";
 import type { RawJob } from "@prodmatch/shared";
 import { sleep, enrichDescriptions } from "./_types.js";
 
-// Nvidia Workday — locationHierarchy1 facet ID confirmed from careers page URL
+// Nvidia Workday — locationHierarchy1 facet ID confirmed from careers page URL.
+// CXS API path (used for listing) and the user-facing detail URL pattern are
+// different: CXS is /wday/cxs/{tenant}/{site}, detail pages live under
+// /en-US/{site}/job/.... Using the CXS path as a public URL 404s.
 const BASE = "https://nvidia.wd5.myworkdayjobs.com";
-const SITE_PATH = "/wday/cxs/nvidia/NVIDIAExternalCareerSite";
+const SITE = "NVIDIAExternalCareerSite";
+const SITE_PATH = `/wday/cxs/nvidia/${SITE}`;
+const PUBLIC_PREFIX = `/en-US/${SITE}`;
 // From: ?locationHierarchy1=2fcb99c455831013ea52b82135ba3266
 const INDIA_FACET_ID = "2fcb99c455831013ea52b82135ba3266";
 
@@ -60,8 +65,10 @@ export const nvidiaConfig: CompanyConfig = {
           external_id: id,
           title: j.title,
           location_raw: j.locationsText ?? "India",
-          description: j.bulletFields?.join("\n") ?? "",
-          apply_url: `${BASE}${j.externalPath}`,
+          // Drop the bullet teaser entirely so enrichDescriptions kicks in
+          // (its < 60-char gate is what triggers the detail-page fetch).
+          description: "",
+          apply_url: `${BASE}${PUBLIC_PREFIX}${j.externalPath}`,
           posted_at: j.postedOn,
           raw: j as unknown as Record<string, unknown>,
         });
