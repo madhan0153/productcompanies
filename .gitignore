@@ -46,3 +46,4 @@ Thumbs.db
 supabase/.branches
 supabase/.temp
 crawler_logs.txt
+Supabase Snippet Fetch Jobs Records*.csv
