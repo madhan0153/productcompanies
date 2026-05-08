@@ -168,7 +168,8 @@ async function parseWithWorkers(
     }
   };
 
-  cLog(`Parsing ${total} JD${total === 1 ? "" : "s"} with ${WORKERS} workers across ${NUM_KEYS} key${NUM_KEYS === 1 ? "" : "s"}…`);
+  const actualKeys = (process.env.GEMINI_API_KEY ?? "").split(",").map((k) => k.trim()).filter(Boolean).length;
+  cLog(`Parsing ${total} JD${total === 1 ? "" : "s"} with ${WORKERS} workers across ${actualKeys} key${actualKeys === 1 ? "" : "s"}…`);
   const t0 = Date.now();
   await Promise.all(Array.from({ length: WORKERS }, (_, i) => worker(i)));
   cLog(`Parse done: ok=${stats.ok} err=${stats.err} | ${Math.round((Date.now() - t0) / 1000)}s${companyName ? ` (${companyName})` : ""}`);

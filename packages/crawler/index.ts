@@ -41,6 +41,23 @@ async function main() {
   const mode = dryParse ? " [DRY-RUN-PARSE]" : dryRun ? " [DRY RUN]" : "";
   log(`Starting crawl for: ${slugs.join(", ")}${mode}`);
 
+  // Fail fast on missing keys when we're about to write to DB. The inline
+  // parse step needs Gemini; without it we'd silently insert thousands of
+  // unparsed rows. Skipped in --dry-run (no parse) but enforced for
+  // --dry-run-parse (which DOES call Gemini).
+  if (!dryRun) {
+    const keys = (process.env.GEMINI_API_KEY ?? "").split(",").map((k) => k.trim()).filter(Boolean);
+    if (keys.length === 0) {
+      log(
+        "GEMINI_API_KEY is not set. The inline JD parse needs at least one key. " +
+        "Set GEMINI_API_KEY (comma-separated for rotation) in the runner env / GitHub secrets.",
+        "error",
+      );
+      process.exit(2);
+    }
+    log(`Detected ${keys.length} Gemini API key${keys.length === 1 ? "" : "s"} — worker pool will rotate.`);
+  }
+
   const supabase = adminClient();
 
   const { data: companies, error: dbErr } = await supabase
