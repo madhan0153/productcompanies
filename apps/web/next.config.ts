@@ -67,6 +67,11 @@ const nextConfig: NextConfig = {
   reactStrictMode: true,
   poweredByHeader: false,
   experimental: {},
+  // The shared workspace package ships TypeScript sources with explicit
+  // `.js` extensions on relative imports (CJS-target convention). Next's
+  // bundler needs to transpile and resolve those itself rather than
+  // expecting a pre-built `dist/`.
+  transpilePackages: ["@prodmatch/shared"],
   async headers() {
     return [{ source: "/:path*", headers: securityHeaders }];
   },

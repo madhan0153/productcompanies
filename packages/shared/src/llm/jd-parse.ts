@@ -14,7 +14,7 @@
 //   • Tightened must-have rule: only when JD uses "required / must / minimum"
 //   • Few-shot examples in the prompt to anchor the lite model
 
-import { runWithRetry, SchemaType, type Schema, type RetryOptions } from "./gemini.js";
+import { runWithRetry, SchemaType, type Schema, type RetryOptions } from "./gemini";
 
 export const ROLE_FUNCTIONS = [
   "backend",
