@@ -44,7 +44,10 @@ export const metaConfig: CompanyConfig = {
             external_id: j.id,
             title: j.title,
             location_raw: location,
-            description: j.teams?.join(", ") ?? "",
+            // The listing only carries team labels (e.g. "Sales & Marketing");
+            // those would otherwise pass enrichDescriptions' < 60-char gate
+            // and skip the actual JD fetch. Keep blank.
+            description: "",
             apply_url: `https://www.metacareers.com/jobs/${j.id}/`,
             raw: j as unknown as Record<string, unknown>,
           });
@@ -86,20 +89,32 @@ export const metaConfig: CompanyConfig = {
     // Meta listing API only returns team names. Enrich each metacareers.com
     // detail page for the full JD body. Heavy SPA — needs networkidle + grace.
     await enrichDescriptions({ page, log }, arr, () => {
+      // Meta's careers DOM uses obfuscated class names — selectors targeting
+      // semantic class names won't match. Walk the page in priority order:
+      // structured ARIA region → main → largest text block on the page.
       const tryEls = [
-        "[data-testid*='job-description'i]",
-        "[class*='JobDescription'i]",
-        "[class*='description-content'i]",
-        "main article",
+        "[role='main']",
         "main",
+        "[data-pagelet*='Job']",
+        "[data-testid*='job'i]",
       ];
       for (const sel of tryEls) {
         const el = document.querySelector(sel);
         const text = (el?.textContent ?? "").trim();
-        if (text.length >= 200) return Promise.resolve(text);
+        if (text.length >= 400) return Promise.resolve(text);
       }
+      // Last resort — find the longest <div> on the page. Avoids picking up
+      // the navigation chrome (which is short) when the JD wrapper has an
+      // unrecognised id.
+      const divs = Array.from(document.querySelectorAll("div"));
+      let best = "";
+      for (const d of divs) {
+        const t = (d.textContent ?? "").trim();
+        if (t.length > best.length) best = t;
+      }
+      if (best.length >= 400) return Promise.resolve(best);
       return Promise.resolve("");
-    }, { waitUntil: "networkidle", extraWaitMs: 1500, timeoutMs: 35_000 });
+    }, { waitUntil: "networkidle", extraWaitMs: 2500, timeoutMs: 35_000 });
 
     return arr;
   },

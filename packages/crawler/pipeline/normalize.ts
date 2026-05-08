@@ -1,6 +1,50 @@
 import type { RawJob, NormalizedJob, Seniority } from "@prodmatch/shared";
 import { computeSignature } from "../lib/hash.js";
 
+// ── Description cleaning ─────────────────────────────────────────────────────
+//
+// Several APIs (Greenhouse — used by Razorpay, Groww, PhonePe — and a few
+// Workday tenants) return HTML in their `content` / `description` fields,
+// often double-encoded (`&lt;p&gt;text&lt;/p&gt;`). When the parser sees
+// raw markup as text, signal-to-noise drops and downstream extraction
+// (skills, summary, responsibilities) suffers. Decoding entities and
+// stripping tags also halves the payload, which matters when our parse
+// truncation lands at 10 000 chars — the actual JD content needs to fit
+// under that boundary, not the company-intro boilerplate.
+
+const HTML_ENTITIES: Record<string, string> = {
+  "&amp;": "&", "&lt;": "<", "&gt;": ">", "&quot;": "\"", "&#39;": "'",
+  "&apos;": "'", "&nbsp;": " ", "&rsquo;": "'", "&lsquo;": "'",
+  "&rdquo;": "\"", "&ldquo;": "\"", "&mdash;": "—", "&ndash;": "–",
+  "&hellip;": "…", "&copy;": "©", "&reg;": "®",
+};
+
+function decodeEntities(s: string): string {
+  if (!s) return "";
+  return s
+    .replace(/&[a-z#0-9]+;/gi, (m) => HTML_ENTITIES[m] ?? m)
+    .replace(/&#(\d+);/g, (_, n) => String.fromCodePoint(Number(n)));
+}
+
+export function cleanDescription(raw: string): string {
+  if (!raw) return "";
+  // Two passes — many feeds double-encode (`&amp;lt;` → `&lt;` → `<`).
+  let s = decodeEntities(decodeEntities(raw));
+  // Strip script/style blocks fully (their text content is noise).
+  s = s.replace(/<(script|style)[^>]*>[\s\S]*?<\/\1>/gi, " ");
+  // Convert structural tags to newlines so we keep paragraph boundaries.
+  s = s.replace(/<\/(p|div|li|h[1-6]|tr)>/gi, "\n")
+       .replace(/<br\s*\/?>/gi, "\n");
+  // Strip remaining tags.
+  s = s.replace(/<[^>]+>/g, " ");
+  // Collapse whitespace; preserve single newlines as paragraph hints.
+  s = s.replace(/[ \t\f\v]+/g, " ")
+       .replace(/\n[ ]+/g, "\n")
+       .replace(/\n{3,}/g, "\n\n")
+       .trim();
+  return s;
+}
+
 // ── Hub mapping ────────────────────────────────────────────────────────────────
 
 const LOCATION_TO_HUB: Array<[RegExp, string]> = [
@@ -203,12 +247,17 @@ export function inferSeniority(title: string): Seniority {
 // ── Main normalizer ────────────────────────────────────────────────────────────
 
 export function normalizeJob(raw: RawJob, companyId: string): NormalizedJob {
+  // Decode HTML entities + strip tags ONCE here. Every downstream step
+  // (LPA / years / tech extraction, the LLM parser, embeddings) sees
+  // clean plain text instead of `&lt;p&gt;…&lt;/p&gt;`.
+  const cleanedDescription = cleanDescription(raw.description ?? "");
+
   const hubs = extractHubs(raw.location_raw);
-  const { min: compMin, max: compMax } = extractLPA(raw.description);
-  const { min: expMin, max: expMax } = extractExperienceYears(raw.description);
-  const techStack = extractTechStack(`${raw.title} ${raw.description}`);
+  const { min: compMin, max: compMax } = extractLPA(cleanedDescription);
+  const { min: expMin, max: expMax } = extractExperienceYears(cleanedDescription);
+  const techStack = extractTechStack(`${raw.title} ${cleanedDescription}`);
   const seniority = inferSeniority(raw.title);
-  const signature = computeSignature(raw.title, raw.location_raw, raw.description);
+  const signature = computeSignature(raw.title, raw.location_raw, cleanedDescription);
 
   // Sanitise apply_url: must look URL-ish and not be empty.
   const applyUrl =
@@ -221,7 +270,7 @@ export function normalizeJob(raw: RawJob, companyId: string): NormalizedJob {
     external_id: raw.external_id,
     signature,
     title: raw.title.trim(),
-    description: raw.description,
+    description: cleanedDescription,
     location: raw.location_raw,
     apply_url: applyUrl,
     hubs,

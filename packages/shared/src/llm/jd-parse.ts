@@ -262,7 +262,7 @@ export async function parseJobDescription(
 JOB TITLE: ${input.title}
 SENIORITY HINT (from crawler): ${input.seniority_hint ?? "unknown"}
 JOB DESCRIPTION:
-${input.description.slice(0, 6000)}`;
+${input.description.slice(0, 12000)}`;
 
   const text = await runWithRetry("light", async (model) => {
     const res = await model.generateContent({
