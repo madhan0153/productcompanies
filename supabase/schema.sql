@@ -316,6 +316,23 @@ create index if not exists idx_jobs_no_embedding
   on public.jobs (embedding_at) where embedding_at is null;
 
 
+-- ─────────────────────────────────────────────────────────────────────────────
+-- Phase J: Inline JD parse during crawl — richer extracted facts.
+-- ─────────────────────────────────────────────────────────────────────────────
+-- role_function_jd: extracted from JD body, not the title (more reliable).
+-- responsibilities: top 3-5 bullets, used by Fit Card and matcher.
+-- qualifications_required / qualifications_preferred: credentials separated
+--   from skills (degrees, years-in-tech, certifications).
+-- tech_stack_explicit: tech named verbatim in the JD body.
+-- team_context: one sentence on the team, if mentioned.
+alter table public.jobs add column if not exists role_function_jd          text;
+alter table public.jobs add column if not exists responsibilities          text[];
+alter table public.jobs add column if not exists qualifications_required   text[];
+alter table public.jobs add column if not exists qualifications_preferred  text[];
+alter table public.jobs add column if not exists tech_stack_explicit       text[];
+alter table public.jobs add column if not exists team_context              text;
+
+
 -- CONSENTS (DPDP — granular, versioned, append-style with revoked_at)
 create table if not exists public.consents (
   user_id uuid not null references auth.users(id) on delete cascade,

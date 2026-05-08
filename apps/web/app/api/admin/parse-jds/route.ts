@@ -1,17 +1,14 @@
 // POST /api/admin/parse-jds
 //
-// Phase G — backfill structured JD parse for jobs missing it. Idempotent and
-// resumable: it picks up where it left off on every invocation. Designed to
-// run as a Vercel Cron job once per day OR manually after a fresh crawl.
+// SAFETY NET — the crawler now parses JDs inline at ingest. This endpoint
+// only catches the rare row whose inline parse failed (e.g. all keys
+// exhausted in a single run) or is a legacy row from before Phase J.
 //
-// Auth: Bearer $CRON_SECRET (same pattern as /api/cron/digest and
-// /api/admin/backfill-jobs).
+// Auth: Bearer $CRON_SECRET.
 //
-// Each batch processes up to 25 jobs; cap on Vercel Pro is maxDuration:300s.
-// One Gemini light-tier call per job (~₹0). Stamps:
-//   must_have_skills, nice_to_have_skills, jd_min_years, jd_max_years,
-//   work_mode, jd_seniority_signal, jd_summary, jd_parsed_at,
-//   is_likely_ghost, ghost_signals
+// Tight loop: small batch + 250s wall-clock guard. Even if Gemini stalls,
+// we return whatever was processed so the workflow's "until remaining=0"
+// loop sees forward progress and re-invokes cleanly.
 //
 //   curl -X POST https://prodmatchai.vercel.app/api/admin/parse-jds \
 //     -H "Authorization: Bearer $CRON_SECRET"
@@ -29,7 +26,10 @@ export const runtime = "nodejs";
 export const maxDuration = 300;
 export const dynamic = "force-dynamic";
 
-const BATCH_LIMIT = 25;
+// Smaller batch + wall-clock guard. Each parse + embed averages 3-6s with
+// retries; 8 jobs leaves headroom under 250s for occasional 429 backoff.
+const BATCH_LIMIT = 8;
+const WALL_CLOCK_BUDGET_MS = 250_000;
 
 type JobRow = {
   id: string;
@@ -48,9 +48,8 @@ export async function POST(req: NextRequest) {
   }
 
   const admin = createSupabaseAdminClient();
+  const startedAt = Date.now();
 
-  // Pull a batch of unparsed active jobs. The partial index
-  // idx_jobs_unparsed makes this O(log n) regardless of total job count.
   const { data: jobs, error } = await admin
     .from("jobs")
     .select("id, title, description, seniority, posted_at, last_seen_at")
@@ -71,8 +70,14 @@ export async function POST(req: NextRequest) {
   const errors: Array<{ id: string; reason: string }> = [];
   let processed = 0;
   let ghostCount = 0;
+  let bailed = false;
 
   for (const job of batch) {
+    if (Date.now() - startedAt > WALL_CLOCK_BUDGET_MS) {
+      bailed = true;
+      break;
+    }
+
     if (!job.description || job.description.length < 60) {
       // Mark as parsed with no signal so we don't retry forever.
       await admin
@@ -84,6 +89,7 @@ export async function POST(req: NextRequest) {
           ghost_signals: { reason: "description_too_short" } as Json,
         })
         .eq("id", job.id);
+      processed++;
       continue;
     }
 
@@ -104,10 +110,8 @@ export async function POST(req: NextRequest) {
 
       if (ghost.is_likely_ghost) ghostCount++;
 
-      // Phase I — embed the (now-structured) JD for semantic match later.
-      // If embedding fails (e.g. quota), we still persist the parse and let
-      // a later backfill catch the embedding. matching falls back to a 12-pt
-      // partial-credit score so unembedded jobs don't get instantly buried.
+      // Embed the (now-structured) JD. Soft-fail on quota — parse stamp
+      // still lands; embedding gets backfilled on the next pass.
       let embedding: number[] | null = null;
       try {
         embedding = await embed(buildJobEmbedText({
@@ -117,10 +121,11 @@ export async function POST(req: NextRequest) {
           nice_to_have_skills: parsed.nice_to_have_skills,
           description: job.description ?? undefined,
           jd_seniority_signal: parsed.jd_seniority_signal,
+          role_function: parsed.role_function_jd,
+          responsibilities: parsed.responsibilities,
+          team_context: parsed.team_context,
         }));
       } catch (embedErr) {
-        // Soft-fail; parse stamp still lands so we don't re-call Gemini's
-        // structured-JSON endpoint next run.
         if (errors.length < 5) {
           const m = embedErr instanceof Error ? embedErr.message.split("\n")[0] : String(embedErr);
           console.warn(`[parse-jds] embed failed for ${job.id}: ${m}`);
@@ -129,6 +134,7 @@ export async function POST(req: NextRequest) {
 
       const { error: upErr } = await admin
         .from("jobs")
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         .update({
           must_have_skills:    parsed.must_have_skills,
           nice_to_have_skills: parsed.nice_to_have_skills,
@@ -139,11 +145,17 @@ export async function POST(req: NextRequest) {
           jd_summary:          parsed.jd_summary,
           is_likely_ghost:     ghost.is_likely_ghost,
           ghost_signals:       ghost.signals as unknown as Json,
+          role_function_jd:        parsed.role_function_jd,
+          responsibilities:        parsed.responsibilities,
+          qualifications_required: parsed.qualifications_required,
+          qualifications_preferred: parsed.qualifications_preferred,
+          tech_stack_explicit:     parsed.tech_stack_explicit,
+          team_context:            parsed.team_context,
           jd_parsed_at:        new Date().toISOString(),
           ...(embedding && embedding.length > 0
             ? { embedding, embedding_at: new Date().toISOString() }
             : {}),
-        })
+        } as any)
         .eq("id", job.id);
 
       if (upErr) {
@@ -157,11 +169,9 @@ export async function POST(req: NextRequest) {
         ? `llm_${err.detail.kind}`
         : err instanceof Error ? err.message : String(err);
       errors.push({ id: job.id, reason });
-      // Don't stamp jd_parsed_at on LLM failures — let it retry on the next run.
     }
   }
 
-  // Count remaining for the caller.
   const { count: remaining } = await admin
     .from("jobs")
     .select("*", { count: "exact", head: true })
@@ -175,5 +185,7 @@ export async function POST(req: NextRequest) {
     errors: errors.length,
     error_samples: errors.slice(0, 5),
     remaining: remaining ?? 0,
+    bailed_on_budget: bailed,
+    elapsed_ms: Date.now() - startedAt,
   });
 }

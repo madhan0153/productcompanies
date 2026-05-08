@@ -301,6 +301,12 @@ export async function computeMatchesForUser(userId: string): Promise<ComputeResu
             jd_summary:          job.jd_summary ?? "",
             is_boilerplate:      false,
             ghost_reasons:       [],
+            role_function_jd:    null,
+            responsibilities:    [],
+            qualifications_required:  [],
+            qualifications_preferred: [],
+            tech_stack_explicit: [],
+            team_context:        null,
           };
 
           try {

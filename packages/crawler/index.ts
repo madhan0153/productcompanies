@@ -1,16 +1,23 @@
 /**
  * CLI entrypoint for the ProdMatch crawler.
- * Usage: tsx index.ts [--slugs=google,microsoft,...] [--dry-run]
  *
- * Required env vars:
+ * Flags:
+ *   --slugs=google,microsoft,...   Restrict to these companies (default: all).
+ *   --dry-run                      Crawl + normalize, log counts, don't write.
+ *   --dry-run-parse                Crawl + parse first 5 of each company,
+ *                                  print structured JD output, don't write.
+ *
+ * Required env:
  *   SUPABASE_URL
  *   SUPABASE_SERVICE_ROLE_KEY
+ *   GEMINI_API_KEY (comma-separated for key rotation)
  */
 
 import { chromium, type Browser } from "playwright";
 import { COMPANY_CONFIGS, ALL_SLUGS } from "./companies/index.js";
 import { normalizeJob } from "./pipeline/normalize.js";
 import { upsertJobs, markStaleJobs, recordCrawlRun } from "./pipeline/upsert.js";
+import { enrichWithParse, dryRunParse } from "./pipeline/parse.js";
 import { adminClient } from "./lib/supabase.js";
 import { log, makeLogger } from "./lib/logger.js";
 
@@ -20,33 +27,35 @@ function parseArgs() {
   const args = process.argv.slice(2);
   const slugsArg = args.find((a) => a.startsWith("--slugs="));
   const dryRun = args.includes("--dry-run");
+  const dryRunParse = args.includes("--dry-run-parse");
   const slugs = slugsArg
     ? slugsArg.replace("--slugs=", "").split(",").map((s) => s.trim()).filter(Boolean)
     : ALL_SLUGS;
-  return { slugs, dryRun };
+  return { slugs, dryRun, dryRunParse };
 }
 
 // ── Main ────────────────────────────────────────────────────────────────────
 
 async function main() {
-  const { slugs, dryRun } = parseArgs();
-  log(`Starting crawl for: ${slugs.join(", ")}${dryRun ? " [DRY RUN]" : ""}`);
+  const { slugs, dryRun, dryRunParse: dryParse } = parseArgs();
+  const mode = dryParse ? " [DRY-RUN-PARSE]" : dryRun ? " [DRY RUN]" : "";
+  log(`Starting crawl for: ${slugs.join(", ")}${mode}`);
 
   const supabase = adminClient();
 
-  // Pre-fetch all company IDs from DB
   const { data: companies, error: dbErr } = await supabase
     .from("companies")
-    .select("id, slug")
+    .select("id, slug, name")
     .in("slug", slugs);
 
   if (dbErr) throw new Error(`Failed to fetch companies: ${dbErr.message}`);
 
-  const companyIdBySlug = new Map((companies ?? []).map((c) => [c.slug, c.id]));
+  const companyMetaBySlug = new Map(
+    (companies ?? []).map((c) => [c.slug, { id: c.id as string, name: c.name as string }]),
+  );
 
-  // Warn about slugs not in DB
   for (const slug of slugs) {
-    if (!companyIdBySlug.has(slug)) {
+    if (!companyMetaBySlug.has(slug)) {
       log(`Company slug not found in DB: ${slug} — skipping`, "warn");
     }
   }
@@ -60,8 +69,9 @@ async function main() {
 
   try {
     for (const slug of slugs) {
-      const companyId = companyIdBySlug.get(slug);
-      if (!companyId) continue;
+      const meta = companyMetaBySlug.get(slug);
+      if (!meta) continue;
+      const { id: companyId, name: companyName } = meta;
 
       const config = COMPANY_CONFIGS[slug];
       if (!config) {
@@ -93,8 +103,15 @@ async function main() {
 
         cLog(`${normalized.length} India jobs after normalization`);
 
-        if (!dryRun && normalized.length > 0) {
-          const result = await upsertJobs(supabase, companyId, normalized);
+        if (dryParse) {
+          await dryRunParse(normalized, companyName, cLog, 5);
+        } else if (!dryRun && normalized.length > 0) {
+          // Inline parse + embed BEFORE upsert. Decision is per-job:
+          // skip if already parsed and signature unchanged; (re-)parse
+          // otherwise. New jobs go in fully-parsed; updated jobs whose
+          // description changed get re-parsed.
+          const enriched = await enrichWithParse(supabase, companyId, companyName, normalized, cLog);
+          const result = await upsertJobs(supabase, companyId, enriched);
           inserted = result.inserted;
           updated = result.updated;
           stale = await markStaleJobs(supabase, companyId, runStarted);
@@ -109,12 +126,12 @@ async function main() {
         await ctx.close();
       }
 
-      if (!dryRun) {
+      if (!dryRun && !dryParse) {
         await recordCrawlRun(supabase, {
           company_id: companyId,
           started_at: runStarted.toISOString(),
           finished_at: new Date().toISOString(),
-          jobs_seen: 0, // raw count not tracked here; normalized count used
+          jobs_seen: 0,
           jobs_new: inserted,
           jobs_updated: updated,
           jobs_marked_stale: stale,
@@ -129,7 +146,6 @@ async function main() {
     await browser.close();
   }
 
-  // Summary
   log("─".repeat(60));
   log("Crawl complete:");
   for (const r of results) {

@@ -7,6 +7,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@google/generative-ai": "^0.24.0",
     "@prodmatch/shared": "workspace:*",
     "@supabase/supabase-js": "^2.46.1",
     "playwright": "^1.49.0",

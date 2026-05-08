@@ -1,5 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { NormalizedJob } from "@prodmatch/shared";
+import type { EnrichedJob } from "./parse.js";
 import { log } from "../lib/logger.js";
 
 export interface UpsertResult {
@@ -8,10 +9,41 @@ export interface UpsertResult {
   markedStale: number;
 }
 
+// Build the "parse-fields" patch that lands atomically with the row when
+// we have parse output for it. Empty object when we don't (description
+// unchanged → existing row already has these populated).
+function parsePatch(j: EnrichedJob): Record<string, unknown> {
+  if (!j.needsParse || !j.parsed) return {};
+  const p = j.parsed;
+  const patch: Record<string, unknown> = {
+    must_have_skills:    p.must_have_skills,
+    nice_to_have_skills: p.nice_to_have_skills,
+    jd_min_years:        p.jd_min_years,
+    jd_max_years:        p.jd_max_years,
+    work_mode:           p.work_mode,
+    jd_seniority_signal: p.jd_seniority_signal,
+    jd_summary:          p.jd_summary,
+    is_likely_ghost:     p.is_boilerplate,
+    ghost_signals:       { reasons: p.ghost_reasons },
+    role_function_jd:        p.role_function_jd,
+    responsibilities:        p.responsibilities,
+    qualifications_required: p.qualifications_required,
+    qualifications_preferred: p.qualifications_preferred,
+    tech_stack_explicit:     p.tech_stack_explicit,
+    team_context:            p.team_context,
+    jd_parsed_at:        new Date().toISOString(),
+  };
+  if (j.embedding && j.embedding.length > 0) {
+    patch.embedding = j.embedding;
+    patch.embedding_at = new Date().toISOString();
+  }
+  return patch;
+}
+
 export async function upsertJobs(
   supabase: SupabaseClient,
   companyId: string,
-  jobs: NormalizedJob[],
+  jobs: EnrichedJob[],
 ): Promise<{ inserted: number; updated: number }> {
   if (jobs.length === 0) return { inserted: 0, updated: 0 };
 
@@ -19,12 +51,10 @@ export async function upsertJobs(
   let inserted = 0;
   let updated = 0;
 
-  // Batch upsert by external_id (primary dedup key)
   const BATCH = 50;
   for (let i = 0; i < jobs.length; i += BATCH) {
     const batch = jobs.slice(i, i + BATCH);
 
-    // Fetch existing external_ids for this company
     const externalIds = batch.map((j) => j.external_id);
     const { data: existing } = await supabase
       .from("jobs")
@@ -37,10 +67,6 @@ export async function upsertJobs(
     for (const job of batch) {
       const found = existingMap.get(job.external_id);
       if (found) {
-        // Update existing row. Include apply_url so existing rows get their
-        // missing link backfilled on the next crawl. Description too — some
-        // crawlers improved their detail-page extraction since the row was
-        // first seen.
         await supabase
           .from("jobs")
           .update({
@@ -58,11 +84,11 @@ export async function upsertJobs(
             last_seen_at: now,
             is_active: true,
             raw: job.raw,
+            ...parsePatch(job),
           })
           .eq("id", found.id);
         updated++;
       } else {
-        // Try signature fallback before inserting
         const { data: bySig } = await supabase
           .from("jobs")
           .select("id")
@@ -79,15 +105,21 @@ export async function upsertJobs(
               description: job.description,
               last_seen_at: now,
               is_active: true,
+              ...parsePatch(job),
             })
             .eq("id", bySig.id);
           updated++;
         } else {
+          // Strip the EnrichedJob-only fields before insert (they aren't
+          // columns). parsePatch handles structured-parse + embedding.
+          const { parsed: _p, embedding: _e, needsParse: _n, ...row } = job;
+          void _p; void _e; void _n;
           const { error } = await supabase.from("jobs").insert({
-            ...job,
+            ...row,
             last_seen_at: now,
             is_active: true,
             freshness_score: 100,
+            ...parsePatch(job),
           });
           if (error) {
             log(`Insert error for job ${job.external_id}: ${error.message}`, "warn");
@@ -137,3 +169,7 @@ export async function recordCrawlRun(
   const { error } = await supabase.from("crawl_runs").insert(payload);
   if (error) log(`Failed to record crawl_run: ${error.message}`, "warn");
 }
+
+// Re-export the NormalizedJob type so callers don't need to import from
+// @prodmatch/shared just to type a function param.
+export type { NormalizedJob };

@@ -15,6 +15,11 @@ on:
         required: false
         default: "false"
         type: boolean
+      dry_run_parse:
+        description: "Dry run + parse 5 sample JDs and print structured output"
+        required: false
+        default: "false"
+        type: boolean
 
 concurrency:
   group: crawl
@@ -24,7 +29,9 @@ jobs:
   crawl:
     name: "Crawl ${{ matrix.name }}"
     runs-on: ubuntu-latest
-    timeout-minutes: 90
+    # Inline parse adds ~30 min on a fresh DB (3,500 jobs × 3s with 6
+    # workers across 3 keys). Daily delta runs typically add < 5 min.
+    timeout-minutes: 120
     strategy:
       fail-fast: false
       matrix:
@@ -40,9 +47,6 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v5
 
-      # Don't pass `version:` — pnpm/action-setup picks it up from the
-      # `packageManager` field in package.json. Specifying both produces
-      # ERR_PNPM_BAD_PM_VERSION on newer pnpm releases.
       - name: Setup pnpm
         uses: pnpm/action-setup@v4
 
@@ -58,21 +62,26 @@ jobs:
       - name: Install Playwright Chromium
         run: pnpm --filter @prodmatch/crawler exec playwright install --with-deps chromium
 
-      - name: Run crawler
+      - name: Run crawler (with inline JD parse + embed)
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          # Comma-separated keys → round-robin in worker pool, separate
+          # daily quota per key.
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
         run: |
-          # If workflow_dispatch with specific slugs, use those; otherwise use matrix slugs
           SLUGS="${{ github.event.inputs.slugs }}"
           if [ -z "$SLUGS" ]; then
             SLUGS="${{ matrix.slugs }}"
           fi
-          DRY_RUN_FLAG=""
+          FLAGS=""
           if [ "${{ github.event.inputs.dry_run }}" = "true" ]; then
-            DRY_RUN_FLAG="--dry-run"
+            FLAGS="--dry-run"
           fi
-          pnpm --filter @prodmatch/crawler start -- --slugs="$SLUGS" $DRY_RUN_FLAG
+          if [ "${{ github.event.inputs.dry_run_parse }}" = "true" ]; then
+            FLAGS="--dry-run-parse"
+          fi
+          pnpm --filter @prodmatch/crawler start -- --slugs="$SLUGS" $FLAGS
 
       - name: Upload logs on failure
         if: failure()
@@ -84,45 +93,45 @@ jobs:
           retention-days: 7
           if-no-files-found: ignore
 
-  # Phase G — JD-parse backfill.
-  # Runs after all matrix crawl jobs finish. Hits the deployed endpoint
-  # /api/admin/parse-jds repeatedly until response says remaining=0.
-  # Each call processes 25 jobs (~75-100s of Gemini light-tier calls).
-  # Skipped on dry runs.
-  jd_parse:
-    name: "Parse JDs (Gemini)"
+  # Safety-net pass against the deployed Vercel endpoint. Inline parse
+  # during the crawl handles 99% of jobs; this catches the rare row where
+  # all keys 429'd in the same run, or pre-Phase-J legacy rows. Bounded
+  # iterations + small batches → finishes in minutes when there's anything
+  # to do, exits immediately when there isn't.
+  jd_parse_safety_net:
+    name: "Parse JDs (safety net)"
     needs: crawl
     runs-on: ubuntu-latest
-    timeout-minutes: 30
-    if: ${{ github.event.inputs.dry_run != 'true' }}
+    timeout-minutes: 15
+    if: ${{ github.event.inputs.dry_run != 'true' && github.event.inputs.dry_run_parse != 'true' }}
     steps:
-      - name: Backfill structured JD parse via deployed endpoint
+      - name: Catch any rows the inline parse missed
         env:
           APP_URL: ${{ secrets.APP_URL }}
           CRON_SECRET: ${{ secrets.CRON_SECRET }}
         run: |
           if [ -z "$APP_URL" ] || [ -z "$CRON_SECRET" ]; then
-            echo "::warning::APP_URL or CRON_SECRET secret missing — skipping JD parse"
+            echo "::warning::APP_URL or CRON_SECRET missing — skipping safety-net pass"
             exit 0
           fi
 
-          MAX_ITER=40   # 40 × 25 = 1000 jobs/run hard cap
+          MAX_ITER=20
           iter=0
           while [ $iter -lt $MAX_ITER ]; do
             iter=$((iter + 1))
             resp=$(curl -sS -X POST "${APP_URL}/api/admin/parse-jds" \
               -H "Authorization: Bearer ${CRON_SECRET}" \
               -H "Content-Type: application/json" \
-              --max-time 320)
+              --max-time 280)
             echo "iter=$iter $resp"
             remaining=$(echo "$resp" | python3 -c "import json,sys; d=json.load(sys.stdin); print(d.get('remaining', -1))" 2>/dev/null || echo "-1")
             processed=$(echo "$resp" | python3 -c "import json,sys; d=json.load(sys.stdin); print(d.get('processed', 0))" 2>/dev/null || echo "0")
             if [ "$remaining" = "0" ]; then
-              echo "All JDs parsed."
+              echo "Safety-net pass clean."
               break
             fi
-            if [ "$processed" = "0" ] && [ "$remaining" = "-1" ]; then
-              echo "::warning::JD parse made no progress — stopping (response above)"
+            if [ "$processed" = "0" ]; then
+              echo "::warning::No progress — stopping (response above)"
               exit 0
             fi
             sleep 2
