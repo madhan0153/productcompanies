@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+import { after } from "next/server";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { parseResumePdf } from "@/lib/llm/prompts/resume-parse";
@@ -9,6 +10,7 @@ import { LlmRunError } from "@/lib/llm/gemini";
 import { getUserConsents } from "@/lib/dpdp/consent";
 import { computeResumeScore } from "@/lib/matching/resume-score";
 import { embed, buildResumeEmbedText } from "@/lib/llm/embed";
+import { computeMatchesForUser } from "@/lib/matching/engine";
 import type { ParsedResume } from "@/lib/llm/prompts/resume-parse";
 import type { SeniorityLevel } from "@/lib/supabase/types";
 import type { Json } from "@/lib/supabase/types";
@@ -259,6 +261,19 @@ export async function uploadAndParseResume(formData: FormData): Promise<UploadRe
   revalidatePath("/matches");
   revalidatePath("/coach");
   revalidatePath("/insights");
+
+  // Phase K — auto-compute matches in the background once the response
+  // returns. The user lands on /matches and sees a populated list rather
+  // than an empty "click compute" prompt. Errors are logged, never thrown
+  // — failure here doesn't undo the resume upload.
+  after(async () => {
+    try {
+      const result = await computeMatchesForUser(user.id, { forceFull: true });
+      console.log(`[auto-compute] user=${user.id.slice(0, 8)} mode=${result.mode} total=${result.total} new=${result.new_matches} fc=${result.with_fit_card} ${result.duration_ms}ms`);
+    } catch (err) {
+      console.warn("[auto-compute] failed:", err instanceof Error ? err.message : String(err));
+    }
+  });
 
   return {
     ok: true,

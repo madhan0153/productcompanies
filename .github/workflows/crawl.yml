@@ -105,3 +105,45 @@ jobs:
             packages/crawler/*.log
           retention-days: 7
           if-no-files-found: ignore
+
+  # Phase K — fan-out matching. Runs after every crawl group finishes
+  # (success or failure — even partial new jobs deserve to be matched).
+  # Loops the recompute endpoint until it reports zero remaining users
+  # OR the wall-clock budget hits.
+  recompute_matches:
+    name: "Recompute matches (fan-out)"
+    needs: crawl
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    if: ${{ always() && github.event.inputs.dry_run != 'true' && github.event.inputs.dry_run_parse != 'true' }}
+    steps:
+      - name: Trigger recompute-matches for all consented users
+        env:
+          APP_URL: ${{ secrets.APP_URL }}
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+        run: |
+          if [ -z "$APP_URL" ] || [ -z "$CRON_SECRET" ]; then
+            echo "::warning::APP_URL or CRON_SECRET missing — skipping recompute"
+            exit 0
+          fi
+          MAX_ITER=10
+          iter=0
+          while [ $iter -lt $MAX_ITER ]; do
+            iter=$((iter + 1))
+            resp=$(curl -sS -X POST "${APP_URL}/api/cron/recompute-matches" \
+              -H "Authorization: Bearer ${CRON_SECRET}" \
+              -H "Content-Type: application/json" \
+              --max-time 280)
+            echo "iter=$iter $resp"
+            bailed=$(echo "$resp" | python3 -c "import json,sys; d=json.load(sys.stdin); print(d.get('bailed_on_budget', False))" 2>/dev/null || echo "False")
+            processed=$(echo "$resp" | python3 -c "import json,sys; d=json.load(sys.stdin); print(d.get('processed', 0))" 2>/dev/null || echo "0")
+            if [ "$bailed" != "True" ]; then
+              echo "Recompute fan-out complete."
+              break
+            fi
+            if [ "$processed" = "0" ]; then
+              echo "::warning::No progress — stopping (response above)"
+              exit 0
+            fi
+            sleep 2
+          done

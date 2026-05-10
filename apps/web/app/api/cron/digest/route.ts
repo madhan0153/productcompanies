@@ -51,12 +51,17 @@ export async function POST(req: NextRequest) {
   const admin = createSupabaseAdminClient();
   const now = new Date().toISOString();
 
-  // Find subscriptions due to send
+  // Find subscriptions due to send. Phase K — also pull last_sent_at so we
+  // can scope this digest to matches that became strong-fits SINCE the
+  // previous send. Reading the same top-5 every week is noise.
   const { data: subs } = await admin
     .from("digest_subscriptions")
-    .select("user_id")
+    .select("user_id, last_sent_at")
     .eq("frequency", "weekly")
     .lte("next_send_at", now);
+
+  const lastSentByUser = new Map<string, string | null>();
+  for (const s of subs ?? []) lastSentByUser.set(s.user_id, (s as { last_sent_at: string | null }).last_sent_at);
 
   if (!subs?.length) {
     return NextResponse.json({ sent: 0, message: "No subscriptions due" });
@@ -102,13 +107,34 @@ export async function POST(req: NextRequest) {
     const profile = profiles?.find((p) => p.id === uid);
     const name = profile?.display_name ?? email.split("@")[0];
 
-    // Fetch top 5 matches for this user (recent active jobs)
-    const { data: rawMatches } = await admin
-      .from("matches")
-      .select("job_id, score, reasoning, jobs(title, location, apply_url, companies(name))")
-      .eq("user_id", uid)
-      .order("score", { ascending: false })
-      .limit(5);
+    // Phase K — prefer matches whose Fit Card landed AFTER the last digest
+    // (truly new). Fall back to top-5-by-score only if there are no recent
+    // ones (e.g. first digest, or quiet week). Avoids emailing the same
+    // top-5 every Monday.
+    const lastSent = lastSentByUser.get(uid);
+    let rawMatches: MatchRow[] | null = null;
+
+    if (lastSent) {
+      const { data: deltaMatches } = await admin
+        .from("matches")
+        .select("job_id, score, reasoning, jobs(title, location, apply_url, companies(name))")
+        .eq("user_id", uid)
+        .eq("verdict", "strong_fit")
+        .gte("computed_at", lastSent)
+        .order("score", { ascending: false })
+        .limit(5);
+      rawMatches = (deltaMatches as unknown as MatchRow[]) ?? null;
+    }
+
+    if (!rawMatches || rawMatches.length === 0) {
+      const { data: top } = await admin
+        .from("matches")
+        .select("job_id, score, reasoning, jobs(title, location, apply_url, companies(name))")
+        .eq("user_id", uid)
+        .order("score", { ascending: false })
+        .limit(5);
+      rawMatches = (top as unknown as MatchRow[]) ?? null;
+    }
 
     const matches = ((rawMatches as unknown as MatchRow[]) ?? [])
       .filter((m) => m.jobs != null)

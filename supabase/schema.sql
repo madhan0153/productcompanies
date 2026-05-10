@@ -317,6 +317,22 @@ create index if not exists idx_jobs_no_embedding
 
 
 -- ─────────────────────────────────────────────────────────────────────────────
+-- Phase K: Enterprise-grade matching — auto-recompute, freshness, incremental.
+-- ─────────────────────────────────────────────────────────────────────────────
+-- seen_at: NULL when match row was created/updated since the user's last
+-- visit; set on first read. Powers the "New" pill + ?show=new filter.
+-- last_match_compute_at: when did the engine last run for this profile?
+-- Used by incremental compute (skip jobs whose embedding_at < this) and
+-- by the dashboard "you last checked N days ago" banner.
+alter table public.matches  add column if not exists seen_at                timestamptz;
+alter table public.profiles add column if not exists last_match_compute_at  timestamptz;
+
+-- Partial index — most matches are seen; only unseen rows hit "show=new".
+create index if not exists idx_matches_user_unseen
+  on public.matches(user_id) where seen_at is null;
+
+
+-- ─────────────────────────────────────────────────────────────────────────────
 -- Phase J: Inline JD parse during crawl — richer extracted facts.
 -- ─────────────────────────────────────────────────────────────────────────────
 -- role_function_jd: extracted from JD body, not the title (more reliable).

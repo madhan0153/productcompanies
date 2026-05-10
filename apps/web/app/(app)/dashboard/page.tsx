@@ -54,6 +54,7 @@ export default async function DashboardPage() {
     { data: recentMatchesRaw },
     { data: appsByStatus },
     { data: recentAppsRaw },
+    { count: newStrongCount },
   ] = await Promise.all([
     supabase.from("profiles")
       .select("display_name, resume_storage_path, product_dna_score, years_experience, current_role")
@@ -73,6 +74,14 @@ export default async function DashboardPage() {
       .eq("user_id", user.id)
       .order("created_at", { ascending: false })
       .limit(5),
+    // Phase K — count of "new" strong fits since the user last visited
+    // /matches. Drives the dashboard banner. Index `idx_matches_user_unseen`
+    // makes this a partial-index lookup, not a sequential scan.
+    supabase.from("matches")
+      .select("*", { count: "exact", head: true })
+      .eq("user_id", user.id)
+      .eq("verdict", "strong_fit")
+      .is("seen_at", null),
   ]);
 
   const recentMatches = (recentMatchesRaw as unknown as RecentMatch[] | null) ?? [];
@@ -119,6 +128,27 @@ export default async function DashboardPage() {
           </Tooltip>
         )}
       </div>
+
+      {/* Phase K — new strong-fit matches since last visit */}
+      {hasResume && (newStrongCount ?? 0) > 0 && (
+        <Link
+          href="/matches?show=new"
+          className="group flex items-center justify-between gap-4 rounded-2xl border border-emerald-500/30 bg-gradient-to-br from-emerald-500/10 via-emerald-500/5 to-transparent px-5 py-4 transition hover:border-emerald-400"
+        >
+          <div className="flex items-center gap-3">
+            <span className="rounded-xl border border-emerald-400/30 bg-card/40 px-3 py-1 text-xl font-bold tabular-nums text-emerald-400">
+              {newStrongCount}
+            </span>
+            <div>
+              <p className="text-sm font-medium text-emerald-300">
+                {newStrongCount === 1 ? "1 new strong fit" : `${newStrongCount} new strong fits`} since your last visit
+              </p>
+              <p className="text-xs text-muted-foreground">From this morning&apos;s crawl across your 18 target companies.</p>
+            </div>
+          </div>
+          <span className="text-sm text-emerald-400 transition group-hover:translate-x-0.5">View →</span>
+        </Link>
+      )}
 
       {/* Resume prompt */}
       {!hasResume && (

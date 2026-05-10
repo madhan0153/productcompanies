@@ -89,6 +89,7 @@ type MatchRow = {
   hidden_reason: string | null;
   reasoning: string | null;
   computed_at: string;
+  seen_at: string | null;
   jobs: {
     id: string; title: string; location: string | null;
     hubs: string[] | null; tech_stack: string[] | null;
@@ -123,20 +124,24 @@ export default async function MatchesPage({
   const selectedHubs = (params.h ?? "").split(",").filter(Boolean);
   const minScore = params.min_score ? parseInt(params.min_score, 10) : null;
   const showHidden = params.show === "all";
+  const showOnlyNew = params.show === "new";
 
-  const { data: profile } = await supabase
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data: profile } = await (supabase
     .from("profiles")
-    .select("resume_storage_path, resume_score, resume_score_at")
+    .select("resume_storage_path, resume_score, resume_score_at, last_match_compute_at")
     .eq("id", user.id)
-    .maybeSingle();
+    .maybeSingle() as any) as { data: { resume_storage_path: string | null; resume_score: number | null; last_match_compute_at: string | null } | null };
 
   const hasResume = !!profile?.resume_storage_path;
-  const resumeScore = (profile as { resume_score?: number | null } | null)?.resume_score ?? null;
+  const resumeScore = profile?.resume_score ?? null;
+  const lastComputeAt = profile?.last_match_compute_at ?? null;
 
-  let query = supabase
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let query: any = supabase
     .from("matches")
     .select(`
-      score, verdict, fit_card, fit_card_at, hidden_reason, reasoning, computed_at,
+      score, verdict, fit_card, fit_card_at, hidden_reason, reasoning, computed_at, seen_at,
       jobs (
         id, title, location, hubs, tech_stack,
         comp_lpa_min, comp_lpa_max, seniority,
@@ -149,10 +154,22 @@ export default async function MatchesPage({
     .limit(500);
 
   if (minScore !== null) query = query.gte("score", minScore);
+  if (showOnlyNew) query = query.is("seen_at", null);
 
   const { data: rawData } = await query;
   const matchRows = rawData as unknown as MatchRow[] | null;
   const allRows = (matchRows ?? []).filter((m): m is MatchRow & { jobs: NonNullable<MatchRow["jobs"]> } => !!m.jobs);
+
+  // Mark unseen matches as seen AFTER we've captured the New flag for this
+  // render. Fire-and-forget; idempotent.
+  const unseenIds = allRows.filter((m) => m.seen_at === null).map((m) => m.jobs.id);
+  if (unseenIds.length > 0) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    void (supabase.from("matches") as any)
+      .update({ seen_at: new Date().toISOString() })
+      .eq("user_id", user.id)
+      .is("seen_at", null);
+  }
 
   // Apply user filters (company / hub)
   const filtered = allRows.filter((m) => {
@@ -198,6 +215,13 @@ export default async function MatchesPage({
     mismatch:       groups.get("mismatch")?.length ?? 0,
   };
 
+  // "New" counts (computed from unfiltered set so the badges are stable across filters)
+  const newCount        = unseenIds.length;
+  const newStrongCount  = allRows.filter((m) => m.seen_at === null && (m.verdict === "strong_fit")).length;
+
+  // Freshness phrasing — relative time since last compute.
+  const computeAgo = lastComputeAt ? humanAgo(lastComputeAt) : null;
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -209,9 +233,47 @@ export default async function MatchesPage({
               ? `${counts.strong_fit} strong · ${counts.stretch} stretch · ${counts.underqualified} under · ${counts.mismatch} hidden mismatch`
               : "Compute your first matches below"}
           </p>
+          {computeAgo && (
+            <p className="mt-0.5 text-xs text-muted-foreground/80">
+              Last refreshed {computeAgo}
+              {newCount > 0 && (
+                <> · <span className="text-emerald-400">{newCount} new since</span></>
+              )}
+            </p>
+          )}
         </div>
         <ComputeButton hasResume={hasResume} />
       </div>
+
+      {/* "New strong fits" banner — only when there's a non-zero unseen strong fit */}
+      {newStrongCount > 0 && !showOnlyNew && (
+        <Link
+          href="/matches?show=new"
+          className="flex items-center justify-between gap-4 rounded-2xl border border-emerald-500/30 bg-gradient-to-br from-emerald-500/10 via-emerald-500/5 to-transparent px-5 py-4 transition hover:border-emerald-400"
+        >
+          <div className="flex items-center gap-3">
+            <span className="rounded-xl border border-emerald-400/30 bg-card/40 px-3 py-1 text-base font-bold text-emerald-400 tabular-nums">
+              {newStrongCount}
+            </span>
+            <div>
+              <p className="text-sm font-medium text-emerald-300">
+                {newStrongCount === 1 ? "1 new strong fit" : `${newStrongCount} new strong fits`} since your last visit
+              </p>
+              <p className="text-xs text-muted-foreground">Tap to filter to just the new ones.</p>
+            </div>
+          </div>
+          <ArrowUpRight className="h-4 w-4 text-emerald-400" />
+        </Link>
+      )}
+
+      {showOnlyNew && (
+        <div className="flex items-center justify-between gap-3 rounded-xl border border-emerald-500/20 bg-emerald-500/5 px-4 py-2.5 text-sm">
+          <span className="text-emerald-300">Showing {allRows.length} new match{allRows.length === 1 ? "" : "es"} since your last visit.</span>
+          <Link href="/matches" className="rounded-lg border border-border px-2.5 py-1 text-xs text-muted-foreground transition hover:border-primary/40 hover:text-foreground">
+            Show all
+          </Link>
+        </div>
+      )}
 
       {/* Resume Score banner — only when computed */}
       {hasResume && resumeScore !== null && (
@@ -283,7 +345,7 @@ export default async function MatchesPage({
 
                 <StaggerList className="space-y-3">
                   {items.map((m) => (
-                    <MatchCard key={m.jobs.id} match={m} verdict={v} />
+                    <MatchCard key={m.jobs.id} match={m} verdict={v} isNew={m.seen_at === null} />
                   ))}
                 </StaggerList>
               </section>
@@ -352,11 +414,13 @@ function ResumeScoreBanner({ score }: { score: number }) {
 function MatchCard({
   match,
   verdict,
+  isNew,
 }: {
   match: Pick<MatchRow, "score" | "fit_card" | "reasoning" | "hidden_reason"> & {
     jobs: NonNullable<MatchRow["jobs"]>;
   };
   verdict: Verdict;
+  isNew: boolean;
 }) {
   const job = match.jobs;
   const company = job.companies;
@@ -369,8 +433,11 @@ function MatchCard({
   return (
     <Link
       href={`/jobs/${job.id}`}
-      className={`group block rounded-2xl border border-border bg-card/40 p-5 transition lift hover:border-primary/30 hover:bg-card/70 ${meta.bgTone}`}
+      className={`group relative block rounded-2xl border border-border bg-card/40 p-5 transition lift hover:border-primary/30 hover:bg-card/70 ${meta.bgTone}`}
     >
+      {isNew && (
+        <span className="absolute -left-1 top-5 inline-block h-2 w-2 rounded-full bg-emerald-400 ring-2 ring-card" />
+      )}
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div className="flex min-w-0 flex-1 items-start gap-3">
           <CompanyLogo name={company?.name ?? "?"} logoUrl={company?.logo_url ?? null} size={44} />
@@ -380,6 +447,11 @@ function MatchCard({
               <span className={`rounded-full border px-2 py-0.5 text-[11px] font-medium ${meta.tone}`}>
                 {meta.short}
               </span>
+              {isNew && (
+                <span className="rounded-full border border-emerald-400/40 bg-emerald-400/10 px-2 py-0.5 text-[11px] font-medium text-emerald-300">
+                  New
+                </span>
+              )}
               {isGhost && (
                 <span className="inline-flex items-center gap-1 rounded-full border border-zinc-500/30 px-2 py-0.5 text-[11px] text-zinc-400">
                   <Ghost className="h-3 w-3" /> Older listing
@@ -433,4 +505,20 @@ function MatchCard({
       </div>
     </Link>
   );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Tiny relative-time helper. Stays UTC-aware (Date.now → number → diff in ms).
+// Phrasing matches the rest of the app (no library dependency).
+// ─────────────────────────────────────────────────────────────────────────────
+
+function humanAgo(iso: string): string {
+  const diff = Date.now() - new Date(iso).getTime();
+  if (!Number.isFinite(diff) || diff < 0) return "just now";
+  const min = 60_000, hr = 3_600_000, day = 86_400_000;
+  if (diff < min)        return "just now";
+  if (diff < hr)         return `${Math.round(diff / min)}m ago`;
+  if (diff < day)        return `${Math.round(diff / hr)}h ago`;
+  if (diff < 7 * day)    return `${Math.round(diff / day)}d ago`;
+  return new Date(iso).toLocaleDateString();
 }
