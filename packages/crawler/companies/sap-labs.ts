@@ -92,17 +92,25 @@ export const sapLabsConfig: CompanyConfig = {
         "[data-automation-id*='description']",
         "[id*='description'i]",
         "[class*='description'i]",
+        "[role='main']",
         "main",
+        "article",
       ];
       for (const sel of tryEls) {
         const el = document.querySelector(sel);
         const text = (el?.textContent ?? "").trim();
-        if (text.length >= 200) return Promise.resolve(text);
+        if (text.length >= 400) return Promise.resolve(text);
       }
-      // Last resort: dump the whole body, strip nav/header chrome
-      const body = (document.body?.textContent ?? "").trim();
-      return Promise.resolve(body.length >= 200 ? body : "");
-    }, { waitUntil: "networkidle", extraWaitMs: 1500, timeoutMs: 35_000 });
+      // Largest-<div> fallback — SAP's JD wrapper has variable IDs across
+      // role types (regular vs SAP-iXp template).
+      const divs = Array.from(document.querySelectorAll("div"));
+      let best = "";
+      for (const d of divs) {
+        const t = (d.textContent ?? "").trim();
+        if (t.length > best.length && t.length < 50_000) best = t;
+      }
+      return Promise.resolve(best.length >= 400 ? best : "");
+    }, { waitUntil: "networkidle", extraWaitMs: 3000, timeoutMs: 40_000 });
 
     return allJobs;
   },

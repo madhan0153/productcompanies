@@ -29,19 +29,32 @@ jobs:
   crawl:
     name: "Crawl ${{ matrix.name }}"
     runs-on: ubuntu-latest
-    # Inline parse adds ~30 min on a fresh DB (3,500 jobs × 3s with 6
-    # workers across 3 keys). Daily delta runs typically add < 5 min.
-    timeout-minutes: 120
+    # Each group is sized so it fits comfortably under 90 min including
+    # detail-page enrichment + Gemini parse + embed. The previous 3-group
+    # split hit 2h timeout because group-a's amazon (~2k listings) plus
+    # google's 370 detail-page fetches shared the same job.
+    timeout-minutes: 90
     strategy:
       fail-fast: false
       matrix:
         include:
-          - name: "group-a"
-            slugs: "google,microsoft,meta,amazon,apple,atlassian"
-          - name: "group-b"
-            slugs: "nvidia,oracle,salesforce,sap-labs,razorpay,phonepe"
-          - name: "group-c"
-            slugs: "zerodha,cred,groww,swiggy,zomato,flipkart"
+          # amazon alone — ~2k jobs, listing has full descriptions, no
+          # detail-page fetch needed; bottleneck is the Gemini parse step.
+          - name: "amazon"
+            slugs: "amazon"
+          # google + microsoft — both heavy on detail-page enrichment.
+          - name: "google-microsoft"
+            slugs: "google,microsoft"
+          # meta + apple + atlassian + salesforce — Workday-style heavy
+          # enrich, smaller listing counts.
+          - name: "meta-apple-atlassian-salesforce"
+            slugs: "meta,apple,atlassian,salesforce"
+          # nvidia + oracle + sap-labs — Workday/SAP enrich.
+          - name: "nvidia-oracle-sap"
+            slugs: "nvidia,oracle,sap-labs"
+          # Greenhouse / Zoho / TurboHire — listing-rich, fast adapters.
+          - name: "in-startups"
+            slugs: "razorpay,phonepe,zerodha,cred,groww,swiggy,zomato,flipkart"
 
     steps:
       - name: Checkout

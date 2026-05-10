@@ -10,8 +10,11 @@ import { sleep, enrichDescriptions } from "./_types.js";
 // by filteredjobs is truncated to a teaser (we observed 22-39 chars).
 const ORG_ID = "4d757ba0-3d57-448a-b82c-238ed87ac90f";
 const CAREER_URL = `https://flipkart.turbohire.co/dashboardv2?orgId=${ORG_ID}&type=0`;
+// TurboHire's public job-detail URL. The dashboardv2 deep-link we tried
+// previously didn't render the JD body for unauthenticated visitors.
+// `/jobdetails` is the one the "View" button in the listing actually opens.
 const detailUrl = (jobId: string) =>
-  `https://flipkart.turbohire.co/dashboardv2/jobs?orgId=${ORG_ID}&type=0&jobId=${jobId}`;
+  `https://flipkart.turbohire.co/jobdetails?orgId=${ORG_ID}&jobId=${jobId}`;
 
 interface TurboLocation {
   Address?: string;

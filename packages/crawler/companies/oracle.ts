@@ -58,9 +58,11 @@ export const oracleConfig: CompanyConfig = {
       if (batch.length === 0) break;
 
       for (const j of batch) {
-        // Listing API gives only ShortDescriptionStr (~500 chars) — that's
-        // why median description was 535 and 15/22 had no must-haves. The
-        // detail page has the full responsibilities + qualifications.
+        // Always keep the API seed (~500 chars). It's enough for the parser
+        // to extract some skills, and discarding it left half of Oracle rows
+        // with empty descriptions when detail-page enrichment failed.
+        // enrichDescriptions only kicks in when seed is < 60 chars, so any
+        // row with a real seed bypasses it — that's the right tradeoff.
         const seedDesc = [j.ShortDescriptionStr, j.ExternalResponsibilitiesStr, j.ExternalQualificationsStr]
           .filter(Boolean)
           .join("\n\n");
@@ -68,9 +70,7 @@ export const oracleConfig: CompanyConfig = {
           external_id: j.Id,
           title: j.Title,
           location_raw: j.PrimaryLocation ?? "India",
-          // Keep seed only if it's already substantial; otherwise let
-          // enrichDescriptions fetch the full detail page.
-          description: seedDesc.length >= 1500 ? seedDesc : "",
+          description: seedDesc,
           apply_url: `https://careers.oracle.com/en/sites/jobsearch/job/${j.Id}`,
           posted_at: j.PostedDate,
           raw: j as unknown as Record<string, unknown>,
