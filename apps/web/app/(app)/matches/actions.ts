@@ -2,11 +2,10 @@
 
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
-import { after } from "next/server";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
-import { computeMatchesForUser } from "@/lib/matching/engine";
 import { getUserConsents } from "@/lib/dpdp/consent";
+import { enqueueUserRecompute } from "@/lib/queue/recompute";
 
 // Sprint 2 Item 5 — async match compute.
 //
@@ -55,22 +54,10 @@ export async function computeMatches(): Promise<ComputeMatchesResult> {
 
   const startedAt = new Date().toISOString();
 
-  // Fire-and-forget. `after()` runs once the response is sent to the client.
-  // Errors are logged; never thrown back into the request lifecycle.
-  after(async () => {
-    try {
-      const result = await computeMatchesForUser(user.id, { forceFull: true });
-      console.log(
-        `[compute-matches] user=${user.id.slice(0, 8)} mode=${result.mode} ` +
-        `total=${result.total} new=${result.new_matches} fc=${result.with_fit_card} ` +
-        `skipped=${result.skipped} ${result.duration_ms}ms`,
-      );
-      revalidatePath("/matches");
-      revalidatePath("/dashboard");
-    } catch (err) {
-      console.warn("[compute-matches] failed:", err instanceof Error ? err.message : String(err));
-    }
-  });
+  // Sprint 4 Item 13 — dispatch via the queue facade. Today this runs in
+  // next/server's after(); swapping to Inngest later is a one-file change
+  // (see lib/queue/recompute.ts).
+  enqueueUserRecompute(user.id, { forceFull: true, source: "user_button" });
 
   return { ok: true, queued: true, startedAt };
 }

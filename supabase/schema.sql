@@ -389,6 +389,68 @@ create index if not exists idx_matches_user_hidden
 
 
 -- ─────────────────────────────────────────────────────────────────────────────
+-- Sprint 4: cron lock table — prevents overlapping recompute runs
+-- ─────────────────────────────────────────────────────────────────────────────
+-- A single row per named lock. `holder_id` + `expires_at` form a lease — if
+-- a holder dies without releasing, the lock auto-expires and the next
+-- caller can grab it. Used by `acquire_cron_lock(name, ttl_seconds)` below.
+create table if not exists public.cron_locks (
+  name        text primary key,
+  holder_id   uuid not null,
+  acquired_at timestamptz not null default now(),
+  expires_at  timestamptz not null
+);
+
+-- Atomic lease acquire. Returns the holder_id on success, NULL when another
+-- caller currently holds an un-expired lease.
+create or replace function public.acquire_cron_lock(
+  lock_name text,
+  ttl_seconds integer default 600
+)
+returns uuid
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  new_holder uuid := gen_random_uuid();
+  inserted_holder uuid;
+begin
+  insert into public.cron_locks (name, holder_id, expires_at)
+  values (lock_name, new_holder, now() + (ttl_seconds || ' seconds')::interval)
+  on conflict (name) do update
+    set holder_id   = excluded.holder_id,
+        acquired_at = excluded.acquired_at,
+        expires_at  = excluded.expires_at
+    where public.cron_locks.expires_at < now()
+  returning holder_id into inserted_holder;
+
+  return inserted_holder;
+end;
+$$;
+revoke all on function public.acquire_cron_lock(text, integer) from public;
+grant execute on function public.acquire_cron_lock(text, integer) to service_role;
+
+create or replace function public.release_cron_lock(lock_name text, expected_holder uuid)
+returns boolean
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  rows_deleted integer;
+begin
+  delete from public.cron_locks
+    where name = lock_name and holder_id = expected_holder;
+  get diagnostics rows_deleted = row_count;
+  return rows_deleted > 0;
+end;
+$$;
+revoke all on function public.release_cron_lock(text, uuid) from public;
+grant execute on function public.release_cron_lock(text, uuid) to service_role;
+
+
+-- ─────────────────────────────────────────────────────────────────────────────
 -- Sprint 2: apply-click intent signal + resume version history
 -- ─────────────────────────────────────────────────────────────────────────────
 -- jobs.apply_click_count:

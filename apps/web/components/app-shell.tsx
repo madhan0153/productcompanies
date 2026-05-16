@@ -13,6 +13,8 @@ import { useFocusTrap } from "@/hooks/use-focus-trap";
 import { useEscapeKey } from "@/hooks/use-escape-key";
 import { cn } from "@/lib/utils";
 import { CommandPalette } from "@/components/command-palette";
+import { MobileBottomNav } from "@/components/mobile-bottom-nav";
+import { PwaInstallPrompt } from "@/components/pwa-install-prompt";
 
 const NAV = [
   { href: "/dashboard",    label: "Dashboard",    icon: LayoutDashboard },
@@ -261,12 +263,23 @@ export function AppShell({ user, banner, children }: Props) {
           initial={reduce ? {} : { opacity: 0, y: 6 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.28, ease: [0.22, 1, 0.36, 1] }}
-          className="flex-1 overflow-y-auto p-5 lg:p-6"
+          // pb-20 on mobile so the fixed bottom nav doesn't cover content;
+          // lg:pb-6 restores normal padding on desktop where nav is the sidebar.
+          className="flex-1 overflow-y-auto p-5 pb-20 lg:p-6 lg:pb-6"
           tabIndex={-1}
         >
           {children}
         </motion.main>
       </div>
+
+      {/* Sprint 4 Item 23 — mobile persistent nav. Hidden on lg+ where the
+          sidebar handles navigation. */}
+      <MobileBottomNav />
+
+      {/* Sprint 4 Item 25 — PWA install prompt. Renders nothing unless the
+          browser fires beforeinstallprompt (Android/Desktop) or the user
+          is on iOS Safari. Dismissal persists for 30 days. */}
+      <PwaInstallPrompt />
     </div>
   );
 }

@@ -2,7 +2,6 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { after } from "next/server";
 import { createHash } from "node:crypto";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
@@ -13,7 +12,7 @@ import { computeResumeScore } from "@/lib/matching/resume-score";
 import { computeDnaBreakdown } from "@/lib/matching/dna-breakdown";
 import { snapshotCurrentResume } from "@/lib/matching/resume-versions";
 import { embed, buildResumeEmbedText } from "@/lib/llm/embed";
-import { computeMatchesForUser } from "@/lib/matching/engine";
+import { enqueueUserRecompute } from "@/lib/queue/recompute";
 import type { ParsedResume } from "@/lib/llm/prompts/resume-parse";
 import type { SeniorityLevel } from "@/lib/supabase/types";
 import type { Json } from "@/lib/supabase/types";
@@ -200,10 +199,23 @@ export async function uploadAndParseResume(formData: FormData): Promise<UploadRe
   if (file.size > 5 * 1024 * 1024) {
     return { ok: false, error: "File too large — max 5 MB." };
   }
+  // Sprint 4 Item 26 — empty / near-empty PDFs are usually scan-failures or
+  // accidental empty exports. The Gemini PDF parser returns generic errors
+  // on them; catch upfront with a friendlier message.
+  if (file.size < 4 * 1024) {
+    return { ok: false, error: "PDF is too small to be a real resume — re-export and try again." };
+  }
 
   // Upload to Supabase Storage
   const path = `${user.id}/${crypto.randomUUID()}.pdf`;
   const bytes = await file.arrayBuffer();
+  // Light header check — every valid PDF starts with "%PDF-" within the first
+  // few bytes. Catches "renamed .docx as .pdf" and similar mistakes.
+  const head = new Uint8Array(bytes.slice(0, 5));
+  const headStr = String.fromCharCode(...head);
+  if (!headStr.startsWith("%PDF-")) {
+    return { ok: false, error: "File doesn't look like a real PDF. Re-export from your resume tool and try again." };
+  }
   const { error: storageError } = await admin.storage
     .from("resumes")
     .upload(path, bytes, { contentType: "application/pdf", upsert: false });
@@ -330,18 +342,9 @@ export async function uploadAndParseResume(formData: FormData): Promise<UploadRe
   revalidatePath("/coach");
   revalidatePath("/insights");
 
-  // Phase K — auto-compute matches in the background once the response
-  // returns. The user lands on /matches and sees a populated list rather
-  // than an empty "click compute" prompt. Errors are logged, never thrown
-  // — failure here doesn't undo the resume upload.
-  after(async () => {
-    try {
-      const result = await computeMatchesForUser(user.id, { forceFull: true });
-      console.log(`[auto-compute] user=${user.id.slice(0, 8)} mode=${result.mode} total=${result.total} new=${result.new_matches} fc=${result.with_fit_card} ${result.duration_ms}ms`);
-    } catch (err) {
-      console.warn("[auto-compute] failed:", err instanceof Error ? err.message : String(err));
-    }
-  });
+  // Sprint 4 Item 13 — dispatch via the queue facade so the swap to a real
+  // queue is a one-file change. Today the work still runs in after().
+  enqueueUserRecompute(user.id, { forceFull: true, source: "resume_upload" });
 
   return {
     ok: true,

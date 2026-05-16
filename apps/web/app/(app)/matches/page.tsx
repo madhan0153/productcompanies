@@ -575,7 +575,7 @@ function MatchCard({
   return (
     <Link
       href={`/jobs/${job.id}`}
-      className={`group relative block rounded-2xl border bg-card/40 p-5 transition hover:bg-card/70 ${
+      className={`group relative block rounded-2xl border bg-card/40 p-4 sm:p-5 transition hover:bg-card/70 ${
         hiddenView
           ? "border-border/40 opacity-60 hover:opacity-100"
           : isNew
@@ -588,14 +588,16 @@ function MatchCard({
         <div className="absolute left-0 top-0 h-full w-0.5 rounded-l-2xl bg-emerald-400" />
       )}
 
-      {/* Sprint 1 Item 4 — corner dismiss / restore action */}
+      {/* Sprint 1 Item 4 — corner dismiss / restore action. Sprint 4 Item 24:
+          add 4rem right-padding on the card header so the Dismiss button
+          doesn't overlap the title on phone widths. */}
       <div className="absolute right-3 top-3 z-10">
         {hiddenView
           ? <RestoreButton jobId={job.id} />
           : <DismissButton jobId={job.id} />}
       </div>
 
-      <div className="flex flex-wrap items-start gap-4">
+      <div className="flex flex-wrap items-start gap-3 pr-20 sm:pr-0 sm:gap-4">
 
         {/* Company logo + score chip — Sprint 2 Item 20: icon + color, not color alone. */}
         <div className="flex flex-col items-center gap-2">
@@ -611,8 +613,9 @@ function MatchCard({
 
         {/* Main content */}
         <div className="min-w-0 flex-1">
-          {/* Header row */}
-          <div className="flex flex-wrap items-center gap-2">
+          {/* Header row — Sprint 4 Item 24: confidence label drops off on
+              very narrow screens to keep the row to two lines max. */}
+          <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
             <span className="text-xs font-medium text-muted-foreground">{company?.name}</span>
             <div className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] font-semibold ${meta.tone} ${meta.borderTone} ${meta.bgTone}`}>
               {meta.icon}
@@ -628,7 +631,7 @@ function MatchCard({
                 <Ghost className="h-3 w-3" /> Older listing
               </span>
             )}
-            <span className={`ml-auto text-[10px] font-medium ${confidence.tone}`}>
+            <span className={`hidden sm:inline ml-auto text-[10px] font-medium ${confidence.tone}`}>
               {confidence.label}
             </span>
           </div>
@@ -693,21 +696,22 @@ function MatchCard({
         </div>
       </div>
 
-      {/* Footer */}
+      {/* Footer — Sprint 4 Item 24: stacks vertically on phone widths so
+          neither the Why-you-rank panel nor the Apply button wrap awkwardly. */}
       <div className="mt-4 space-y-2.5 border-t border-border/50 pt-3 text-xs text-muted-foreground">
         {showRanking && (
-          <div className="flex items-start gap-3 rounded-lg border border-border/30 bg-secondary/15 px-3 py-2">
+          <div className="flex items-start gap-2.5 sm:gap-3 rounded-lg border border-border/30 bg-secondary/15 px-2.5 sm:px-3 py-2">
             <div className="shrink-0 text-center min-w-[2.75rem]">
               <p className={`text-xs font-bold tabular-nums ${meta.tone}`}>Top {topPct}%</p>
               <p className="text-[9px] text-muted-foreground/70">{allScores.length} matches</p>
             </div>
             <div className="min-w-0">
               <p className="mb-0.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Why you rank here</p>
-              <p className="leading-relaxed text-muted-foreground">{rankingNarrative(verdict, topPct)}</p>
+              <p className="leading-relaxed text-muted-foreground line-clamp-3 sm:line-clamp-none">{rankingNarrative(verdict, topPct)}</p>
             </div>
           </div>
         )}
-        <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between sm:gap-3">
           <span className="inline-flex items-center gap-1.5">
             <Sparkles className="h-3 w-3 text-primary" />
             <span className="font-medium text-foreground/70 group-hover:text-primary transition">Open Fit Card</span>
