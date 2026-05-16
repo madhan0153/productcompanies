@@ -5,7 +5,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { LayoutGroup, motion, useReducedMotion } from "framer-motion";
 import {
   LayoutDashboard, Briefcase, ShieldCheck, LogOut, Menu, X, User,
-  BarChart3, Compass, ClipboardList,
+  BarChart3, Compass, ClipboardList, Zap,
 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { createSupabaseBrowserClient } from "@/lib/supabase/browser";
@@ -13,17 +13,13 @@ import { useFocusTrap } from "@/hooks/use-focus-trap";
 import { useEscapeKey } from "@/hooks/use-escape-key";
 import { cn } from "@/lib/utils";
 
-// Phase H — focused nav. Dropped Offer Compare, Alerts, Story Bank as
-// top-level pages. Renamed Insights → Market (it's the external view; Coach is
-// the advice view). Stories are now surfaced contextually inside the Fit Card.
-// Alerts are folded into Privacy/Settings.
 const NAV = [
-  { href: "/dashboard",     label: "Dashboard",      icon: LayoutDashboard },
-  { href: "/profile",       label: "My Profile",     icon: User },
-  { href: "/matches",       label: "Matches",        icon: Briefcase },
-  { href: "/coach",         label: "Coach",          icon: Compass },
-  { href: "/insights",      label: "Market",         icon: BarChart3 },
-  { href: "/applications",  label: "Applications",   icon: ClipboardList },
+  { href: "/dashboard",    label: "Dashboard",    icon: LayoutDashboard },
+  { href: "/profile",      label: "My Profile",   icon: User },
+  { href: "/matches",      label: "Matches",      icon: Briefcase },
+  { href: "/coach",        label: "Coach",        icon: Compass },
+  { href: "/insights",     label: "Market",       icon: BarChart3 },
+  { href: "/applications", label: "Applications", icon: ClipboardList },
 ];
 
 type Props = {
@@ -40,12 +36,8 @@ export function AppShell({ user, banner, children }: Props) {
   const trapRef = useFocusTrap(open);
   const menuButtonRef = useRef<HTMLButtonElement>(null);
 
-  // Esc closes the mobile sidebar
-  useEscapeKey(() => {
-    if (open) setOpen(false);
-  });
+  useEscapeKey(() => { if (open) setOpen(false); });
 
-  // Prevent body scroll while mobile sidebar is open
   useEffect(() => {
     if (typeof document === "undefined") return;
     if (open) {
@@ -55,26 +47,27 @@ export function AppShell({ user, banner, children }: Props) {
     }
   }, [open]);
 
-  // Auto-close on route change
   useEffect(() => { setOpen(false); }, [pathname]);
-
-  // Return focus to the menu button when the sidebar closes
-  useEffect(() => {
-    if (!open) menuButtonRef.current?.focus();
-  }, [open]);
+  useEffect(() => { if (!open) menuButtonRef.current?.focus(); }, [open]);
 
   async function signOut() {
     const supabase = createSupabaseBrowserClient();
     await supabase.auth.signOut();
-    // Land on the marketing homepage so users see the brand on the way out.
-    // Middleware allows "/" anonymously, and the home page redirects authenticated
-    // users back to /dashboard — so this is safe whether sign-out succeeds or not.
     router.push("/");
     router.refresh();
   }
 
+  const initials = user.displayName
+    ? user.displayName.split(" ").map((w) => w[0]).join("").slice(0, 2).toUpperCase()
+    : user.email.slice(0, 2).toUpperCase();
+
+  const dnaScore = user.dnascore;
+  const dnaColor = dnaScore === null ? "text-muted-foreground" :
+    dnaScore >= 75 ? "text-emerald-400" :
+    dnaScore >= 55 ? "text-amber-400" : "text-sky-400";
+
   return (
-    <div className="flex min-h-screen">
+    <div className="flex min-h-screen bg-background">
       <a
         href="#main-content"
         className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-[100] focus:rounded-xl focus:bg-primary focus:px-4 focus:py-2 focus:text-sm focus:font-medium focus:text-primary-foreground focus:shadow-lg"
@@ -82,35 +75,42 @@ export function AppShell({ user, banner, children }: Props) {
         Skip to main content
       </a>
 
-      {/* Sidebar */}
+      {/* ── Sidebar ──────────────────────────────────────────── */}
       <aside
         ref={trapRef}
         id="sidebar"
         className={cn(
-          "fixed inset-y-0 left-0 z-40 flex w-64 flex-col border-r border-border bg-card/90 backdrop-blur-xl transition-transform lg:static lg:translate-x-0 lg:bg-card/40",
+          "fixed inset-y-0 left-0 z-40 flex w-60 flex-col border-r border-border/60 bg-card/95 backdrop-blur-xl transition-transform lg:static lg:translate-x-0",
           open ? "translate-x-0" : "-translate-x-full",
         )}
         aria-label="Main navigation"
         aria-modal={open ? "true" : undefined}
         role={open ? "dialog" : undefined}
       >
-        <div className="flex h-16 items-center gap-3 px-5 border-b border-border">
+        {/* Logo */}
+        <div className="flex h-14 items-center justify-between gap-3 border-b border-border/50 px-4">
           <Link
             href="/dashboard"
-            className="bg-gradient-to-r from-primary to-fuchsia-400 bg-clip-text text-lg font-bold text-transparent focus:outline-none focus-visible:ring-2 focus-visible:ring-primary rounded"
+            className="flex items-center gap-2 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary rounded-lg"
           >
-            ProdMatch.ai
+            <div className="flex h-6 w-6 items-center justify-center rounded-md bg-primary/15 ring-1 ring-primary/30">
+              <Zap className="h-3.5 w-3.5 text-primary" aria-hidden />
+            </div>
+            <span className="bg-gradient-to-r from-primary to-fuchsia-400 bg-clip-text text-sm font-bold text-transparent">
+              ProdMatch.ai
+            </span>
           </Link>
           <button
-            className="ml-auto rounded-lg p-1 text-muted-foreground hover:bg-secondary focus:outline-none focus-visible:ring-2 focus-visible:ring-ring lg:hidden"
+            className="rounded-lg p-1 text-muted-foreground hover:bg-secondary focus:outline-none focus-visible:ring-2 focus-visible:ring-ring lg:hidden"
             onClick={() => setOpen(false)}
             aria-label="Close navigation"
           >
-            <X className="h-5 w-5" />
+            <X className="h-4 w-4" />
           </button>
         </div>
 
-        <nav className="flex-1 space-y-0.5 overflow-y-auto px-3 py-4" aria-label="App sections">
+        {/* Nav */}
+        <nav className="flex-1 overflow-y-auto px-2.5 py-3" aria-label="App sections">
           <LayoutGroup id="sidebar-nav">
             {NAV.map(({ href, label, icon: Icon }) => {
               const active = pathname === href || (href !== "/dashboard" && pathname.startsWith(href));
@@ -121,17 +121,19 @@ export function AppShell({ user, banner, children }: Props) {
                   onClick={() => setOpen(false)}
                   aria-current={active ? "page" : undefined}
                   className={cn(
-                    "relative flex items-center gap-3 rounded-xl px-3 py-2 text-sm font-medium transition focus-ring",
-                    active ? "text-primary" : "text-muted-foreground hover:bg-secondary hover:text-foreground",
+                    "relative flex items-center gap-2.5 rounded-xl px-3 py-2 text-sm font-medium transition focus-ring",
+                    active
+                      ? "text-primary"
+                      : "text-muted-foreground hover:bg-secondary/60 hover:text-foreground",
                   )}
                 >
                   {active && (
                     <motion.span
                       layoutId="active-nav-pill"
-                      className="absolute inset-0 rounded-xl bg-primary/10 ring-1 ring-primary/15"
+                      className="absolute inset-0 rounded-xl bg-primary/10 ring-1 ring-primary/20"
                       transition={reduce
                         ? { duration: 0 }
-                        : { type: "spring", stiffness: 360, damping: 32 }}
+                        : { type: "spring", stiffness: 400, damping: 35 }}
                       aria-hidden
                     />
                   )}
@@ -143,53 +145,77 @@ export function AppShell({ user, banner, children }: Props) {
           </LayoutGroup>
         </nav>
 
-        <div className="border-t border-border px-3 py-4 space-y-1">
+        {/* Bottom section */}
+        <div className="border-t border-border/50 px-2.5 py-3 space-y-0.5">
           <Link
             href="/settings/privacy"
-            className="flex items-center gap-3 rounded-xl px-3 py-2 text-sm text-muted-foreground transition hover:bg-secondary hover:text-foreground focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            className="flex items-center gap-2.5 rounded-xl px-3 py-2 text-sm text-muted-foreground transition hover:bg-secondary/60 hover:text-foreground focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           >
             <ShieldCheck className="h-4 w-4 shrink-0" aria-hidden="true" />
-            Privacy settings
+            Privacy
           </Link>
           <button
             onClick={signOut}
-            className="flex w-full items-center gap-3 rounded-xl px-3 py-2 text-sm text-muted-foreground transition hover:bg-destructive/10 hover:text-destructive focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-sm text-muted-foreground transition hover:bg-destructive/10 hover:text-destructive focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           >
             <LogOut className="h-4 w-4 shrink-0" aria-hidden="true" />
             Sign out
           </button>
-          <div className="px-3 pt-2" aria-label="Signed in as">
-            <p className="truncate text-xs font-medium">{user.displayName ?? user.email}</p>
-            <p className="truncate text-xs text-muted-foreground">{user.email}</p>
+
+          {/* User identity card */}
+          <div className="mt-2 rounded-xl border border-border/50 bg-secondary/20 px-3 py-2.5">
+            <div className="flex items-center gap-2.5">
+              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary/15 text-xs font-bold text-primary ring-1 ring-primary/25">
+                {initials}
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-xs font-semibold">{user.displayName ?? user.email.split("@")[0]}</p>
+                <p className="truncate text-[10px] text-muted-foreground">{user.email}</p>
+              </div>
+              {dnaScore !== null && (
+                <div className="shrink-0 text-right">
+                  <p className={`text-sm font-bold tabular-nums ${dnaColor}`}>{dnaScore}</p>
+                  <p className="text-[9px] text-muted-foreground">DNA</p>
+                </div>
+              )}
+            </div>
           </div>
         </div>
       </aside>
 
+      {/* Backdrop */}
       {open && (
         <div
-          className="fixed inset-0 z-30 bg-background/60 backdrop-blur-sm lg:hidden"
+          className="fixed inset-0 z-30 bg-background/70 backdrop-blur-sm lg:hidden"
           onClick={() => setOpen(false)}
           aria-hidden="true"
         />
       )}
 
+      {/* ── Main content area ─────────────────────────────────── */}
       <div className="flex flex-1 flex-col min-w-0">
         {banner}
 
-        <header className="flex h-14 items-center gap-3 border-b border-border px-4 lg:hidden">
+        {/* Mobile header */}
+        <header className="flex h-14 items-center gap-3 border-b border-border/50 bg-card/80 px-4 backdrop-blur lg:hidden">
           <button
             ref={menuButtonRef}
             onClick={() => setOpen(true)}
             aria-label="Open navigation menu"
             aria-expanded={open}
             aria-controls="sidebar"
-            className="rounded-lg p-1 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            className="rounded-lg p-1.5 text-muted-foreground hover:bg-secondary focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           >
             <Menu className="h-5 w-5" aria-hidden="true" />
           </button>
-          <span className="bg-gradient-to-r from-primary to-fuchsia-400 bg-clip-text text-sm font-bold text-transparent">
-            ProdMatch.ai
-          </span>
+          <div className="flex items-center gap-2">
+            <div className="flex h-5 w-5 items-center justify-center rounded-md bg-primary/15">
+              <Zap className="h-3 w-3 text-primary" />
+            </div>
+            <span className="bg-gradient-to-r from-primary to-fuchsia-400 bg-clip-text text-sm font-bold text-transparent">
+              ProdMatch.ai
+            </span>
+          </div>
         </header>
 
         <motion.main
@@ -197,8 +223,8 @@ export function AppShell({ user, banner, children }: Props) {
           key={pathname}
           initial={reduce ? {} : { opacity: 0, y: 6 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
-          className="flex-1 overflow-y-auto p-6"
+          transition={{ duration: 0.28, ease: [0.22, 1, 0.36, 1] }}
+          className="flex-1 overflow-y-auto p-5 lg:p-6"
           tabIndex={-1}
         >
           {children}

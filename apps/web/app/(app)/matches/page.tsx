@@ -1,8 +1,9 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import {
-  ExternalLink, ChevronRight, ShieldCheck, AlertTriangle, Eye, EyeOff,
+  ExternalLink, ChevronRight, ShieldCheck, Eye, EyeOff,
   Sparkles, Target, ArrowUpRight, Activity, Ghost,
+  CheckCircle2, AlertCircle, Zap, TrendingUp,
 } from "lucide-react";
 import Link from "next/link";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
@@ -14,64 +15,79 @@ import { ComputeButton } from "./compute-button";
 import { MatchFilters } from "./filters";
 
 export const metadata: Metadata = { title: "Matches" };
-// Compute action runs on this route. Bumped to Vercel Pro max so a slow
-// Gemini hour can't 504 the page render. The engine itself wall-clock-budgets
-// at 45s, so this is just safety margin.
 export const maxDuration = 300;
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Verdict design system — single source of truth for colour/label/order.
+// Verdict design system
 // ─────────────────────────────────────────────────────────────────────────────
 
 type VerdictMeta = {
   label: string;
   short: string;
-  tone: string;       // tailwind text/border tone for the badge
-  bgTone: string;     // soft fill tone
+  tone: string;
+  bgTone: string;
+  borderTone: string;
+  scoreTone: string;
   description: string;
-  rank: number;       // ordering for verdict bands (low = top of page)
+  rank: number;
+  icon: React.ReactNode;
 };
 
 const VERDICT_META: Record<Verdict, VerdictMeta> = {
   strong_fit: {
     label: "Strong fit",
     short: "Strong",
-    tone: "text-emerald-400 border-emerald-400/30",
+    tone: "text-emerald-400",
     bgTone: "bg-emerald-400/5",
+    borderTone: "border-emerald-400/20",
+    scoreTone: "text-emerald-400 bg-emerald-400/10",
     description: "You hit the must-haves and the level. Worth a tailored application.",
     rank: 1,
+    icon: <CheckCircle2 className="h-3.5 w-3.5" />,
   },
   stretch: {
     label: "Stretch",
     short: "Stretch",
-    tone: "text-amber-400 border-amber-400/30",
+    tone: "text-amber-400",
     bgTone: "bg-amber-400/5",
+    borderTone: "border-amber-400/20",
+    scoreTone: "text-amber-400 bg-amber-400/10",
     description: "Most must-haves covered with a gap or two. Apply if the role excites you.",
     rank: 2,
+    icon: <TrendingUp className="h-3.5 w-3.5" />,
   },
   off_target: {
     label: "Off-target",
     short: "Off-target",
-    tone: "text-violet-400 border-violet-400/30",
+    tone: "text-violet-400",
     bgTone: "bg-violet-400/5",
+    borderTone: "border-violet-400/20",
+    scoreTone: "text-violet-400 bg-violet-400/10",
     description: "Adjacent to your stated targets — a pivot, not a natural next step.",
     rank: 3,
+    icon: <Target className="h-3.5 w-3.5" />,
   },
   underqualified: {
     label: "Underqualified",
     short: "Under",
-    tone: "text-sky-400 border-sky-400/30",
+    tone: "text-sky-400",
     bgTone: "bg-sky-400/5",
+    borderTone: "border-sky-400/20",
+    scoreTone: "text-sky-400 bg-sky-400/10",
     description: "JD asks for more years or skills than your resume shows today.",
     rank: 4,
+    icon: <AlertCircle className="h-3.5 w-3.5" />,
   },
   mismatch: {
     label: "Mismatch",
     short: "Mismatch",
-    tone: "text-rose-400 border-rose-400/30",
+    tone: "text-rose-400",
     bgTone: "bg-rose-400/5",
+    borderTone: "border-rose-400/20",
+    scoreTone: "text-rose-400 bg-rose-400/10",
     description: "Wrong function. Hidden by default to keep your list focused.",
     rank: 5,
+    icon: <ShieldCheck className="h-3.5 w-3.5" />,
   },
 };
 
@@ -104,6 +120,8 @@ type MatchRow = {
 type FitCardLite = {
   one_liner?: string;
   resume_tweaks?: Array<{ priority?: number; suggestion?: string; why?: string }>;
+  strengths?: string[];
+  gaps?: string[];
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -160,8 +178,6 @@ export default async function MatchesPage({
   const matchRows = rawData as unknown as MatchRow[] | null;
   const allRows = (matchRows ?? []).filter((m): m is MatchRow & { jobs: NonNullable<MatchRow["jobs"]> } => !!m.jobs);
 
-  // Mark unseen matches as seen AFTER we've captured the New flag for this
-  // render. Fire-and-forget; idempotent.
   const unseenIds = allRows.filter((m) => m.seen_at === null).map((m) => m.jobs.id);
   if (unseenIds.length > 0) {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -171,7 +187,6 @@ export default async function MatchesPage({
       .is("seen_at", null);
   }
 
-  // Apply user filters (company / hub)
   const filtered = allRows.filter((m) => {
     const slug = m.jobs.companies?.slug ?? "";
     if (selectedCompanies.length > 0 && !selectedCompanies.includes(slug)) return false;
@@ -180,7 +195,6 @@ export default async function MatchesPage({
     return true;
   });
 
-  // Group by verdict
   const groups = new Map<Verdict, typeof filtered>();
   for (const m of filtered) {
     const v: Verdict = (m.verdict ?? "stretch") as Verdict;
@@ -188,7 +202,6 @@ export default async function MatchesPage({
     groups.get(v)!.push(m);
   }
 
-  // Visible bands respect show=all toggle
   const visibleVerdicts: Verdict[] = showHidden
     ? (Object.keys(VERDICT_META) as Verdict[])
     : DEFAULT_VISIBLE;
@@ -196,7 +209,6 @@ export default async function MatchesPage({
   const visibleCount = visibleVerdicts.reduce((acc, v) => acc + (groups.get(v)?.length ?? 0), 0);
   const hiddenCount = filtered.length - visibleCount;
 
-  // Build full filter universes from the unfiltered set
   const companies = [...new Map(
     allRows
       .map((m) => m.jobs.companies)
@@ -206,7 +218,6 @@ export default async function MatchesPage({
 
   const allHubs = [...new Set(allRows.flatMap((m) => m.jobs.hubs ?? []))].sort();
 
-  // Verdict counts (for header summary)
   const counts = {
     strong_fit:     groups.get("strong_fit")?.length ?? 0,
     stretch:        groups.get("stretch")?.length ?? 0,
@@ -215,59 +226,84 @@ export default async function MatchesPage({
     mismatch:       groups.get("mismatch")?.length ?? 0,
   };
 
-  // "New" counts (computed from unfiltered set so the badges are stable across filters)
-  const newCount        = unseenIds.length;
-  const newStrongCount  = allRows.filter((m) => m.seen_at === null && (m.verdict === "strong_fit")).length;
-
-  // Freshness phrasing — relative time since last compute.
-  const computeAgo = lastComputeAt ? humanAgo(lastComputeAt) : null;
+  const newCount       = unseenIds.length;
+  const newStrongCount = allRows.filter((m) => m.seen_at === null && m.verdict === "strong_fit").length;
+  const computeAgo     = lastComputeAt ? humanAgo(lastComputeAt) : null;
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
+    <div className="space-y-6 pb-6">
+
+      {/* ── Header ──────────────────────────────────────────────── */}
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
           <h1 className="text-2xl font-semibold tracking-tight">Matches</h1>
-          <p className="mt-1 text-sm text-muted-foreground">
-            {allRows.length > 0
-              ? `${counts.strong_fit} strong · ${counts.stretch} stretch · ${counts.underqualified} under · ${counts.mismatch} hidden mismatch`
-              : "Compute your first matches below"}
-          </p>
-          {computeAgo && (
-            <p className="mt-0.5 text-xs text-muted-foreground/80">
-              Last refreshed {computeAgo}
-              {newCount > 0 && (
-                <> · <span className="text-emerald-400">{newCount} new since</span></>
-              )}
+          {allRows.length > 0 ? (
+            <p className="mt-1 text-sm text-muted-foreground">
+              <span className="text-emerald-400 font-medium">{counts.strong_fit} strong</span>
+              {" · "}{counts.stretch} stretch
+              {" · "}{counts.off_target} off-target
+              {" · "}{counts.underqualified} under
+              {" · "}<span className="opacity-60">{counts.mismatch} hidden</span>
             </p>
+          ) : (
+            <p className="mt-1 text-sm text-muted-foreground">Compute your first matches below</p>
+          )}
+          {computeAgo && (
+            <div className="mt-1.5 flex items-center gap-2 text-xs text-muted-foreground/80">
+              <Activity className="h-3 w-3 text-emerald-400" />
+              <span>
+                Last refreshed {computeAgo}
+                {newCount > 0 && (
+                  <> · <Link href="/matches?show=new" className="text-emerald-400 hover:underline">{newCount} new</Link></>
+                )}
+              </span>
+            </div>
           )}
         </div>
         <ComputeButton hasResume={hasResume} />
       </div>
 
-      {/* "New strong fits" banner — only when there's a non-zero unseen strong fit */}
+      {/* ── Verdict summary strip ──────────────────────────────── */}
+      {allRows.length > 0 && (
+        <div className="grid grid-cols-2 gap-2 sm:grid-cols-5">
+          {(Object.entries(counts) as [Verdict, number][]).map(([verdict, count]) => {
+            const meta = VERDICT_META[verdict];
+            return (
+              <div
+                key={verdict}
+                className={`flex flex-col items-center gap-1 rounded-xl border px-3 py-2.5 ${meta.bgTone} ${meta.borderTone}`}
+              >
+                <span className={`text-xl font-bold tabular-nums ${meta.tone}`}>{count}</span>
+                <span className="text-[11px] text-muted-foreground">{meta.label}</span>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {/* ── New strong fits banner ─────────────────────────────── */}
       {newStrongCount > 0 && !showOnlyNew && (
         <Link
           href="/matches?show=new"
-          className="flex items-center justify-between gap-4 rounded-2xl border border-emerald-500/30 bg-gradient-to-br from-emerald-500/10 via-emerald-500/5 to-transparent px-5 py-4 transition hover:border-emerald-400"
+          className="group flex items-center justify-between gap-4 rounded-2xl border border-emerald-500/30 bg-gradient-to-r from-emerald-500/10 via-emerald-500/5 to-transparent px-5 py-4 transition hover:border-emerald-400/50"
         >
           <div className="flex items-center gap-3">
-            <span className="rounded-xl border border-emerald-400/30 bg-card/40 px-3 py-1 text-base font-bold text-emerald-400 tabular-nums">
-              {newStrongCount}
-            </span>
+            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-emerald-400/30 bg-emerald-400/10">
+              <Zap className="h-4 w-4 text-emerald-400" />
+            </div>
             <div>
-              <p className="text-sm font-medium text-emerald-300">
-                {newStrongCount === 1 ? "1 new strong fit" : `${newStrongCount} new strong fits`} since your last visit
+              <p className="text-sm font-semibold text-emerald-300">
+                {newStrongCount} new strong {newStrongCount === 1 ? "fit" : "fits"} since your last visit
               </p>
               <p className="text-xs text-muted-foreground">Tap to filter to just the new ones.</p>
             </div>
           </div>
-          <ArrowUpRight className="h-4 w-4 text-emerald-400" />
+          <ChevronRight className="h-4 w-4 text-emerald-400 transition group-hover:translate-x-0.5" />
         </Link>
       )}
 
       {showOnlyNew && (
-        <div className="flex items-center justify-between gap-3 rounded-xl border border-emerald-500/20 bg-emerald-500/5 px-4 py-2.5 text-sm">
+        <div className="flex items-center justify-between gap-3 rounded-xl border border-emerald-500/20 bg-emerald-500/5 px-4 py-3 text-sm">
           <span className="text-emerald-300">Showing {allRows.length} new match{allRows.length === 1 ? "" : "es"} since your last visit.</span>
           <Link href="/matches" className="rounded-lg border border-border px-2.5 py-1 text-xs text-muted-foreground transition hover:border-primary/40 hover:text-foreground">
             Show all
@@ -275,28 +311,28 @@ export default async function MatchesPage({
         </div>
       )}
 
-      {/* Resume Score banner — only when computed */}
+      {/* ── Resume score banner ────────────────────────────────── */}
       {hasResume && resumeScore !== null && (
         <ResumeScoreBanner score={resumeScore} />
       )}
 
-      {/* No-resume prompt */}
+      {/* ── No-resume prompt ───────────────────────────────────── */}
       {!hasResume && (
-        <div className="rounded-2xl border border-primary/30 bg-primary/5 p-6">
-          <h2 className="font-medium">Start with your resume</h2>
+        <div className="rounded-2xl border border-primary/25 bg-primary/5 p-6">
+          <h2 className="font-semibold">Start with your resume</h2>
           <p className="mt-1 text-sm text-muted-foreground">
-            Upload your PDF and we&apos;ll parse it, score your resume against live demand from 18 product companies, and rank every active role with a structured Fit Card.
+            Upload your PDF — we&apos;ll parse it, score your resume against live demand from 18 product companies, and rank every active role with a structured Fit Card.
           </p>
           <Link
             href="/profile"
-            className="mt-4 inline-flex items-center gap-2 rounded-xl bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition hover:opacity-90"
+            className="mt-4 inline-flex items-center gap-2 rounded-xl bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground shadow shadow-primary/20 transition hover:opacity-90"
           >
-            Go to Profile →
+            Upload resume <ArrowUpRight className="h-3.5 w-3.5" />
           </Link>
         </div>
       )}
 
-      {/* Filters */}
+      {/* ── Filters ───────────────────────────────────────────── */}
       {allRows.length > 0 && (
         <MatchFilters
           allCompanies={companies}
@@ -306,14 +342,14 @@ export default async function MatchesPage({
         />
       )}
 
-      {/* Show/hide gate for mismatches */}
+      {/* ── Show/hide mismatches gate ──────────────────────────── */}
       {allRows.length > 0 && hiddenCount > 0 && (
-        <div className="flex items-center justify-between rounded-xl border border-dashed border-border bg-card/30 px-4 py-2.5 text-sm">
+        <div className="flex items-center justify-between rounded-xl border border-dashed border-border/60 bg-card/20 px-4 py-2.5 text-sm">
           <span className="flex items-center gap-2 text-muted-foreground">
             <ShieldCheck className="h-3.5 w-3.5" />
             {showHidden
-              ? `Showing ${hiddenCount} mismatch / underqualified roles too. Most users keep these hidden.`
-              : `Hiding ${hiddenCount} role${hiddenCount === 1 ? "" : "s"} we don't think are worth your time.`}
+              ? `Showing ${hiddenCount} mismatch / underqualified roles. Most users keep these hidden.`
+              : `Hiding ${hiddenCount} role${hiddenCount === 1 ? "" : "s"} not worth your time right now.`}
           </span>
           <Link
             href={showHidden ? "/matches" : "/matches?show=all"}
@@ -324,22 +360,23 @@ export default async function MatchesPage({
         </div>
       )}
 
-      {/* Verdict bands */}
+      {/* ── Verdict bands ─────────────────────────────────────── */}
       {visibleCount > 0 ? (
-        <div className="space-y-8">
+        <div className="space-y-10">
           {visibleVerdicts.map((v) => {
             const items = groups.get(v) ?? [];
             if (items.length === 0) return null;
             const meta = VERDICT_META[v];
             return (
-              <section key={v} className="space-y-3">
-                <div className="flex items-baseline justify-between gap-3">
-                  <div className="flex items-center gap-2">
-                    <span className={`rounded-full border px-2 py-0.5 text-xs font-medium ${meta.tone}`}>
-                      {meta.label}
-                    </span>
-                    <span className="text-xs text-muted-foreground tabular-nums">{items.length}</span>
+              <section key={v} aria-label={`${meta.label} matches`}>
+                {/* Section header */}
+                <div className="mb-4 flex items-center gap-3">
+                  <div className={`flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-semibold ${meta.tone} ${meta.borderTone} ${meta.bgTone}`}>
+                    <span className={meta.tone}>{meta.icon}</span>
+                    {meta.label}
+                    <span className="rounded-full bg-current/10 px-1.5 py-0.5 text-[10px] tabular-nums">{items.length}</span>
                   </div>
+                  <span className="hidden flex-1 border-t border-dashed border-border/40 sm:block" />
                   <span className="hidden text-xs text-muted-foreground sm:inline">{meta.description}</span>
                 </div>
 
@@ -371,44 +408,43 @@ export default async function MatchesPage({
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Resume Score banner
+// Resume Score Banner
 // ─────────────────────────────────────────────────────────────────────────────
 
 function ResumeScoreBanner({ score }: { score: number }) {
-  const tone =
-    score >= 80 ? "from-emerald-500/20 via-emerald-500/5 to-transparent border-emerald-500/30 text-emerald-400" :
-    score >= 60 ? "from-amber-500/15 via-amber-500/5 to-transparent border-amber-500/30 text-amber-400" :
-                  "from-rose-500/15 via-rose-500/5 to-transparent border-rose-500/30 text-rose-400";
-  const grade =
-    score >= 85 ? "Application-ready" :
-    score >= 70 ? "Strong" :
-    score >= 55 ? "Solid baseline" :
-                  "Needs work";
+  const { gradients, text, grade, desc } =
+    score >= 80
+      ? { gradients: "from-emerald-500/15 via-emerald-500/5 to-transparent border-emerald-500/25", text: "text-emerald-400", grade: score >= 85 ? "Application-ready" : "Strong", desc: "Your resume is highly competitive for top product companies" }
+      : score >= 60
+        ? { gradients: "from-amber-500/15 via-amber-500/5 to-transparent border-amber-500/25", text: "text-amber-400", grade: "Solid baseline", desc: "Minor improvements will significantly boost match quality" }
+        : { gradients: "from-rose-500/15 via-rose-500/5 to-transparent border-rose-500/25", text: "text-rose-400", grade: "Needs work", desc: "Review the tips on your profile to improve match quality" };
 
   return (
     <Link
       href="/profile#resume-score"
-      className={`group relative flex items-center justify-between gap-4 overflow-hidden rounded-2xl border bg-gradient-to-br ${tone} px-5 py-4 transition hover:border-current`}
+      className={`group relative flex items-center justify-between gap-4 overflow-hidden rounded-2xl border bg-gradient-to-r ${gradients} px-5 py-4 transition hover:border-current/50`}
     >
       <div className="flex items-center gap-4">
-        <div className="relative">
-          <div className="flex h-14 w-14 items-center justify-center rounded-2xl border border-current/30 bg-card/40 backdrop-blur">
-            <span className="text-xl font-bold tabular-nums">{score}</span>
-          </div>
+        <div className={`relative flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl border border-current/25 bg-card/40 ${text}`}>
+          <div className="absolute inset-0 rounded-2xl" style={{
+            background: `conic-gradient(currentColor ${score}%, transparent 0)`,
+            opacity: 0.15,
+          }} />
+          <span className={`text-xl font-bold tabular-nums ${text}`}>{score}</span>
         </div>
         <div>
-          <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">Resume strength</p>
-          <p className="font-display text-base font-semibold">{grade}</p>
-          <p className="text-xs text-muted-foreground">Grounded in live demand from your 18 target companies</p>
+          <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Resume strength</p>
+          <p className={`font-display text-base font-bold ${text}`}>{grade}</p>
+          <p className="text-xs text-muted-foreground">{desc}</p>
         </div>
       </div>
-      <ArrowUpRight className="h-4 w-4 shrink-0 opacity-50 transition group-hover:opacity-100" />
+      <ArrowUpRight className="h-4 w-4 shrink-0 opacity-40 transition group-hover:opacity-100" />
     </Link>
   );
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Match card — verdict-first, no opaque score, top tweak teaser
+// Match card — premium enterprise SaaS feel
 // ─────────────────────────────────────────────────────────────────────────────
 
 function MatchCard({
@@ -428,77 +464,117 @@ function MatchCard({
   const card = (match.fit_card as FitCardLite | null) ?? null;
   const oneLiner = card?.one_liner ?? match.reasoning ?? job.jd_summary ?? "";
   const topTweak = card?.resume_tweaks?.find((t) => t.priority === 1) ?? card?.resume_tweaks?.[0];
+  const strengths = card?.strengths?.slice(0, 2) ?? [];
+  const gaps = card?.gaps?.slice(0, 1) ?? [];
   const isGhost = job.is_likely_ghost === true;
 
   return (
     <Link
       href={`/jobs/${job.id}`}
-      className={`group relative block rounded-2xl border border-border bg-card/40 p-5 transition lift hover:border-primary/30 hover:bg-card/70 ${meta.bgTone}`}
+      className={`group relative block rounded-2xl border bg-card/40 p-5 transition hover:bg-card/70 ${
+        isNew ? "border-emerald-500/30 hover:border-emerald-400/50" : "border-border hover:border-primary/25"
+      }`}
     >
+      {/* New indicator stripe */}
       {isNew && (
-        <span className="absolute -left-1 top-5 inline-block h-2 w-2 rounded-full bg-emerald-400 ring-2 ring-card" />
+        <div className="absolute left-0 top-0 h-full w-0.5 rounded-l-2xl bg-emerald-400" />
       )}
-      <div className="flex flex-wrap items-start justify-between gap-4">
-        <div className="flex min-w-0 flex-1 items-start gap-3">
-          <CompanyLogo name={company?.name ?? "?"} logoUrl={company?.logo_url ?? null} size={44} />
-          <div className="min-w-0 flex-1 space-y-1.5">
-            <div className="flex flex-wrap items-center gap-2">
-              <span className="text-xs font-medium text-muted-foreground">{company?.name}</span>
-              <span className={`rounded-full border px-2 py-0.5 text-[11px] font-medium ${meta.tone}`}>
-                {meta.short}
-              </span>
-              {isNew && (
-                <span className="rounded-full border border-emerald-400/40 bg-emerald-400/10 px-2 py-0.5 text-[11px] font-medium text-emerald-300">
-                  New
-                </span>
-              )}
-              {isGhost && (
-                <span className="inline-flex items-center gap-1 rounded-full border border-zinc-500/30 px-2 py-0.5 text-[11px] text-zinc-400">
-                  <Ghost className="h-3 w-3" /> Older listing
-                </span>
-              )}
-              <span className="ml-auto rounded-md bg-secondary/60 px-1.5 py-0.5 text-[10px] tabular-nums text-muted-foreground">
-                {Math.round(match.score)}
-              </span>
+
+      <div className="flex flex-wrap items-start gap-4">
+
+        {/* Company logo + score */}
+        <div className="flex flex-col items-center gap-2">
+          <CompanyLogo name={company?.name ?? "?"} logoUrl={company?.logo_url ?? null} size={48} />
+          <div className={`flex min-w-[2.5rem] items-center justify-center rounded-lg px-1.5 py-0.5 text-xs font-bold tabular-nums ${meta.scoreTone}`}>
+            {Math.round(match.score)}
+          </div>
+        </div>
+
+        {/* Main content */}
+        <div className="min-w-0 flex-1">
+          {/* Header row */}
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="text-xs font-medium text-muted-foreground">{company?.name}</span>
+            <div className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] font-semibold ${meta.tone} ${meta.borderTone} ${meta.bgTone}`}>
+              {meta.icon}
+              {meta.short}
             </div>
-
-            <h3 className="font-medium leading-snug group-hover:text-primary transition">
-              {job.title}
-            </h3>
-
-            {oneLiner && (
-              <p className="text-sm text-muted-foreground leading-snug line-clamp-2">{oneLiner}</p>
+            {isNew && (
+              <span className="rounded-full border border-emerald-400/40 bg-emerald-400/10 px-2 py-0.5 text-[11px] font-semibold text-emerald-300">
+                New
+              </span>
             )}
-
-            <div className="flex flex-wrap items-center gap-x-3 gap-y-1 pt-0.5 text-xs text-muted-foreground">
-              {(job.hubs ?? []).slice(0, 3).map((h) => (<span key={h}>{h}</span>))}
-              {job.comp_lpa_max != null && (
-                <span className="text-primary/80">Up to ₹{job.comp_lpa_max} LPA</span>
-              )}
-              {job.seniority && (
-                <span className="capitalize">{job.seniority}</span>
-              )}
-            </div>
-
-            {topTweak?.suggestion && (
-              <div className="mt-3 flex items-start gap-2 rounded-xl border border-primary/15 bg-primary/5 px-3 py-2">
-                <Target className="mt-0.5 h-3.5 w-3.5 shrink-0 text-primary" />
-                <div className="min-w-0">
-                  <p className="text-[11px] font-medium uppercase tracking-wider text-primary">Top resume tweak</p>
-                  <p className="line-clamp-2 text-xs text-muted-foreground">{topTweak.suggestion}</p>
-                </div>
-              </div>
+            {isGhost && (
+              <span className="inline-flex items-center gap-1 rounded-full border border-zinc-500/30 bg-zinc-500/5 px-2 py-0.5 text-[11px] text-zinc-400">
+                <Ghost className="h-3 w-3" /> Older listing
+              </span>
             )}
           </div>
+
+          {/* Job title */}
+          <h3 className="mt-1.5 font-semibold leading-snug group-hover:text-primary transition">
+            {job.title}
+          </h3>
+
+          {/* One-liner */}
+          {oneLiner && (
+            <p className="mt-1 text-sm leading-relaxed text-muted-foreground line-clamp-2">{oneLiner}</p>
+          )}
+
+          {/* Meta row */}
+          <div className="mt-2.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
+            {(job.hubs ?? []).slice(0, 3).map((h) => (<span key={h}>{h}</span>))}
+            {job.comp_lpa_max != null && (
+              <span className="font-medium text-primary/80">Up to ₹{job.comp_lpa_max} LPA</span>
+            )}
+            {job.seniority && (
+              <span className="capitalize">{job.seniority}</span>
+            )}
+            {(job.tech_stack ?? []).slice(0, 3).map((t) => (
+              <span key={t} className="rounded bg-secondary/50 px-1.5 py-0.5 font-mono text-[10px]">{t}</span>
+            ))}
+          </div>
+
+          {/* Inline fit signals — show when Fit Card exists */}
+          {(strengths.length > 0 || gaps.length > 0) && (
+            <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2">
+              {strengths.length > 0 && (
+                <div className="rounded-lg border border-emerald-500/15 bg-emerald-500/5 px-3 py-2">
+                  <p className="mb-1 text-[10px] font-semibold uppercase tracking-wider text-emerald-400">Strength</p>
+                  <p className="text-xs text-muted-foreground line-clamp-2">{strengths[0]}</p>
+                </div>
+              )}
+              {gaps.length > 0 && (
+                <div className="rounded-lg border border-amber-500/15 bg-amber-500/5 px-3 py-2">
+                  <p className="mb-1 text-[10px] font-semibold uppercase tracking-wider text-amber-400">Gap</p>
+                  <p className="text-xs text-muted-foreground line-clamp-2">{gaps[0]}</p>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Top resume tweak */}
+          {topTweak?.suggestion && (
+            <div className="mt-3 flex items-start gap-2 rounded-xl border border-primary/15 bg-primary/5 px-3 py-2">
+              <Target className="mt-0.5 h-3.5 w-3.5 shrink-0 text-primary" />
+              <div className="min-w-0">
+                <p className="text-[10px] font-semibold uppercase tracking-wider text-primary">Top resume tweak</p>
+                <p className="line-clamp-2 text-xs text-muted-foreground">{topTweak.suggestion}</p>
+              </div>
+            </div>
+          )}
         </div>
       </div>
 
-      <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-border pt-3 text-xs text-muted-foreground">
-        <span className="inline-flex items-center gap-1">
-          <Sparkles className="h-3 w-3 text-primary" /> Open Fit Card
+      {/* Footer */}
+      <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-border/50 pt-3 text-xs text-muted-foreground">
+        <span className="inline-flex items-center gap-1.5">
+          <Sparkles className="h-3 w-3 text-primary" />
+          <span className="font-medium text-foreground/70 group-hover:text-primary transition">Open Fit Card</span>
+          <ChevronRight className="h-3 w-3 transition group-hover:translate-x-0.5" />
         </span>
         {job.apply_url && (
-          <span className="inline-flex items-center gap-1 group-hover:text-primary transition">
+          <span className="inline-flex items-center gap-1 transition group-hover:text-primary">
             Apply on official site <ExternalLink className="h-3 w-3" />
           </span>
         )}
@@ -508,17 +584,16 @@ function MatchCard({
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Tiny relative-time helper. Stays UTC-aware (Date.now → number → diff in ms).
-// Phrasing matches the rest of the app (no library dependency).
+// Relative-time helper
 // ─────────────────────────────────────────────────────────────────────────────
 
 function humanAgo(iso: string): string {
   const diff = Date.now() - new Date(iso).getTime();
   if (!Number.isFinite(diff) || diff < 0) return "just now";
   const min = 60_000, hr = 3_600_000, day = 86_400_000;
-  if (diff < min)        return "just now";
-  if (diff < hr)         return `${Math.round(diff / min)}m ago`;
-  if (diff < day)        return `${Math.round(diff / hr)}h ago`;
-  if (diff < 7 * day)    return `${Math.round(diff / day)}d ago`;
+  if (diff < min)     return "just now";
+  if (diff < hr)      return `${Math.round(diff / min)}m ago`;
+  if (diff < day)     return `${Math.round(diff / hr)}h ago`;
+  if (diff < 7 * day) return `${Math.round(diff / day)}d ago`;
   return new Date(iso).toLocaleDateString();
 }

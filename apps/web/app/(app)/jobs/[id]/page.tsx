@@ -3,7 +3,8 @@ import { notFound, redirect } from "next/navigation";
 import Link from "next/link";
 import {
   ArrowLeft, ExternalLink, MapPin, Briefcase, Calendar,
-  Sparkles,
+  Sparkles, CheckCircle2, AlertCircle, TrendingUp,
+  ChevronRight, Zap,
 } from "lucide-react";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { CompanyLogo } from "@/components/company-logo";
@@ -83,7 +84,6 @@ export default async function JobDetailPage({ params }: { params: Promise<{ id: 
   const job = jobRaw as unknown as JobRow | null;
   if (!job) notFound();
 
-  // Similar roles: top matches at the same company (excluding this one)
   const { data: similarRaw } = await supabase
     .from("matches")
     .select("job_id, score, jobs(id, title, companies(name, logo_url), company_id)")
@@ -111,9 +111,20 @@ export default async function JobDetailPage({ params }: { params: Promise<{ id: 
   const compRange = formatComp(job.comp_lpa_min, job.comp_lpa_max);
   const expRange = formatExp(job.min_experience_years, job.max_experience_years);
 
+  const verdictColor = match?.verdict === "strong_fit" ? "text-emerald-400 border-emerald-400/30 bg-emerald-400/8"
+    : match?.verdict === "stretch" ? "text-amber-400 border-amber-400/30 bg-amber-400/8"
+    : match?.verdict === "off_target" ? "text-violet-400 border-violet-400/30 bg-violet-400/8"
+    : "text-sky-400 border-sky-400/30 bg-sky-400/8";
+
+  const verdictLabel = match?.verdict === "strong_fit" ? "Strong fit"
+    : match?.verdict === "stretch" ? "Stretch"
+    : match?.verdict === "off_target" ? "Off-target"
+    : match?.verdict === "underqualified" ? "Underqualified"
+    : match?.verdict === "mismatch" ? "Mismatch" : null;
+
   return (
-    <div className="space-y-6">
-      {/* Sticky apply bar — appears once user scrolls past the hero */}
+    <div className="space-y-5 pb-6">
+      {/* Sticky apply bar */}
       <StickyApplyBar
         companyName={company?.name ?? ""}
         companyLogoUrl={company?.logo_url ?? null}
@@ -123,78 +134,155 @@ export default async function JobDetailPage({ params }: { params: Promise<{ id: 
 
       {/* Breadcrumb */}
       <nav aria-label="Breadcrumb" className="flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground">
-        <Link href="/matches" className="inline-flex items-center gap-1 transition hover:text-foreground focus-ring rounded">
+        <Link href="/matches" className="inline-flex items-center gap-1 rounded-lg transition hover:text-foreground focus-ring">
           <ArrowLeft className="h-3 w-3" /> Matches
         </Link>
-        <span aria-hidden>/</span>
-        {company?.name && <span className="text-foreground/80">{company.name}</span>}
-        <span aria-hidden>/</span>
-        <span className="truncate max-w-xs">{job.title}</span>
+        <ChevronRight className="h-3 w-3 opacity-40" />
+        {company?.name && <span className="text-foreground/70">{company.name}</span>}
+        <ChevronRight className="h-3 w-3 opacity-40" />
+        <span className="truncate max-w-xs text-foreground/50">{job.title}</span>
       </nav>
 
-      {/* Header */}
-      <div id="job-hero" className="rounded-2xl border border-border bg-card/50 p-6 elev-1 backdrop-blur">
-        <div className="flex flex-wrap items-start gap-5">
-          <CompanyLogo name={company?.name ?? "?"} logoUrl={company?.logo_url ?? null} size={64} />
+      {/* ── Job hero card ─────────────────────────────────────── */}
+      <div className="relative overflow-hidden rounded-2xl border border-border bg-card/50 p-6 backdrop-blur">
+        <div aria-hidden className="absolute right-0 top-0 h-40 w-60 rounded-full bg-primary/5 blur-3xl" />
+
+        <div className="relative flex flex-wrap items-start gap-5">
+          <CompanyLogo name={company?.name ?? "?"} logoUrl={company?.logo_url ?? null} size={72} />
+
           <div className="min-w-0 flex-1">
-            <p className="text-sm text-muted-foreground">{company?.name ?? ""}</p>
-            <h1 className="text-2xl font-semibold leading-tight">{job.title}</h1>
-            <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1.5 text-sm text-muted-foreground">
-              {(job.hubs ?? []).slice(0, 3).map((h) => (
-                <span key={h} className="inline-flex items-center gap-1"><MapPin className="h-3.5 w-3.5" />{h}</span>
-              ))}
-              {expRange && <span className="inline-flex items-center gap-1"><Briefcase className="h-3.5 w-3.5" />{expRange}</span>}
-              {job.posted_at && <span className="inline-flex items-center gap-1"><Calendar className="h-3.5 w-3.5" />Posted {formatDate(job.posted_at)}</span>}
-              {!job.is_active && <span className="rounded-full bg-rose-500/10 px-2 py-0.5 text-xs text-rose-400">Stale — may be closed</span>}
+            <div className="flex flex-wrap items-center gap-2">
+              <p className="text-sm font-medium text-muted-foreground">{company?.name ?? ""}</p>
+              {verdictLabel && match && (
+                <span className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-0.5 text-xs font-semibold ${verdictColor}`}>
+                  {match.verdict === "strong_fit" && <CheckCircle2 className="h-3 w-3" />}
+                  {match.verdict === "stretch" && <TrendingUp className="h-3 w-3" />}
+                  {match.verdict === "underqualified" && <AlertCircle className="h-3 w-3" />}
+                  {verdictLabel}
+                </span>
+              )}
+              {!job.is_active && (
+                <span className="rounded-full bg-rose-500/10 border border-rose-500/20 px-2 py-0.5 text-xs text-rose-400">
+                  Stale — may be closed
+                </span>
+              )}
             </div>
+
+            <h1 className="mt-1.5 text-2xl font-bold leading-tight">{job.title}</h1>
+
+            <div className="mt-2.5 flex flex-wrap items-center gap-x-4 gap-y-1.5 text-sm text-muted-foreground">
+              {(job.hubs ?? []).slice(0, 3).map((h) => (
+                <span key={h} className="inline-flex items-center gap-1.5">
+                  <MapPin className="h-3.5 w-3.5" />{h}
+                </span>
+              ))}
+              {expRange && (
+                <span className="inline-flex items-center gap-1.5">
+                  <Briefcase className="h-3.5 w-3.5" />{expRange}
+                </span>
+              )}
+              {job.posted_at && (
+                <span className="inline-flex items-center gap-1.5">
+                  <Calendar className="h-3.5 w-3.5" />Posted {formatDate(job.posted_at)}
+                </span>
+              )}
+            </div>
+
             {compRange && (
-              <p className="mt-3 text-lg font-semibold text-primary">{compRange}</p>
+              <p className="mt-3 text-xl font-bold text-primary">{compRange}</p>
             )}
           </div>
 
           {match && (
-            <Tooltip label="Score combines a rules engine (experience, location, comp, tech overlap) with a model-graded fit assessment. 75+ is a strong fit.">
+            <Tooltip label="Score combines a rules engine (experience, location, comp, tech overlap) with Gemini-graded fit. 75+ is a strong fit.">
               <div className="flex cursor-help flex-col items-center gap-1.5">
                 <ScoreRing score={match.score} size="lg" showLabel={false} />
-                <span className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">Match</span>
+                <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Match</span>
               </div>
             </Tooltip>
           )}
         </div>
 
         {/* Action bar */}
-        <div className="mt-5 flex flex-wrap items-center gap-2 border-t border-border pt-5">
+        <div className="relative mt-5 flex flex-wrap items-center gap-2 border-t border-border/50 pt-5">
           {job.apply_url && (
             <a
               href={job.apply_url}
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex items-center gap-2 rounded-xl bg-primary px-4 py-2 text-sm font-medium text-primary-foreground shadow shadow-primary/25 transition hover:opacity-90 active:scale-[0.98]"
+              className="inline-flex items-center gap-2 rounded-xl bg-primary px-5 py-2.5 text-sm font-semibold text-primary-foreground shadow-lg shadow-primary/20 transition hover:opacity-90 active:scale-[0.98]"
             >
-              Apply on {company?.name ?? "official site"} <ExternalLink className="h-3.5 w-3.5" />
+              <Zap className="h-3.5 w-3.5" />
+              Apply on {company?.name ?? "official site"}
+              <ExternalLink className="h-3 w-3 opacity-70" />
             </a>
           )}
           <JobActions jobId={job.id} existingApp={application} />
+          {company?.careers_url && (
+            <a
+              href={company.careers_url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="ml-auto inline-flex items-center gap-1.5 rounded-xl border border-border px-3 py-2 text-xs text-muted-foreground transition hover:border-primary/30 hover:text-foreground"
+            >
+              <ExternalLink className="h-3 w-3" /> Official careers page
+            </a>
+          )}
         </div>
       </div>
 
-      {/* Fit Card — primary match analysis */}
+      {/* ── Fit Card ──────────────────────────────────────────── */}
       {match && match.fit_card ? (
         <FitCardPanel data={match.fit_card} score={match.score} />
       ) : match && match.reasoning ? (
-        // Pre-Gemini baseline: show one-liner from rules engine until Fit Card lands
-        <div className="rounded-2xl border border-border bg-card/50 p-6 elev-1 backdrop-blur">
-          <h2 className="mb-2 flex items-center gap-2 text-sm font-medium">
+        <div className="rounded-2xl border border-border bg-card/40 p-6">
+          <h2 className="mb-2 flex items-center gap-2 text-sm font-semibold">
             <Sparkles className="h-4 w-4 text-primary" /> Match snapshot
           </h2>
           <p className="text-sm text-muted-foreground">{match.reasoning}</p>
-          <p className="mt-3 text-xs text-muted-foreground">
-            Score {Math.round(match.score)}. The detailed Fit Card lands shortly after the next match compute.
+          <p className="mt-3 text-xs text-muted-foreground/70">
+            Score {Math.round(match.score)}. The detailed Fit Card lands after the next match compute.
           </p>
         </div>
       ) : null}
 
-      {/* Interview prep brief — pure heuristic, instantly available */}
+      {/* ── Quick strengths + gaps (pre-Fit Card) ─────────────── */}
+      {match && !match.fit_card && match.strengths && match.gaps && (
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          {match.strengths && match.strengths.length > 0 && (
+            <div className="rounded-2xl border border-emerald-500/20 bg-emerald-500/5 p-5">
+              <p className="mb-3 flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-emerald-400">
+                <CheckCircle2 className="h-3.5 w-3.5" /> Your strengths
+              </p>
+              <ul className="space-y-2">
+                {match.strengths.slice(0, 3).map((s, i) => (
+                  <li key={i} className="flex items-start gap-2 text-sm text-muted-foreground">
+                    <span className="mt-1.5 h-1 w-1 shrink-0 rounded-full bg-emerald-400" />
+                    {s}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+          {match.gaps && match.gaps.length > 0 && (
+            <div className="rounded-2xl border border-amber-500/20 bg-amber-500/5 p-5">
+              <p className="mb-3 flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-amber-400">
+                <TrendingUp className="h-3.5 w-3.5" /> Gaps to address
+              </p>
+              <ul className="space-y-2">
+                {match.gaps.slice(0, 3).map((g, i) => (
+                  <li key={i} className="flex items-start gap-2 text-sm text-muted-foreground">
+                    <span className="mt-1.5 h-1 w-1 shrink-0 rounded-full bg-amber-400" />
+                    {g}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ── Interview prep brief ──────────────────────────────── */}
       <PrepBrief
         title={job.title}
         companyName={company?.name ?? "this company"}
@@ -203,10 +291,10 @@ export default async function JobDetailPage({ params }: { params: Promise<{ id: 
         techStack={job.tech_stack ?? []}
       />
 
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
-        {/* Description */}
+      {/* ── Description + sidebar ─────────────────────────────── */}
+      <div className="grid grid-cols-1 gap-5 lg:grid-cols-3">
         <div className="rounded-2xl border border-border bg-card/40 p-6 lg:col-span-2">
-          <h2 className="mb-3 text-sm font-medium">Job description</h2>
+          <h2 className="mb-4 text-sm font-semibold">Job description</h2>
           {job.description ? (
             <JobDescription text={job.description} />
           ) : (
@@ -217,55 +305,70 @@ export default async function JobDetailPage({ params }: { params: Promise<{ id: 
 
           {(job.tech_stack ?? []).length > 0 && (
             <div className="mt-6">
-              <h3 className="mb-2 text-xs font-medium uppercase tracking-wider text-muted-foreground">Tech stack</h3>
-              <div className="flex flex-wrap gap-1.5">
+              <h3 className="mb-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">Tech stack</h3>
+              <div className="flex flex-wrap gap-2">
                 {(job.tech_stack ?? []).map((t) => (
-                  <span key={t} className="rounded-md bg-secondary px-2 py-1 text-xs text-foreground">{t}</span>
+                  <span key={t} className="rounded-lg border border-border bg-secondary/50 px-2.5 py-1 font-mono text-xs">
+                    {t}
+                  </span>
                 ))}
               </div>
             </div>
           )}
         </div>
 
-        {/* Side: similar roles + meta */}
-        <div className="space-y-6">
+        {/* Sidebar */}
+        <div className="space-y-4">
           {similar.length > 0 && (
             <div className="rounded-2xl border border-border bg-card/40 p-5">
-              <h3 className="mb-3 text-sm font-medium">More at {company?.name}</h3>
+              <h3 className="mb-3 text-sm font-semibold">More at {company?.name}</h3>
               <div className="space-y-2">
                 {similar.map((s) => (
                   <Link
                     key={s.job_id}
                     href={`/jobs/${s.job_id}`}
-                    className="flex items-center gap-3 rounded-xl bg-secondary/40 px-3 py-2 transition hover:bg-secondary/70"
+                    className="group flex items-center gap-3 rounded-xl border border-transparent bg-secondary/30 px-3 py-2.5 transition hover:border-primary/20 hover:bg-secondary/60"
                   >
                     <CompanyLogo name={s.jobs?.companies?.name ?? "?"} logoUrl={s.jobs?.companies?.logo_url ?? null} size={28} />
                     <div className="min-w-0 flex-1">
-                      <p className="truncate text-sm">{s.jobs?.title ?? "Role"}</p>
+                      <p className="truncate text-sm group-hover:text-primary transition">{s.jobs?.title ?? "Role"}</p>
                     </div>
-                    <span className="shrink-0 text-xs text-muted-foreground tabular-nums">{Math.round(s.score)}</span>
+                    <span className="shrink-0 rounded-md bg-secondary px-1.5 py-0.5 text-xs font-bold tabular-nums">{Math.round(s.score)}</span>
                   </Link>
                 ))}
               </div>
             </div>
           )}
 
-          {company?.careers_url && (
-            <div className="rounded-2xl border border-border bg-card/40 p-5">
-              <h3 className="mb-3 text-sm font-medium">Source</h3>
+          {/* Trust badge */}
+          <div className="rounded-2xl border border-border bg-card/30 p-5">
+            <h3 className="mb-2 text-sm font-semibold">Source</h3>
+            {company?.careers_url && (
               <a
                 href={company.careers_url}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="flex items-center gap-2 text-xs text-muted-foreground hover:text-foreground transition"
               >
-                <ExternalLink className="h-3 w-3" /> {company.name} careers page
+                <ExternalLink className="h-3 w-3 shrink-0" />
+                {company.name} official careers page
               </a>
-              <p className="mt-2 text-xs text-muted-foreground">
-                Sourced directly from official career page. No aggregators.
+            )}
+            <div className="mt-3 space-y-1.5 text-xs text-muted-foreground">
+              <p className="flex items-start gap-1.5">
+                <CheckCircle2 className="mt-0.5 h-3 w-3 shrink-0 text-emerald-400" />
+                Sourced from official career page only
+              </p>
+              <p className="flex items-start gap-1.5">
+                <CheckCircle2 className="mt-0.5 h-3 w-3 shrink-0 text-emerald-400" />
+                No aggregators or third-party boards
+              </p>
+              <p className="flex items-start gap-1.5">
+                <CheckCircle2 className="mt-0.5 h-3 w-3 shrink-0 text-emerald-400" />
+                Updated daily via automated crawler
               </p>
             </div>
-          )}
+          </div>
         </div>
       </div>
     </div>
