@@ -55,14 +55,61 @@ function asRow(job: EnrichedJob): Record<string, unknown> {
  *   2. For batch rows NOT matched by external_id, bulk SELECT by
  *      (company_id, signature) — these are signature rebinds (company
  *      changed their internal ID for the same posting).
- *   3. Rebinds are rare → handled with per-row UPDATEs.
- *   4. Everything else (existing-by-id + brand new) goes through ONE bulk
- *      `upsert(rows, onConflict='company_id,external_id')` call.
+ *   3. Pre-classify each job into one of three lists:
+ *        - toUpdateList: existing-by-id → bulk upsert (UPDATE path)
+ *        - toInsertList: brand-new → bulk upsert (INSERT path)
+ *        - toRebindList: signature-match-different-id → per-row UPDATE
+ *   4. Counts are bumped ONLY after the actual DB write succeeds, so
+ *      telemetry reflects reality even when constraints / FKs reject rows.
  *
- * The old per-row code did 2 SELECTs + 1 UPDATE/INSERT per job. For Amazon's
- * ~2k jobs that's ~6k round-trips. Bulk path is ~3 round-trips per batch of
- * 50 → ~120 total. Network alone is ~2 min savings for Amazon.
+ * Requires a NON-PARTIAL unique constraint on (company_id, external_id) for
+ * ON CONFLICT to work. The partial index (… where external_id is not null)
+ * is NOT accepted by Postgres's ON CONFLICT specification.
  */
+const CONFLICT_TARGET = "company_id,external_id";
+
+async function applyBulkUpsert(
+  supabase: SupabaseClient,
+  rows: Record<string, unknown>[],
+  kindLabel: "insert" | "update",
+): Promise<number> {
+  if (rows.length === 0) return 0;
+
+  const { error } = await supabase
+    .from("jobs")
+    .upsert(rows, { onConflict: CONFLICT_TARGET, ignoreDuplicates: false });
+  if (!error) return rows.length;
+
+  log(
+    `Bulk ${kindLabel} failed: ${error.message} — falling back to per-row`,
+    "warn",
+    { event: "bulk_upsert_error", data: { kind: kindLabel, batchSize: rows.length, error: error.message } },
+  );
+
+  // Per-row recovery so a single bad row doesn't sink the whole batch.
+  let ok = 0;
+  for (const row of rows) {
+    const { error: e2 } = await supabase
+      .from("jobs")
+      .upsert(row, { onConflict: CONFLICT_TARGET, ignoreDuplicates: false });
+    if (e2) {
+      log(
+        `Per-row ${kindLabel} failed for external_id=${(row as { external_id?: string }).external_id}: ${e2.message}`,
+        "warn",
+        { event: "row_upsert_error", data: { kind: kindLabel, error: e2.message } },
+      );
+    } else {
+      ok++;
+    }
+  }
+  log(
+    `Per-row recovery: ${ok}/${rows.length} ${kindLabel}s succeeded`,
+    "info",
+    { event: "bulk_upsert_recovered", data: { kind: kindLabel, recovered: ok, total: rows.length } },
+  );
+  return ok;
+}
+
 export async function upsertJobs(
   supabase: SupabaseClient,
   companyId: string,
@@ -106,28 +153,38 @@ export async function upsertJobs(
       existingSig = new Map((bySig ?? []).map((r) => [r.signature as string, { id: r.id as string }]));
     }
 
-    // Step 3: partition.
+    // Step 3: partition by intent. Keep insert vs update arrays separate so
+    // we can attribute count increments truthfully after each bulk call.
     const toRebind: Array<{ rowId: string; job: EnrichedJob }> = [];
-    const toUpsert: EnrichedJob[] = [];
+    const toUpdateList: Record<string, unknown>[] = [];
+    const toInsertList: Record<string, unknown>[] = [];
 
     for (const job of batch) {
       if (existingExt.has(job.external_id)) {
-        toUpsert.push(job); // bulk upsert → UPDATE path via onConflict
-        updated++;
+        toUpdateList.push({
+          ...asRow(job),
+          last_seen_at: now,
+          is_active: true,
+          freshness_score: 100,
+          ...parsePatch(job),
+        });
       } else {
         const sigMatch = existingSig.get(job.signature);
         if (sigMatch) {
-          // Same content, different external_id → rebind on the existing row.
           toRebind.push({ rowId: sigMatch.id, job });
-          updated++;
         } else {
-          toUpsert.push(job); // bulk upsert → INSERT path
-          inserted++;
+          toInsertList.push({
+            ...asRow(job),
+            last_seen_at: now,
+            is_active: true,
+            freshness_score: 100,
+            ...parsePatch(job),
+          });
         }
       }
     }
 
-    // Step 4: rebinds (rare, per-row).
+    // Step 4: rebinds (per-row, count only on success).
     for (const { rowId, job } of toRebind) {
       const { error } = await supabase
         .from("jobs")
@@ -142,46 +199,15 @@ export async function upsertJobs(
         .eq("id", rowId);
       if (error) {
         log(`Rebind error for ${job.external_id}: ${error.message}`, "warn", { event: "rebind_error", data: { error: error.message } });
-        updated--; // we counted optimistically
+      } else {
+        updated++;
       }
     }
 
-    // Step 5: one bulk upsert for everything else.
-    if (toUpsert.length > 0) {
-      const rows = toUpsert.map((job) => ({
-        ...asRow(job),
-        last_seen_at: now,
-        is_active: true,
-        freshness_score: 100,
-        ...parsePatch(job),
-      }));
-
-      const { error } = await supabase
-        .from("jobs")
-        .upsert(rows, { onConflict: "company_id,external_id", ignoreDuplicates: false });
-
-      if (error) {
-        log(
-          `Bulk upsert error: ${error.message} — falling back to per-row`,
-          "warn",
-          { event: "bulk_upsert_error", data: { batchSize: rows.length, error: error.message } },
-        );
-        // Recovery: per-row upsert so a single bad row doesn't sink the
-        // whole batch. Costs us speed only on the rare failure case.
-        let recovered = 0;
-        for (const row of rows) {
-          const { error: e2 } = await supabase
-            .from("jobs")
-            .upsert(row, { onConflict: "company_id,external_id", ignoreDuplicates: false });
-          if (e2) {
-            log(`Per-row upsert failed for external_id=${(row as { external_id?: string }).external_id}: ${e2.message}`, "warn", { event: "row_upsert_error" });
-          } else {
-            recovered++;
-          }
-        }
-        log(`Per-row recovery: ${recovered}/${rows.length}`, "info", { event: "bulk_upsert_recovered", data: { recovered, total: rows.length } });
-      }
-    }
+    // Step 5: two bulk upserts — one for updates, one for inserts. Counts
+    // only advance for rows the DB actually accepted.
+    updated += await applyBulkUpsert(supabase, toUpdateList, "update");
+    inserted += await applyBulkUpsert(supabase, toInsertList, "insert");
   }
 
   return { inserted, updated };

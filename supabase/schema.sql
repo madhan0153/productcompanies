@@ -199,8 +199,37 @@ create table if not exists public.jobs (
   updated_at timestamptz not null default now()
 );
 
--- Primary dedup keys (idempotent upsert)
-create unique index if not exists ux_jobs_company_external on public.jobs(company_id, external_id) where external_id is not null;
+-- Primary dedup keys (idempotent upsert).
+--
+-- The (company_id, external_id) key is a CONSTRAINT (not just an index) so
+-- PostgREST's `upsert(..., onConflict: "company_id,external_id")` can use
+-- it. A partial unique index `where external_id is not null` would NOT work
+-- with ON CONFLICT (Postgres requires the conflict target to match the
+-- constraint/index fully, and PostgREST can't pass an additional WHERE).
+-- NULL semantics in unique constraints permit multiple NULL external_id
+-- rows per company — that's fine; our normalizer never produces NULL.
+do $$ begin
+  -- Drop the legacy partial index if it lingers from older schema runs.
+  if exists (
+    select 1 from pg_indexes
+    where schemaname = 'public' and indexname = 'ux_jobs_company_external'
+      and indexdef ilike '%where%external_id is not null%'
+  ) then
+    execute 'drop index public.ux_jobs_company_external';
+  end if;
+exception when undefined_table then null; end $$;
+
+do $$ begin
+  if not exists (
+    select 1 from pg_constraint
+    where conname = 'ux_jobs_company_external'
+      and conrelid = 'public.jobs'::regclass
+  ) then
+    alter table public.jobs
+      add constraint ux_jobs_company_external unique (company_id, external_id);
+  end if;
+exception when undefined_table then null; end $$;
+
 create unique index if not exists ux_jobs_company_signature on public.jobs(company_id, signature);
 
 -- Search & filter indexes
