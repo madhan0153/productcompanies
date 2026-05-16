@@ -193,7 +193,6 @@ create table if not exists public.jobs (
   posted_at timestamptz,
   last_seen_at timestamptz not null default now(),
   is_active boolean not null default true,
-  applicants_count integer,
   freshness_score numeric not null default 100,
   raw jsonb not null default '{}'::jsonb,
   created_at timestamptz not null default now(),
@@ -455,11 +454,13 @@ grant execute on function public.release_cron_lock(text, uuid) to service_role;
 -- ─────────────────────────────────────────────────────────────────────────────
 -- jobs.apply_click_count:
 --   Internal click counter — incremented when a user clicks "Apply on official
---   site" from a match card or job detail page. Distinct from
---   `applicants_count` (external/company-provided where available). Drives
---   admin analytics, ranking tie-break candidates, and the "popular roles"
---   surface on insights.
+--   site" from a match card or job detail page. Drives admin analytics,
+--   ranking tie-break candidates, and the "popular roles" surface on insights.
 alter table public.jobs add column if not exists apply_click_count integer not null default 0;
+
+-- Drop dead column `applicants_count` — no code path ever populated it
+-- (career sites we crawl don't expose an applicant count). Idempotent.
+alter table public.jobs drop column if exists applicants_count;
 create index if not exists idx_jobs_apply_clicks
   on public.jobs(apply_click_count desc) where is_active = true;
 

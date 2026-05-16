@@ -1,6 +1,7 @@
 import type { CompanyConfig, CrawlContext } from "./_types.js";
 import type { RawJob } from "@prodmatch/shared";
 import { sleep, enrichDescriptions } from "./_types.js";
+import { fetchJson } from "../lib/http.js";
 
 // Salesforce Workday — confirmed country facet ID from careers page URL
 const BASE = "https://salesforce.wd12.myworkdayjobs.com";
@@ -23,12 +24,9 @@ interface WdResponse {
 }
 
 async function fetchPage(offset: number): Promise<WdResponse> {
-  const res = await fetch(`${BASE}${SITE_PATH}/jobs`, {
+  return fetchJson<WdResponse>(`${BASE}${SITE_PATH}/jobs`, {
     method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 Chrome/120.0.0.0 Safari/537.36",
-    },
+    headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
       appliedFacets: { [INDIA_FACET_KEY]: [INDIA_FACET_VAL] },
       limit: 20,
@@ -36,8 +34,6 @@ async function fetchPage(offset: number): Promise<WdResponse> {
       searchText: "",
     }),
   });
-  if (!res.ok) throw new Error(`Salesforce Workday API ${res.status}`);
-  return res.json() as Promise<WdResponse>;
 }
 
 export const salesforceConfig: CompanyConfig = {

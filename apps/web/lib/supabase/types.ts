@@ -46,7 +46,7 @@ export interface Database {
           comp_lpa_max: number | null; tech_stack: string[] | null;
           seniority: SeniorityLevel | null; posted_at: string | null;
           last_seen_at: string | null; is_active: boolean;
-          applicants_count: number | null; freshness_score: number | null;
+          freshness_score: number | null;
           apply_url: string | null; raw: Json | null;
           role_function: string | null;
           must_have_skills: string[] | null; nice_to_have_skills: string[] | null;
@@ -66,7 +66,7 @@ export interface Database {
           comp_lpa_max?: number | null; tech_stack?: string[] | null;
           seniority?: SeniorityLevel | null; posted_at?: string | null;
           last_seen_at?: string | null; is_active?: boolean;
-          applicants_count?: number | null; freshness_score?: number | null;
+          freshness_score?: number | null;
           apply_url?: string | null; raw?: Json | null;
           role_function?: string | null;
           must_have_skills?: string[] | null; nice_to_have_skills?: string[] | null;
@@ -86,7 +86,7 @@ export interface Database {
           comp_lpa_max?: number | null; tech_stack?: string[] | null;
           seniority?: SeniorityLevel | null; posted_at?: string | null;
           last_seen_at?: string | null; is_active?: boolean;
-          applicants_count?: number | null; freshness_score?: number | null;
+          freshness_score?: number | null;
           apply_url?: string | null; raw?: Json | null;
           role_function?: string | null;
           must_have_skills?: string[] | null; nice_to_have_skills?: string[] | null;

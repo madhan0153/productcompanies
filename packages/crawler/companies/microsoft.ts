@@ -1,6 +1,7 @@
 import type { CompanyConfig, CrawlContext } from "./_types.js";
 import type { RawJob } from "@prodmatch/shared";
 import { sleep, enrichDescriptions } from "./_types.js";
+import { fetchJson } from "../lib/http.js";
 
 // Confirmed API: apply.careers.microsoft.com/api/pcsx/search
 // 217 India jobs, 10 per page, paginate via `start`
@@ -34,15 +35,9 @@ async function fetchPage(start: number): Promise<MsApiResponse> {
     filter_include_remote: "0",
     hl: "en",
   });
-  const res = await fetch(`${SEARCH_URL}?${params}`, {
-    headers: {
-      "User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 Chrome/120.0.0.0 Safari/537.36",
-      Accept: "application/json",
-      Referer: "https://apply.careers.microsoft.com/",
-    },
+  return fetchJson<MsApiResponse>(`${SEARCH_URL}?${params}`, {
+    headers: { Referer: "https://apply.careers.microsoft.com/" },
   });
-  if (!res.ok) throw new Error(`Microsoft search API ${res.status}`);
-  return res.json() as Promise<MsApiResponse>;
 }
 
 export const microsoftConfig: CompanyConfig = {

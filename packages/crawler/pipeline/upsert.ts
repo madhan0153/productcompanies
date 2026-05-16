@@ -40,6 +40,29 @@ function parsePatch(j: EnrichedJob): Record<string, unknown> {
   return patch;
 }
 
+// Strip the EnrichedJob-only fields before write — they aren't columns.
+function asRow(job: EnrichedJob): Record<string, unknown> {
+  const { parsed: _p, embedding: _e, needsParse: _n, ...row } = job;
+  void _p; void _e; void _n;
+  return row;
+}
+
+/**
+ * Bulk-upsert jobs in 50-row batches.
+ *
+ * Strategy (one batch):
+ *   1. Bulk SELECT existing rows by (company_id, external_id).
+ *   2. For batch rows NOT matched by external_id, bulk SELECT by
+ *      (company_id, signature) — these are signature rebinds (company
+ *      changed their internal ID for the same posting).
+ *   3. Rebinds are rare → handled with per-row UPDATEs.
+ *   4. Everything else (existing-by-id + brand new) goes through ONE bulk
+ *      `upsert(rows, onConflict='company_id,external_id')` call.
+ *
+ * The old per-row code did 2 SELECTs + 1 UPDATE/INSERT per job. For Amazon's
+ * ~2k jobs that's ~6k round-trips. Bulk path is ~3 round-trips per batch of
+ * 50 → ~120 total. Network alone is ~2 min savings for Amazon.
+ */
 export async function upsertJobs(
   supabase: SupabaseClient,
   companyId: string,
@@ -55,78 +78,108 @@ export async function upsertJobs(
   for (let i = 0; i < jobs.length; i += BATCH) {
     const batch = jobs.slice(i, i + BATCH);
 
+    // Step 1: lookup by external_id.
     const externalIds = batch.map((j) => j.external_id);
-    const { data: existing } = await supabase
+    const { data: byExt, error: extErr } = await supabase
       .from("jobs")
       .select("id, external_id, signature")
       .eq("company_id", companyId)
       .in("external_id", externalIds);
+    if (extErr) {
+      log(`upsert lookup-by-ext error: ${extErr.message}`, "warn", { event: "upsert_lookup_error", data: { error: extErr.message } });
+    }
+    const existingExt = new Map((byExt ?? []).map((r) => [r.external_id, r]));
 
-    const existingMap = new Map((existing ?? []).map((r) => [r.external_id, r]));
+    // Step 2: for unmatched, lookup by signature (rebind path).
+    const unmatched = batch.filter((j) => !existingExt.has(j.external_id));
+    let existingSig = new Map<string, { id: string }>();
+    if (unmatched.length > 0) {
+      const sigs = unmatched.map((j) => j.signature);
+      const { data: bySig, error: sigErr } = await supabase
+        .from("jobs")
+        .select("id, signature")
+        .eq("company_id", companyId)
+        .in("signature", sigs);
+      if (sigErr) {
+        log(`upsert lookup-by-sig error: ${sigErr.message}`, "warn", { event: "upsert_lookup_error", data: { error: sigErr.message } });
+      }
+      existingSig = new Map((bySig ?? []).map((r) => [r.signature as string, { id: r.id as string }]));
+    }
+
+    // Step 3: partition.
+    const toRebind: Array<{ rowId: string; job: EnrichedJob }> = [];
+    const toUpsert: EnrichedJob[] = [];
 
     for (const job of batch) {
-      const found = existingMap.get(job.external_id);
-      if (found) {
-        await supabase
-          .from("jobs")
-          .update({
-            title: job.title,
-            description: job.description,
-            location: job.location,
-            apply_url: job.apply_url,
-            hubs: job.hubs,
-            tech_stack: job.tech_stack,
-            seniority: job.seniority,
-            min_experience_years: job.min_experience_years,
-            max_experience_years: job.max_experience_years,
-            comp_lpa_min: job.comp_lpa_min,
-            comp_lpa_max: job.comp_lpa_max,
-            last_seen_at: now,
-            is_active: true,
-            raw: job.raw,
-            ...parsePatch(job),
-          })
-          .eq("id", found.id);
+      if (existingExt.has(job.external_id)) {
+        toUpsert.push(job); // bulk upsert → UPDATE path via onConflict
         updated++;
       } else {
-        const { data: bySig } = await supabase
-          .from("jobs")
-          .select("id")
-          .eq("company_id", companyId)
-          .eq("signature", job.signature)
-          .maybeSingle();
-
-        if (bySig) {
-          await supabase
-            .from("jobs")
-            .update({
-              external_id: job.external_id,
-              apply_url: job.apply_url,
-              description: job.description,
-              last_seen_at: now,
-              is_active: true,
-              ...parsePatch(job),
-            })
-            .eq("id", bySig.id);
+        const sigMatch = existingSig.get(job.signature);
+        if (sigMatch) {
+          // Same content, different external_id → rebind on the existing row.
+          toRebind.push({ rowId: sigMatch.id, job });
           updated++;
         } else {
-          // Strip the EnrichedJob-only fields before insert (they aren't
-          // columns). parsePatch handles structured-parse + embedding.
-          const { parsed: _p, embedding: _e, needsParse: _n, ...row } = job;
-          void _p; void _e; void _n;
-          const { error } = await supabase.from("jobs").insert({
-            ...row,
-            last_seen_at: now,
-            is_active: true,
-            freshness_score: 100,
-            ...parsePatch(job),
-          });
-          if (error) {
-            log(`Insert error for job ${job.external_id}: ${error.message}`, "warn");
+          toUpsert.push(job); // bulk upsert → INSERT path
+          inserted++;
+        }
+      }
+    }
+
+    // Step 4: rebinds (rare, per-row).
+    for (const { rowId, job } of toRebind) {
+      const { error } = await supabase
+        .from("jobs")
+        .update({
+          external_id: job.external_id,
+          apply_url: job.apply_url,
+          description: job.description,
+          last_seen_at: now,
+          is_active: true,
+          ...parsePatch(job),
+        })
+        .eq("id", rowId);
+      if (error) {
+        log(`Rebind error for ${job.external_id}: ${error.message}`, "warn", { event: "rebind_error", data: { error: error.message } });
+        updated--; // we counted optimistically
+      }
+    }
+
+    // Step 5: one bulk upsert for everything else.
+    if (toUpsert.length > 0) {
+      const rows = toUpsert.map((job) => ({
+        ...asRow(job),
+        last_seen_at: now,
+        is_active: true,
+        freshness_score: 100,
+        ...parsePatch(job),
+      }));
+
+      const { error } = await supabase
+        .from("jobs")
+        .upsert(rows, { onConflict: "company_id,external_id", ignoreDuplicates: false });
+
+      if (error) {
+        log(
+          `Bulk upsert error: ${error.message} — falling back to per-row`,
+          "warn",
+          { event: "bulk_upsert_error", data: { batchSize: rows.length, error: error.message } },
+        );
+        // Recovery: per-row upsert so a single bad row doesn't sink the
+        // whole batch. Costs us speed only on the rare failure case.
+        let recovered = 0;
+        for (const row of rows) {
+          const { error: e2 } = await supabase
+            .from("jobs")
+            .upsert(row, { onConflict: "company_id,external_id", ignoreDuplicates: false });
+          if (e2) {
+            log(`Per-row upsert failed for external_id=${(row as { external_id?: string }).external_id}: ${e2.message}`, "warn", { event: "row_upsert_error" });
           } else {
-            inserted++;
+            recovered++;
           }
         }
+        log(`Per-row recovery: ${recovered}/${rows.length}`, "info", { event: "bulk_upsert_recovered", data: { recovered, total: rows.length } });
       }
     }
   }

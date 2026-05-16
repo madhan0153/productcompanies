@@ -1,6 +1,7 @@
 import type { CompanyConfig, CrawlContext } from "./_types.js";
 import type { RawJob } from "@prodmatch/shared";
 import { sleep } from "./_types.js";
+import { fetchJson } from "../lib/http.js";
 
 // Confirmed API: https://www.amazon.jobs/en/search.json
 interface AmazonJob {
@@ -27,15 +28,9 @@ async function fetchPage(offset: number): Promise<AmazonApiResponse> {
     offset: String(offset),
     sort: "recent",
   });
-  const res = await fetch(`https://www.amazon.jobs/en/search.json?${params}`, {
-    headers: {
-      "User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 Chrome/120.0.0.0 Safari/537.36",
-      Accept: "application/json",
-      Referer: "https://www.amazon.jobs/en/search",
-    },
+  return fetchJson<AmazonApiResponse>(`https://www.amazon.jobs/en/search.json?${params}`, {
+    headers: { Referer: "https://www.amazon.jobs/en/search" },
   });
-  if (!res.ok) throw new Error(`Amazon API ${res.status}`);
-  return res.json() as Promise<AmazonApiResponse>;
 }
 
 export const amazonConfig: CompanyConfig = {

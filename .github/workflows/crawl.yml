@@ -21,21 +21,52 @@ on:
         default: "false"
         type: boolean
 
+# Tight token scope. The crawler only reads the repo; granting `contents: read`
+# means a compromised dependency cannot write to issues/PRs/packages.
+permissions:
+  contents: read
+
 concurrency:
   group: crawl
   cancel-in-progress: false
 
 jobs:
+  validate:
+    name: "Validate secrets"
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - name: Check required secrets are present
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+        run: |
+          missing=()
+          [ -n "$SUPABASE_URL" ]              || missing+=("SUPABASE_URL")
+          [ -n "$SUPABASE_SERVICE_ROLE_KEY" ] || missing+=("SUPABASE_SERVICE_ROLE_KEY")
+          [ -n "$GEMINI_API_KEY" ]            || missing+=("GEMINI_API_KEY")
+          if [ ${#missing[@]} -gt 0 ]; then
+            echo "::error::Missing required secrets: ${missing[*]}"
+            echo "Set them in Settings → Secrets and variables → Actions."
+            exit 1
+          fi
+          echo "All required secrets present."
+
   crawl:
     name: "Crawl all (sequential)"
     runs-on: ubuntu-latest
+    needs: validate
     # Single sequential job. All 18 companies are crawled one at a time in
     # the same runner. The previous 5-group parallel matrix hammered Gemini
     # concurrently and exhausted the free-tier RPM/RPD within minutes.
     # Trade-off: longer wall-clock (2-4 hrs typical), but stays within
-    # Gemini rate limits on the free tier and avoids the cold-start cost
-    # of 5 separate runners. Public repo → Actions minutes are unlimited.
+    # Gemini rate limits on the free tier. Public repo → unlimited minutes.
     timeout-minutes: 350    # ~5h 50m — GH Actions hard ceiling is 6h
+    env:
+      # Surfaces as `runId` in every structured log line emitted by the crawler.
+      # Lets us correlate crawl_runs rows with the originating workflow.
+      CRAWL_RUN_ID: ${{ github.run_id }}-${{ github.run_attempt }}
     steps:
       - name: Checkout
         uses: actions/checkout@v5
@@ -49,11 +80,26 @@ jobs:
           node-version: "20"
           cache: "pnpm"
 
+      - name: Install jq (used by the recompute step)
+        run: sudo apt-get update && sudo apt-get install -y jq
+
+      # Wrap dependency install with retry — npm registry / pnpm lockfile
+      # occasionally flakes and a single retry costs us nothing.
       - name: Install dependencies
-        run: pnpm install --frozen-lockfile
+        uses: nick-fields/retry@v3
+        with:
+          timeout_minutes: 10
+          max_attempts: 3
+          retry_wait_seconds: 30
+          command: pnpm install --frozen-lockfile
 
       - name: Install Playwright Chromium
-        run: pnpm --filter @prodmatch/crawler exec playwright install --with-deps chromium
+        uses: nick-fields/retry@v3
+        with:
+          timeout_minutes: 10
+          max_attempts: 2
+          retry_wait_seconds: 20
+          command: pnpm --filter @prodmatch/crawler exec playwright install --with-deps chromium
 
       - name: Run crawler (sequential, all companies)
         env:
@@ -62,6 +108,9 @@ jobs:
           # Comma-separated keys → round-robin in worker pool, separate
           # daily quota per key.
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          # Optional — Slack/Discord webhook for crawl-drift alerts. No-op
+          # when unset, but recommended for production.
+          CRAWL_ALERT_WEBHOOK_URL: ${{ secrets.CRAWL_ALERT_WEBHOOK_URL }}
         run: |
           SLUGS="${{ github.event.inputs.slugs }}"
           FLAGS=""
@@ -88,17 +137,20 @@ jobs:
           retention-days: 7
           if-no-files-found: ignore
 
-  # Phase K — fan-out matching. Runs after every crawl group finishes
-  # (success or failure — even partial new jobs deserve to be matched).
-  # Loops the recompute endpoint until it reports zero remaining users
-  # OR the wall-clock budget hits.
+  # Phase K — fan-out matching. Runs after the crawl finishes (success or
+  # failure — even partial new jobs deserve to be matched). Loops the
+  # recompute endpoint until it reports zero remaining users OR the wall-
+  # clock budget hits.
   recompute_matches:
     name: "Recompute matches (fan-out)"
     needs: crawl
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 90    # Allows up to MAX_ITER=30 iterations
     if: ${{ always() && github.event.inputs.dry_run != 'true' && github.event.inputs.dry_run_parse != 'true' }}
     steps:
+      - name: Install jq
+        run: sudo apt-get update && sudo apt-get install -y jq
+
       - name: Trigger recompute-matches for all consented users
         env:
           APP_URL: ${{ secrets.APP_URL }}
@@ -108,24 +160,51 @@ jobs:
             echo "::warning::APP_URL or CRON_SECRET missing — skipping recompute"
             exit 0
           fi
-          MAX_ITER=10
+          MAX_ITER=30
           iter=0
+          conflict_streak=0
           while [ $iter -lt $MAX_ITER ]; do
             iter=$((iter + 1))
-            resp=$(curl -sS -X POST "${APP_URL}/api/cron/recompute-matches" \
+            http_code=$(curl -sS -o /tmp/recompute-resp.json -w "%{http_code}" \
+              -X POST "${APP_URL}/api/cron/recompute-matches" \
               -H "Authorization: Bearer ${CRON_SECRET}" \
               -H "Content-Type: application/json" \
               --max-time 280)
-            echo "iter=$iter $resp"
-            bailed=$(echo "$resp" | python3 -c "import json,sys; d=json.load(sys.stdin); print(d.get('bailed_on_budget', False))" 2>/dev/null || echo "False")
-            processed=$(echo "$resp" | python3 -c "import json,sys; d=json.load(sys.stdin); print(d.get('processed', 0))" 2>/dev/null || echo "0")
-            if [ "$bailed" != "True" ]; then
+            resp=$(cat /tmp/recompute-resp.json)
+            echo "iter=$iter http=$http_code $resp"
+
+            # 409 = another recompute holds the lock. Back off and retry —
+            # but give up after 3 consecutive 409s (lock is stuck).
+            if [ "$http_code" = "409" ]; then
+              conflict_streak=$((conflict_streak + 1))
+              if [ $conflict_streak -ge 3 ]; then
+                echo "::warning::3 consecutive 409s — lock appears stuck; bailing"
+                exit 0
+              fi
+              echo "  lock held, sleeping 60s before retry"
+              sleep 60
+              continue
+            fi
+            conflict_streak=0
+
+            if [ "$http_code" != "200" ]; then
+              echo "::warning::Recompute returned $http_code — bailing"
+              exit 0
+            fi
+
+            bailed=$(echo "$resp" | jq -r '.bailed_on_budget // false')
+            processed=$(echo "$resp" | jq -r '.processed // 0')
+            remaining=$(echo "$resp" | jq -r '.remaining // 0')
+
+            if [ "$bailed" != "true" ] && [ "$remaining" = "0" ]; then
               echo "Recompute fan-out complete."
               break
             fi
-            if [ "$processed" = "0" ]; then
-              echo "::warning::No progress — stopping (response above)"
+            if [ "$processed" = "0" ] && [ "$bailed" = "true" ]; then
+              echo "::warning::No progress (bailed=true, processed=0) — stopping"
               exit 0
             fi
-            sleep 2
+            # Brief pause between iterations so the next call hits a clean
+            # lock window (the prior caller releases on response).
+            sleep 5
           done

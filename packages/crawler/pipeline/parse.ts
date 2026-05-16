@@ -24,10 +24,28 @@ import {
   parseJobDescription,
   embedBatch,
   buildJobEmbedText,
+  LlmRunError,
   type ParsedJD,
 } from "@prodmatch/shared";
 import { log } from "../lib/logger.js";
 import { isNonEngineeringTitle, stripBoilerplate } from "./job-filter.js";
+
+/**
+ * Did this error indicate Gemini said "no more requests right now"?
+ * Only these errors count toward the rolling quota-exhaustion window.
+ * Network blips, JSON parse failures, model unavailability — none of
+ * those mean we should abandon the queue.
+ */
+function isQuotaSignal(err: unknown): boolean {
+  if (err instanceof LlmRunError) {
+    return err.detail.kind === "rate_limited" || err.detail.kind === "quota_disabled";
+  }
+  // Fallback for raw errors that escaped the runWithRetry classifier.
+  const msg = err instanceof Error ? err.message : String(err);
+  return /\b429\b|RESOURCE_EXHAUSTED|Too Many Requests|limit:\s*0/i.test(msg);
+}
+
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
 export interface EnrichedJob extends NormalizedJob {
   /** When set, upsert writes parse fields + embedding atomically with the row. */
@@ -235,14 +253,19 @@ async function parseWithWorkers(
         if (stats.errSamples.length < 5) {
           stats.errSamples.push({ title: j.title.slice(0, 60), reason: reason.slice(0, 140) });
         }
-        recentOutcomes.push(false);
+        // Only count Gemini-quota signals toward the bail window. Network
+        // blips, JSON parse failures, model unavailability — none of those
+        // mean we should abandon the queue. Treat them as benign for the
+        // purposes of quota detection (still recorded in stats.err).
+        recentOutcomes.push(isQuotaSignal(err) ? false : true);
       }
 
       // Keep window bounded.
       if (recentOutcomes.length > QUOTA_WINDOW) recentOutcomes.shift();
 
-      // Quota-exhaustion check: if the rolling window is full, all errors,
-      // and we've had enough successes to rule out a config problem → bail.
+      // Quota-exhaustion check: if the rolling window is full, all quota
+      // errors, and we've had enough successes to rule out a config
+      // problem → bail.
       if (
         !bailReason &&
         recentOutcomes.length >= QUOTA_WINDOW &&
@@ -322,19 +345,50 @@ async function embedJobsBatched(
       });
     });
 
-    try {
-      const vectors = await embedBatch(texts);
-      for (let k = 0; k < slice.length; k++) {
-        const v = vectors[k];
-        if (v && v.length > 0) out.set(slice[k].external_id, v);
+    let vectors: number[][] | null = null;
+    let attempt = 0;
+    let lastErr: unknown = null;
+    // Bulk batch attempt with one retry. Most embed failures are transient
+    // (429 across all keys, network blip) and recover after ~5s.
+    while (attempt < 2 && vectors === null) {
+      attempt++;
+      try {
+        vectors = await embedBatch(texts);
+      } catch (err) {
+        lastErr = err;
+        if (attempt < 2) {
+          const reason = err instanceof Error ? err.message.split("\n")[0] : String(err);
+          cLog(`  embed batch ${i}-${i + slice.length} attempt ${attempt} failed (${reason}); retrying in 5s`, "warn");
+          await sleep(5_000);
+        }
       }
-      cLog(`  embed: ${Math.min(i + EMBED_BATCH, targets.length)}/${targets.length}`);
-    } catch (err) {
-      const reason = err instanceof Error ? err.message.split("\n")[0] : String(err);
-      cLog(`  embed batch ${i}-${i + slice.length} failed: ${reason}`, "warn");
-      // Soft-fail: jobs without embedding still get their parse fields written.
-      // The semantic match falls back to a partial-credit score.
     }
+
+    // If the bulk batch still failed, fall back to single-item embeds.
+    // Slow but recoverable — at worst we get partial coverage instead of
+    // zero coverage for these 100 jobs.
+    if (vectors === null) {
+      const reason = lastErr instanceof Error ? lastErr.message.split("\n")[0] : String(lastErr);
+      cLog(`  embed batch ${i}-${i + slice.length} failed twice (${reason}); falling back to single-item`, "warn");
+      vectors = [];
+      let singleOk = 0;
+      for (const t of texts) {
+        try {
+          const v = await embedBatch([t]);
+          vectors.push(v[0] ?? []);
+          if (v[0] && v[0].length > 0) singleOk++;
+        } catch {
+          vectors.push([]);
+        }
+      }
+      cLog(`  embed batch ${i}-${i + slice.length} single-item recovery: ${singleOk}/${texts.length}`, "warn");
+    }
+
+    for (let k = 0; k < slice.length; k++) {
+      const v = vectors[k];
+      if (v && v.length > 0) out.set(slice[k].external_id, v);
+    }
+    cLog(`  embed: ${Math.min(i + EMBED_BATCH, targets.length)}/${targets.length}`);
   }
 
   cLog(`Embed done: ${out.size}/${targets.length} | ${Math.round((Date.now() - t0) / 1000)}s`);

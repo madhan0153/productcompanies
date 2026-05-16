@@ -1,6 +1,7 @@
 import type { CompanyConfig, CrawlContext } from "./_types.js";
 import type { RawJob } from "@prodmatch/shared";
 import { enrichDescriptions } from "./_types.js";
+import { fetchWithRetry } from "../lib/http.js";
 
 // careers.cred.club/openings uses Next.js SSG with all job data in __NEXT_DATA__.
 // IMPORTANT: the listing's `content.description` is just CRED's company
@@ -34,10 +35,7 @@ export const credConfig: CompanyConfig = {
   slug: "cred",
   async crawl(ctx: CrawlContext): Promise<RawJob[]> {
     const { log } = ctx;
-    const res = await fetch(PAGE_URL, {
-      headers: { "User-Agent": "Mozilla/5.0 (compatible; ProdMatchBot/1.0)" },
-    });
-    if (!res.ok) throw new Error(`CRED fetch ${res.status}`);
+    const res = await fetchWithRetry(PAGE_URL, { headers: { Accept: "text/html,application/xhtml+xml" } });
     const html = await res.text();
 
     const m = html.match(/<script id="__NEXT_DATA__"[^>]*>([\s\S]*?)<\/script>/);

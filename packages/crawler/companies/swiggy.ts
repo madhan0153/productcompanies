@@ -1,5 +1,6 @@
 import type { CompanyConfig, CrawlContext } from "./_types.js";
 import type { RawJob } from "@prodmatch/shared";
+import { fetchJson } from "../lib/http.js";
 
 // Confirmed: Swiggy uses MyNextHire platform
 // API: POST https://swiggy.mynexthire.com/employer/careers/reqlist/get
@@ -25,18 +26,15 @@ interface MnhResponse {
 export const swiggyConfig: CompanyConfig = {
   slug: "swiggy",
   async crawl({ log }: CrawlContext): Promise<RawJob[]> {
-    const res = await fetch(API_URL, {
+    const data = await fetchJson<MnhResponse>(API_URL, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 Chrome/120.0.0.0 Safari/537.36",
-        "Referer": "https://careers.swiggy.com/",
-        "Origin": "https://careers.swiggy.com",
+        Referer: "https://careers.swiggy.com/",
+        Origin: "https://careers.swiggy.com",
       },
       body: JSON.stringify({ source: "careers", code: "", filterByBuId: -1 }),
     });
-    if (!res.ok) throw new Error(`MyNextHire ${res.status}`);
-    const data = (await res.json()) as MnhResponse;
     const jobs = data.reqDetailsBOList ?? [];
     log(`Total: ${jobs.length} jobs`);
 

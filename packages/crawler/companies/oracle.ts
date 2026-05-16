@@ -1,6 +1,7 @@
 import type { CompanyConfig, CrawlContext } from "./_types.js";
 import type { RawJob } from "@prodmatch/shared";
 import { sleep, enrichDescriptions } from "./_types.js";
+import { fetchJson } from "../lib/http.js";
 
 // Confirmed: Oracle HCM Cloud REST API
 // URL: https://careers.oracle.com/en/sites/jobsearch/jobs?locationId=300000000106947
@@ -29,14 +30,7 @@ interface OracleResponse {
 
 async function fetchPage(offset: number): Promise<OracleResponse> {
   const url = `${API_BASE}?onlyData=true&expand=requisitionList&finder=findReqs;siteNumber=${SITE_NUMBER},selectedLocationsFacet=${INDIA_LOCATION_ID},locationId=${INDIA_LOCATION_ID},limit=25,offset=${offset}`;
-  const res = await fetch(url, {
-    headers: {
-      "User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 Chrome/120.0.0.0 Safari/537.36",
-      "Accept": "application/json",
-    },
-  });
-  if (!res.ok) throw new Error(`Oracle HCM API ${res.status}`);
-  return res.json() as Promise<OracleResponse>;
+  return fetchJson<OracleResponse>(url);
 }
 
 export const oracleConfig: CompanyConfig = {

@@ -1,6 +1,7 @@
 import type { CompanyConfig, CrawlContext } from "./_types.js";
 import type { RawJob } from "@prodmatch/shared";
 import { enrichDescriptions } from "./_types.js";
+import { fetchWithRetry } from "../lib/http.js";
 
 // Confirmed: jobs.sap.com/search/?q=&optionsFacetsDD_country=IN is server-rendered HTML
 // Pagination via startrow=0,25,50,...; 25 jobs/page; ~159 India jobs
@@ -21,10 +22,7 @@ export const sapLabsConfig: CompanyConfig = {
 
     while (offset < total) {
       const url = `${BASE_URL}&startrow=${offset}`;
-      const res = await fetch(url, {
-        headers: { "User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 Chrome/120.0.0.0 Safari/537.36" },
-      });
-      if (!res.ok) throw new Error(`SAP fetch ${res.status} at offset ${offset}`);
+      const res = await fetchWithRetry(url, { headers: { Accept: "text/html,application/xhtml+xml" } });
       const html = await res.text();
 
       // Extract total on first page: aria-label="Results 1 – 25 of 159"
