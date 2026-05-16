@@ -16,6 +16,15 @@ import { JobDescription } from "./job-description";
 import { PrepBrief } from "./prep-brief";
 import { FitCardPanel, type FitCardData } from "./fit-card";
 import { ApplyButton } from "@/components/apply-button";
+import { ApplyToolkit } from "./apply-toolkit";
+import { RecruiterView } from "@/components/recruiter-view";
+import { computeAtsView } from "@/lib/matching/ats-view";
+import { getUserConsents } from "@/lib/dpdp/consent";
+import type { ParsedResume } from "@/lib/llm/prompts/resume-parse";
+import type { TailoredResumeContent } from "@/lib/llm/prompts/tailor-resume";
+import type { NegotiationMemoContent } from "@/lib/llm/prompts/negotiation-memo";
+import type { CompBracket } from "@/lib/insights/comp-percentiles";
+import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 
 export const dynamic = "force-dynamic";
 
@@ -27,6 +36,11 @@ type JobRow = {
   seniority: string | null; apply_url: string | null;
   posted_at: string | null; last_seen_at: string | null;
   is_active: boolean; company_id: string;
+  // Sprint 5 — fields the Apply Toolkit needs
+  must_have_skills: string[] | null;
+  nice_to_have_skills: string[] | null;
+  role_function: string | null;
+  jd_summary: string | null;
   companies: { id: string; name: string; slug: string; logo_url: string | null; careers_url: string | null } | null;
 };
 
@@ -66,6 +80,7 @@ export default async function JobDetailPage({ params }: { params: Promise<{ id: 
         min_experience_years, max_experience_years,
         comp_lpa_min, comp_lpa_max, seniority,
         apply_url, posted_at, last_seen_at, is_active, company_id,
+        must_have_skills, nice_to_have_skills, role_function, jd_summary,
         companies (id, name, slug, logo_url, careers_url)
       `)
       .eq("id", id)
@@ -122,6 +137,65 @@ export default async function JobDetailPage({ params }: { params: Promise<{ id: 
     : match?.verdict === "off_target" ? "Off-target"
     : match?.verdict === "underqualified" ? "Underqualified"
     : match?.verdict === "mismatch" ? "Mismatch" : null;
+
+  // ── Sprint 5 — Apply Toolkit data load ────────────────────────────────
+  // We load these in parallel after the main job fetch. The toolkit
+  // component renders gracefully when any of them are null (showing a
+  // "Generate" CTA instead of cached state).
+  const consents = await getUserConsents(user.id);
+  const admin = createSupabaseAdminClient();
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const [{ data: profileRow }, { data: tailoredRow }, { data: memoRow }] = await Promise.all([
+    supabase
+      .from("profiles")
+      .select("resume_parsed, resume_storage_path")
+      .eq("id", user.id)
+      .maybeSingle() as any,
+    // Service-role for the toolkit cache reads — RLS would also allow these
+    // for the owner, but using admin keeps the path consistent with the
+    // server action.
+    admin
+      .from("tailored_resumes")
+      .select("content, docx_storage_path, generated_at")
+      .eq("user_id", user.id)
+      .eq("job_id", id)
+      .maybeSingle() as any,
+    admin
+      .from("negotiation_memos")
+      .select("content, market_comp, generated_at")
+      .eq("user_id", user.id)
+      .eq("job_id", id)
+      .maybeSingle() as any,
+  ]) as [
+    { data: { resume_parsed: ParsedResume | null; resume_storage_path: string | null } | null },
+    { data: { content: TailoredResumeContent; docx_storage_path: string | null; generated_at: string } | null },
+    { data: { content: NegotiationMemoContent; market_comp: CompBracket | null; generated_at: string } | null },
+  ];
+
+  const parsedResume = profileRow?.resume_parsed ?? null;
+  const hasResume = Boolean(profileRow?.resume_storage_path && parsedResume);
+
+  // Compute the ATS view server-side (zero-cost, deterministic). Only when
+  // we have both the parsed resume AND the JD's parsed must/nice arrays —
+  // otherwise the keyword scan has no signal to work against.
+  const atsView = parsedResume && hasResume
+    ? computeAtsView({
+        resume: parsedResume,
+        must_have_skills:    job.must_have_skills ?? [],
+        nice_to_have_skills: job.nice_to_have_skills ?? [],
+      })
+    : null;
+
+  // Mint a fresh signed URL for the cached .docx (if any). Lasts 10 min;
+  // re-mint via getTailoredResumeDownloadUrl from the client when expired.
+  let initialTailorUrl: string | null = null;
+  if (tailoredRow?.docx_storage_path) {
+    const { data: signed } = await admin.storage
+      .from("tailored-resumes")
+      .createSignedUrl(tailoredRow.docx_storage_path, 600);
+    initialTailorUrl = signed?.signedUrl ?? null;
+  }
 
   return (
     <div className="space-y-5 pb-6">
@@ -240,6 +314,34 @@ export default async function JobDetailPage({ params }: { params: Promise<{ id: 
           </p>
         </div>
       ) : null}
+
+      {/* ── Apply Toolkit (Sprint 5) ──────────────────────────── */}
+      <ApplyToolkit
+        jobId={job.id}
+        jobTitle={job.title}
+        companyName={company?.name ?? "this company"}
+        hasResume={hasResume}
+        matchingConsent={consents.matching === true}
+        recruiterView={
+          atsView
+            ? <RecruiterView view={atsView} />
+            : (
+              <div className="rounded-xl border border-dashed border-border bg-card/20 p-5 text-center text-xs text-muted-foreground">
+                The recruiter view needs your parsed resume and a parsed JD. Upload your resume on /profile, then return here.
+              </div>
+            )
+        }
+        initialTailor={tailoredRow && initialTailorUrl ? {
+          content: tailoredRow.content,
+          download_url: initialTailorUrl,
+          generated_at: tailoredRow.generated_at,
+        } : null}
+        initialMemo={memoRow ? {
+          content: memoRow.content,
+          market_comp: memoRow.market_comp,
+          generated_at: memoRow.generated_at,
+        } : null}
+      />
 
       {/* ── Quick strengths + gaps (pre-Fit Card) ─────────────── */}
       {match && !match.fit_card && match.strengths && match.gaps && (

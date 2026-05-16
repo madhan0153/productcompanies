@@ -515,6 +515,118 @@ end $$;
 -- Service-role insert/delete only (server actions go through admin client).
 
 
+-- ─────────────────────────────────────────────────────────────────────────────
+-- Sprint 5: Apply Toolkit — tailored resumes + negotiation memos
+-- ─────────────────────────────────────────────────────────────────────────────
+-- Both tables follow the same pattern: one row per (user_id, job_id) so we
+-- can cache the artifact and avoid re-running Gemini for the same pair. The
+-- "regenerate" button on the UI updates the row in place (upsert). When the
+-- candidate's resume_signature or the job's signature changes the cached
+-- row is invalidated lazily (the generation action checks signatures and
+-- regenerates when they differ).
+
+create table if not exists public.tailored_resumes (
+  id                  uuid primary key default gen_random_uuid(),
+  user_id             uuid not null references auth.users(id) on delete cascade,
+  job_id              uuid not null references public.jobs(id) on delete cascade,
+  -- Structured content the LLM produced (sections + bullets) — used to
+  -- regenerate the .docx if storage was nuked, and to show an HTML preview.
+  content             jsonb not null,
+  -- Path inside the `tailored-resumes` private storage bucket.
+  docx_storage_path   text,
+  resume_signature    text,
+  job_signature       text,
+  generated_at        timestamptz not null default now(),
+  updated_at          timestamptz not null default now(),
+  unique (user_id, job_id)
+);
+
+create index if not exists idx_tailored_resumes_user
+  on public.tailored_resumes(user_id, generated_at desc);
+
+alter table public.tailored_resumes enable row level security;
+
+do $$ begin
+  if not exists (
+    select 1 from pg_policies
+    where schemaname = 'public' and tablename = 'tailored_resumes'
+      and policyname = 'tailored_resumes_select_own'
+  ) then
+    create policy tailored_resumes_select_own on public.tailored_resumes
+      for select to authenticated
+      using (auth.uid() = user_id);
+  end if;
+end $$;
+
+drop trigger if exists tg_tailored_resumes_updated_at on public.tailored_resumes;
+create trigger tg_tailored_resumes_updated_at
+  before update on public.tailored_resumes
+  for each row execute function public.tg_set_updated_at();
+
+
+create table if not exists public.negotiation_memos (
+  id                uuid primary key default gen_random_uuid(),
+  user_id           uuid not null references auth.users(id) on delete cascade,
+  job_id            uuid not null references public.jobs(id) on delete cascade,
+  content           jsonb not null,
+  -- The market bracket the memo was anchored on (snapshot at generation time)
+  market_comp       jsonb,
+  resume_signature  text,
+  job_signature     text,
+  candidate_target_lpa  numeric,
+  candidate_current_lpa numeric,
+  generated_at      timestamptz not null default now(),
+  updated_at        timestamptz not null default now(),
+  unique (user_id, job_id)
+);
+
+create index if not exists idx_negotiation_memos_user
+  on public.negotiation_memos(user_id, generated_at desc);
+
+alter table public.negotiation_memos enable row level security;
+
+do $$ begin
+  if not exists (
+    select 1 from pg_policies
+    where schemaname = 'public' and tablename = 'negotiation_memos'
+      and policyname = 'negotiation_memos_select_own'
+  ) then
+    create policy negotiation_memos_select_own on public.negotiation_memos
+      for select to authenticated
+      using (auth.uid() = user_id);
+  end if;
+end $$;
+
+drop trigger if exists tg_negotiation_memos_updated_at on public.negotiation_memos;
+create trigger tg_negotiation_memos_updated_at
+  before update on public.negotiation_memos
+  for each row execute function public.tg_set_updated_at();
+
+
+-- Storage bucket for generated .docx files. Private — only the owning
+-- user can download (via signed URL minted by the server).
+do $$ begin
+  insert into storage.buckets (id, name, public)
+  values ('tailored-resumes', 'tailored-resumes', false)
+  on conflict (id) do nothing;
+end $$;
+
+do $$ begin
+  if not exists (
+    select 1 from pg_policies
+    where schemaname = 'storage' and tablename = 'objects'
+      and policyname = 'tailored_resumes_owner_read'
+  ) then
+    create policy tailored_resumes_owner_read on storage.objects
+      for select to authenticated
+      using (
+        bucket_id = 'tailored-resumes'
+        and (storage.foldername(name))[1] = auth.uid()::text
+      );
+  end if;
+end $$;
+
+
 -- CONSENTS (DPDP — granular, versioned, append-style with revoked_at)
 create table if not exists public.consents (
   user_id uuid not null references auth.users(id) on delete cascade,

@@ -100,6 +100,51 @@ export interface Database {
         };
         Relationships: [];
       };
+      tailored_resumes: {
+        Row: {
+          id: string; user_id: string; job_id: string;
+          content: Json; docx_storage_path: string | null;
+          resume_signature: string | null; job_signature: string | null;
+          generated_at: string; updated_at: string;
+        };
+        Insert: {
+          id?: string; user_id: string; job_id: string;
+          content: Json; docx_storage_path?: string | null;
+          resume_signature?: string | null; job_signature?: string | null;
+          generated_at?: string; updated_at?: string;
+        };
+        Update: {
+          id?: string; user_id?: string; job_id?: string;
+          content?: Json; docx_storage_path?: string | null;
+          resume_signature?: string | null; job_signature?: string | null;
+          generated_at?: string; updated_at?: string;
+        };
+        Relationships: [];
+      };
+      negotiation_memos: {
+        Row: {
+          id: string; user_id: string; job_id: string;
+          content: Json; market_comp: Json | null;
+          resume_signature: string | null; job_signature: string | null;
+          candidate_target_lpa: number | null; candidate_current_lpa: number | null;
+          generated_at: string; updated_at: string;
+        };
+        Insert: {
+          id?: string; user_id: string; job_id: string;
+          content: Json; market_comp?: Json | null;
+          resume_signature?: string | null; job_signature?: string | null;
+          candidate_target_lpa?: number | null; candidate_current_lpa?: number | null;
+          generated_at?: string; updated_at?: string;
+        };
+        Update: {
+          id?: string; user_id?: string; job_id?: string;
+          content?: Json; market_comp?: Json | null;
+          resume_signature?: string | null; job_signature?: string | null;
+          candidate_target_lpa?: number | null; candidate_current_lpa?: number | null;
+          generated_at?: string; updated_at?: string;
+        };
+        Relationships: [];
+      };
       resume_versions: {
         Row: {
           id: string; user_id: string; resume_parsed: Json;
