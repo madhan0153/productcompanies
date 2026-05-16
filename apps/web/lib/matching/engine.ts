@@ -63,6 +63,8 @@ interface JobRow {
   jd_parsed_at: string | null;
   embedding: number[] | null;
   embedding_at: string | null;
+  /** Sprint 1 Item 6 — SHA256 of the JD description. Used to cache Fit Cards. */
+  signature: string | null;
 }
 
 interface ProfileRow {
@@ -77,6 +79,8 @@ interface ProfileRow {
   resume_embedding: number[] | null;
   resume_embedding_at: string | null;
   last_match_compute_at: string | null;
+  /** Sprint 1 Item 6 — content-hash of parsed resume. Drives Fit-Card cache. */
+  resume_signature: string | null;
 }
 
 export interface ComputeResult {
@@ -121,7 +125,7 @@ async function fetchAllActiveJobs(
     const { data: rows } = await (admin
       .from("jobs")
       .select(
-        "id, title, description, hubs, min_experience_years, max_experience_years, comp_lpa_min, comp_lpa_max, tech_stack, seniority, location, role_function, must_have_skills, nice_to_have_skills, jd_min_years, jd_max_years, jd_seniority_signal, jd_summary, is_likely_ghost, jd_parsed_at, embedding, embedding_at, companies(name)",
+        "id, title, description, hubs, min_experience_years, max_experience_years, comp_lpa_min, comp_lpa_max, tech_stack, seniority, location, role_function, must_have_skills, nice_to_have_skills, jd_min_years, jd_max_years, jd_seniority_signal, jd_summary, is_likely_ghost, jd_parsed_at, embedding, embedding_at, signature, companies(name)",
       )
       .eq("is_active", true)
       .range(from, from + JOBS_PAGE_SIZE - 1) as any) as { data: Array<Record<string, unknown>> | null };
@@ -153,6 +157,7 @@ async function fetchAllActiveJobs(
         jd_parsed_at:         r.jd_parsed_at as string | null,
         embedding:            (r.embedding as number[] | null) ?? null,
         embedding_at:         (r.embedding_at as string | null) ?? null,
+        signature:            (r.signature as string | null) ?? null,
       });
     }
     if (batch.length < JOBS_PAGE_SIZE) break;
@@ -181,7 +186,7 @@ export async function computeMatchesForUser(
   const { data: profileRow } = await (admin
     .from("profiles")
     .select(
-      "years_experience, preferred_hubs, target_lpa, current_lpa, tech_stack, seniority, target_role_functions, resume_parsed, resume_embedding, resume_embedding_at, last_match_compute_at",
+      "years_experience, preferred_hubs, target_lpa, current_lpa, tech_stack, seniority, target_role_functions, resume_parsed, resume_embedding, resume_embedding_at, last_match_compute_at, resume_signature",
     )
     .eq("id", userId)
     .maybeSingle() as any) as { data: Record<string, unknown> | null };
@@ -200,6 +205,7 @@ export async function computeMatchesForUser(
     resume_embedding:      (profileRow.resume_embedding as number[] | null) ?? null,
     resume_embedding_at:   (profileRow.resume_embedding_at as string | null) ?? null,
     last_match_compute_at: (profileRow.last_match_compute_at as string | null) ?? null,
+    resume_signature:      (profileRow.resume_signature as string | null) ?? null,
   };
 
   if (profile.target_role_functions.length === 0 && profile.resume_parsed?.target_role_functions?.length) {
@@ -226,7 +232,7 @@ export async function computeMatchesForUser(
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { data: existingMatchRows } = await (admin
     .from("matches")
-    .select("job_id, score, verdict, fit_card, fit_card_at, hidden_reason, computed_at, seen_at")
+    .select("job_id, score, verdict, fit_card, fit_card_at, hidden_reason, score_breakdown, fit_card_resume_signature, fit_card_jd_signature, user_hidden, computed_at, seen_at")
     .eq("user_id", userId) as any) as { data: ExistingMatch[] | null };
   const existingByJob = new Map<string, ExistingMatch>();
   for (const m of existingMatchRows ?? []) existingByJob.set(m.job_id, m);
@@ -340,7 +346,7 @@ export async function computeMatchesForUser(
   const rescored = validMatches.filter((s) => s.rescored);
   let newMatchCount = 0;
 
-  const baselineRows: MatchUpsertRow[] = rescored.map(({ job, rules, score, verdict, existing }) => {
+  const baselineRows: BaselineUpsertRow[] = rescored.map(({ job, rules, score, verdict, existing }) => {
     // First-seen rows OR significant score change → seen_at=NULL ("new").
     // Fit-card-only updates without score movement → keep existing seen_at.
     const isNew = !existing || Math.abs((existing.score ?? 0) - score) >= 3;
@@ -349,6 +355,12 @@ export async function computeMatchesForUser(
       rules?.hardMismatch ? "mismatch"
       : job.is_likely_ghost ? "ghost"
       : null;
+    // Sprint 1 Item 3 — persist the per-dimension breakdown so the UI can
+    // surface "Why this score?" without recomputing. Null only when we
+    // reused an existing score (no rules object was computed this run).
+    const score_breakdown = rules
+      ? (rules.breakdown as unknown as Json)
+      : (existing?.score_breakdown ?? null);
     return {
       user_id:       userId,
       job_id:        job.id,
@@ -357,6 +369,7 @@ export async function computeMatchesForUser(
       fit_card:      existing?.fit_card ?? null,
       fit_card_at:   existing?.fit_card_at ?? null,
       hidden_reason,
+      score_breakdown,
       strengths:     [],
       gaps:          [],
       reasoning:     job.jd_summary ?? "Score computed. Open the role for the full Fit Card.",
@@ -378,28 +391,47 @@ export async function computeMatchesForUser(
 
     // Candidates: top-K of valid, non-ghost, JD-parsed jobs whose Fit Card
     // is missing OR stale (jd_parsed_at > fit_card_at) OR resume changed.
+    // Sprint 1 Item 4 — never burn Gemini quota on user-dismissed roles.
     const topRanked = validMatches
       .filter((s) => !s.job.is_likely_ghost)
       .filter((s) => s.job.jd_parsed_at !== null)
+      .filter((s) => s.existing?.user_hidden !== true)
       .slice(0, topK);
 
+    // Sprint 1 Item 6 — content-signature cache. Skip Gemini entirely when
+    // both the resume and the JD haven't changed since the cached card was
+    // generated. Fallback to the legacy time-based heuristic when either
+    // signature is missing (legacy rows pre-Sprint-1).
+    const currentResumeSig = profile.resume_signature;
     const candidates = topRanked.filter((s) => {
       const ex = s.existing;
       // No card yet → generate.
       if (!ex || !ex.fit_card_at) return true;
-      // Resume changed → regenerate.
-      if (resumeChanged) return true;
-      // JD updated since the card was made → regenerate.
-      if (s.job.jd_parsed_at && new Date(s.job.jd_parsed_at).getTime() > new Date(ex.fit_card_at).getTime()) return true;
       // Score moved materially → regenerate (verdict may have shifted).
       if (Math.abs((ex.score ?? 0) - s.score) >= 5) return true;
+
+      const cachedResumeSig = ex.fit_card_resume_signature;
+      const cachedJdSig     = ex.fit_card_jd_signature;
+      const haveBothSigs    = cachedResumeSig !== null && cachedJdSig !== null;
+      if (haveBothSigs && currentResumeSig && s.job.signature) {
+        // Both signatures match the current state → cache hit, skip Gemini.
+        if (cachedResumeSig === currentResumeSig && cachedJdSig === s.job.signature) {
+          return false;
+        }
+        // Otherwise the content changed → regenerate.
+        return true;
+      }
+
+      // Legacy fallback (one or both signatures missing on the cached row).
+      if (resumeChanged) return true;
+      if (s.job.jd_parsed_at && new Date(s.job.jd_parsed_at).getTime() > new Date(ex.fit_card_at).getTime()) return true;
       return false;
     });
 
     if (candidates.length > 0) {
       const startedAt = Date.now();
       const queue = [...candidates];
-      const fitCardRows: MatchUpsertRow[] = [];
+      const fitCardRows: FitCardUpsertRow[] = [];
 
       const worker = async () => {
         while (queue.length > 0) {
@@ -456,6 +488,11 @@ export async function computeMatchesForUser(
               fit_card:      card as unknown as Json,
               fit_card_at:   new Date().toISOString(),
               hidden_reason: card.verdict === "mismatch" ? "mismatch" : null,
+              // Sprint 1 Item 6 — stamp the content signatures the card was
+              // generated against. The next compute reads these to decide
+              // cache hit vs regen, no LLM call needed when both match.
+              fit_card_resume_signature: currentResumeSig ?? null,
+              fit_card_jd_signature:     job.signature ?? null,
               strengths:     [],
               gaps:          [],
               reasoning:     card.one_liner,
@@ -504,6 +541,10 @@ type ExistingMatch = {
   fit_card: Json | null;
   fit_card_at: string | null;
   hidden_reason: string | null;
+  score_breakdown: Json | null;
+  fit_card_resume_signature: string | null;
+  fit_card_jd_signature: string | null;
+  user_hidden: boolean;
   computed_at: string;
   seen_at: string | null;
 };
@@ -518,7 +559,15 @@ type ScoredJob = {
   cosine: number | null;
 };
 
-type MatchUpsertRow = {
+// Two distinct upsert shapes — supabase-js v2 writes every column the row
+// object contains, so the Fit-Card second pass must NOT include
+// `score_breakdown` (we don't want to clobber what the baseline just wrote).
+//
+// Sprint 1 Items 3 + 6:
+//   - BaselineUpsertRow sets score, verdict, score_breakdown.
+//   - FitCardUpsertRow sets fit_card, fit_card_at, signatures, verdict-from-card.
+//   - Both never touch user_hidden / hidden_at so user dismisses survive.
+type BaselineUpsertRow = {
   user_id: string;
   job_id: string;
   score: number;
@@ -526,6 +575,7 @@ type MatchUpsertRow = {
   fit_card: Json | null;
   fit_card_at: string | null;
   hidden_reason: string | null;
+  score_breakdown: Json | null;
   strengths: string[];
   gaps: string[];
   reasoning: string;
@@ -533,9 +583,26 @@ type MatchUpsertRow = {
   seen_at: string | null;
 };
 
-async function batchUpsert(
+type FitCardUpsertRow = {
+  user_id: string;
+  job_id: string;
+  score: number;
+  verdict: Verdict | null;
+  fit_card: Json | null;
+  fit_card_at: string | null;
+  hidden_reason: string | null;
+  fit_card_resume_signature: string | null;
+  fit_card_jd_signature: string | null;
+  strengths: string[];
+  gaps: string[];
+  reasoning: string;
+  computed_at: string;
+  seen_at: string | null;
+};
+
+async function batchUpsert<T extends Record<string, unknown>>(
   admin: ReturnType<typeof createSupabaseAdminClient>,
-  rows: MatchUpsertRow[],
+  rows: T[],
 ) {
   const BATCH = 200;
   for (let i = 0; i < rows.length; i += BATCH) {

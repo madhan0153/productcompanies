@@ -15,6 +15,7 @@ import { StickyApplyBar } from "./sticky-apply-bar";
 import { JobDescription } from "./job-description";
 import { PrepBrief } from "./prep-brief";
 import { FitCardPanel, type FitCardData } from "./fit-card";
+import { ApplyButton } from "@/components/apply-button";
 
 export const dynamic = "force-dynamic";
 
@@ -130,6 +131,7 @@ export default async function JobDetailPage({ params }: { params: Promise<{ id: 
         companyLogoUrl={company?.logo_url ?? null}
         title={job.title}
         applyUrl={job.apply_url}
+        jobId={job.id}
       />
 
       {/* Breadcrumb */}
@@ -203,19 +205,12 @@ export default async function JobDetailPage({ params }: { params: Promise<{ id: 
           )}
         </div>
 
-        {/* Action bar */}
+        {/* Action bar — Sprint 2 Items 9 + 10: ApplyButton tracks the click
+            and auto-creates the application row instead of forcing the user
+            to track it manually after returning from the careers page. */}
         <div className="relative mt-5 flex flex-wrap items-center gap-2 border-t border-border/50 pt-5">
           {job.apply_url && (
-            <a
-              href={job.apply_url}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center gap-2 rounded-xl bg-primary px-5 py-2.5 text-sm font-semibold text-primary-foreground shadow-lg shadow-primary/20 transition hover:opacity-90 active:scale-[0.98]"
-            >
-              <Zap className="h-3.5 w-3.5" />
-              Apply on {company?.name ?? "official site"}
-              <ExternalLink className="h-3 w-3 opacity-70" />
-            </a>
+            <ApplyButton jobId={job.id} applyUrl={job.apply_url} variant="default" />
           )}
           <JobActions jobId={job.id} existingApp={application} />
           {company?.careers_url && (

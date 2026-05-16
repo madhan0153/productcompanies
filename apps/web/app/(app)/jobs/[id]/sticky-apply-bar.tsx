@@ -2,19 +2,20 @@
 
 import { useEffect, useState } from "react";
 import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
-import { ExternalLink } from "lucide-react";
 import { CompanyLogo } from "@/components/company-logo";
+import { ApplyButton } from "@/components/apply-button";
 
 type Props = {
   companyName: string;
   companyLogoUrl: string | null;
   title: string;
   applyUrl: string | null;
+  jobId: string;
 };
 
 // A compact bar that slides in once the user has scrolled past the hero card.
 // Keeps the primary action ("Apply") within reach without forcing them back up.
-export function StickyApplyBar({ companyName, companyLogoUrl, title, applyUrl }: Props) {
+export function StickyApplyBar({ companyName, companyLogoUrl, title, applyUrl, jobId }: Props) {
   const reduce = useReducedMotion();
   const [visible, setVisible] = useState(false);
 
@@ -51,14 +52,7 @@ export function StickyApplyBar({ companyName, companyLogoUrl, title, applyUrl }:
               <p className="truncate text-sm font-medium">{title}</p>
               <p className="truncate text-xs text-muted-foreground">{companyName}</p>
             </div>
-            <a
-              href={applyUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="press inline-flex items-center gap-1.5 rounded-lg bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground shadow shadow-primary/30 transition hover:opacity-90 focus-ring"
-            >
-              Apply <ExternalLink className="h-3 w-3" />
-            </a>
+            <ApplyButton jobId={jobId} applyUrl={applyUrl} variant="compact" />
           </div>
         </motion.div>
       )}

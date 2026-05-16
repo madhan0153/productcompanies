@@ -349,6 +349,110 @@ alter table public.jobs add column if not exists tech_stack_explicit       text[
 alter table public.jobs add column if not exists team_context              text;
 
 
+-- ─────────────────────────────────────────────────────────────────────────────
+-- Sprint 1: Trust & explainability columns
+-- ─────────────────────────────────────────────────────────────────────────────
+-- profiles.dna_breakdown:
+--   jsonb { product_co_tenure, scale_impact, modern_stack, ownership } each
+--   { score: int, weight: int, hint: text }. Computed deterministically from
+--   parsed_resume — no LLM call. Surfaces in dashboard + profile to replace
+--   the opaque single integer product_dna_score.
+-- profiles.resume_signature:
+--   SHA256 of resume_text. Lets us cache Fit Cards by (resume_sig × jd_sig)
+--   instead of timestamps — true content-based determinism.
+alter table public.profiles add column if not exists dna_breakdown    jsonb;
+alter table public.profiles add column if not exists resume_signature text;
+
+-- matches.score_breakdown:
+--   jsonb { semantic, tech, role, experience, seniority, hub, lpa } as integers.
+--   Powers the "Why this score?" surface on each match card — turns the
+--   opaque 0-100 into the same 7 dimensions the matching engine actually
+--   computed.
+-- matches.user_hidden:
+--   true when the user explicitly dismissed this role. The engine excludes
+--   hidden rows from default views and skips Fit-Card regen for them.
+-- matches.hidden_at:
+--   when the dismiss happened, for the "Restore hidden" undo affordance.
+-- matches.fit_card_resume_signature / fit_card_jd_signature:
+--   the content-hashes that produced the cached fit_card. Item 6 — Gemini is
+--   skipped entirely when both signatures match the current resume + JD.
+alter table public.matches add column if not exists score_breakdown            jsonb;
+alter table public.matches add column if not exists user_hidden                boolean not null default false;
+alter table public.matches add column if not exists hidden_at                  timestamptz;
+alter table public.matches add column if not exists fit_card_resume_signature  text;
+alter table public.matches add column if not exists fit_card_jd_signature      text;
+
+-- Partial index — most rows are visible; only hidden ones are queried for
+-- the "Hidden" tab + "Restore" affordance.
+create index if not exists idx_matches_user_hidden
+  on public.matches(user_id) where user_hidden = true;
+
+
+-- ─────────────────────────────────────────────────────────────────────────────
+-- Sprint 2: apply-click intent signal + resume version history
+-- ─────────────────────────────────────────────────────────────────────────────
+-- jobs.apply_click_count:
+--   Internal click counter — incremented when a user clicks "Apply on official
+--   site" from a match card or job detail page. Distinct from
+--   `applicants_count` (external/company-provided where available). Drives
+--   admin analytics, ranking tie-break candidates, and the "popular roles"
+--   surface on insights.
+alter table public.jobs add column if not exists apply_click_count integer not null default 0;
+create index if not exists idx_jobs_apply_clicks
+  on public.jobs(apply_click_count desc) where is_active = true;
+
+-- Atomic increment helper. Avoids the read-modify-write race when many users
+-- click "Apply" on the same hot role in the same second.
+create or replace function public.increment_apply_click_count(job_uuid uuid)
+returns void
+language sql
+security definer
+set search_path = public
+as $$
+  update public.jobs set apply_click_count = apply_click_count + 1 where id = job_uuid;
+$$;
+revoke all on function public.increment_apply_click_count(uuid) from public;
+grant execute on function public.increment_apply_click_count(uuid) to authenticated, service_role;
+
+
+-- RESUME VERSIONS (snapshot before overwrite — DPDP-compliant; user-owned)
+-- Item 8 (Sprint 2). When a user re-uploads / re-parses their resume we
+-- snapshot the prior parsed JSON + storage path here so they can revert.
+-- Soft-cap to last 5 snapshots per user (enforced in the server action,
+-- not via constraint — easier to evolve the retention policy).
+create table if not exists public.resume_versions (
+  id              uuid primary key default gen_random_uuid(),
+  user_id         uuid not null references auth.users(id) on delete cascade,
+  resume_parsed   jsonb not null,
+  resume_storage_path text,
+  product_dna_score   integer,
+  dna_breakdown   jsonb,
+  resume_signature text,
+  source          text not null default 'overwrite',  -- 'overwrite' | 'manual_revert'
+  created_at      timestamptz not null default now()
+);
+
+create index if not exists idx_resume_versions_user
+  on public.resume_versions(user_id, created_at desc);
+
+-- RLS — only the owning user can read their own snapshots.
+alter table public.resume_versions enable row level security;
+
+do $$ begin
+  if not exists (
+    select 1 from pg_policies
+    where schemaname = 'public' and tablename = 'resume_versions'
+      and policyname = 'resume_versions_select_own'
+  ) then
+    create policy resume_versions_select_own on public.resume_versions
+      for select to authenticated
+      using (auth.uid() = user_id);
+  end if;
+end $$;
+
+-- Service-role insert/delete only (server actions go through admin client).
+
+
 -- CONSENTS (DPDP — granular, versioned, append-style with revoked_at)
 create table if not exists public.consents (
   user_id uuid not null references auth.users(id) on delete cascade,

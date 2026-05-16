@@ -13,9 +13,16 @@ import { EmptyState } from "@/components/empty-state";
 import type { Verdict, Json } from "@/lib/supabase/types";
 import { ComputeButton } from "./compute-button";
 import { MatchFilters } from "./filters";
+import { asRulesScoreBreakdown } from "@/components/score-breakdown";
+import { WhyScoreToggle } from "./why-score-toggle";
+import { DismissButton, RestoreButton } from "./dismiss-button";
+import { ApplyButton } from "@/components/apply-button";
 
 export const metadata: Metadata = { title: "Matches" };
-export const maxDuration = 300;
+// Sprint 2 Item 5 — page is read-only now (no synchronous compute), so the
+// default 60s ceiling is plenty. Background compute runs via after() in
+// matches/actions.ts and revalidates this path when done.
+export const maxDuration = 60;
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Verdict design system
@@ -106,6 +113,8 @@ type MatchRow = {
   reasoning: string | null;
   computed_at: string;
   seen_at: string | null;
+  score_breakdown: Json | null;
+  user_hidden: boolean;
   jobs: {
     id: string; title: string; location: string | null;
     hubs: string[] | null; tech_stack: string[] | null;
@@ -143,6 +152,8 @@ export default async function MatchesPage({
   const minScore = params.min_score ? parseInt(params.min_score, 10) : null;
   const showHidden = params.show === "all";
   const showOnlyNew = params.show === "new";
+  // Sprint 1 Item 4 — dedicated "Hidden" tab for user-dismissed roles.
+  const showOnlyHidden = params.show === "hidden";
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { data: profile } = await (supabase
@@ -160,6 +171,7 @@ export default async function MatchesPage({
     .from("matches")
     .select(`
       score, verdict, fit_card, fit_card_at, hidden_reason, reasoning, computed_at, seen_at,
+      score_breakdown, user_hidden,
       jobs (
         id, title, location, hubs, tech_stack,
         comp_lpa_min, comp_lpa_max, seniority,
@@ -173,11 +185,22 @@ export default async function MatchesPage({
 
   if (minScore !== null) query = query.gte("score", minScore);
   if (showOnlyNew) query = query.is("seen_at", null);
+  // Hidden tab: only user-dismissed rows. Default + new / all: only visible.
+  if (showOnlyHidden) query = query.eq("user_hidden", true);
+  else                 query = query.eq("user_hidden", false);
 
   const { data: rawData } = await query;
   const matchRows = rawData as unknown as MatchRow[] | null;
   const allRows = (matchRows ?? []).filter((m): m is MatchRow & { jobs: NonNullable<MatchRow["jobs"]> } => !!m.jobs);
   const allScores = allRows.map(m => m.score).sort((a, b) => a - b);
+
+  // Count of user-hidden rows — drives the "N dismissed" link in the header.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { count: dismissedCount } = await (supabase
+    .from("matches") as any)
+    .select("*", { count: "exact", head: true })
+    .eq("user_id", user.id)
+    .eq("user_hidden", true) as { count: number | null };
 
   const unseenIds = allRows.filter((m) => m.seen_at === null).map((m) => m.jobs.id);
   if (unseenIds.length > 0) {
@@ -257,6 +280,9 @@ export default async function MatchesPage({
                 {newCount > 0 && (
                   <> · <Link href="/matches?show=new" className="text-emerald-400 hover:underline">{newCount} new</Link></>
                 )}
+                {(dismissedCount ?? 0) > 0 && (
+                  <> · <Link href="/matches?show=hidden" className="text-muted-foreground hover:text-foreground hover:underline">{dismissedCount} dismissed</Link></>
+                )}
               </span>
             </div>
           )}
@@ -312,6 +338,17 @@ export default async function MatchesPage({
         </div>
       )}
 
+      {showOnlyHidden && (
+        <div className="flex items-center justify-between gap-3 rounded-xl border border-border/60 bg-card/30 px-4 py-3 text-sm">
+          <span className="text-muted-foreground">
+            Showing {allRows.length} dismissed {allRows.length === 1 ? "role" : "roles"} — hidden from your default list.
+          </span>
+          <Link href="/matches" className="rounded-lg border border-border px-2.5 py-1 text-xs text-muted-foreground transition hover:border-primary/40 hover:text-foreground">
+            Back to matches
+          </Link>
+        </div>
+      )}
+
       {/* ── Resume score banner ────────────────────────────────── */}
       {hasResume && resumeScore !== null && (
         <ResumeScoreBanner score={resumeScore} />
@@ -361,8 +398,29 @@ export default async function MatchesPage({
         </div>
       )}
 
-      {/* ── Verdict bands ─────────────────────────────────────── */}
-      {visibleCount > 0 ? (
+      {/* ── Verdict bands (hidden view bypasses grouping) ─────── */}
+      {showOnlyHidden ? (
+        allRows.length > 0 ? (
+          <StaggerList className="space-y-3">
+            {filtered.map((m) => (
+              <MatchCard
+                key={m.jobs.id}
+                match={m}
+                verdict={(m.verdict ?? "stretch") as Verdict}
+                isNew={false}
+                allScores={allScores}
+                hiddenView
+              />
+            ))}
+          </StaggerList>
+        ) : (
+          <EmptyState
+            icon={<EyeOff className="h-5 w-5" />}
+            title="No dismissed roles"
+            body="Roles you dismiss from the main list will show up here so you can restore them anytime."
+          />
+        )
+      ) : visibleCount > 0 ? (
         <div className="space-y-10">
           {visibleVerdicts.map((v) => {
             const items = groups.get(v) ?? [];
@@ -391,10 +449,15 @@ export default async function MatchesPage({
           })}
         </div>
       ) : allRows.length > 0 ? (
+        // Sprint 2 Item 18 — clear empty-state when filters slice to zero.
         <EmptyState
-          icon={<ChevronRight className="h-5 w-5" />}
-          title="No matches with these filters"
-          body="Widen the selection — clear a company filter, lower the minimum score, or toggle 'Show all'."
+          icon={<Eye className="h-5 w-5" />}
+          title="No matches in this slice"
+          body={
+            (selectedCompanies.length > 0 || selectedHubs.length > 0 || minScore !== null)
+              ? "Try clearing or widening a filter. There may be roles you'd qualify for hiding behind the current selection."
+              : "You may have hidden mismatches. Toggle 'Show all' below to see the full list."
+          }
           actions={[{ label: "Clear filters", href: "/matches", variant: "primary" }]}
         />
       ) : hasResume ? (
@@ -481,13 +544,16 @@ function MatchCard({
   verdict,
   isNew,
   allScores,
+  hiddenView = false,
 }: {
-  match: Pick<MatchRow, "score" | "fit_card" | "reasoning" | "hidden_reason"> & {
+  match: Pick<MatchRow, "score" | "fit_card" | "reasoning" | "hidden_reason" | "score_breakdown"> & {
     jobs: NonNullable<MatchRow["jobs"]>;
   };
   verdict: Verdict;
   isNew: boolean;
   allScores: number[];
+  /** When true: greyed-out card with Restore button instead of Dismiss. */
+  hiddenView?: boolean;
 }) {
   const job = match.jobs;
   const company = job.companies;
@@ -497,6 +563,7 @@ function MatchCard({
   const topTweak = card?.resume_tweaks?.find((t) => t.priority === 1) ?? card?.resume_tweaks?.[0];
   const strengths = card?.strengths?.slice(0, 2) ?? [];
   const gaps = card?.gaps?.slice(0, 1) ?? [];
+  const scoreBreakdown = asRulesScoreBreakdown(match.score_breakdown);
   const isGhost = job.is_likely_ghost === true;
   const confidence = recruiterConfidence(match.score, verdict);
 
@@ -509,20 +576,35 @@ function MatchCard({
     <Link
       href={`/jobs/${job.id}`}
       className={`group relative block rounded-2xl border bg-card/40 p-5 transition hover:bg-card/70 ${
-        isNew ? "border-emerald-500/30 hover:border-emerald-400/50" : "border-border hover:border-primary/25"
+        hiddenView
+          ? "border-border/40 opacity-60 hover:opacity-100"
+          : isNew
+            ? "border-emerald-500/30 hover:border-emerald-400/50"
+            : "border-border hover:border-primary/25"
       }`}
     >
       {/* New indicator stripe */}
-      {isNew && (
+      {isNew && !hiddenView && (
         <div className="absolute left-0 top-0 h-full w-0.5 rounded-l-2xl bg-emerald-400" />
       )}
 
+      {/* Sprint 1 Item 4 — corner dismiss / restore action */}
+      <div className="absolute right-3 top-3 z-10">
+        {hiddenView
+          ? <RestoreButton jobId={job.id} />
+          : <DismissButton jobId={job.id} />}
+      </div>
+
       <div className="flex flex-wrap items-start gap-4">
 
-        {/* Company logo + score */}
+        {/* Company logo + score chip — Sprint 2 Item 20: icon + color, not color alone. */}
         <div className="flex flex-col items-center gap-2">
           <CompanyLogo name={company?.name ?? "?"} logoUrl={company?.logo_url ?? null} size={48} />
-          <div className={`flex min-w-[2.5rem] items-center justify-center rounded-lg px-1.5 py-0.5 text-xs font-bold tabular-nums ${meta.scoreTone}`}>
+          <div
+            className={`flex min-w-[3rem] items-center justify-center gap-1 rounded-lg px-1.5 py-0.5 text-xs font-bold tabular-nums ${meta.scoreTone}`}
+            aria-label={`${meta.label} — ${Math.round(match.score)} of 100`}
+          >
+            <span aria-hidden>{meta.icon}</span>
             {Math.round(match.score)}
           </div>
         </div>
@@ -593,6 +675,11 @@ function MatchCard({
             </div>
           )}
 
+          {/* Why this score — interactive disclosure */}
+          {scoreBreakdown && (
+            <WhyScoreToggle breakdown={scoreBreakdown} total={match.score} />
+          )}
+
           {/* Top resume tweak */}
           {topTweak?.suggestion && (
             <div className="mt-3 flex items-start gap-2 rounded-xl border border-primary/15 bg-primary/5 px-3 py-2">
@@ -627,9 +714,7 @@ function MatchCard({
             <ChevronRight className="h-3 w-3 transition group-hover:translate-x-0.5" />
           </span>
           {job.apply_url && (
-            <span className="inline-flex items-center gap-1 transition group-hover:text-primary">
-              Apply on official site <ExternalLink className="h-3 w-3" />
-            </span>
+            <ApplyButton jobId={job.id} applyUrl={job.apply_url} variant="compact" />
           )}
         </div>
       </div>

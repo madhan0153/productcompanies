@@ -55,6 +55,7 @@ export interface Database {
           jd_summary: string | null; jd_parsed_at: string | null;
           is_likely_ghost: boolean | null; ghost_signals: Json | null;
           embedding: number[] | null; embedding_at: string | null;
+          apply_click_count: number;
           created_at: string; updated_at: string;
         };
         Insert: {
@@ -74,6 +75,7 @@ export interface Database {
           jd_summary?: string | null; jd_parsed_at?: string | null;
           is_likely_ghost?: boolean | null; ghost_signals?: Json | null;
           embedding?: number[] | null; embedding_at?: string | null;
+          apply_click_count?: number;
           created_at?: string; updated_at?: string;
         };
         Update: {
@@ -93,7 +95,35 @@ export interface Database {
           jd_summary?: string | null; jd_parsed_at?: string | null;
           is_likely_ghost?: boolean | null; ghost_signals?: Json | null;
           embedding?: number[] | null; embedding_at?: string | null;
+          apply_click_count?: number;
           updated_at?: string;
+        };
+        Relationships: [];
+      };
+      resume_versions: {
+        Row: {
+          id: string; user_id: string; resume_parsed: Json;
+          resume_storage_path: string | null;
+          product_dna_score: number | null; dna_breakdown: Json | null;
+          resume_signature: string | null;
+          source: "overwrite" | "manual_revert";
+          created_at: string;
+        };
+        Insert: {
+          id?: string; user_id: string; resume_parsed: Json;
+          resume_storage_path?: string | null;
+          product_dna_score?: number | null; dna_breakdown?: Json | null;
+          resume_signature?: string | null;
+          source?: "overwrite" | "manual_revert";
+          created_at?: string;
+        };
+        Update: {
+          id?: string; user_id?: string; resume_parsed?: Json;
+          resume_storage_path?: string | null;
+          product_dna_score?: number | null; dna_breakdown?: Json | null;
+          resume_signature?: string | null;
+          source?: "overwrite" | "manual_revert";
+          created_at?: string;
         };
         Relationships: [];
       };
@@ -104,12 +134,14 @@ export interface Database {
           target_lpa: number | null; preferred_hubs: string[] | null;
           tech_stack: string[] | null; seniority: SeniorityLevel | null;
           resume_storage_path: string | null; resume_parsed: Json | null;
-          product_dna_score: number | null;
+          product_dna_score: number | null; dna_breakdown: Json | null;
+          resume_signature: string | null;
           coach_plan: Json | null; coach_plan_at: string | null;
           role_function: string | null; target_role_functions: string[] | null;
           resume_score: number | null; resume_score_breakdown: Json | null;
           resume_tips: Json | null; resume_score_at: string | null;
           resume_embedding: number[] | null; resume_embedding_at: string | null;
+          last_match_compute_at: string | null;
           created_at: string; updated_at: string;
         };
         Insert: {
@@ -118,12 +150,14 @@ export interface Database {
           target_lpa?: number | null; preferred_hubs?: string[] | null;
           tech_stack?: string[] | null; seniority?: SeniorityLevel | null;
           resume_storage_path?: string | null; resume_parsed?: Json | null;
-          product_dna_score?: number | null;
+          product_dna_score?: number | null; dna_breakdown?: Json | null;
+          resume_signature?: string | null;
           coach_plan?: Json | null; coach_plan_at?: string | null;
           role_function?: string | null; target_role_functions?: string[] | null;
           resume_score?: number | null; resume_score_breakdown?: Json | null;
           resume_tips?: Json | null; resume_score_at?: string | null;
           resume_embedding?: number[] | null; resume_embedding_at?: string | null;
+          last_match_compute_at?: string | null;
           created_at?: string; updated_at?: string;
         };
         Update: {
@@ -132,12 +166,14 @@ export interface Database {
           target_lpa?: number | null; preferred_hubs?: string[] | null;
           tech_stack?: string[] | null; seniority?: SeniorityLevel | null;
           resume_storage_path?: string | null; resume_parsed?: Json | null;
-          product_dna_score?: number | null;
+          product_dna_score?: number | null; dna_breakdown?: Json | null;
+          resume_signature?: string | null;
           coach_plan?: Json | null; coach_plan_at?: string | null;
           role_function?: string | null; target_role_functions?: string[] | null;
           resume_score?: number | null; resume_score_breakdown?: Json | null;
           resume_tips?: Json | null; resume_score_at?: string | null;
           resume_embedding?: number[] | null; resume_embedding_at?: string | null;
+          last_match_compute_at?: string | null;
           updated_at?: string;
         };
         Relationships: [];
@@ -166,6 +202,11 @@ export interface Database {
           reasoning: string | null; computed_at: string;
           verdict: Verdict | null; fit_card: Json | null;
           fit_card_at: string | null; hidden_reason: string | null;
+          score_breakdown: Json | null;
+          user_hidden: boolean; hidden_at: string | null;
+          fit_card_resume_signature: string | null;
+          fit_card_jd_signature: string | null;
+          seen_at: string | null;
           created_at: string; updated_at: string;
         };
         Insert: {
@@ -174,6 +215,11 @@ export interface Database {
           reasoning?: string | null; computed_at?: string;
           verdict?: Verdict | null; fit_card?: Json | null;
           fit_card_at?: string | null; hidden_reason?: string | null;
+          score_breakdown?: Json | null;
+          user_hidden?: boolean; hidden_at?: string | null;
+          fit_card_resume_signature?: string | null;
+          fit_card_jd_signature?: string | null;
+          seen_at?: string | null;
           created_at?: string; updated_at?: string;
         };
         Update: {
@@ -182,6 +228,11 @@ export interface Database {
           reasoning?: string | null; computed_at?: string;
           verdict?: Verdict | null; fit_card?: Json | null;
           fit_card_at?: string | null; hidden_reason?: string | null;
+          score_breakdown?: Json | null;
+          user_hidden?: boolean; hidden_at?: string | null;
+          fit_card_resume_signature?: string | null;
+          fit_card_jd_signature?: string | null;
+          seen_at?: string | null;
           updated_at?: string;
         };
         Relationships: [];

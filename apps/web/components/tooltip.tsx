@@ -4,7 +4,8 @@ import { useId, useState } from "react";
 import { cn } from "@/lib/utils";
 
 type Props = {
-  label: string;
+  /** Tooltip content — string for simple labels, ReactNode for rich content. */
+  label: React.ReactNode;
   side?: "top" | "bottom";
   children: React.ReactNode;
   className?: string;

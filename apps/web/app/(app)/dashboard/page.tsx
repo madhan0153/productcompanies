@@ -10,6 +10,9 @@ import Link from "next/link";
 import { CompanyLogo } from "@/components/company-logo";
 import { ScoreRing } from "@/components/score-ring";
 import { Tooltip } from "@/components/tooltip";
+import { DnaBreakdownInline } from "@/components/dna-breakdown-panel";
+import type { DnaBreakdown } from "@/lib/matching/dna-breakdown";
+import { computeMarketSignals, type MarketJobLite } from "@/lib/insights/market-intel";
 
 export const metadata: Metadata = { title: "Dashboard" };
 
@@ -58,7 +61,8 @@ export default async function DashboardPage() {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect("/auth/login");
 
-  const since7d = new Date(Date.now() - 7 * 24 * 3_600_000).toISOString();
+  const since7d  = new Date(Date.now() - 7  * 24 * 3_600_000).toISOString();
+  const since14d = new Date(Date.now() - 14 * 24 * 3_600_000).toISOString();
 
   const [
     { data: profile },
@@ -70,9 +74,10 @@ export default async function DashboardPage() {
     { count: newStrongCount },
     { count: activeJobCount },
     { data: recentJobsRaw },
+    { data: marketJobsRaw },
   ] = await Promise.all([
     supabase.from("profiles")
-      .select("display_name, resume_storage_path, product_dna_score, years_experience, current_role, resume_score, tech_stack")
+      .select("display_name, resume_storage_path, product_dna_score, dna_breakdown, years_experience, current_role, resume_score, tech_stack")
       .eq("id", user.id).maybeSingle(),
     supabase.from("matches").select("*", { count: "exact", head: true }).eq("user_id", user.id),
     supabase.from("applications").select("*", { count: "exact", head: true }).eq("user_id", user.id),
@@ -103,20 +108,32 @@ export default async function DashboardPage() {
       .eq("is_active", true)
       .gte("created_at", since7d)
       .limit(300),
+    // Market intelligence aggregation — full active catalog (title +
+    // role_function + tech_stack + created_at). Used to compute real
+    // role-family demand and week-over-week trend on the dashboard.
+    supabase
+      .from("jobs")
+      .select("title, tech_stack, role_function, created_at")
+      .eq("is_active", true)
+      .limit(5000),
   ]);
+  const marketJobs = (marketJobsRaw as MarketJobLite[] | null) ?? [];
 
   const recentMatches = (recentMatchesRaw as unknown as RecentMatch[] | null) ?? [];
   const recentApps = (recentAppsRaw as unknown as RecentApp[] | null) ?? [];
 
   const hasResume = !!profile?.resume_storage_path;
   const dnaScore = profile?.product_dna_score ?? null;
+  const dnaBreakdown = ((profile as { dna_breakdown?: DnaBreakdown | null } | null)?.dna_breakdown) ?? null;
   const resumeScore = (profile as { resume_score?: number | null } | null)?.resume_score ?? null;
   const displayName = profile?.display_name ?? null;
   const techStack = ((profile as { tech_stack?: unknown } | null)?.tech_stack as string[] | null) ?? [];
   const careerHealth = dnaScore !== null && resumeScore !== null
     ? Math.round((dnaScore * 0.55 + resumeScore * 0.45))
     : null;
-  const { signals: marketSignals, roleLabel: marketRoleLabel } = personalizedMarketSignals(techStack);
+  const { signals: marketSignals, roleLabel: marketRoleLabel } = computeMarketSignals(
+    marketJobs, since7d, since14d, techStack, 4,
+  );
 
   type CompanyActivity = { name: string; slug: string; logo_url: string | null; count: number };
   const activityMap = new Map<string, CompanyActivity>();
@@ -167,11 +184,27 @@ export default async function DashboardPage() {
           </div>
 
           {dnaScore !== null && (
-            <Tooltip label="Product DNA score (0–100): how strongly your background fits high-package product-company hiring. Driven by product-co tenure, scale signals, modern stack, and ownership.">
-              <div className="flex cursor-help flex-col items-center gap-1.5">
+            <Tooltip
+              label={
+                dnaBreakdown ? (
+                  <div className="space-y-2 text-left">
+                    <p className="text-xs leading-relaxed text-muted-foreground">
+                      Product DNA — sums to <span className="font-bold text-foreground">{dnaBreakdown.total}/100</span>
+                    </p>
+                    <DnaBreakdownInline breakdown={dnaBreakdown} />
+                    <Link href="/profile#dna-breakdown" className="block text-[10px] font-semibold uppercase tracking-wider text-primary hover:underline">
+                      See full breakdown →
+                    </Link>
+                  </div>
+                ) : (
+                  "Product DNA score (0–100): how strongly your background fits high-package product-company hiring."
+                )
+              }
+            >
+              <Link href="/profile#dna-breakdown" className="flex cursor-pointer flex-col items-center gap-1.5">
                 <ScoreRing score={dnaScore} size="lg" showLabel={false} />
                 <span className="text-xs font-medium text-muted-foreground">Product DNA</span>
-              </div>
+              </Link>
             </Tooltip>
           )}
         </div>
@@ -529,21 +562,30 @@ export default async function DashboardPage() {
             </Link>
           </div>
           <div className="space-y-3">
-            {marketSignals.map(({ label, demand, trend, color }) => (
-              <div key={label} className="flex items-center gap-3">
-                <span className="w-44 shrink-0 text-xs text-muted-foreground truncate">{label}</span>
-                <div className="flex-1 overflow-hidden rounded-full bg-secondary/60">
-                  <div className={`h-1.5 rounded-full ${color}`} style={{ width: `${demand}%` }} />
+            {marketSignals.length === 0 ? (
+              <p className="text-xs text-muted-foreground">
+                Catalog is still warming up — check back after the next crawl.
+              </p>
+            ) : marketSignals.map(({ key, label, demand, trend, thisWeek, color }) => {
+              const trendTone =
+                trend === null              ? "text-muted-foreground/60"
+                : trend.startsWith("+")     ? "text-emerald-400"
+                : "text-rose-400";
+              return (
+                <div key={key} className="flex items-center gap-3">
+                  <span className="w-44 shrink-0 text-xs text-muted-foreground truncate" title={`${thisWeek} new in last 7d`}>{label}</span>
+                  <div className="flex-1 overflow-hidden rounded-full bg-secondary/60">
+                    <div className={`h-1.5 rounded-full ${color}`} style={{ width: `${demand}%` }} />
+                  </div>
+                  <span className={`w-14 shrink-0 text-right text-[11px] font-medium tabular-nums ${trendTone}`}>
+                    {trend ?? "—"}
+                  </span>
                 </div>
-                <span className={`w-10 shrink-0 text-right text-[11px] font-medium tabular-nums ${trend.startsWith("+") ? "text-emerald-400" : "text-rose-400"}`}>
-                  {trend}
-                </span>
-              </div>
-            ))}
+              );
+            })}
           </div>
           <p className="mt-4 text-[10px] text-muted-foreground/60">
-            Based on live job postings across 18 companies · Refreshed daily
-            {marketRoleLabel && " · Personalised for your stack"}
+            Demand = active roles per family · Trend = this week vs prior week · Source: 18 official career pages
           </p>
         </div>
 
@@ -652,77 +694,8 @@ function formatDate(iso: string) {
   } catch { return ""; }
 }
 
-// ── Personalized market intelligence ─────────────────────────────────────────
-
-type Signal = { label: string; demand: number; trend: string; color: string };
-
-function personalizedMarketSignals(techStack: string[]): { signals: Signal[]; roleLabel: string | null } {
-  const stack = techStack.map((t) => t.toLowerCase().replace(/[\s._-]/g, ""));
-
-  const has = (keywords: string[]) => stack.some((t) => keywords.some((k) => t.includes(k)));
-
-  const isBackend  = has(["java", "go", "golang", "python", "node", "kafka", "kubernetes", "k8s", "grpc", "redis", "postgres", "microservice", "scala", "rust", "docker", "springboot", "fastapi", "django"]);
-  const isFrontend = has(["react", "nextjs", "next", "typescript", "vue", "angular", "svelte", "redux", "tailwind", "webpack", "vite"]);
-  const isData     = has(["spark", "airflow", "dbt", "databricks", "bigquery", "tableau", "pandas", "pyspark", "redshift", "snowflake"]);
-  const isML       = has(["tensorflow", "pytorch", "transformers", "huggingface", "llm", "langchain", "openai", "scikit", "mlflow", "genai", "diffusion", "rlhf"]);
-  const isMobile   = has(["android", "ios", "swift", "kotlin", "flutter", "reactnative"]);
-
-  if (isML || (isData && !isBackend)) {
-    return {
-      roleLabel: "ML / AI & data engineering demand",
-      signals: [
-        { label: "LLM / GenAI engineering",   demand: 97, trend: "+48%", color: "bg-primary" },
-        { label: "ML platform engineering",   demand: 88, trend: "+31%", color: "bg-violet-400" },
-        { label: "Data platform / pipelines", demand: 84, trend: "+18%", color: "bg-amber-400" },
-        { label: "Applied AI research",        demand: 76, trend: "+22%", color: "bg-sky-400" },
-      ],
-    };
-  }
-
-  if (isBackend) {
-    return {
-      roleLabel: "Backend & infrastructure demand",
-      signals: [
-        { label: "Distributed systems",          demand: 94, trend: "+12%", color: "bg-primary" },
-        { label: "Platform / infra engineering", demand: 89, trend: "+9%",  color: "bg-violet-400" },
-        { label: "Backend API engineers",         demand: 85, trend: "+6%",  color: "bg-amber-400" },
-        { label: "SRE / reliability engineering", demand: 72, trend: "+4%",  color: "bg-sky-400" },
-      ],
-    };
-  }
-
-  if (isFrontend) {
-    return {
-      roleLabel: "Frontend & UI engineering demand",
-      signals: [
-        { label: "React / Next.js engineers",  demand: 90, trend: "+11%", color: "bg-primary" },
-        { label: "Frontend architecture",       demand: 83, trend: "+7%",  color: "bg-violet-400" },
-        { label: "Design systems engineering",  demand: 71, trend: "+5%",  color: "bg-amber-400" },
-        { label: "Web performance / core web",  demand: 59, trend: "+3%",  color: "bg-sky-400" },
-      ],
-    };
-  }
-
-  if (isMobile) {
-    return {
-      roleLabel: "Mobile engineering demand",
-      signals: [
-        { label: "Android engineers",         demand: 74, trend: "+5%",  color: "bg-primary" },
-        { label: "iOS / Swift engineers",     demand: 69, trend: "+3%",  color: "bg-violet-400" },
-        { label: "Flutter / cross-platform",  demand: 64, trend: "+8%",  color: "bg-amber-400" },
-        { label: "Mobile platform infra",     demand: 55, trend: "-1%",  color: "bg-sky-400" },
-      ],
-    };
-  }
-
-  // Generic fallback
-  return {
-    roleLabel: null,
-    signals: [
-      { label: "Backend / Infrastructure",  demand: 92, trend: "+8%",  color: "bg-primary" },
-      { label: "ML / AI Engineering",       demand: 87, trend: "+24%", color: "bg-violet-400" },
-      { label: "Full-stack Product Eng",    demand: 78, trend: "+5%",  color: "bg-amber-400" },
-      { label: "Mobile (iOS / Android)",    demand: 61, trend: "-3%",  color: "bg-sky-400" },
-    ],
-  };
-}
+// (Sprint 1 — Item 1) The hardcoded personalizedMarketSignals() function that
+// previously lived here has been removed. Market signals are now computed
+// from the live jobs table via computeMarketSignals() in
+// @/lib/insights/market-intel — real demand counts and real week-over-week
+// trend. See Promise.all above for the data fetch.

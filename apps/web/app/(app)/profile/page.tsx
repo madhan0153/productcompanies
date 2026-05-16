@@ -5,6 +5,11 @@ import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { ResumeUpload } from "./resume-upload";
 import { SaveProfileForm } from "./save-profile-form";
 import { ResumeScorePanel, type ResumeScorePanelData } from "./resume-score-panel";
+import { DnaBreakdownPanel } from "@/components/dna-breakdown-panel";
+import type { DnaBreakdown } from "@/lib/matching/dna-breakdown";
+import { listResumeVersions } from "./actions";
+import { ResumeVersionsPanel } from "./resume-versions-panel";
+import { ParsedReviewPanel } from "./parsed-review-panel";
 
 export const metadata: Metadata = { title: "My Profile" };
 export const maxDuration = 60;
@@ -17,7 +22,7 @@ export default async function ProfilePage() {
   const { data: profile } = await supabase
     .from("profiles")
     .select(
-      "display_name, current_role, years_experience, current_lpa, target_lpa, tech_stack, preferred_hubs, seniority, resume_storage_path, product_dna_score, resume_parsed, resume_score, resume_score_breakdown, resume_tips, resume_score_at",
+      "display_name, current_role, years_experience, current_lpa, target_lpa, tech_stack, preferred_hubs, seniority, resume_storage_path, product_dna_score, dna_breakdown, resume_parsed, resume_score, resume_score_breakdown, resume_tips, resume_score_at, role_function, target_role_functions",
     )
     .eq("id", user.id)
     .maybeSingle();
@@ -27,7 +32,11 @@ export default async function ProfilePage() {
   const hasResume = !!profile?.resume_storage_path;
   const parsedResume = profile?.resume_parsed as Record<string, unknown> | null;
   const dnaScore = profile?.product_dna_score as number | null ?? null;
+  const dnaBreakdown = ((profile as { dna_breakdown?: DnaBreakdown | null } | null)?.dna_breakdown) ?? null;
   const resumeScore = (profile as { resume_score?: number | null } | null)?.resume_score ?? null;
+
+  // Sprint 2 Item 8 — list prior resume snapshots so the user can revert.
+  const versions = hasResume ? await listResumeVersions() : [];
 
   const steps = [
     { done: hasResume, label: "Resume uploaded" },
@@ -114,6 +123,32 @@ export default async function ProfilePage() {
               </div>
             ))}
           </div>
+        </div>
+      )}
+
+      {/* ── Parsed review (Sprint 2 Item 7) ─────────────────────── */}
+      {hasResume && (
+        <ParsedReviewPanel
+          roleFunction={(profile?.role_function as string | null) ?? null}
+          targetRoleFunctions={(profile?.target_role_functions as string[] | null) ?? []}
+          yearsExperience={(profile?.years_experience as number | null) ?? null}
+          techStack={techStack}
+          preferredHubs={preferredHubs}
+          editHref="#profile-details"
+        />
+      )}
+
+      {/* ── DNA axis breakdown ─────────────────────────────────── */}
+      {hasResume && dnaBreakdown && (
+        <div id="dna-breakdown" className="scroll-mt-20">
+          <DnaBreakdownPanel breakdown={dnaBreakdown} />
+        </div>
+      )}
+
+      {/* ── Resume history (Sprint 2 Item 8) ────────────────────── */}
+      {hasResume && (
+        <div id="resume-history" className="scroll-mt-20">
+          <ResumeVersionsPanel versions={versions} />
         </div>
       )}
 
