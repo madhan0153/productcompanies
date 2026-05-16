@@ -27,6 +27,7 @@ import {
   type ParsedJD,
 } from "@prodmatch/shared";
 import { log } from "../lib/logger.js";
+import { isNonEngineeringTitle, stripBoilerplate } from "./job-filter.js";
 
 export interface EnrichedJob extends NormalizedJob {
   /** When set, upsert writes parse fields + embedding atomically with the row. */
@@ -42,11 +43,13 @@ export interface EnrichResult {
   parseErr: number;
   skippedBudget: number;
   skippedQuota: number;
+  rejectedNonEng: number;
 }
 
 export interface ParseDecision {
-  parse: NormalizedJob[];   // jobs that need parse + embed (new or changed)
-  skip: NormalizedJob[];    // existing rows whose description didn't change
+  parse: NormalizedJob[];     // jobs that need parse + embed (new or changed)
+  skip: NormalizedJob[];      // existing rows whose description didn't change
+  rejected: NormalizedJob[];  // non-engineering titles — dropped pre-LLM
 }
 
 interface ExistingMeta {
@@ -75,8 +78,17 @@ export function decideWork(
 ): ParseDecision {
   const parse: NormalizedJob[] = [];
   const skip: NormalizedJob[] = [];
+  const rejected: NormalizedJob[] = [];
 
   for (const j of jobs) {
+    // Non-engineering titles never reach Gemini. If the row already exists in
+    // DB it will fall out of the active set via the stale-mark pass (we don't
+    // bump last_seen_at on rejected rows).
+    if (isNonEngineeringTitle(j.title)) {
+      rejected.push(j);
+      continue;
+    }
+
     const ex = existing.get(j.external_id);
     if (!ex) {
       parse.push(j);
@@ -92,7 +104,7 @@ export function decideWork(
     // Either never parsed, or description changed materially → (re-)parse.
     parse.push(j);
   }
-  return { parse, skip };
+  return { parse, skip, rejected };
 }
 
 export async function fetchExistingMeta(
@@ -201,7 +213,7 @@ async function parseWithWorkers(
         const parsed = await parseJobDescription(
           {
             title: j.title,
-            description: j.description,
+            description: stripBoilerplate(j.description),
             seniority_hint: j.seniority,
           },
           // 10s cap: if all keys are 429 we bail this job quickly rather than
@@ -334,7 +346,7 @@ export async function enrichWithParse(
   cLog: (msg: string, level?: "info" | "warn" | "error") => void,
 ): Promise<EnrichResult> {
   if (jobs.length === 0) {
-    return { jobs: [], parseOk: 0, parseErr: 0, skippedBudget: 0, skippedQuota: 0 };
+    return { jobs: [], parseOk: 0, parseErr: 0, skippedBudget: 0, skippedQuota: 0, rejectedNonEng: 0 };
   }
 
   const existing = await fetchExistingMeta(
@@ -343,16 +355,26 @@ export async function enrichWithParse(
     jobs.map((j) => j.external_id),
   );
 
-  const { parse, skip } = decideWork(jobs, existing);
-  cLog(`Parse decision: ${parse.length} to parse, ${skip.length} skip (already parsed, unchanged)`);
+  const { parse, skip, rejected } = decideWork(jobs, existing);
+  cLog(
+    `Parse decision: ${parse.length} to parse, ${skip.length} skip (already parsed, unchanged)` +
+    (rejected.length > 0 ? `, ${rejected.length} rejected (non-engineering title)` : ""),
+  );
 
   const { map: parsedMap, stats } = await parseWithWorkers(parse, companyName, cLog);
   const embedMap = await embedJobsBatched(parse, parsedMap, companyName, cLog);
 
-  // Stitch results back onto the original job list, preserving order.
-  const enrichedJobs = jobs.map((j) => {
+  // Rejected jobs are excluded from the upsert output entirely. They won't
+  // get their last_seen_at bumped → the stale-mark pass will flip any
+  // pre-existing copy to is_active=false on this run.
+  const rejectedIds = new Set(rejected.map((j) => j.external_id));
+  const keep = jobs.filter((j) => !rejectedIds.has(j.external_id));
+
+  // Stitch results back onto the kept job list, preserving order.
+  const parseIds = new Set(parse.map((p) => p.external_id));
+  const enrichedJobs = keep.map((j) => {
     const parsed = parsedMap.get(j.external_id);
-    const needsParse = parse.some((p) => p.external_id === j.external_id) && Boolean(parsed);
+    const needsParse = parseIds.has(j.external_id) && Boolean(parsed);
     return {
       ...j,
       parsed,
@@ -367,6 +389,7 @@ export async function enrichWithParse(
     parseErr: stats.err,
     skippedBudget: stats.skippedBudget,
     skippedQuota: stats.skippedQuota,
+    rejectedNonEng: rejected.length,
   };
 }
 

@@ -150,6 +150,60 @@ export async function markStaleJobs(
   return (data as number) ?? 0;
 }
 
+// Coverage-guarded deactivation. A scraper that found 20 jobs when yesterday
+// it found 800 is almost certainly broken (selector drift, captcha, network).
+// If we let it through, the stale-mark pass nukes 780 active jobs. Instead:
+// if seen < threshold × previously-active, skip stale-marking entirely and
+// flag the run as `partial`. The catalog stays warm; the next healthy crawl
+// will reconcile.
+export interface StaleResult {
+  marked: number;
+  coverage: number;        // 0..1, fraction of yesterday's active set seen
+  skipped: boolean;        // true when guard tripped (no rows deactivated)
+  previouslyActive: number;
+}
+
+export async function markStaleJobsGuarded(
+  supabase: SupabaseClient,
+  companyId: string,
+  runStarted: Date,
+  seenCount: number,
+  minCoveragePct = 0.6,
+): Promise<StaleResult> {
+  const { count: previouslyActive, error: cErr } = await supabase
+    .from("jobs")
+    .select("id", { count: "exact", head: true })
+    .eq("company_id", companyId)
+    .eq("is_active", true);
+
+  if (cErr) {
+    log(`markStaleJobsGuarded: coverage check failed (${cErr.message}); proceeding without guard`, "warn");
+    const marked = await markStaleJobs(supabase, companyId, runStarted);
+    return { marked, coverage: 1, skipped: false, previouslyActive: 0 };
+  }
+
+  const prev = previouslyActive ?? 0;
+  // If we have no baseline yet (cold start), no guard is needed.
+  if (prev === 0) {
+    const marked = await markStaleJobs(supabase, companyId, runStarted);
+    return { marked, coverage: 1, skipped: false, previouslyActive: 0 };
+  }
+
+  const coverage = seenCount / prev;
+  if (coverage < minCoveragePct) {
+    log(
+      `markStaleJobsGuarded: SKIP deactivation — saw ${seenCount} of ${prev} previously-active ` +
+      `(${(coverage * 100).toFixed(0)}% < ${(minCoveragePct * 100).toFixed(0)}% threshold). ` +
+      `Treating run as partial. Catalog left intact.`,
+      "warn",
+    );
+    return { marked: 0, coverage, skipped: true, previouslyActive: prev };
+  }
+
+  const marked = await markStaleJobs(supabase, companyId, runStarted);
+  return { marked, coverage, skipped: false, previouslyActive: prev };
+}
+
 export interface CrawlRunPayload {
   company_id: string;
   started_at: string;

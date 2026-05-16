@@ -16,7 +16,7 @@
 import { chromium, type Browser } from "playwright";
 import { COMPANY_CONFIGS, ALL_SLUGS } from "./companies/index.js";
 import { normalizeJob } from "./pipeline/normalize.js";
-import { upsertJobs, markStaleJobs, recordCrawlRun } from "./pipeline/upsert.js";
+import { upsertJobs, markStaleJobsGuarded, recordCrawlRun } from "./pipeline/upsert.js";
 import { enrichWithParse, dryRunParse } from "./pipeline/parse.js";
 import { adminClient } from "./lib/supabase.js";
 import { log, makeLogger } from "./lib/logger.js";
@@ -82,7 +82,7 @@ async function main() {
     args: ["--no-sandbox", "--disable-setuid-sandbox"],
   });
 
-  const results: Array<{ slug: string; inserted: number; updated: number; stale: number; error: string | null }> = [];
+  const results: Array<{ slug: string; inserted: number; updated: number; stale: number; partial: boolean; error: string | null }> = [];
 
   try {
     for (const slug of slugs) {
@@ -102,6 +102,7 @@ async function main() {
       let inserted = 0;
       let updated = 0;
       let stale = 0;
+      let coverageSkipped = false;
 
       const ctx = await browser.newContext({
         userAgent: "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
@@ -127,16 +128,28 @@ async function main() {
           // skip if already parsed and signature unchanged; (re-)parse
           // otherwise. New jobs go in fully-parsed; updated jobs whose
           // description changed get re-parsed.
-          const { jobs: enriched, skippedBudget, skippedQuota } =
+          const { jobs: enriched, skippedBudget, skippedQuota, rejectedNonEng } =
             await enrichWithParse(supabase, companyId, companyName, normalized, cLog);
           const result = await upsertJobs(supabase, companyId, enriched);
           inserted = result.inserted;
           updated = result.updated;
-          stale = await markStaleJobs(supabase, companyId, runStarted);
+          // Coverage = (normalized jobs we actually saw) / (previously active).
+          // We pass the pre-rejection `normalized.length` so a one-time
+          // tightening of the non-engineering filter doesn't false-trip the
+          // 60% guard.
+          const staleRes = await markStaleJobsGuarded(
+            supabase, companyId, runStarted, normalized.length,
+          );
+          stale = staleRes.marked;
+          coverageSkipped = staleRes.skipped;
           const skipNote = skippedBudget + skippedQuota > 0
             ? `  (${skippedBudget} budget-skip, ${skippedQuota} quota-skip — will retry next crawl)`
             : "";
-          cLog(`Inserted: ${inserted}, Updated: ${updated}, Stale: ${stale}${skipNote}`);
+          const rejNote = rejectedNonEng > 0 ? `, Rejected: ${rejectedNonEng} (non-eng)` : "";
+          const partialNote = coverageSkipped
+            ? `  ⚠ partial run — stale-mark skipped (coverage ${(staleRes.coverage * 100).toFixed(0)}% of ${staleRes.previouslyActive})`
+            : "";
+          cLog(`Inserted: ${inserted}, Updated: ${updated}, Stale: ${stale}${rejNote}${skipNote}${partialNote}`);
         } else if (dryRun) {
           cLog(`[DRY RUN] Would upsert ${normalized.length} jobs`);
         }
@@ -156,12 +169,12 @@ async function main() {
           jobs_new: inserted,
           jobs_updated: updated,
           jobs_marked_stale: stale,
-          status: crawlError ? "failed" : "success",
+          status: crawlError ? "failed" : (coverageSkipped ? "partial" : "success"),
           error: crawlError,
         });
       }
 
-      results.push({ slug, inserted, updated, stale, error: crawlError });
+      results.push({ slug, inserted, updated, stale, partial: coverageSkipped, error: crawlError });
     }
   } finally {
     await browser.close();
@@ -170,7 +183,9 @@ async function main() {
   log("─".repeat(60));
   log("Crawl complete:");
   for (const r of results) {
-    const status = r.error ? `ERROR: ${r.error}` : `+${r.inserted} new  ~${r.updated} updated  -${r.stale} stale`;
+    const status = r.error
+      ? `ERROR: ${r.error}`
+      : `+${r.inserted} new  ~${r.updated} updated  -${r.stale} stale${r.partial ? "  ⚠PARTIAL" : ""}`;
     log(`  ${r.slug.padEnd(15)} ${status}`);
   }
 
