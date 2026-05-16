@@ -25,7 +25,7 @@ interface Props {
 
 export function ApplyButton({ jobId, applyUrl, variant = "default", className = "" }: Props) {
   const [isPending, startTransition] = useTransition();
-  const [confirmed, setConfirmed] = useState<"new" | "existing" | null>(null);
+  const [confirmed, setConfirmed] = useState<"new" | "existing" | "debounced" | null>(null);
 
   if (!applyUrl) {
     return null;
@@ -43,7 +43,9 @@ export function ApplyButton({ jobId, applyUrl, variant = "default", className = 
     }
     startTransition(async () => {
       const res = await recordApplyClick(jobId);
-      if (res.ok) setConfirmed(res.created ? "new" : "existing");
+      if (res.ok) {
+        setConfirmed(res.debounced ? "debounced" : res.created ? "new" : "existing");
+      }
     });
   }
 

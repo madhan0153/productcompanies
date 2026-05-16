@@ -1,6 +1,7 @@
 import { runWithRetry, SchemaType, type Schema } from "@/lib/llm/gemini";
 import type { ParsedResume } from "./resume-parse";
 import type { ParsedJD } from "./jd-parse";
+import type { CompBracket } from "@/lib/insights/comp-percentiles";
 
 // Phase G — Fit Card.
 // Replaces the flat strengths/gaps/reasoning trio with a structured, opinionated
@@ -40,6 +41,19 @@ export interface FitCard {
     requirement: string;                // the JD signal this story should hit
     prompt: string;                     // ≤ 140 chars; the scenario to recall
   }>;
+  /** Sprint 3 Items 27/28 — populated by the engine, not the LLM. Lets the
+   *  UI render "Grounded in n=X postings (median ₹Y, p75 ₹Z)" so users see
+   *  the comp number is real-data-anchored, not a Gemini guess. Absent when
+   *  the engine had no comp data for the bucket. */
+  market_comp?: {
+    basis: "exact" | "seniority_only";
+    seniority: string;
+    role_function: string | null;
+    n: number;
+    median: number;
+    p75: number;
+    p90: number;
+  } | null;
 }
 
 const SCHEMA: Schema = {
@@ -114,6 +128,10 @@ export interface FitCardInput {
     target_role_functions: string[];
     years: number | null;
   };
+  /** Sprint 3 Item 28 — market-grounded comp percentiles for this seniority
+   *  × role bucket. When present, the prompt instructs the model to cite
+   *  these numbers instead of inventing a `negotiate_to_lpa`. */
+  marketComp?: CompBracket | null;
 }
 
 function buildPrompt(x: FitCardInput): string {
@@ -125,6 +143,23 @@ function buildPrompt(x: FitCardInput): string {
   const compStr = job.comp_lpa_min || job.comp_lpa_max
     ? `${job.comp_lpa_min ?? "?"}–${job.comp_lpa_max ?? "?"} LPA`
     : "not posted";
+
+  // Sprint 3 Item 28 — grounded comp bracket. Becomes load-bearing text in
+  // the prompt: the model is instructed to base `comp_reality.negotiate_to_lpa`
+  // on these real percentiles instead of inventing a number.
+  const marketCompLine = x.marketComp
+    ? `Market comp for ${x.marketComp.seniority}${x.marketComp.role_function ? ` ${x.marketComp.role_function}` : ""} ` +
+      `(n=${x.marketComp.n}, basis=${x.marketComp.basis}): ` +
+      `median ${x.marketComp.median} LPA, p75 ${x.marketComp.p75} LPA, p90 ${x.marketComp.p90} LPA.`
+    : "Market comp: insufficient posted data for this seniority × function. Say so honestly.";
+
+  // Sprint 3 Item 29 — candidate's actual projects. Without this, story_prompts
+  // map JD must-haves to generic scenarios ("describe a time you scaled a
+  // service"). With it, the model can name specific resume bullets to dust off.
+  const candidateProjects = (r.products_built ?? []).slice(0, 6);
+  const projectsBlock = candidateProjects.length > 0
+    ? `\nCANDIDATE PROJECTS (from resume)\n${candidateProjects.map((p, i) => `${i + 1}. ${p}`).join("\n")}`
+    : "\nCANDIDATE PROJECTS: (no project bullets extracted from resume)";
 
   return `You are a senior engineering recruiter who has placed 500+ candidates at
 Indian product companies. Produce a Fit Card for this candidate × role.
@@ -140,6 +175,7 @@ CANDIDATE
 - Current LPA: ${c.current_lpa ?? "unknown"} | Target LPA: ${c.target_lpa ?? "unknown"}
 - Companies: ${(r.companies ?? []).slice(0, 4).map((co) => `${co.name} (${co.role}, ${co.years}y)`).join("; ")}
 - Summary: ${r.summary?.slice(0, 240) ?? ""}
+${projectsBlock}
 
 ROLE
 - ${job.title} at ${job.company} — ${job.location}
@@ -151,6 +187,9 @@ ROLE
 - JD summary: ${jd.jd_summary}
 - MUST-HAVE skills (JD): ${jd.must_have_skills.join(", ") || "(JD did not name any)"}
 - NICE-TO-HAVE (JD): ${jd.nice_to_have_skills.join(", ") || "(none)"}
+
+MARKET CONTEXT (use this — do NOT fabricate compensation numbers)
+- ${marketCompLine}
 
 PRODUCE
 1. verdict — one of: strong_fit | stretch | underqualified | mismatch | off_target
@@ -170,16 +209,27 @@ PRODUCE
 6. level_read: is the JD aiming at the candidate's level, above, or below?
    "note" explains in plain English whether this is a stretch or a coast.
 7. comp_reality: honest read on whether the offered band beats the candidate's
-   current comp and meets their target. If posted compensation is missing, say
-   so and infer a realistic ask. negotiate_to_lpa = LPA number to push toward.
-8. story_prompts: 3 STAR scenarios that map directly to JD requirements. The
-   "requirement" should be a phrase from must_have_skills; the "prompt" tells
-   the candidate which past project to dust off.
+   current comp and meets their target.
+   - If posted compensation is missing, you MUST anchor on the MARKET CONTEXT
+     above (cite median / p75 / p90). Say "Posted: not disclosed; market p75
+     is X LPA for this band."
+   - negotiate_to_lpa: pick the p75 from MARKET CONTEXT when JD comp is missing.
+     If JD comp is posted, take min(JD max, market p75) so the user negotiates
+     toward the realistic top of the actual band — never invent a number.
+   - If MARKET CONTEXT says "insufficient data", set negotiate_to_lpa = null
+     and say so in note.
+8. story_prompts: 3 STAR scenarios. EACH "prompt" MUST name a SPECIFIC project
+   from the CANDIDATE PROJECTS list above by its first 5–8 words. Do not
+   write generic scenarios — if no project matches a requirement, set the
+   prompt to "(no matching project on resume — add one before applying)".
+   The "requirement" should be a verbatim phrase from must_have_skills.
 
 CONSTRAINTS
 - Do NOT penalize over-qualification. A 12-year veteran on a 5-8 year JD is
   FINE — call out level_read.band="over" but verdict can still be strong_fit.
 - Do NOT invent skills the resume doesn't have.
+- Do NOT invent compensation numbers — only use MARKET CONTEXT or JD posted band.
+- Do NOT invent projects — only reference the CANDIDATE PROJECTS list.
 - Stay under all character limits.
 - If JD has zero must_have_skills, lean on jd_summary + role_function to judge.
 
@@ -239,5 +289,8 @@ export async function generateFitCard(input: FitCardInput): Promise<FitCard> {
       requirement: truncate(s.requirement, 60),
       prompt:      truncate(s.prompt, 140),
     })),
+    // Sprint 3 Item 27/28 — surface the engine-supplied grounding so the UI
+    // can show "from real market data" instead of "Gemini said so".
+    market_comp: input.marketComp ?? null,
   };
 }

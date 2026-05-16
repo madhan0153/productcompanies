@@ -20,6 +20,7 @@ import { upsertJobs, markStaleJobsGuarded, recordCrawlRun } from "./pipeline/ups
 import { enrichWithParse, dryRunParse } from "./pipeline/parse.js";
 import { adminClient } from "./lib/supabase.js";
 import { log, makeLogger } from "./lib/logger.js";
+import { maybeFireDriftAlert } from "./lib/drift-alert.js";
 
 // ── Parse args ──────────────────────────────────────────────────────────────
 
@@ -160,6 +161,9 @@ async function main() {
         await ctx.close();
       }
 
+      const finalStatus: "success" | "partial" | "failed" =
+        crawlError ? "failed" : (coverageSkipped ? "partial" : "success");
+
       if (!dryRun && !dryParse) {
         await recordCrawlRun(supabase, {
           company_id: companyId,
@@ -169,9 +173,34 @@ async function main() {
           jobs_new: inserted,
           jobs_updated: updated,
           jobs_marked_stale: stale,
-          status: crawlError ? "failed" : (coverageSkipped ? "partial" : "success"),
+          status: finalStatus,
           error: crawlError,
         });
+
+        // Sprint 3 Item 11 — fire drift webhook when this run failed, or
+        // when 'partial' twice in a row. No-op if CRAWL_ALERT_WEBHOOK_URL
+        // isn't set. Never throws — webhook failure is logged, not raised.
+        if (finalStatus !== "success") {
+          const detailLine = crawlError
+            ? `Crawl error: ${crawlError}`
+            : `+${inserted} new · ~${updated} updated · -${stale} stale${coverageSkipped ? " · stale-mark SKIPPED (low coverage)" : ""}`;
+          try {
+            const alert = await maybeFireDriftAlert(supabase, {
+              thisStatus:  finalStatus,
+              companyId,
+              companyName,
+              companySlug: slug,
+              detailLine,
+            });
+            if (alert.fired) {
+              cLog(`drift alert fired: ${alert.reason}`, "warn");
+            } else if (alert.reason && alert.reason !== "healthy" && alert.reason !== "no_webhook_configured") {
+              cLog(`drift alert skipped: ${alert.reason}`, "warn");
+            }
+          } catch (err) {
+            cLog(`drift alert threw (ignored): ${(err as Error).message}`, "warn");
+          }
+        }
       }
 
       results.push({ slug, inserted, updated, stale, partial: coverageSkipped, error: crawlError });

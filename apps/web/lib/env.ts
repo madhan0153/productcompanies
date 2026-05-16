@@ -10,6 +10,9 @@ const serverSchema = z.object({
   RESEND_FROM_EMAIL: z.string().optional(),
   CRON_SECRET: z.string().optional(),
   DPDP_POLICY_VERSION: z.string().default("1"),
+  // Sprint 3 Item 12 — comma-separated allowlist of emails that can access
+  // /admin/*. Empty / unset = admin pages return 404 (no access for anyone).
+  ADMIN_EMAILS: optStr,
 });
 
 const clientSchema = z.object({
@@ -54,4 +57,5 @@ export const serverEnv = parseEnv(serverSchema, {
   RESEND_FROM_EMAIL: process.env.RESEND_FROM_EMAIL,
   CRON_SECRET: process.env.CRON_SECRET,
   DPDP_POLICY_VERSION: process.env.DPDP_POLICY_VERSION,
+  ADMIN_EMAILS: process.env.ADMIN_EMAILS,
 });

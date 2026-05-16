@@ -23,6 +23,16 @@ export interface FitCardData {
   level_read: { band: "under" | "at" | "over"; note: string };
   comp_reality: { note: string; negotiate_to_lpa: number | null };
   story_prompts: Array<{ requirement: string; prompt: string }>;
+  // Sprint 3 Item 27/28 — engine-stamped grounding for the comp block.
+  market_comp?: {
+    basis: "exact" | "seniority_only";
+    seniority: string;
+    role_function: string | null;
+    n: number;
+    median: number;
+    p75: number;
+    p90: number;
+  } | null;
 }
 
 const VERDICT: Record<Verdict, { label: string; tone: string; bg: string; ring: string; subtitle: string }> = {
@@ -103,7 +113,7 @@ export function FitCardPanel({ data, score }: { data: FitCardData; score: number
           <p className="mt-2 text-sm text-muted-foreground">{data.level_read.note}</p>
         </Block>
 
-        {/* Comp reality */}
+        {/* Comp reality — Sprint 3 Item 27/28: shows the market basis. */}
         <Block icon={<IndianRupee className="h-3.5 w-3.5 text-primary" />} label="Compensation reality">
           <p className="text-sm text-muted-foreground">{data.comp_reality.note}</p>
           {data.comp_reality.negotiate_to_lpa != null && (
@@ -111,6 +121,18 @@ export function FitCardPanel({ data, score }: { data: FitCardData; score: number
               <Target className="h-3 w-3" />
               Negotiate toward ₹{data.comp_reality.negotiate_to_lpa} LPA
             </div>
+          )}
+          {data.market_comp && (
+            <p className="mt-2 text-[11px] text-muted-foreground/80">
+              <ShieldCheck className="mr-1 inline h-3 w-3 text-emerald-400" />
+              Grounded in <strong className="text-foreground">n={data.market_comp.n}</strong>{" "}
+              {data.market_comp.basis === "exact"
+                ? <>postings of <strong className="text-foreground">{data.market_comp.seniority}{data.market_comp.role_function ? ` · ${data.market_comp.role_function}` : ""}</strong></>
+                : <>postings at <strong className="text-foreground">{data.market_comp.seniority}</strong> level (cross-function)</>}
+              {" — median ₹"}{data.market_comp.median}
+              {" / p75 ₹"}{data.market_comp.p75}
+              {" / p90 ₹"}{data.market_comp.p90}.
+            </p>
           )}
         </Block>
       </div>
@@ -139,14 +161,27 @@ export function FitCardPanel({ data, score }: { data: FitCardData; score: number
             <h3 className="font-display text-sm font-semibold">Stories to bring to the interview</h3>
           </header>
           <ul className="grid grid-cols-1 gap-2.5 sm:grid-cols-3">
-            {data.story_prompts.map((s, i) => (
-              <li key={i} className="rounded-xl border border-border bg-card/60 p-3">
-                <p className="text-[11px] font-medium uppercase tracking-wider text-primary">
-                  {s.requirement}
-                </p>
-                <p className="mt-1.5 text-sm text-muted-foreground">{s.prompt}</p>
-              </li>
-            ))}
+            {data.story_prompts.map((s, i) => {
+              // Sprint 3 Item 29 — flag "(no matching project on resume…)"
+              // as an action item, not a story to tell. Keeps the panel
+              // honest when the candidate's bullets don't cover a JD must-have.
+              const missing = /no matching project|add one before applying/i.test(s.prompt);
+              return (
+                <li
+                  key={i}
+                  className={`rounded-xl border p-3 ${missing ? "border-amber-500/30 bg-amber-500/5" : "border-border bg-card/60"}`}
+                >
+                  <p className={`text-[11px] font-medium uppercase tracking-wider ${missing ? "text-amber-300" : "text-primary"}`}>
+                    {missing ? "Gap to close" : s.requirement}
+                  </p>
+                  <p className="mt-1.5 text-sm text-muted-foreground">
+                    {missing
+                      ? <>No bullet on your resume covers <strong className="text-foreground">{s.requirement}</strong>. Add one before applying.</>
+                      : s.prompt}
+                  </p>
+                </li>
+              );
+            })}
           </ul>
         </div>
       )}

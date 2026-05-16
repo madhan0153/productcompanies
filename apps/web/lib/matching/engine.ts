@@ -27,6 +27,10 @@ import { cosineSimilarity } from "@/lib/llm/embed";
 import type { ParsedResume } from "@/lib/llm/prompts/resume-parse";
 import type { ParsedJD } from "@/lib/llm/prompts/jd-parse";
 import type { Json } from "@/lib/supabase/types";
+import {
+  buildCompPercentileTable, lookupCompBracket,
+  type CompPercentileTable,
+} from "@/lib/insights/comp-percentiles";
 
 // Dynamic Fit Card sizing: cover all strong fits + a buffer of stretches,
 // capped so a power user with 100 strong fits doesn't blow our LLM budget.
@@ -384,6 +388,19 @@ export async function computeMatchesForUser(
   const parsedResume = profile.resume_parsed;
   let withFitCard = 0;
 
+  // Sprint 3 Item 28 — pre-compute comp percentiles across the active
+  // catalog. One pass, ~few ms; passed per-job into the Fit Card prompt
+  // so the model can ground `negotiate_to_lpa` on real numbers instead of
+  // hallucinating.
+  const compTable: CompPercentileTable = buildCompPercentileTable(
+    jobs.map((j) => ({
+      seniority:     j.seniority,
+      role_function: j.role_function,
+      comp_lpa_min:  j.comp_lpa_min,
+      comp_lpa_max:  j.comp_lpa_max,
+    })),
+  );
+
   if (parsedResume) {
     // Dynamic top-K: cover every strong fit + a stretch buffer, bounded.
     const strongCount = validMatches.filter((s) => s.score >= 75).length;
@@ -459,6 +476,7 @@ export async function computeMatchesForUser(
           };
 
           try {
+            const marketComp = lookupCompBracket(compTable, job.seniority, job.role_function);
             const card = await generateFitCard({
               resume: parsedResume,
               jd,
@@ -478,6 +496,7 @@ export async function computeMatchesForUser(
                 target_role_functions: profile.target_role_functions,
                 years:                 profile.years_experience,
               },
+              marketComp,
             });
 
             fitCardRows.push({
