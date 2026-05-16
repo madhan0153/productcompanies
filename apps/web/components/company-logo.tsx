@@ -17,7 +17,7 @@ export function CompanyLogo({ name, logoUrl, size = 36, className }: Props) {
   return (
     <span
       className={cn(
-        "relative inline-flex shrink-0 items-center justify-center overflow-hidden rounded-lg border border-border bg-gradient-to-br from-primary/20 to-fuchsia-500/10 text-xs font-bold text-foreground",
+        "relative inline-flex shrink-0 items-center justify-center overflow-hidden rounded-lg border border-border bg-secondary text-xs font-semibold text-primary",
         className,
       )}
       style={{ width: size, height: size }}

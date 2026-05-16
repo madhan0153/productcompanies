@@ -119,10 +119,10 @@ export function RecruiterView({ view }: { view: AtsView }) {
 
 function SummaryStat({ label, value, pct, tone }: { label: string; value: string; pct: number; tone: "primary" | "violet" | "amber" | "emerald" }) {
   const colors = {
-    primary: "from-primary to-fuchsia-400",
-    violet:  "from-violet-400 to-violet-500",
-    amber:   "from-amber-400 to-amber-500",
-    emerald: "from-emerald-400 to-emerald-500",
+    primary: "from-primary to-primary/80",
+    violet:  "from-primary to-primary/80",
+    amber:   "from-warning to-warning/80",
+    emerald: "from-success to-success/80",
   } as const;
   return (
     <div className="rounded-xl border border-border bg-card/40 px-3 py-2.5">

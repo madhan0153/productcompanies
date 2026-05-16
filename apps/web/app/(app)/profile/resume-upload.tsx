@@ -136,7 +136,7 @@ export function ResumeUpload({ hasExisting, existingRole, existingDnaScore }: Pr
             {/* Progress bar */}
             <div className="mt-5 overflow-hidden rounded-full bg-secondary/60">
               <motion.div
-                className="h-1 rounded-full bg-gradient-to-r from-primary to-fuchsia-400"
+                className="h-1 rounded-full bg-primary"
                 initial={{ width: "0%" }}
                 animate={{ width: `${Math.min(((currentStep + 1) / AI_STEPS.length) * 100, 95)}%` }}
                 transition={{ duration: 0.5, ease: "easeOut" }}

@@ -272,11 +272,10 @@ export default async function DashboardPage() {
 
       {/* ── Resume prompt ─────────────────────────────────────────── */}
       {!hasResume && (
-        <div className="relative overflow-hidden rounded-2xl border border-primary/25 bg-gradient-to-br from-primary/8 via-fuchsia-500/5 to-transparent p-6">
-          <div aria-hidden className="absolute -right-8 -top-8 h-40 w-40 rounded-full bg-primary/10 blur-3xl" />
+        <div className="relative overflow-hidden rounded-xl border border-primary/30 bg-primary-soft p-6">
           <div className="relative flex flex-wrap items-start gap-5">
-            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-primary/15 ring-1 ring-primary/30">
-              <Sparkles className="h-6 w-6 text-primary" />
+            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg bg-primary text-primary-foreground">
+              <Sparkles className="h-6 w-6" />
             </div>
             <div className="min-w-0 flex-1">
               <h2 className="font-semibold">Start with your resume</h2>

@@ -88,10 +88,8 @@ export default async function UnsubscribePage({
 function UnsubscribeLayout({ children }: { children: React.ReactNode }) {
   return (
     <div className="flex min-h-screen items-center justify-center bg-background p-6">
-      <div className="w-full max-w-md rounded-2xl border border-border bg-card/60 p-8 text-center shadow-xl">
-        <div className="mb-4 text-lg font-bold bg-gradient-to-r from-primary to-fuchsia-400 bg-clip-text text-transparent">
-          ProdMatch.ai
-        </div>
+      <div className="w-full max-w-md rounded-xl border border-border bg-card p-8 text-center shadow-elev2">
+        <div className="brand-mark mb-4 text-lg">ProdMatch</div>
         {children}
         <p className="mt-6 text-xs text-muted-foreground">
           DPDP Act 2023 · Your consent to email digests has been withdrawn.

@@ -124,7 +124,7 @@ export function ComputeButton({ hasResume }: { hasResume: boolean }) {
         <div className="space-y-1.5">
           <div className="h-1.5 w-full overflow-hidden rounded-full bg-secondary" role="progressbar" aria-valuenow={progress} aria-valuemin={0} aria-valuemax={100}>
             <div
-              className="h-full bg-gradient-to-r from-primary to-fuchsia-400 transition-all duration-200"
+              className="h-full bg-primary transition-all duration-200"
               style={{ width: `${progress}%` }}
             />
           </div>

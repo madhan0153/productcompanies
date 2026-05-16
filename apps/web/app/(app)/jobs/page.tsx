@@ -14,8 +14,8 @@ const SENIORITY_COLORS: Record<string, string> = {
   senior:    "text-amber-400 bg-amber-400/10",
   staff:     "text-rose-400 bg-rose-400/10",
   principal: "text-rose-400 bg-rose-400/10",
-  manager:   "text-fuchsia-400 bg-fuchsia-400/10",
-  director:  "text-fuchsia-400 bg-fuchsia-400/10",
+  manager:   "text-primary bg-primary-soft",
+  director:  "text-primary bg-primary-soft",
 };
 
 type JobRow = {

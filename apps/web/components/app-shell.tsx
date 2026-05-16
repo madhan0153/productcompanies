@@ -18,7 +18,7 @@ import { PwaInstallPrompt } from "@/components/pwa-install-prompt";
 
 const NAV = [
   { href: "/dashboard",    label: "Dashboard",    icon: LayoutDashboard },
-  { href: "/profile",      label: "My Profile",   icon: User },
+  { href: "/profile",      label: "Profile",      icon: User },
   { href: "/matches",      label: "Matches",      icon: Briefcase },
   { href: "/coach",        label: "Coach",        icon: Compass },
   { href: "/insights",     label: "Market",       icon: BarChart3 },
@@ -78,133 +78,136 @@ export function AppShell({ user, banner, children }: Props) {
     : user.email.slice(0, 2).toUpperCase();
 
   const dnaScore = user.dnascore;
-  const dnaColor = dnaScore === null ? "text-muted-foreground" :
-    dnaScore >= 75 ? "text-emerald-400" :
-    dnaScore >= 55 ? "text-amber-400" : "text-sky-400";
+  const dnaColor =
+    dnaScore === null ? "text-muted-foreground"
+    : dnaScore >= 75 ? "text-success"
+    : dnaScore >= 55 ? "text-warning"
+    : "text-primary";
 
   return (
     <div className="flex min-h-screen bg-background">
       <a
         href="#main-content"
-        className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-[100] focus:rounded-xl focus:bg-primary focus:px-4 focus:py-2 focus:text-sm focus:font-medium focus:text-primary-foreground focus:shadow-lg"
+        className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-[100] focus:rounded-lg focus:bg-primary focus:px-4 focus:py-2 focus:text-sm focus:font-medium focus:text-primary-foreground focus:shadow-pop"
       >
         Skip to main content
       </a>
 
-      {/* ── Sidebar ──────────────────────────────────────────── */}
+      {/* ── Sidebar ──────────────────────────────────────────────────────── */}
       <aside
         ref={trapRef}
         id="sidebar"
         className={cn(
-          "fixed inset-y-0 left-0 z-40 flex w-60 flex-col border-r border-border/60 bg-card/95 backdrop-blur-xl transition-transform lg:static lg:translate-x-0",
-          open ? "translate-x-0" : "-translate-x-full",
+          "fixed inset-y-0 left-0 z-40 flex w-64 flex-col border-r border-border bg-card transition-transform duration-200 ease-standard lg:static lg:translate-x-0",
+          open ? "translate-x-0 shadow-pop" : "-translate-x-full",
         )}
         aria-label="Main navigation"
         aria-modal={open ? "true" : undefined}
         role={open ? "dialog" : undefined}
       >
-        {/* Logo */}
-        <div className="flex h-14 items-center justify-between gap-3 border-b border-border/50 px-4">
+        {/* Logo + close (mobile) */}
+        <div className="flex h-16 items-center justify-between gap-3 border-b border-border px-4">
           <Link
             href="/dashboard"
-            className="flex items-center gap-2 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary rounded-lg"
+            className="flex items-center gap-2.5 rounded-md focus-ring tap-target-sm"
           >
-            <div className="flex h-6 w-6 items-center justify-center rounded-md bg-primary/15 ring-1 ring-primary/30">
-              <Zap className="h-3.5 w-3.5 text-primary" aria-hidden />
-            </div>
-            <span className="bg-gradient-to-r from-primary to-fuchsia-400 bg-clip-text text-sm font-bold text-transparent">
-              ProdMatch.ai
+            <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary text-primary-foreground">
+              <Zap className="h-4 w-4" aria-hidden strokeWidth={2.5} />
             </span>
+            <span className="brand-mark text-base">ProdMatch</span>
           </Link>
           <button
-            className="rounded-lg p-1 text-muted-foreground hover:bg-secondary focus:outline-none focus-visible:ring-2 focus-visible:ring-ring lg:hidden"
+            className="rounded-md p-2 text-muted-foreground transition hover:bg-secondary hover:text-foreground focus-ring lg:hidden tap-target-sm"
             onClick={() => setOpen(false)}
             aria-label="Close navigation"
           >
-            <X className="h-4 w-4" />
+            <X className="h-5 w-5" />
           </button>
         </div>
 
         {/* Search / command trigger */}
-        <div className="px-2.5 pt-2 pb-1">
+        <div className="px-3 pt-3">
           <button
             onClick={() => setPaletteOpen(true)}
-            className="flex w-full items-center gap-2 rounded-xl border border-border/40 bg-secondary/20 px-3 py-2 text-left text-xs text-muted-foreground/60 transition hover:bg-secondary/40 hover:text-muted-foreground"
+            className="flex w-full items-center gap-2 rounded-md border border-border bg-secondary/40 px-3 py-2 text-sm text-muted-foreground transition hover:bg-secondary hover:text-foreground focus-ring"
             aria-label="Open command palette"
           >
-            <Search className="h-3.5 w-3.5 shrink-0" aria-hidden />
-            <span className="flex-1">Search…</span>
-            <kbd className="rounded border border-border/50 bg-secondary/60 px-1 py-0.5 font-mono text-[10px]">⌘K</kbd>
+            <Search className="h-4 w-4 shrink-0" aria-hidden />
+            <span className="flex-1 text-left">Search…</span>
+            <kbd className="hidden rounded border border-border bg-background px-1.5 py-0.5 font-mono text-[10px] sm:inline">⌘K</kbd>
           </button>
         </div>
 
         {/* Nav */}
-        <nav className="flex-1 overflow-y-auto px-2.5 py-1" aria-label="App sections">
+        <nav className="flex-1 overflow-y-auto px-3 py-3" aria-label="App sections">
           <LayoutGroup id="sidebar-nav">
-            {NAV.map(({ href, label, icon: Icon }) => {
-              const active = pathname === href || (href !== "/dashboard" && pathname.startsWith(href));
-              return (
-                <Link
-                  key={href}
-                  href={href}
-                  onClick={() => setOpen(false)}
-                  aria-current={active ? "page" : undefined}
-                  className={cn(
-                    "relative flex items-center gap-2.5 rounded-xl px-3 py-2 text-sm font-medium transition focus-ring",
-                    active
-                      ? "text-primary"
-                      : "text-muted-foreground hover:bg-secondary/60 hover:text-foreground",
-                  )}
-                >
-                  {active && (
-                    <motion.span
-                      layoutId="active-nav-pill"
-                      className="absolute inset-0 rounded-xl bg-primary/10 ring-1 ring-primary/20"
-                      transition={reduce
-                        ? { duration: 0 }
-                        : { type: "spring", stiffness: 400, damping: 35 }}
-                      aria-hidden
-                    />
-                  )}
-                  <Icon className="relative h-4 w-4 shrink-0" aria-hidden="true" />
-                  <span className="relative">{label}</span>
-                </Link>
-              );
-            })}
+            <ul className="space-y-0.5">
+              {NAV.map(({ href, label, icon: Icon }) => {
+                const active = pathname === href || (href !== "/dashboard" && pathname.startsWith(href));
+                return (
+                  <li key={href}>
+                    <Link
+                      href={href}
+                      onClick={() => setOpen(false)}
+                      aria-current={active ? "page" : undefined}
+                      className={cn(
+                        "relative flex items-center gap-3 rounded-md px-3 py-2.5 text-sm font-medium transition focus-ring",
+                        active
+                          ? "text-primary-soft-foreground"
+                          : "text-muted-foreground hover:bg-secondary hover:text-foreground",
+                      )}
+                    >
+                      {active && (
+                        <motion.span
+                          layoutId="active-nav-pill"
+                          className="absolute inset-0 rounded-md bg-primary-soft"
+                          transition={reduce
+                            ? { duration: 0 }
+                            : { type: "spring", stiffness: 500, damping: 40 }}
+                          aria-hidden
+                        />
+                      )}
+                      <Icon className="relative h-4 w-4 shrink-0" aria-hidden="true" strokeWidth={2} />
+                      <span className="relative">{label}</span>
+                    </Link>
+                  </li>
+                );
+              })}
+            </ul>
           </LayoutGroup>
         </nav>
 
         {/* Bottom section */}
-        <div className="border-t border-border/50 px-2.5 py-3 space-y-0.5">
+        <div className="border-t border-border p-3 space-y-0.5">
           <Link
             href="/settings/privacy"
-            className="flex items-center gap-2.5 rounded-xl px-3 py-2 text-sm text-muted-foreground transition hover:bg-secondary/60 hover:text-foreground focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            className="flex items-center gap-3 rounded-md px-3 py-2.5 text-sm font-medium text-muted-foreground transition hover:bg-secondary hover:text-foreground focus-ring"
           >
-            <ShieldCheck className="h-4 w-4 shrink-0" aria-hidden="true" />
+            <ShieldCheck className="h-4 w-4 shrink-0" aria-hidden="true" strokeWidth={2} />
             Privacy
           </Link>
           <button
             onClick={signOut}
-            className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-sm text-muted-foreground transition hover:bg-destructive/10 hover:text-destructive focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            className="flex w-full items-center gap-3 rounded-md px-3 py-2.5 text-sm font-medium text-muted-foreground transition hover:bg-destructive/10 hover:text-destructive focus-ring"
           >
-            <LogOut className="h-4 w-4 shrink-0" aria-hidden="true" />
+            <LogOut className="h-4 w-4 shrink-0" aria-hidden="true" strokeWidth={2} />
             Sign out
           </button>
 
           {/* User identity card */}
-          <div className="mt-2 rounded-xl border border-border/50 bg-secondary/20 px-3 py-2.5">
-            <div className="flex items-center gap-2.5">
-              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary/15 text-xs font-bold text-primary ring-1 ring-primary/25">
+          <div className="mt-3 rounded-lg border border-border bg-secondary/40 p-3">
+            <div className="flex items-center gap-3">
+              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary/10 text-xs font-semibold text-primary ring-1 ring-primary/20">
                 {initials}
               </div>
               <div className="min-w-0 flex-1">
-                <p className="truncate text-xs font-semibold">{user.displayName ?? user.email.split("@")[0]}</p>
-                <p className="truncate text-[10px] text-muted-foreground">{user.email}</p>
+                <p className="truncate text-sm font-medium leading-tight">{user.displayName ?? user.email.split("@")[0]}</p>
+                <p className="truncate text-xs text-muted-foreground">{user.email}</p>
               </div>
               {dnaScore !== null && (
                 <div className="shrink-0 text-right">
-                  <p className={`text-sm font-bold tabular-nums ${dnaColor}`}>{dnaScore}</p>
-                  <p className="text-[9px] text-muted-foreground">DNA</p>
+                  <p className={cn("text-sm font-semibold tabular-nums", dnaColor)}>{dnaScore}</p>
+                  <p className="text-[10px] uppercase tracking-wide text-muted-foreground">DNA</p>
                 </div>
               )}
             </div>
@@ -212,73 +215,65 @@ export function AppShell({ user, banner, children }: Props) {
         </div>
       </aside>
 
-      {/* Backdrop */}
+      {/* Mobile backdrop */}
       {open && (
         <div
-          className="fixed inset-0 z-30 bg-background/70 backdrop-blur-sm lg:hidden"
+          className="fixed inset-0 z-30 bg-background/60 backdrop-blur-sm lg:hidden animate-fade-in"
           onClick={() => setOpen(false)}
           aria-hidden="true"
         />
       )}
 
-      {/* Command palette (global) */}
+      {/* Command palette */}
       <CommandPalette open={paletteOpen} onClose={() => setPaletteOpen(false)} />
 
-      {/* ── Main content area ─────────────────────────────────── */}
+      {/* ── Main content area ───────────────────────────────────────────── */}
       <div className="flex flex-1 flex-col min-w-0">
         {banner}
 
         {/* Mobile header */}
-        <header className="flex h-14 items-center gap-3 border-b border-border/50 bg-card/80 px-4 backdrop-blur lg:hidden">
+        <header className="sticky top-0 z-20 flex h-14 items-center gap-3 border-b border-border bg-background/95 px-4 backdrop-blur-md lg:hidden">
           <button
             ref={menuButtonRef}
             onClick={() => setOpen(true)}
             aria-label="Open navigation menu"
             aria-expanded={open}
             aria-controls="sidebar"
-            className="rounded-lg p-1.5 text-muted-foreground hover:bg-secondary focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            className="-ml-2 inline-flex items-center justify-center rounded-md p-2 text-muted-foreground transition hover:bg-secondary hover:text-foreground focus-ring tap-target-sm"
           >
             <Menu className="h-5 w-5" aria-hidden="true" />
           </button>
-          <div className="flex items-center gap-2">
-            <div className="flex h-5 w-5 items-center justify-center rounded-md bg-primary/15">
-              <Zap className="h-3 w-3 text-primary" />
-            </div>
-            <span className="bg-gradient-to-r from-primary to-fuchsia-400 bg-clip-text text-sm font-bold text-transparent">
-              ProdMatch.ai
+          <Link href="/dashboard" className="flex items-center gap-2 focus-ring rounded-md">
+            <span className="flex h-7 w-7 items-center justify-center rounded-md bg-primary text-primary-foreground">
+              <Zap className="h-3.5 w-3.5" strokeWidth={2.5} />
             </span>
-          </div>
+            <span className="brand-mark text-sm">ProdMatch</span>
+          </Link>
           <button
             onClick={() => setPaletteOpen(true)}
-            className="ml-auto rounded-lg border border-border/40 bg-secondary/20 p-1.5 text-muted-foreground transition hover:bg-secondary/50"
-            aria-label="Open command palette"
+            className="ml-auto inline-flex items-center justify-center rounded-md p-2 text-muted-foreground transition hover:bg-secondary hover:text-foreground focus-ring tap-target-sm"
+            aria-label="Search"
           >
-            <Search className="h-4 w-4" aria-hidden />
+            <Search className="h-5 w-5" aria-hidden />
           </button>
         </header>
 
         <motion.main
           id="main-content"
           key={pathname}
-          initial={reduce ? {} : { opacity: 0, y: 6 }}
+          initial={reduce ? false : { opacity: 0, y: 6 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.28, ease: [0.22, 1, 0.36, 1] }}
-          // pb-20 on mobile so the fixed bottom nav doesn't cover content;
-          // lg:pb-6 restores normal padding on desktop where nav is the sidebar.
-          className="flex-1 overflow-y-auto p-5 pb-20 lg:p-6 lg:pb-6"
+          transition={{ duration: 0.24, ease: [0.22, 1, 0.36, 1] }}
+          // pb-24 on mobile so the fixed bottom nav doesn't cover content;
+          // lg:pb-8 restores normal padding on desktop where bottom nav is hidden.
+          className="flex-1 overflow-y-auto px-4 pb-24 pt-5 sm:px-6 sm:pt-6 lg:px-8 lg:pb-8"
           tabIndex={-1}
         >
           {children}
         </motion.main>
       </div>
 
-      {/* Sprint 4 Item 23 — mobile persistent nav. Hidden on lg+ where the
-          sidebar handles navigation. */}
       <MobileBottomNav />
-
-      {/* Sprint 4 Item 25 — PWA install prompt. Renders nothing unless the
-          browser fires beforeinstallprompt (Android/Desktop) or the user
-          is on iOS Safari. Dismissal persists for 30 days. */}
       <PwaInstallPrompt />
     </div>
   );
