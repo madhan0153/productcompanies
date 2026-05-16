@@ -1,8 +1,9 @@
-// Full reset of the cloned Supabase DB without going through the SQL editor.
-// Wipes: storage objects in `resumes`, every auth.user (cascades to profiles,
-// consents, matches, applications, interview_notes, stories, offers,
-// digest_subscriptions), and the three FK-independent tables (jobs,
-// crawl_runs, dpdp_events). Companies are preserved.
+// Full reset of the Supabase DB without going through the SQL editor.
+// Wipes: storage objects in `resumes` + `tailored-resumes`, every auth.user
+// (cascades to profiles, consents, matches, applications, interview_notes,
+// stories, offers, digest_subscriptions, resume_versions, tailored_resumes,
+// negotiation_memos), and the FK-independent tables (jobs, crawl_runs,
+// dpdp_events). Companies are preserved (crawler needs them).
 //
 // usage:
 //   pnpm --filter web exec tsx --require ./scripts/loadenv.cjs scripts/reset-cloned-db.ts
@@ -21,34 +22,39 @@ const admin = createClient(SUPABASE_URL, SERVICE_ROLE, {
   auth: { autoRefreshToken: false, persistSession: false },
 });
 
-// ── 1. Storage: empty the resumes bucket ────────────────────────────────────
-async function clearResumes() {
-  console.log("\n[1/4] Clearing storage bucket 'resumes'…");
-  const BUCKET = "resumes";
+// ── 1. Storage: empty both buckets ──────────────────────────────────────────
+async function clearBucket(bucket: string) {
+  console.log(`  clearing bucket '${bucket}'…`);
   let total = 0;
 
   for (;;) {
     const { data: roots, error } = await admin.storage
-      .from(BUCKET).list("", { limit: 1000, offset: 0 });
-    if (error) { console.error("  list root:", error.message); return; }
+      .from(bucket).list("", { limit: 1000, offset: 0 });
+    if (error) { console.error(`    list root: ${error.message}`); return; }
     if (!roots || roots.length === 0) break;
 
     const keys: string[] = [];
     for (const entry of roots) {
       if (entry.id) { keys.push(entry.name); continue; }
-      const { data: kids } = await admin.storage.from(BUCKET).list(entry.name, { limit: 1000 });
+      const { data: kids } = await admin.storage.from(bucket).list(entry.name, { limit: 1000 });
       for (const k of kids ?? []) if (k.id) keys.push(`${entry.name}/${k.name}`);
     }
     if (keys.length === 0) break;
     for (let i = 0; i < keys.length; i += 100) {
       const slice = keys.slice(i, i + 100);
-      const { error: rmErr } = await admin.storage.from(BUCKET).remove(slice);
-      if (rmErr) { console.error("  remove:", rmErr.message); return; }
+      const { error: rmErr } = await admin.storage.from(bucket).remove(slice);
+      if (rmErr) { console.error(`    remove: ${rmErr.message}`); return; }
       total += slice.length;
     }
     if (roots.length < 1000) break;
   }
-  console.log(`  removed ${total} object${total === 1 ? "" : "s"}`);
+  console.log(`    removed ${total} object${total === 1 ? "" : "s"}`);
+}
+
+async function clearStorage() {
+  console.log("\n[1/4] Clearing storage buckets…");
+  await clearBucket("resumes");
+  await clearBucket("tailored-resumes");
 }
 
 // ── 2. auth.users — cascades to profile/matches/applications/etc ───────────
@@ -61,7 +67,9 @@ async function deleteAllUsers() {
     const users = data.users;
     if (users.length === 0) break;
     for (const u of users) {
-      const { error: delErr } = await admin.auth.admin.deleteUser(u.id, true);
+      // Hard delete (shouldSoftDelete=false) — soft delete leaves the auth.users
+      // row in place and FK cascades never fire, so profiles/consents/etc. linger.
+      const { error: delErr } = await admin.auth.admin.deleteUser(u.id, false);
       if (delErr) console.warn(`  deleteUser(${u.email}):`, delErr.message);
       else total++;
     }
@@ -98,7 +106,8 @@ async function verify() {
   const tables = [
     "jobs", "matches", "applications", "interview_notes", "stories",
     "offers", "consents", "digest_subscriptions", "dpdp_events",
-    "crawl_runs", "profiles",
+    "crawl_runs", "profiles", "resume_versions",
+    "tailored_resumes", "negotiation_memos",
   ];
   for (const t of tables) {
     const { count, error } = await admin.from(t).select("*", { count: "exact", head: true });
@@ -114,11 +123,11 @@ async function verify() {
 }
 
 async function main() {
-  await clearResumes();
+  await clearStorage();
   await deleteAllUsers();
   await clearIndependentTables();
   await verify();
-  console.log("\nDone. Next: run schema.sql in SQL editor to apply Phase J columns, then trigger Daily Job Crawl.");
+  console.log("\nDone. Fresh DB ready — trigger Daily Job Crawl to repopulate jobs.");
 }
 
 main().catch((e) => { console.error(e); process.exit(1); });

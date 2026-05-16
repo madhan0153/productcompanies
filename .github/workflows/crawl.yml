@@ -27,35 +27,15 @@ concurrency:
 
 jobs:
   crawl:
-    name: "Crawl ${{ matrix.name }}"
+    name: "Crawl all (sequential)"
     runs-on: ubuntu-latest
-    # Each group is sized so it fits comfortably under 90 min including
-    # detail-page enrichment + Gemini parse + embed. The previous 3-group
-    # split hit 2h timeout because group-a's amazon (~2k listings) plus
-    # google's 370 detail-page fetches shared the same job.
-    timeout-minutes: 90
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          # amazon alone — ~2k jobs, listing has full descriptions, no
-          # detail-page fetch needed; bottleneck is the Gemini parse step.
-          - name: "amazon"
-            slugs: "amazon"
-          # google + microsoft — both heavy on detail-page enrichment.
-          - name: "google-microsoft"
-            slugs: "google,microsoft"
-          # meta + apple + atlassian + salesforce — Workday-style heavy
-          # enrich, smaller listing counts.
-          - name: "meta-apple-atlassian-salesforce"
-            slugs: "meta,apple,atlassian,salesforce"
-          # nvidia + oracle + sap-labs — Workday/SAP enrich.
-          - name: "nvidia-oracle-sap"
-            slugs: "nvidia,oracle,sap-labs"
-          # Greenhouse / Zoho / TurboHire — listing-rich, fast adapters.
-          - name: "in-startups"
-            slugs: "razorpay,phonepe,zerodha,cred,groww,swiggy,zomato,flipkart"
-
+    # Single sequential job. All 18 companies are crawled one at a time in
+    # the same runner. The previous 5-group parallel matrix hammered Gemini
+    # concurrently and exhausted the free-tier RPM/RPD within minutes.
+    # Trade-off: longer wall-clock (2-4 hrs typical), but stays within
+    # Gemini rate limits on the free tier and avoids the cold-start cost
+    # of 5 separate runners. Public repo → Actions minutes are unlimited.
+    timeout-minutes: 350    # ~5h 50m — GH Actions hard ceiling is 6h
     steps:
       - name: Checkout
         uses: actions/checkout@v5
@@ -75,7 +55,7 @@ jobs:
       - name: Install Playwright Chromium
         run: pnpm --filter @prodmatch/crawler exec playwright install --with-deps chromium
 
-      - name: Run crawler (with inline JD parse + embed)
+      - name: Run crawler (sequential, all companies)
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
@@ -84,9 +64,6 @@ jobs:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
         run: |
           SLUGS="${{ github.event.inputs.slugs }}"
-          if [ -z "$SLUGS" ]; then
-            SLUGS="${{ matrix.slugs }}"
-          fi
           FLAGS=""
           if [ "${{ github.event.inputs.dry_run }}" = "true" ]; then
             FLAGS="--dry-run"
@@ -94,13 +71,18 @@ jobs:
           if [ "${{ github.event.inputs.dry_run_parse }}" = "true" ]; then
             FLAGS="--dry-run-parse"
           fi
-          pnpm --filter @prodmatch/crawler start -- --slugs="$SLUGS" $FLAGS
+          # Empty SLUGS means "all companies in sequence" (default).
+          if [ -z "$SLUGS" ]; then
+            pnpm --filter @prodmatch/crawler start -- $FLAGS
+          else
+            pnpm --filter @prodmatch/crawler start -- --slugs="$SLUGS" $FLAGS
+          fi
 
       - name: Upload logs on failure
         if: failure()
         uses: actions/upload-artifact@v5
         with:
-          name: crawl-logs-${{ matrix.name }}
+          name: crawl-logs
           path: |
             packages/crawler/*.log
           retention-days: 7

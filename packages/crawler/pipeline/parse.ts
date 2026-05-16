@@ -63,10 +63,11 @@ const NUM_KEYS = (() => {
   return raw.split(",").map((k) => k.trim()).filter(Boolean).length || 1;
 })();
 
-// 2 workers per key keeps each key saturated without 429s under
-// gemini-flash-lite-latest's per-key RPM. Capped at 9 total to leave
-// embedBatch room.
-const WORKERS = Math.min(NUM_KEYS * 2, 9);
+// 1 worker per key — sequential workflow, polite to Gemini's free-tier
+// per-key RPM (≈15-30 RPM). Multiple workers per key burst calls and trip
+// 429s constantly; 1 worker per key paces calls naturally with parse
+// latency (~3-5s), staying well under the limit.
+const WORKERS = NUM_KEYS;
 
 const EMBED_BATCH = 100;
 
@@ -137,22 +138,24 @@ export async function fetchExistingMeta(
 
 // ── Parse worker pool ───────────────────────────────────────────────────────
 
-// Per-run parse budget: stop after this many successful parses to avoid
-// burning the entire daily quota when 5 GH Actions groups run in parallel.
-// Each group gets an equal slice: 3 keys × ~200 RPD / 5 groups = 120 safe;
-// we default to 150 to leave headroom for apps/web (fit-cards, resume parse).
-// Override via PARSE_BUDGET_PER_RUN env var.
+// Per-run parse budget: effectively uncapped for the sequential workflow.
+// The old 150 default was a per-group ration for 5 parallel matrix groups
+// sharing 3 keys × ~200 RPD. With sequential, the whole budget belongs to
+// one run, so we let it consume up to 10k parses (more than any realistic
+// crawl). Override via PARSE_BUDGET_PER_RUN env var if needed.
 const PARSE_BUDGET_PER_RUN = (() => {
   const v = parseInt(process.env.PARSE_BUDGET_PER_RUN ?? "", 10);
-  return Number.isFinite(v) && v > 0 ? v : 150;
+  return Number.isFinite(v) && v > 0 ? v : 10_000;
 })();
 
 // Quota-exhaustion detection: if the last N attempts are ALL errors AND we've
 // had at least this many successes (so it's not a startup misconfiguration),
 // the daily quota is burned — bail the queue immediately rather than grinding
-// through every remaining job at 10s+ per attempt.
-const QUOTA_WINDOW = 12;
-const MIN_OK_BEFORE_BAIL = 5;
+// through every remaining job. Window enlarged from 12 → 30 to tolerate
+// transient RPM bursts that recover on retry (e.g., when all keys briefly
+// 429 in sync but free up within a minute).
+const QUOTA_WINDOW = 30;
+const MIN_OK_BEFORE_BAIL = 10;
 
 interface ParseStats {
   ok: number;
@@ -216,10 +219,12 @@ async function parseWithWorkers(
             description: stripBoilerplate(j.description),
             seniority_hint: j.seniority,
           },
-          // 10s cap: if all keys are 429 we bail this job quickly rather than
-          // blocking a worker for 2 minutes. Daily quota exhaustion is caught
-          // by the rolling-window check below, not by waiting it out.
-          { startKeyIndex, maxRateLimitWaitMs: 10_000 },
+          // 60s cap per call: lets the runner back off through a full RPM
+          // recovery window before giving up. Sequential workflow has no
+          // sibling jobs racing for quota, so waiting is cheap. Daily quota
+          // exhaustion (vs transient RPM 429s) is caught by the rolling-
+          // window check below.
+          { startKeyIndex, maxRateLimitWaitMs: 60_000 },
         );
         map.set(j.external_id, parsed);
         stats.ok++;
