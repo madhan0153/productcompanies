@@ -36,6 +36,14 @@ export interface EnrichedJob extends NormalizedJob {
   needsParse: boolean;
 }
 
+export interface EnrichResult {
+  jobs: EnrichedJob[];
+  parseOk: number;
+  parseErr: number;
+  skippedBudget: number;
+  skippedQuota: number;
+}
+
 export interface ParseDecision {
   parse: NormalizedJob[];   // jobs that need parse + embed (new or changed)
   skip: NormalizedJob[];    // existing rows whose description didn't change
@@ -117,9 +125,28 @@ export async function fetchExistingMeta(
 
 // ── Parse worker pool ───────────────────────────────────────────────────────
 
+// Per-run parse budget: stop after this many successful parses to avoid
+// burning the entire daily quota when 5 GH Actions groups run in parallel.
+// Each group gets an equal slice: 3 keys × ~200 RPD / 5 groups = 120 safe;
+// we default to 150 to leave headroom for apps/web (fit-cards, resume parse).
+// Override via PARSE_BUDGET_PER_RUN env var.
+const PARSE_BUDGET_PER_RUN = (() => {
+  const v = parseInt(process.env.PARSE_BUDGET_PER_RUN ?? "", 10);
+  return Number.isFinite(v) && v > 0 ? v : 150;
+})();
+
+// Quota-exhaustion detection: if the last N attempts are ALL errors AND we've
+// had at least this many successes (so it's not a startup misconfiguration),
+// the daily quota is burned — bail the queue immediately rather than grinding
+// through every remaining job at 10s+ per attempt.
+const QUOTA_WINDOW = 12;
+const MIN_OK_BEFORE_BAIL = 5;
+
 interface ParseStats {
   ok: number;
   err: number;
+  skippedBudget: number;
+  skippedQuota: number;
   errSamples: Array<{ title: string; reason: string }>;
 }
 
@@ -129,19 +156,46 @@ async function parseWithWorkers(
   cLog: (msg: string, level?: "info" | "warn" | "error") => void,
 ): Promise<{ map: Map<string, ParsedJD>; stats: ParseStats }> {
   const map = new Map<string, ParsedJD>();
-  const stats: ParseStats = { ok: 0, err: 0, errSamples: [] };
+  const stats: ParseStats = { ok: 0, err: 0, skippedBudget: 0, skippedQuota: 0, errSamples: [] };
   if (jobs.length === 0) return { map, stats };
 
   const queue = [...jobs];
   const total = jobs.length;
+  // Shared mutable flag — when set, all workers drain their remaining picks
+  // without calling Gemini. Avoids a costly race where multiple workers each
+  // spend 10s finding out the quota is gone.
+  let bailReason: "budget" | "quota" | null = null;
+  // Sliding window of recent outcomes (true=ok, false=err) for quota detection.
+  const recentOutcomes: boolean[] = [];
 
   const worker = async (workerId: number) => {
     while (true) {
       const j = queue.shift();
       if (!j) return;
-      // Pre-distribute keys across workers — the runner will still rotate
-      // on 429, but starting each worker on a different key avoids the
-      // "all 6 workers smash key 0 first" thundering herd.
+
+      if (bailReason) {
+        if (bailReason === "budget") stats.skippedBudget++;
+        else stats.skippedQuota++;
+        continue;
+      }
+
+      // Budget guard — check before starting the Gemini call.
+      if (stats.ok >= PARSE_BUDGET_PER_RUN) {
+        bailReason = "budget";
+        stats.skippedBudget++;
+        // Drain the queue immediately so sibling workers exit fast.
+        const remaining = queue.splice(0);
+        stats.skippedBudget += remaining.length;
+        cLog(
+          `Parse budget reached (${PARSE_BUDGET_PER_RUN} successful parses). ` +
+          `${stats.skippedBudget} job(s) deferred to tomorrow's crawl.`,
+          "warn",
+        );
+        return;
+      }
+
+      // Pre-distribute keys across workers — runner still rotates on 429,
+      // but starting each worker on a different key avoids thundering herd.
       const startKeyIndex = workerId % NUM_KEYS;
       try {
         const parsed = await parseJobDescription(
@@ -150,17 +204,45 @@ async function parseWithWorkers(
             description: j.description,
             seniority_hint: j.seniority,
           },
-          { startKeyIndex, maxRateLimitWaitMs: 120_000 },
+          // 10s cap: if all keys are 429 we bail this job quickly rather than
+          // blocking a worker for 2 minutes. Daily quota exhaustion is caught
+          // by the rolling-window check below, not by waiting it out.
+          { startKeyIndex, maxRateLimitWaitMs: 10_000 },
         );
         map.set(j.external_id, parsed);
         stats.ok++;
+        recentOutcomes.push(true);
       } catch (err) {
         stats.err++;
         const reason = err instanceof Error ? err.message.split("\n")[0] : String(err);
         if (stats.errSamples.length < 5) {
           stats.errSamples.push({ title: j.title.slice(0, 60), reason: reason.slice(0, 140) });
         }
+        recentOutcomes.push(false);
       }
+
+      // Keep window bounded.
+      if (recentOutcomes.length > QUOTA_WINDOW) recentOutcomes.shift();
+
+      // Quota-exhaustion check: if the rolling window is full, all errors,
+      // and we've had enough successes to rule out a config problem → bail.
+      if (
+        !bailReason &&
+        recentOutcomes.length >= QUOTA_WINDOW &&
+        stats.ok >= MIN_OK_BEFORE_BAIL &&
+        recentOutcomes.every((v) => !v)
+      ) {
+        bailReason = "quota";
+        const remaining = queue.splice(0);
+        stats.skippedQuota += remaining.length;
+        cLog(
+          `Gemini daily quota exhausted after ${stats.ok} parse(s). ` +
+          `${stats.skippedQuota} job(s) skipped — will be retried next crawl.`,
+          "warn",
+        );
+        return;
+      }
+
       const done = stats.ok + stats.err;
       if (done % 25 === 0 || done === total) {
         cLog(`  parse: ${done}/${total} ok=${stats.ok} err=${stats.err}`);
@@ -169,10 +251,19 @@ async function parseWithWorkers(
   };
 
   const actualKeys = (process.env.GEMINI_API_KEY ?? "").split(",").map((k) => k.trim()).filter(Boolean).length;
-  cLog(`Parsing ${total} JD${total === 1 ? "" : "s"} with ${WORKERS} workers across ${actualKeys} key${actualKeys === 1 ? "" : "s"}…`);
+  cLog(
+    `Parsing ${total} JD${total === 1 ? "" : "s"} with ${WORKERS} workers across ${actualKeys} key${actualKeys === 1 ? "" : "s"} ` +
+    `(budget=${PARSE_BUDGET_PER_RUN}/run)…`,
+  );
   const t0 = Date.now();
   await Promise.all(Array.from({ length: WORKERS }, (_, i) => worker(i)));
-  cLog(`Parse done: ok=${stats.ok} err=${stats.err} | ${Math.round((Date.now() - t0) / 1000)}s${companyName ? ` (${companyName})` : ""}`);
+  const elapsed = Math.round((Date.now() - t0) / 1000);
+  cLog(
+    `Parse done: ok=${stats.ok} err=${stats.err} ` +
+    (stats.skippedBudget ? `budget_skip=${stats.skippedBudget} ` : "") +
+    (stats.skippedQuota ? `quota_skip=${stats.skippedQuota} ` : "") +
+    `| ${elapsed}s${companyName ? ` (${companyName})` : ""}`,
+  );
   if (stats.errSamples.length > 0) {
     for (const s of stats.errSamples) {
       cLog(`  parse err [${s.title}]: ${s.reason}`, "warn");
@@ -241,8 +332,10 @@ export async function enrichWithParse(
   companyName: string,
   jobs: NormalizedJob[],
   cLog: (msg: string, level?: "info" | "warn" | "error") => void,
-): Promise<EnrichedJob[]> {
-  if (jobs.length === 0) return [];
+): Promise<EnrichResult> {
+  if (jobs.length === 0) {
+    return { jobs: [], parseOk: 0, parseErr: 0, skippedBudget: 0, skippedQuota: 0 };
+  }
 
   const existing = await fetchExistingMeta(
     supabase,
@@ -253,11 +346,11 @@ export async function enrichWithParse(
   const { parse, skip } = decideWork(jobs, existing);
   cLog(`Parse decision: ${parse.length} to parse, ${skip.length} skip (already parsed, unchanged)`);
 
-  const { map: parsedMap } = await parseWithWorkers(parse, companyName, cLog);
+  const { map: parsedMap, stats } = await parseWithWorkers(parse, companyName, cLog);
   const embedMap = await embedJobsBatched(parse, parsedMap, companyName, cLog);
 
   // Stitch results back onto the original job list, preserving order.
-  return jobs.map((j) => {
+  const enrichedJobs = jobs.map((j) => {
     const parsed = parsedMap.get(j.external_id);
     const needsParse = parse.some((p) => p.external_id === j.external_id) && Boolean(parsed);
     return {
@@ -267,6 +360,14 @@ export async function enrichWithParse(
       needsParse,
     };
   });
+
+  return {
+    jobs: enrichedJobs,
+    parseOk: stats.ok,
+    parseErr: stats.err,
+    skippedBudget: stats.skippedBudget,
+    skippedQuota: stats.skippedQuota,
+  };
 }
 
 // ── Dry-run helper for the 5-job preview ────────────────────────────────────

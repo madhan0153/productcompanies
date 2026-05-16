@@ -127,12 +127,16 @@ async function main() {
           // skip if already parsed and signature unchanged; (re-)parse
           // otherwise. New jobs go in fully-parsed; updated jobs whose
           // description changed get re-parsed.
-          const enriched = await enrichWithParse(supabase, companyId, companyName, normalized, cLog);
+          const { jobs: enriched, skippedBudget, skippedQuota } =
+            await enrichWithParse(supabase, companyId, companyName, normalized, cLog);
           const result = await upsertJobs(supabase, companyId, enriched);
           inserted = result.inserted;
           updated = result.updated;
           stale = await markStaleJobs(supabase, companyId, runStarted);
-          cLog(`Inserted: ${inserted}, Updated: ${updated}, Stale: ${stale}`);
+          const skipNote = skippedBudget + skippedQuota > 0
+            ? `  (${skippedBudget} budget-skip, ${skippedQuota} quota-skip — will retry next crawl)`
+            : "";
+          cLog(`Inserted: ${inserted}, Updated: ${updated}, Stale: ${stale}${skipNote}`);
         } else if (dryRun) {
           cLog(`[DRY RUN] Would upsert ${normalized.length} jobs`);
         }
