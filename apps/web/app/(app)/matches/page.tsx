@@ -177,6 +177,7 @@ export default async function MatchesPage({
   const { data: rawData } = await query;
   const matchRows = rawData as unknown as MatchRow[] | null;
   const allRows = (matchRows ?? []).filter((m): m is MatchRow & { jobs: NonNullable<MatchRow["jobs"]> } => !!m.jobs);
+  const allScores = allRows.map(m => m.score).sort((a, b) => a - b);
 
   const unseenIds = allRows.filter((m) => m.seen_at === null).map((m) => m.jobs.id);
   if (unseenIds.length > 0) {
@@ -382,7 +383,7 @@ export default async function MatchesPage({
 
                 <StaggerList className="space-y-3">
                   {items.map((m) => (
-                    <MatchCard key={m.jobs.id} match={m} verdict={v} isNew={m.seen_at === null} />
+                    <MatchCard key={m.jobs.id} match={m} verdict={v} isNew={m.seen_at === null} allScores={allScores} />
                   ))}
                 </StaggerList>
               </section>
@@ -447,6 +448,22 @@ function ResumeScoreBanner({ score }: { score: number }) {
 // Match card — premium enterprise SaaS feel
 // ─────────────────────────────────────────────────────────────────────────────
 
+function rankingNarrative(verdict: Verdict, topPct: number): string {
+  if (verdict === "strong_fit" && topPct <= 15)
+    return "Strong must-have alignment — seniority, stack, and domain all signal high recruiter confidence.";
+  if (verdict === "strong_fit")
+    return `You're in the top ${topPct}% of your matches. Core requirements align — a targeted application is worth the effort.`;
+  if (verdict === "stretch" && topPct <= 35)
+    return "You meet most of the bar. A focused cover letter on the 1–2 gaps could carry you through initial screening.";
+  if (verdict === "stretch")
+    return "Major requirements covered with notable gaps. Strengthen the weaknesses flagged above before applying.";
+  if (verdict === "underqualified")
+    return "This role expects more seniority than your resume currently demonstrates. A realistic target for 12–18 months out.";
+  if (verdict === "off_target")
+    return "A lateral pivot from your primary domain. Possible, but address the function shift directly in your application.";
+  return `Limited alignment with this role's requirements. Focus on closing the gaps above before applying.`;
+}
+
 function recruiterConfidence(score: number, verdict: Verdict): { label: string; tone: string } {
   if (verdict === "strong_fit" && score >= 82)
     return { label: "High recruiter confidence", tone: "text-emerald-400" };
@@ -463,12 +480,14 @@ function MatchCard({
   match,
   verdict,
   isNew,
+  allScores,
 }: {
   match: Pick<MatchRow, "score" | "fit_card" | "reasoning" | "hidden_reason"> & {
     jobs: NonNullable<MatchRow["jobs"]>;
   };
   verdict: Verdict;
   isNew: boolean;
+  allScores: number[];
 }) {
   const job = match.jobs;
   const company = job.companies;
@@ -480,6 +499,11 @@ function MatchCard({
   const gaps = card?.gaps?.slice(0, 1) ?? [];
   const isGhost = job.is_likely_ghost === true;
   const confidence = recruiterConfidence(match.score, verdict);
+
+  const below = allScores.filter(s => s < match.score).length;
+  const rankFromTop = allScores.length - below;
+  const topPct = allScores.length >= 5 ? Math.round((rankFromTop / allScores.length) * 100) : 0;
+  const showRanking = allScores.length >= 5;
 
   return (
     <Link
@@ -583,17 +607,31 @@ function MatchCard({
       </div>
 
       {/* Footer */}
-      <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-border/50 pt-3 text-xs text-muted-foreground">
-        <span className="inline-flex items-center gap-1.5">
-          <Sparkles className="h-3 w-3 text-primary" />
-          <span className="font-medium text-foreground/70 group-hover:text-primary transition">Open Fit Card</span>
-          <ChevronRight className="h-3 w-3 transition group-hover:translate-x-0.5" />
-        </span>
-        {job.apply_url && (
-          <span className="inline-flex items-center gap-1 transition group-hover:text-primary">
-            Apply on official site <ExternalLink className="h-3 w-3" />
-          </span>
+      <div className="mt-4 space-y-2.5 border-t border-border/50 pt-3 text-xs text-muted-foreground">
+        {showRanking && (
+          <div className="flex items-start gap-3 rounded-lg border border-border/30 bg-secondary/15 px-3 py-2">
+            <div className="shrink-0 text-center min-w-[2.75rem]">
+              <p className={`text-xs font-bold tabular-nums ${meta.tone}`}>Top {topPct}%</p>
+              <p className="text-[9px] text-muted-foreground/70">{allScores.length} matches</p>
+            </div>
+            <div className="min-w-0">
+              <p className="mb-0.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Why you rank here</p>
+              <p className="leading-relaxed text-muted-foreground">{rankingNarrative(verdict, topPct)}</p>
+            </div>
+          </div>
         )}
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <span className="inline-flex items-center gap-1.5">
+            <Sparkles className="h-3 w-3 text-primary" />
+            <span className="font-medium text-foreground/70 group-hover:text-primary transition">Open Fit Card</span>
+            <ChevronRight className="h-3 w-3 transition group-hover:translate-x-0.5" />
+          </span>
+          {job.apply_url && (
+            <span className="inline-flex items-center gap-1 transition group-hover:text-primary">
+              Apply on official site <ExternalLink className="h-3 w-3" />
+            </span>
+          )}
+        </div>
       </div>
     </Link>
   );

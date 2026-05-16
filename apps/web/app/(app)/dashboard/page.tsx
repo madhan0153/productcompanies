@@ -58,6 +58,8 @@ export default async function DashboardPage() {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect("/auth/login");
 
+  const since7d = new Date(Date.now() - 7 * 24 * 3_600_000).toISOString();
+
   const [
     { data: profile },
     { count: matchCount },
@@ -67,6 +69,7 @@ export default async function DashboardPage() {
     { data: recentAppsRaw },
     { count: newStrongCount },
     { count: activeJobCount },
+    { data: recentJobsRaw },
   ] = await Promise.all([
     supabase.from("profiles")
       .select("display_name, resume_storage_path, product_dna_score, years_experience, current_role, resume_score, tech_stack")
@@ -94,6 +97,12 @@ export default async function DashboardPage() {
     supabase.from("jobs")
       .select("id", { count: "exact", head: true })
       .eq("is_active", true),
+    supabase
+      .from("jobs")
+      .select("company_id, companies(name, slug, logo_url)")
+      .eq("is_active", true)
+      .gte("created_at", since7d)
+      .limit(300),
   ]);
 
   const recentMatches = (recentMatchesRaw as unknown as RecentMatch[] | null) ?? [];
@@ -108,6 +117,16 @@ export default async function DashboardPage() {
     ? Math.round((dnaScore * 0.55 + resumeScore * 0.45))
     : null;
   const { signals: marketSignals, roleLabel: marketRoleLabel } = personalizedMarketSignals(techStack);
+
+  type CompanyActivity = { name: string; slug: string; logo_url: string | null; count: number };
+  const activityMap = new Map<string, CompanyActivity>();
+  for (const job of (recentJobsRaw as Array<{ company_id: string; companies: { name: string; slug: string; logo_url: string | null } | null }> | null) ?? []) {
+    const co = job.companies;
+    if (!co?.slug) continue;
+    const e = activityMap.get(co.slug);
+    if (e) { e.count++; } else { activityMap.set(co.slug, { name: co.name, slug: co.slug, logo_url: co.logo_url, count: 1 }); }
+  }
+  const topActiveCompanies = [...activityMap.values()].sort((a, b) => b.count - a.count).slice(0, 5);
 
   const pipeline = (appsByStatus ?? []).reduce<Record<string, number>>((acc, r) => {
     acc[r.status] = (acc[r.status] ?? 0) + 1;
@@ -460,6 +479,39 @@ export default async function DashboardPage() {
                 </Link>
               ))}
             </div>
+          </div>
+        )}
+
+        {/* Hiring this week — real job data */}
+        {topActiveCompanies.length > 0 && (
+          <div className="rounded-2xl border border-border bg-card/40 p-5">
+            <div className="mb-4 flex items-center justify-between">
+              <div>
+                <h2 className="text-sm font-semibold">Hiring this week</h2>
+                <p className="text-xs text-muted-foreground">New roles at product companies · live data</p>
+              </div>
+              <Link href="/insights" className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition">
+                Full report <ChevronRight className="h-3 w-3" />
+              </Link>
+            </div>
+            <div className="space-y-2.5">
+              {topActiveCompanies.map(({ name, slug, logo_url, count }) => (
+                <div key={slug} className="flex items-center gap-3">
+                  <CompanyLogo name={name} logoUrl={logo_url} size={28} />
+                  <span className="min-w-0 flex-1 truncate text-sm text-muted-foreground">{name}</span>
+                  <div className="w-24 overflow-hidden rounded-full bg-secondary/60">
+                    <div
+                      className="h-1.5 rounded-full bg-gradient-to-r from-primary/40 to-primary/70 transition-all duration-700"
+                      style={{ width: `${(count / (topActiveCompanies[0]?.count ?? 1)) * 100}%` }}
+                    />
+                  </div>
+                  <span className="w-6 shrink-0 text-right text-xs font-semibold tabular-nums text-foreground">+{count}</span>
+                </div>
+              ))}
+            </div>
+            <p className="mt-3 text-[10px] text-muted-foreground/50">
+              Official career pages only · refreshed daily via crawler
+            </p>
           </div>
         )}
 

@@ -30,7 +30,10 @@ export default async function InsightsPage({
   const seniority = sp.seniority || null;
   const hub = sp.hub || null;
 
-  const [{ data: profile }, { data: rawJobs }, { data: companies }] = await Promise.all([
+  const since7d  = new Date(Date.now() - 7  * 24 * 3_600_000).toISOString();
+  const since14d = new Date(Date.now() - 14 * 24 * 3_600_000).toISOString();
+
+  const [{ data: profile }, { data: rawJobs }, { data: companies }, { data: recentJobs }] = await Promise.all([
     supabase
       .from("profiles")
       .select("tech_stack, seniority, target_lpa, current_lpa, preferred_hubs")
@@ -41,6 +44,11 @@ export default async function InsightsPage({
       .select("id, company_id, tech_stack, seniority, comp_lpa_min, comp_lpa_max, hubs")
       .eq("is_active", true),
     supabase.from("companies").select("id, name, slug, logo_url"),
+    supabase
+      .from("jobs")
+      .select("company_id, created_at")
+      .eq("is_active", true)
+      .gte("created_at", since14d),
   ]);
 
   const allJobs = (rawJobs as JobLite[] | null) ?? [];
@@ -55,6 +63,21 @@ export default async function InsightsPage({
 
   const maxDemand = Math.max(1, ...agg.demand.values());
   const isFiltered = Boolean(seniority || hub);
+
+  // Compute week-over-week company hiring momentum
+  type MomentumEntry = { companyId: string; thisWeek: number; priorWeek: number; delta: number };
+  const momentumMap = new Map<string, { thisWeek: number; priorWeek: number }>();
+  for (const j of (recentJobs ?? []) as Array<{ company_id: string; created_at: string }>) {
+    const isThisWeek = j.created_at >= since7d;
+    const m = momentumMap.get(j.company_id) ?? { thisWeek: 0, priorWeek: 0 };
+    if (isThisWeek) m.thisWeek++; else m.priorWeek++;
+    momentumMap.set(j.company_id, m);
+  }
+  const companyMomentum: MomentumEntry[] = [...momentumMap.entries()]
+    .map(([companyId, { thisWeek, priorWeek }]) => ({ companyId, thisWeek, priorWeek, delta: thisWeek - priorWeek }))
+    .filter(m => m.thisWeek > 0)
+    .sort((a, b) => b.thisWeek - a.thisWeek || b.delta - a.delta)
+    .slice(0, 8);
 
   return (
     <div className="space-y-6">
@@ -202,6 +225,45 @@ export default async function InsightsPage({
                   </li>
                 ))}
               </ul>
+            </section>
+          )}
+
+          {/* Company hiring momentum — week-over-week */}
+          {companyMomentum.length > 0 && (
+            <section className="rounded-2xl border border-border bg-card/40 p-5 lift">
+              <header className="mb-4 flex items-center gap-2">
+                <Activity className="h-4 w-4 text-primary" />
+                <h2 className="font-display text-sm font-semibold">Company hiring momentum</h2>
+                <span className="ml-auto rounded-full border border-border px-2 py-0.5 text-[10px] text-muted-foreground">
+                  last 7 days · real data
+                </span>
+              </header>
+              <div className="space-y-3">
+                {companyMomentum.map(({ companyId, thisWeek, delta }) => {
+                  const co = companyMap.get(companyId);
+                  if (!co) return null;
+                  const maxThisWeek = companyMomentum[0]?.thisWeek ?? 1;
+                  const deltaColor = delta > 0 ? "text-emerald-400" : delta < 0 ? "text-rose-400" : "text-muted-foreground";
+                  const deltaLabel = delta > 0 ? `+${delta}` : delta < 0 ? `${delta}` : "±0";
+                  return (
+                    <div key={companyId} className="flex items-center gap-3">
+                      <CompanyLogo name={co.name} logoUrl={co.logo_url} size={28} />
+                      <span className="min-w-0 flex-1 truncate text-sm text-muted-foreground">{co.name}</span>
+                      <div className="w-28 overflow-hidden rounded-full bg-secondary/60">
+                        <div
+                          className="h-1.5 rounded-full bg-gradient-to-r from-primary/50 to-primary/80 transition-all duration-700"
+                          style={{ width: `${(thisWeek / maxThisWeek) * 100}%` }}
+                        />
+                      </div>
+                      <span className="w-6 shrink-0 text-right text-xs font-semibold tabular-nums">{thisWeek}</span>
+                      <span className={`w-8 shrink-0 text-right text-[11px] font-medium tabular-nums ${deltaColor}`}>{deltaLabel}</span>
+                    </div>
+                  );
+                })}
+              </div>
+              <p className="mt-3 text-[10px] text-muted-foreground/50">
+                Roles added this week vs. prior week · official career pages only · refreshed daily
+              </p>
             </section>
           )}
 
