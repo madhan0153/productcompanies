@@ -1,4 +1,4 @@
-import { Database } from "lucide-react";
+import { Database, TrendingUp } from "lucide-react";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
 // Surfaces when jobs were last refreshed across the 18 companies.
@@ -7,8 +7,9 @@ export async function FreshnessBanner() {
   const supabase = await createSupabaseServerClient();
 
   const since24h = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+  const since7d  = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
 
-  const [{ data: lastRun }, { count: companiesCovered }, { count: newToday }] = await Promise.all([
+  const [{ data: lastRun }, { count: companiesCovered }, { count: newToday }, { count: activeTotal }, { count: newThisWeek }] = await Promise.all([
     supabase
       .from("crawl_runs")
       .select("finished_at")
@@ -25,6 +26,14 @@ export async function FreshnessBanner() {
       .from("jobs")
       .select("id", { count: "exact", head: true })
       .gte("created_at", since24h),
+    supabase
+      .from("jobs")
+      .select("id", { count: "exact", head: true })
+      .eq("is_active", true),
+    supabase
+      .from("jobs")
+      .select("id", { count: "exact", head: true })
+      .gte("created_at", since7d),
   ]);
 
   const finishedAt = lastRun?.finished_at;
@@ -33,18 +42,33 @@ export async function FreshnessBanner() {
   const ago = formatAgo(finishedAt);
 
   return (
-    <div className="flex items-center justify-center gap-2.5 border-b border-border/50 bg-card/60 px-4 py-1.5 text-xs text-muted-foreground backdrop-blur">
-      <span className="relative flex h-1.5 w-1.5 shrink-0">
-        <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400/60" aria-hidden />
-        <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-emerald-400" aria-hidden />
-      </span>
-      <Database className="h-3 w-3 text-emerald-400/70" aria-hidden />
-      <span>
-        Refreshed <span className="font-medium text-foreground">{ago}</span>
-        {(companiesCovered ?? 0) > 0 && <> · <span className="text-foreground/60">{companiesCovered} companies</span></>}
-        {(newToday ?? 0) > 0 && <> · <span className="text-emerald-400 font-medium">+{newToday} new today</span></>}
-        <span className="ml-2 opacity-50">· Official career pages only</span>
-      </span>
+    <div className="flex items-center justify-between gap-4 border-b border-border/50 bg-card/60 px-4 py-1.5 text-xs text-muted-foreground backdrop-blur">
+      <div className="flex items-center gap-2.5">
+        <span className="relative flex h-1.5 w-1.5 shrink-0">
+          <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400/60" aria-hidden />
+          <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-emerald-400" aria-hidden />
+        </span>
+        <Database className="h-3 w-3 text-emerald-400/70" aria-hidden />
+        <span>
+          Refreshed <span className="font-medium text-foreground">{ago}</span>
+          {(companiesCovered ?? 0) > 0 && <> · <span className="text-foreground/60">{companiesCovered} companies</span></>}
+          {(newToday ?? 0) > 0 && <> · <span className="text-emerald-400 font-medium">+{newToday} new today</span></>}
+          <span className="ml-2 opacity-50">· Official career pages only</span>
+        </span>
+      </div>
+
+      {/* Right side: market pulse */}
+      {(activeTotal ?? 0) > 0 && (
+        <div className="hidden items-center gap-1.5 sm:flex">
+          <TrendingUp className="h-3 w-3 text-primary/60" aria-hidden />
+          <span className="opacity-60">
+            <span className="font-medium text-foreground/80">{(activeTotal ?? 0).toLocaleString("en-IN")}</span> live roles
+            {(newThisWeek ?? 0) > 0 && (
+              <> · <span className="text-primary/70">+{newThisWeek} this week</span></>
+            )}
+          </span>
+        </div>
+      )}
     </div>
   );
 }

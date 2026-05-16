@@ -5,13 +5,14 @@ import { usePathname, useRouter } from "next/navigation";
 import { LayoutGroup, motion, useReducedMotion } from "framer-motion";
 import {
   LayoutDashboard, Briefcase, ShieldCheck, LogOut, Menu, X, User,
-  BarChart3, Compass, ClipboardList, Zap,
+  BarChart3, Compass, ClipboardList, Zap, Search,
 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { createSupabaseBrowserClient } from "@/lib/supabase/browser";
 import { useFocusTrap } from "@/hooks/use-focus-trap";
 import { useEscapeKey } from "@/hooks/use-escape-key";
 import { cn } from "@/lib/utils";
+import { CommandPalette } from "@/components/command-palette";
 
 const NAV = [
   { href: "/dashboard",    label: "Dashboard",    icon: LayoutDashboard },
@@ -32,11 +33,24 @@ export function AppShell({ user, banner, children }: Props) {
   const pathname = usePathname();
   const router = useRouter();
   const [open, setOpen] = useState(false);
+  const [paletteOpen, setPaletteOpen] = useState(false);
   const reduce = useReducedMotion();
   const trapRef = useFocusTrap(open);
   const menuButtonRef = useRef<HTMLButtonElement>(null);
 
   useEscapeKey(() => { if (open) setOpen(false); });
+
+  // ⌘K / Ctrl+K global shortcut
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === "k") {
+        e.preventDefault();
+        setPaletteOpen((v) => !v);
+      }
+    };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, []);
 
   useEffect(() => {
     if (typeof document === "undefined") return;
@@ -109,8 +123,21 @@ export function AppShell({ user, banner, children }: Props) {
           </button>
         </div>
 
+        {/* Search / command trigger */}
+        <div className="px-2.5 pt-2 pb-1">
+          <button
+            onClick={() => setPaletteOpen(true)}
+            className="flex w-full items-center gap-2 rounded-xl border border-border/40 bg-secondary/20 px-3 py-2 text-left text-xs text-muted-foreground/60 transition hover:bg-secondary/40 hover:text-muted-foreground"
+            aria-label="Open command palette"
+          >
+            <Search className="h-3.5 w-3.5 shrink-0" aria-hidden />
+            <span className="flex-1">Search…</span>
+            <kbd className="rounded border border-border/50 bg-secondary/60 px-1 py-0.5 font-mono text-[10px]">⌘K</kbd>
+          </button>
+        </div>
+
         {/* Nav */}
-        <nav className="flex-1 overflow-y-auto px-2.5 py-3" aria-label="App sections">
+        <nav className="flex-1 overflow-y-auto px-2.5 py-1" aria-label="App sections">
           <LayoutGroup id="sidebar-nav">
             {NAV.map(({ href, label, icon: Icon }) => {
               const active = pathname === href || (href !== "/dashboard" && pathname.startsWith(href));
@@ -192,6 +219,9 @@ export function AppShell({ user, banner, children }: Props) {
         />
       )}
 
+      {/* Command palette (global) */}
+      <CommandPalette open={paletteOpen} onClose={() => setPaletteOpen(false)} />
+
       {/* ── Main content area ─────────────────────────────────── */}
       <div className="flex flex-1 flex-col min-w-0">
         {banner}
@@ -216,6 +246,13 @@ export function AppShell({ user, banner, children }: Props) {
               ProdMatch.ai
             </span>
           </div>
+          <button
+            onClick={() => setPaletteOpen(true)}
+            className="ml-auto rounded-lg border border-border/40 bg-secondary/20 p-1.5 text-muted-foreground transition hover:bg-secondary/50"
+            aria-label="Open command palette"
+          >
+            <Search className="h-4 w-4" aria-hidden />
+          </button>
         </header>
 
         <motion.main

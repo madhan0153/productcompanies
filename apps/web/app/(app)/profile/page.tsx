@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
-import { CheckCircle2, FileText, User, Sparkles, TrendingUp } from "lucide-react";
+import { CheckCircle2, FileText, User, Sparkles, TrendingUp, UserCheck, BarChart3, Zap } from "lucide-react";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { ResumeUpload } from "./resume-upload";
 import { SaveProfileForm } from "./save-profile-form";
@@ -152,6 +152,11 @@ export default async function ProfilePage() {
         />
       )}
 
+      {/* ── ATS & Recruiter Signal ─────────────────────────────── */}
+      {hasResume && resumeScore !== null && (
+        <AtsSignalPanel score={resumeScore} />
+      )}
+
       {/* ── Profile details ─────────────────────────────────────── */}
       <section className="rounded-2xl border border-border bg-card/40" id="profile-details">
         <div className="flex items-center gap-3 border-b border-border/50 px-6 py-4">
@@ -216,4 +221,124 @@ function dnaScoreLabel(score: number): string {
   if (score >= 60) return "Good product company experience";
   if (score >= 40) return "Mixed product / services background";
   return "Primarily services background — building product exp";
+}
+
+// ── ATS & Recruiter Signal ────────────────────────────────────────────────────
+
+function AtsSignalPanel({ score }: { score: number }) {
+  const probability   = score >= 80 ? "High" : score >= 62 ? "Medium" : "Low";
+  const probColor     = score >= 80 ? "text-emerald-400" : score >= 62 ? "text-amber-400" : "text-sky-400";
+  const probBg        = score >= 80 ? "bg-emerald-400/10" : score >= 62 ? "bg-amber-400/10" : "bg-sky-400/10";
+  const probBorder    = score >= 80 ? "border-emerald-400/20" : score >= 62 ? "border-amber-400/20" : "border-sky-400/20";
+
+  const recruiterRead = score >= 85
+    ? "Immediately shortlistable — strong signal-to-noise"
+    : score >= 70
+    ? "Likely shortlisted — minor gaps may need cover letter"
+    : score >= 55
+    ? "Conditional — needs targeted improvements before applying"
+    : "High drop-off risk at screening — review tips above";
+
+  const atsGrade      = score >= 85 ? "A" : score >= 72 ? "B" : score >= 58 ? "C" : "D";
+  const atsGradeColor = score >= 85 ? "text-emerald-400" : score >= 72 ? "text-amber-400" : score >= 58 ? "text-sky-400" : "text-rose-400";
+
+  const strengths: string[] = score >= 80
+    ? ["Strong keyword density", "Seniority signals clear", "Measurable impact present"]
+    : score >= 62
+    ? ["Reasonable keyword match", "Role function detectable", "Experience range within spec"]
+    : ["Resume parseable", "Skills section present", "Contact info readable"];
+
+  const concerns: string[] = score >= 80
+    ? []
+    : score >= 62
+    ? ["Some top-demand skills absent", "Quantified impact sparse"]
+    : ["Low keyword coverage for top roles", "Missing scale / impact signals", "Seniority unclear from resume"];
+
+  return (
+    <section className="overflow-hidden rounded-2xl border border-border bg-card/40">
+      <div className="flex items-center gap-3 border-b border-border/50 px-6 py-4">
+        <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10 text-primary">
+          <UserCheck className="h-4 w-4" />
+        </div>
+        <div>
+          <h2 className="text-sm font-semibold">ATS &amp; Recruiter Signal</h2>
+          <p className="text-xs text-muted-foreground">
+            How automated screening and hiring managers are likely to read your profile
+          </p>
+        </div>
+      </div>
+
+      {/* 3-metric strip */}
+      <div className="grid grid-cols-3 divide-x divide-border/40">
+        <div className={`flex flex-col items-center gap-1 px-4 py-5 ${probBg} border-b border-border/40`}>
+          <span className={`text-[10px] font-semibold uppercase tracking-wider ${probColor}`}>Callback prob.</span>
+          <span className={`text-2xl font-bold tabular-nums ${probColor}`}>{probability}</span>
+          <span className={`rounded-full border px-2 py-0.5 text-[10px] ${probBorder} ${probColor}`}>
+            {score}/100
+          </span>
+        </div>
+        <div className="flex flex-col items-center gap-1 border-b border-border/40 px-4 py-5">
+          <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">ATS grade</span>
+          <span className={`text-2xl font-bold tabular-nums ${atsGradeColor}`}>{atsGrade}</span>
+          <span className="rounded-full border border-border px-2 py-0.5 text-[10px] text-muted-foreground">
+            {atsGrade === "A" ? "pass" : atsGrade === "B" ? "likely pass" : atsGrade === "C" ? "borderline" : "risk"}
+          </span>
+        </div>
+        <div className="flex flex-col items-center gap-1 border-b border-border/40 px-4 py-5">
+          <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Interview readiness</span>
+          <span className="flex items-center gap-1 text-2xl font-bold">
+            <BarChart3 className={`h-5 w-5 ${score >= 75 ? "text-emerald-400" : score >= 55 ? "text-amber-400" : "text-sky-400"}`} />
+            <span className={score >= 75 ? "text-emerald-400" : score >= 55 ? "text-amber-400" : "text-sky-400"}>
+              {score >= 75 ? "Ready" : score >= 55 ? "Close" : "Prep needed"}
+            </span>
+          </span>
+          <span className="rounded-full border border-border px-2 py-0.5 text-[10px] text-muted-foreground">
+            for product-co interviews
+          </span>
+        </div>
+      </div>
+
+      {/* Recruiter read */}
+      <div className="border-b border-border/40 px-6 py-4">
+        <p className="mb-2 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Recruiter reads your profile as</p>
+        <p className="text-sm text-muted-foreground">{recruiterRead}</p>
+      </div>
+
+      {/* Strengths + concerns */}
+      <div className="grid grid-cols-1 gap-4 px-6 py-4 sm:grid-cols-2">
+        <div>
+          <p className="mb-2 flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wider text-emerald-400">
+            <CheckCircle2 className="h-3 w-3" /> ATS passes
+          </p>
+          <ul className="space-y-1">
+            {strengths.map((s) => (
+              <li key={s} className="flex items-start gap-2 text-xs text-muted-foreground">
+                <span className="mt-1.5 h-1 w-1 shrink-0 rounded-full bg-emerald-400/60" />
+                {s}
+              </li>
+            ))}
+          </ul>
+        </div>
+        {concerns.length > 0 && (
+          <div>
+            <p className="mb-2 flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wider text-amber-400">
+              <Zap className="h-3 w-3" /> Fix before applying
+            </p>
+            <ul className="space-y-1">
+              {concerns.map((c) => (
+                <li key={c} className="flex items-start gap-2 text-xs text-muted-foreground">
+                  <span className="mt-1.5 h-1 w-1 shrink-0 rounded-full bg-amber-400/60" />
+                  {c}
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+      </div>
+
+      <div className="border-t border-border/40 px-6 py-3 text-[10px] text-muted-foreground/50">
+        Derived from your resume strength score · Not tied to any specific recruiter&apos;s system · Improve score by acting on tips above
+      </div>
+    </section>
+  );
 }

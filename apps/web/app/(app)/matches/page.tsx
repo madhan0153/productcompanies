@@ -447,6 +447,18 @@ function ResumeScoreBanner({ score }: { score: number }) {
 // Match card — premium enterprise SaaS feel
 // ─────────────────────────────────────────────────────────────────────────────
 
+function recruiterConfidence(score: number, verdict: Verdict): { label: string; tone: string } {
+  if (verdict === "strong_fit" && score >= 82)
+    return { label: "High recruiter confidence", tone: "text-emerald-400" };
+  if (verdict === "strong_fit" || (verdict === "stretch" && score >= 68))
+    return { label: "Moderate recruiter confidence", tone: "text-amber-400" };
+  if (verdict === "underqualified")
+    return { label: "Low recruiter confidence", tone: "text-sky-400" };
+  if (verdict === "mismatch")
+    return { label: "Role mismatch", tone: "text-rose-400" };
+  return { label: "Low–moderate confidence", tone: "text-muted-foreground" };
+}
+
 function MatchCard({
   match,
   verdict,
@@ -467,6 +479,7 @@ function MatchCard({
   const strengths = card?.strengths?.slice(0, 2) ?? [];
   const gaps = card?.gaps?.slice(0, 1) ?? [];
   const isGhost = job.is_likely_ghost === true;
+  const confidence = recruiterConfidence(match.score, verdict);
 
   return (
     <Link
@@ -509,6 +522,9 @@ function MatchCard({
                 <Ghost className="h-3 w-3" /> Older listing
               </span>
             )}
+            <span className={`ml-auto text-[10px] font-medium ${confidence.tone}`}>
+              {confidence.label}
+            </span>
           </div>
 
           {/* Job title */}

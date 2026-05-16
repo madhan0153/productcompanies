@@ -69,7 +69,7 @@ export default async function DashboardPage() {
     { count: activeJobCount },
   ] = await Promise.all([
     supabase.from("profiles")
-      .select("display_name, resume_storage_path, product_dna_score, years_experience, current_role, resume_score")
+      .select("display_name, resume_storage_path, product_dna_score, years_experience, current_role, resume_score, tech_stack")
       .eq("id", user.id).maybeSingle(),
     supabase.from("matches").select("*", { count: "exact", head: true }).eq("user_id", user.id),
     supabase.from("applications").select("*", { count: "exact", head: true }).eq("user_id", user.id),
@@ -103,6 +103,11 @@ export default async function DashboardPage() {
   const dnaScore = profile?.product_dna_score ?? null;
   const resumeScore = (profile as { resume_score?: number | null } | null)?.resume_score ?? null;
   const displayName = profile?.display_name ?? null;
+  const techStack = ((profile as { tech_stack?: unknown } | null)?.tech_stack as string[] | null) ?? [];
+  const careerHealth = dnaScore !== null && resumeScore !== null
+    ? Math.round((dnaScore * 0.55 + resumeScore * 0.45))
+    : null;
+  const { signals: marketSignals, roleLabel: marketRoleLabel } = personalizedMarketSignals(techStack);
 
   const pipeline = (appsByStatus ?? []).reduce<Record<string, number>>((acc, r) => {
     acc[r.status] = (acc[r.status] ?? 0) + 1;
@@ -152,19 +157,42 @@ export default async function DashboardPage() {
           )}
         </div>
 
-        {/* Inline market signal */}
-        {(activeJobCount ?? 0) > 0 && (
-          <div className="relative mt-4 flex items-center gap-2 border-t border-border/40 pt-4 text-xs text-muted-foreground">
-            <Activity className="h-3.5 w-3.5 text-emerald-400" />
-            <span>
-              <strong className="text-foreground">{(activeJobCount ?? 0).toLocaleString("en-IN")}</strong> active roles
-              across 18 product companies
-              {(newStrongCount ?? 0) > 0 && (
-                <> · <Link href="/matches?show=new" className="text-emerald-400 hover:underline">
-                  {newStrongCount} new strong {(newStrongCount ?? 0) === 1 ? "fit" : "fits"} for you
-                </Link></>
-              )}
-            </span>
+        {/* Inline market signal + career health */}
+        {((activeJobCount ?? 0) > 0 || careerHealth !== null) && (
+          <div className="relative mt-4 space-y-3 border-t border-border/40 pt-4">
+            {(activeJobCount ?? 0) > 0 && (
+              <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                <Activity className="h-3.5 w-3.5 text-emerald-400" />
+                <span>
+                  <strong className="text-foreground">{(activeJobCount ?? 0).toLocaleString("en-IN")}</strong> active roles
+                  across 18 product companies
+                  {(newStrongCount ?? 0) > 0 && (
+                    <> · <Link href="/matches?show=new" className="text-emerald-400 hover:underline">
+                      {newStrongCount} new strong {(newStrongCount ?? 0) === 1 ? "fit" : "fits"} for you
+                    </Link></>
+                  )}
+                </span>
+              </div>
+            )}
+            {careerHealth !== null && (
+              <div className="flex items-center gap-3">
+                <span className="text-xs text-muted-foreground/70 w-24 shrink-0">Career health</span>
+                <div className="relative h-1.5 flex-1 overflow-hidden rounded-full bg-secondary/60">
+                  <div
+                    className={`h-full rounded-full transition-all duration-700 ${
+                      careerHealth >= 75 ? "bg-gradient-to-r from-emerald-400 to-emerald-500" :
+                      careerHealth >= 55 ? "bg-gradient-to-r from-amber-400 to-amber-500" :
+                      "bg-gradient-to-r from-sky-400 to-sky-500"
+                    }`}
+                    style={{ width: `${careerHealth}%` }}
+                  />
+                </div>
+                <span className={`text-xs font-semibold tabular-nums ${
+                  careerHealth >= 75 ? "text-emerald-400" :
+                  careerHealth >= 55 ? "text-amber-400" : "text-sky-400"
+                }`}>{careerHealth}/100</span>
+              </div>
+            )}
           </div>
         )}
       </div>
@@ -435,24 +463,21 @@ export default async function DashboardPage() {
           </div>
         )}
 
-        {/* Market intelligence */}
+        {/* Market intelligence — personalized */}
         <div className="rounded-2xl border border-border bg-card/40 p-5">
           <div className="mb-4 flex items-center justify-between">
             <div>
               <h2 className="text-sm font-semibold">Market intelligence</h2>
-              <p className="text-xs text-muted-foreground">India product-company trends</p>
+              <p className="text-xs text-muted-foreground">
+                {marketRoleLabel ?? "India product-company trends"}
+              </p>
             </div>
             <Link href="/insights" className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition">
               Explore <ChevronRight className="h-3 w-3" />
             </Link>
           </div>
           <div className="space-y-3">
-            {[
-              { label: "Backend / Infrastructure", demand: 92, trend: "+8%", color: "bg-primary" },
-              { label: "ML / AI Engineering", demand: 87, trend: "+24%", color: "bg-violet-400" },
-              { label: "Full-stack Product Eng", demand: 78, trend: "+5%", color: "bg-amber-400" },
-              { label: "Mobile (iOS / Android)", demand: 61, trend: "-3%", color: "bg-sky-400" },
-            ].map(({ label, demand, trend, color }) => (
+            {marketSignals.map(({ label, demand, trend, color }) => (
               <div key={label} className="flex items-center gap-3">
                 <span className="w-44 shrink-0 text-xs text-muted-foreground truncate">{label}</span>
                 <div className="flex-1 overflow-hidden rounded-full bg-secondary/60">
@@ -466,6 +491,7 @@ export default async function DashboardPage() {
           </div>
           <p className="mt-4 text-[10px] text-muted-foreground/60">
             Based on live job postings across 18 companies · Refreshed daily
+            {marketRoleLabel && " · Personalised for your stack"}
           </p>
         </div>
 
@@ -572,4 +598,79 @@ function formatDate(iso: string) {
     if (diff < 7) return `${diff}d ago`;
     return d.toLocaleDateString("en-IN", { day: "numeric", month: "short" });
   } catch { return ""; }
+}
+
+// ── Personalized market intelligence ─────────────────────────────────────────
+
+type Signal = { label: string; demand: number; trend: string; color: string };
+
+function personalizedMarketSignals(techStack: string[]): { signals: Signal[]; roleLabel: string | null } {
+  const stack = techStack.map((t) => t.toLowerCase().replace(/[\s._-]/g, ""));
+
+  const has = (keywords: string[]) => stack.some((t) => keywords.some((k) => t.includes(k)));
+
+  const isBackend  = has(["java", "go", "golang", "python", "node", "kafka", "kubernetes", "k8s", "grpc", "redis", "postgres", "microservice", "scala", "rust", "docker", "springboot", "fastapi", "django"]);
+  const isFrontend = has(["react", "nextjs", "next", "typescript", "vue", "angular", "svelte", "redux", "tailwind", "webpack", "vite"]);
+  const isData     = has(["spark", "airflow", "dbt", "databricks", "bigquery", "tableau", "pandas", "pyspark", "redshift", "snowflake"]);
+  const isML       = has(["tensorflow", "pytorch", "transformers", "huggingface", "llm", "langchain", "openai", "scikit", "mlflow", "genai", "diffusion", "rlhf"]);
+  const isMobile   = has(["android", "ios", "swift", "kotlin", "flutter", "reactnative"]);
+
+  if (isML || (isData && !isBackend)) {
+    return {
+      roleLabel: "ML / AI & data engineering demand",
+      signals: [
+        { label: "LLM / GenAI engineering",   demand: 97, trend: "+48%", color: "bg-primary" },
+        { label: "ML platform engineering",   demand: 88, trend: "+31%", color: "bg-violet-400" },
+        { label: "Data platform / pipelines", demand: 84, trend: "+18%", color: "bg-amber-400" },
+        { label: "Applied AI research",        demand: 76, trend: "+22%", color: "bg-sky-400" },
+      ],
+    };
+  }
+
+  if (isBackend) {
+    return {
+      roleLabel: "Backend & infrastructure demand",
+      signals: [
+        { label: "Distributed systems",          demand: 94, trend: "+12%", color: "bg-primary" },
+        { label: "Platform / infra engineering", demand: 89, trend: "+9%",  color: "bg-violet-400" },
+        { label: "Backend API engineers",         demand: 85, trend: "+6%",  color: "bg-amber-400" },
+        { label: "SRE / reliability engineering", demand: 72, trend: "+4%",  color: "bg-sky-400" },
+      ],
+    };
+  }
+
+  if (isFrontend) {
+    return {
+      roleLabel: "Frontend & UI engineering demand",
+      signals: [
+        { label: "React / Next.js engineers",  demand: 90, trend: "+11%", color: "bg-primary" },
+        { label: "Frontend architecture",       demand: 83, trend: "+7%",  color: "bg-violet-400" },
+        { label: "Design systems engineering",  demand: 71, trend: "+5%",  color: "bg-amber-400" },
+        { label: "Web performance / core web",  demand: 59, trend: "+3%",  color: "bg-sky-400" },
+      ],
+    };
+  }
+
+  if (isMobile) {
+    return {
+      roleLabel: "Mobile engineering demand",
+      signals: [
+        { label: "Android engineers",         demand: 74, trend: "+5%",  color: "bg-primary" },
+        { label: "iOS / Swift engineers",     demand: 69, trend: "+3%",  color: "bg-violet-400" },
+        { label: "Flutter / cross-platform",  demand: 64, trend: "+8%",  color: "bg-amber-400" },
+        { label: "Mobile platform infra",     demand: 55, trend: "-1%",  color: "bg-sky-400" },
+      ],
+    };
+  }
+
+  // Generic fallback
+  return {
+    roleLabel: null,
+    signals: [
+      { label: "Backend / Infrastructure",  demand: 92, trend: "+8%",  color: "bg-primary" },
+      { label: "ML / AI Engineering",       demand: 87, trend: "+24%", color: "bg-violet-400" },
+      { label: "Full-stack Product Eng",    demand: 78, trend: "+5%",  color: "bg-amber-400" },
+      { label: "Mobile (iOS / Android)",    demand: 61, trend: "-3%",  color: "bg-sky-400" },
+    ],
+  };
 }
