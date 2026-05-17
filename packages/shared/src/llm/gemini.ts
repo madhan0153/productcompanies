@@ -30,6 +30,48 @@ function allKeys(): string[] {
   return raw.split(",").map((k: string) => k.trim()).filter(Boolean);
 }
 
+// Mask all but the last 6 chars of an API key. Last 6 is enough to distinguish
+// keys at a glance ("…abc123" vs "…xyz789") without leaking the secret if logs
+// are shared or screenshotted.
+function maskKey(key: string): string {
+  if (key.length <= 6) return "***";
+  return `…${key.slice(-6)}`;
+}
+
+// Per-process set of (keyIdx) that have logged their first successful call.
+// First use per key proves the key is real, the rotation reaches it, and —
+// most importantly — its quota counter is independent (each "first use ok"
+// landed on a separate per-project quota). Without this, you can't tell from
+// logs alone whether 3 keys means 3× headroom or 1× with rotation theatre.
+const _firstUseLogged = new Set<number>();
+
+function logKeyFirstUse(keyIdx: number, modelName: string, key: string): void {
+  if (_firstUseLogged.has(keyIdx)) return;
+  _firstUseLogged.add(keyIdx);
+  // Plain console.log so this interleaves with the crawler's structured JSON
+  // logs on stdout. Prefix is greppable and stable across runs.
+  // eslint-disable-next-line no-console
+  console.log(`[gemini-key] key #${keyIdx} (${maskKey(key)}) first call ok → model=${modelName}`);
+}
+
+/**
+ * Logs a one-line roster of every configured Gemini key with its masked
+ * suffix and index, intended to be called once at process start. Lets you
+ * verify in the run log that the env var actually parsed to N keys (not 1
+ * key with embedded commas, or 4 keys where you expected 3).
+ */
+export function logKeyRoster(): void {
+  const keys = allKeys();
+  if (keys.length === 0) {
+    // eslint-disable-next-line no-console
+    console.log(`[gemini-key] roster: 0 keys configured (GEMINI_API_KEY is not set)`);
+    return;
+  }
+  const tails = keys.map((k, i) => `#${i}=${maskKey(k)}`).join(", ");
+  // eslint-disable-next-line no-console
+  console.log(`[gemini-key] roster: ${keys.length} key(s) configured: ${tails}`);
+}
+
 function client(apiKey: string) {
   return new GoogleGenerativeAI(apiKey);
 }
@@ -189,6 +231,10 @@ export async function runWithRetry<T>(
       const model = client(key).getGenerativeModel({ model: modelName });
       try {
         const result = await build(model);
+        // First-success-per-key diagnostic — proves each key index actually
+        // gets used AND lands on a separate quota counter. One log line per
+        // key per process lifetime; silent thereafter.
+        logKeyFirstUse(keyIdx, modelName, key);
         _keyIndex = (keyIdx + 1) % keys.length;
         return result;
       } catch (err) {

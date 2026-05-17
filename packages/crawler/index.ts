@@ -19,6 +19,7 @@
  */
 
 import { chromium, type Browser } from "playwright";
+import { logKeyRoster } from "@prodmatch/shared";
 import { COMPANY_CONFIGS, ALL_SLUGS } from "./companies/index.js";
 import { normalizeJob } from "./pipeline/normalize.js";
 import { upsertJobs, markStaleJobsGuarded, recordCrawlRun } from "./pipeline/upsert.js";
@@ -103,6 +104,12 @@ async function main() {
       event: "keys_loaded",
       data: { keyCount: keys.length },
     });
+    // Print the masked roster so the run log proves which keys are actually
+    // configured (suffixes differ across keys → independent quota counters).
+    // logKeyRoster() emits one line to stdout that interleaves with the
+    // structured logger; per-key "first call ok" lines follow as the workers
+    // touch each key for the first time.
+    logKeyRoster();
   }
 
   const supabase = adminClient();
