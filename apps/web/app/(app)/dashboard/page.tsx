@@ -16,22 +16,25 @@ import { computeMarketSignals, type MarketJobLite } from "@/lib/insights/market-
 
 export const metadata: Metadata = { title: "Dashboard" };
 
+// Application-status palette — semantic tokens only. Maps the 6 pipeline
+// stages onto three meaningful tones: primary (in progress), success
+// (positive outcome), destructive (negative outcome), muted (parked).
 const STATUS_COLORS: Record<string, string> = {
-  saved:        "bg-sky-400/10 text-sky-400 border-sky-400/20",
-  applied:      "bg-violet-400/10 text-violet-400 border-violet-400/20",
-  interviewing: "bg-amber-400/10 text-amber-400 border-amber-400/20",
-  offer:        "bg-emerald-400/10 text-emerald-400 border-emerald-400/20",
-  rejected:     "bg-rose-400/10 text-rose-400 border-rose-400/20",
-  withdrawn:    "bg-zinc-400/10 text-zinc-400 border-zinc-400/20",
+  saved:        "bg-primary-soft text-primary-soft-foreground border-primary/20",
+  applied:      "bg-primary-soft text-primary-soft-foreground border-primary/20",
+  interviewing: "bg-warning/10 text-warning border-warning/20",
+  offer:        "bg-success/10 text-success border-success/20",
+  rejected:     "bg-destructive/10 text-destructive border-destructive/20",
+  withdrawn:    "bg-muted text-muted-foreground border-border",
 };
 
 const STATUS_BAR: Record<string, string> = {
-  saved:        "bg-sky-400",
-  applied:      "bg-violet-400",
-  interviewing: "bg-amber-400",
-  offer:        "bg-emerald-400",
-  rejected:     "bg-rose-400",
-  withdrawn:    "bg-zinc-400",
+  saved:        "bg-primary/60",
+  applied:      "bg-primary",
+  interviewing: "bg-warning",
+  offer:        "bg-success",
+  rejected:     "bg-destructive",
+  withdrawn:    "bg-muted-foreground/40",
 };
 
 type RecentMatch = {
@@ -168,9 +171,8 @@ export default async function DashboardPage() {
     <div className="space-y-6 pb-6">
 
       {/* ── Hero greeting ────────────────────────────────────────── */}
-      <div className="relative overflow-hidden rounded-2xl border border-border bg-gradient-to-br from-card/80 via-card/40 to-transparent p-6">
-        <div aria-hidden className="absolute right-0 top-0 h-48 w-96 rounded-full bg-primary/5 blur-3xl" />
-        <div className="relative flex flex-wrap items-center justify-between gap-6">
+      <div className="rounded-xl border border-border bg-card p-5 sm:p-6">
+        <div className="flex flex-wrap items-center justify-between gap-6">
           <div>
             <p className="text-sm text-muted-foreground">{greeting}</p>
             <h1 className="mt-0.5 text-2xl font-semibold tracking-tight">
@@ -211,15 +213,15 @@ export default async function DashboardPage() {
 
         {/* Inline market signal + career health */}
         {((activeJobCount ?? 0) > 0 || careerHealth !== null) && (
-          <div className="relative mt-4 space-y-3 border-t border-border/40 pt-4">
+          <div className="mt-5 space-y-3 border-t border-border pt-4">
             {(activeJobCount ?? 0) > 0 && (
-              <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                <Activity className="h-3.5 w-3.5 text-emerald-400" />
+              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                <Activity className="h-3.5 w-3.5 text-success" />
                 <span>
-                  <strong className="text-foreground">{(activeJobCount ?? 0).toLocaleString("en-IN")}</strong> active roles
+                  <strong className="text-foreground tabular-nums">{(activeJobCount ?? 0).toLocaleString("en-IN")}</strong> active roles
                   across 18 product companies
                   {(newStrongCount ?? 0) > 0 && (
-                    <> · <Link href="/matches?show=new" className="text-emerald-400 hover:underline">
+                    <> · <Link href="/matches?show=new" className="font-medium text-success hover:underline">
                       {newStrongCount} new strong {(newStrongCount ?? 0) === 1 ? "fit" : "fits"} for you
                     </Link></>
                   )}
@@ -228,20 +230,19 @@ export default async function DashboardPage() {
             )}
             {careerHealth !== null && (
               <div className="flex items-center gap-3">
-                <span className="text-xs text-muted-foreground/70 w-24 shrink-0">Career health</span>
-                <div className="relative h-1.5 flex-1 overflow-hidden rounded-full bg-secondary/60">
+                <span className="w-24 shrink-0 text-xs text-muted-foreground">Career health</span>
+                <div className="relative h-1.5 flex-1 overflow-hidden rounded-full bg-secondary">
                   <div
                     className={`h-full rounded-full transition-all duration-700 ${
-                      careerHealth >= 75 ? "bg-gradient-to-r from-emerald-400 to-emerald-500" :
-                      careerHealth >= 55 ? "bg-gradient-to-r from-amber-400 to-amber-500" :
-                      "bg-gradient-to-r from-sky-400 to-sky-500"
+                      careerHealth >= 75 ? "bg-success" :
+                      careerHealth >= 55 ? "bg-warning" : "bg-primary"
                     }`}
                     style={{ width: `${careerHealth}%` }}
                   />
                 </div>
                 <span className={`text-xs font-semibold tabular-nums ${
-                  careerHealth >= 75 ? "text-emerald-400" :
-                  careerHealth >= 55 ? "text-amber-400" : "text-sky-400"
+                  careerHealth >= 75 ? "text-success" :
+                  careerHealth >= 55 ? "text-warning" : "text-primary"
                 }`}>{careerHealth}/100</span>
               </div>
             )}
@@ -253,39 +254,39 @@ export default async function DashboardPage() {
       {hasResume && (newStrongCount ?? 0) > 0 && (
         <Link
           href="/matches?show=new"
-          className="group flex items-center justify-between gap-4 rounded-2xl border border-emerald-500/30 bg-gradient-to-r from-emerald-500/10 via-emerald-500/5 to-transparent px-5 py-4 transition hover:border-emerald-400/50"
+          className="group flex items-center justify-between gap-4 rounded-xl border border-success/30 bg-success/5 px-5 py-4 transition hover:border-success/50 hover:bg-success/10 focus-ring"
         >
           <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-emerald-400/30 bg-emerald-400/10">
-              <Zap className="h-5 w-5 text-emerald-400" />
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-success text-success-foreground">
+              <Zap className="h-5 w-5" strokeWidth={2.5} />
             </div>
             <div>
-              <p className="text-sm font-semibold text-emerald-300">
+              <p className="text-sm font-semibold text-success">
                 {newStrongCount} new strong {(newStrongCount ?? 0) === 1 ? "fit" : "fits"} since your last visit
               </p>
               <p className="text-xs text-muted-foreground">From this morning&apos;s crawl · 18 target companies</p>
             </div>
           </div>
-          <ChevronRight className="h-4 w-4 shrink-0 text-emerald-400 transition group-hover:translate-x-0.5" />
+          <ChevronRight className="h-4 w-4 shrink-0 text-success transition group-hover:translate-x-0.5" />
         </Link>
       )}
 
       {/* ── Resume prompt ─────────────────────────────────────────── */}
       {!hasResume && (
-        <div className="relative overflow-hidden rounded-xl border border-primary/30 bg-primary-soft p-6">
-          <div className="relative flex flex-wrap items-start gap-5">
-            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg bg-primary text-primary-foreground">
-              <Sparkles className="h-6 w-6" />
+        <div className="rounded-xl border border-primary/30 bg-primary-soft p-5 sm:p-6">
+          <div className="flex flex-wrap items-start gap-5">
+            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-primary text-primary-foreground">
+              <Sparkles className="h-5 w-5" strokeWidth={2.25} />
             </div>
             <div className="min-w-0 flex-1">
               <h2 className="font-semibold">Start with your resume</h2>
-              <p className="mt-1 max-w-md text-sm text-muted-foreground">
+              <p className="mt-1.5 max-w-md text-sm leading-relaxed text-muted-foreground">
                 Upload your PDF — we&apos;ll compute your Product DNA score and rank every active role
                 across 18 product companies with AI-generated Fit Cards.
               </p>
               <Link
                 href="/profile"
-                className="mt-4 inline-flex items-center gap-2 rounded-xl bg-primary px-5 py-2.5 text-sm font-semibold text-primary-foreground shadow-lg shadow-primary/20 transition hover:opacity-90"
+                className="press mt-4 inline-flex h-10 items-center gap-2 rounded-md bg-primary px-4 text-sm font-semibold text-primary-foreground transition hover:bg-primary/90 focus-ring"
               >
                 Upload resume <ArrowUpRight className="h-3.5 w-3.5" />
               </Link>
@@ -297,39 +298,35 @@ export default async function DashboardPage() {
       {/* ── Stats grid ───────────────────────────────────────────── */}
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
         <StatCard
-          icon={<Target className="h-4.5 w-4.5" />}
+          icon={<Target className="h-4 w-4" />}
           label="Product DNA"
           value={dnaScore !== null ? String(dnaScore) : "—"}
           sub={dnaScore !== null ? dnaScoreLabel(dnaScore) : "Upload resume"}
           href="/profile"
-          color="primary"
           badge={dnaScore !== null ? `/ 100` : undefined}
         />
         <StatCard
-          icon={<Briefcase className="h-4.5 w-4.5" />}
+          icon={<Briefcase className="h-4 w-4" />}
           label="Matches"
           value={String(matchCount ?? 0)}
-          sub={`${strongFitCount} strong fit`}
+          sub={strongFitCount > 0 ? `${strongFitCount} strong fit` : "compute matches"}
           href="/matches"
-          color="violet"
           badge={strongFitCount > 0 ? `${strongFitCount} strong` : undefined}
-          badgeColor="emerald"
+          badgeTone="success"
         />
         <StatCard
-          icon={<TrendingUp className="h-4.5 w-4.5" />}
+          icon={<TrendingUp className="h-4 w-4" />}
           label="Applications"
           value={String(appCount ?? 0)}
           sub="in pipeline"
           href="/applications"
-          color="emerald"
         />
         <StatCard
-          icon={<Building2 className="h-4.5 w-4.5" />}
+          icon={<Building2 className="h-4 w-4" />}
           label="Companies"
           value="18"
           sub="product cos tracked"
           href="/matches"
-          color="amber"
         />
       </div>
 
@@ -337,18 +334,26 @@ export default async function DashboardPage() {
       {resumeScore !== null && (
         <Link
           href="/profile#resume-score"
-          className="group flex items-center justify-between gap-4 rounded-2xl border border-border bg-card/40 px-5 py-4 transition hover:border-primary/30 hover:bg-card/60"
+          className="group flex items-center justify-between gap-4 rounded-xl border border-border bg-card px-5 py-4 transition hover:border-primary/30 hover:bg-secondary/40 focus-ring"
         >
           <div className="flex items-center gap-4">
-            <div className="relative h-2 w-36 overflow-hidden rounded-full bg-secondary">
+            <div className="relative h-2 w-32 sm:w-40 overflow-hidden rounded-full bg-secondary">
               <div
-                className={`h-full rounded-full transition-all ${resumeScore >= 80 ? "bg-emerald-400" : resumeScore >= 60 ? "bg-amber-400" : "bg-rose-400"}`}
+                className={`h-full rounded-full transition-all duration-700 ${
+                  resumeScore >= 80 ? "bg-success"
+                  : resumeScore >= 60 ? "bg-warning"
+                  : "bg-destructive"
+                }`}
                 style={{ width: `${resumeScore}%` }}
               />
             </div>
             <div>
               <p className="text-sm font-medium">
-                Resume strength · <span className={`font-bold ${resumeScore >= 80 ? "text-emerald-400" : resumeScore >= 60 ? "text-amber-400" : "text-rose-400"}`}>{resumeScore}/100</span>
+                Resume strength · <span className={`font-semibold tabular-nums ${
+                  resumeScore >= 80 ? "text-success"
+                  : resumeScore >= 60 ? "text-warning"
+                  : "text-destructive"
+                }`}>{resumeScore}/100</span>
               </p>
               <p className="text-xs text-muted-foreground">
                 {resumeScore >= 85 ? "Application-ready for top product companies" :
@@ -367,136 +372,122 @@ export default async function DashboardPage() {
 
         {/* Application pipeline */}
         {(appCount ?? 0) > 0 ? (
-          <div className="rounded-2xl border border-border bg-card/40 p-5">
-            <div className="mb-5 flex items-center justify-between">
-              <div>
-                <h2 className="text-sm font-semibold">Application pipeline</h2>
-                <p className="text-xs text-muted-foreground">{appCount} total tracked</p>
-              </div>
-              <Link href="/applications" className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition">
-                View all <ChevronRight className="h-3 w-3" />
-              </Link>
-            </div>
+          <SectionCard
+            title="Application pipeline"
+            subtitle={`${appCount} total tracked`}
+            actionHref="/applications"
+            actionLabel="View all"
+          >
             <div className="space-y-3">
               {Object.entries(pipeline).sort((a, b) => b[1] - a[1]).map(([status, count]) => (
                 <div key={status} className="flex items-center gap-3">
                   <span className={`w-24 shrink-0 rounded-full border px-2 py-0.5 text-center text-[11px] font-medium capitalize ${STATUS_COLORS[status] ?? "bg-secondary text-foreground border-border"}`}>
                     {status}
                   </span>
-                  <div className="flex-1 overflow-hidden rounded-full bg-secondary/60">
+                  <div className="flex-1 overflow-hidden rounded-full bg-secondary">
                     <div
                       className={`h-1.5 rounded-full transition-all duration-700 ${STATUS_BAR[status] ?? "bg-primary"}`}
                       style={{ width: `${Math.min((count / (appCount ?? 1)) * 100, 100)}%` }}
                     />
                   </div>
-                  <span className="w-5 shrink-0 text-right text-xs tabular-nums text-muted-foreground">{count}</span>
+                  <span className="w-6 shrink-0 text-right text-xs tabular-nums text-muted-foreground">{count}</span>
                 </div>
               ))}
             </div>
-          </div>
+          </SectionCard>
         ) : (
-          /* Getting started */
           !allDone && (
-            <div className="rounded-2xl border border-border bg-card/40 p-5">
-              <div className="mb-5">
-                <h2 className="text-sm font-semibold">Get started</h2>
-                <p className="text-xs text-muted-foreground">Complete these steps to get your first matches</p>
-              </div>
+            <SectionCard
+              title="Get started"
+              subtitle="Complete these steps to get your first matches"
+            >
               <ol className="space-y-4">
                 {steps.map(({ done, label, href, desc }, i) => (
                   <li key={label} className="flex items-start gap-3">
-                    <div className={`mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-xs font-bold ring-2 ${
+                    <div className={`mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-xs font-semibold ${
                       done
-                        ? "bg-primary ring-primary/30 text-primary-foreground"
+                        ? "bg-primary text-primary-foreground"
                         : i === currentStep
-                          ? "bg-primary/15 ring-primary/40 text-primary"
-                          : "bg-secondary ring-border text-muted-foreground"
+                          ? "bg-primary-soft text-primary-soft-foreground ring-1 ring-primary/30"
+                          : "bg-secondary text-muted-foreground ring-1 ring-border"
                     }`}>
-                      {done ? <CheckCircle2 className="h-3.5 w-3.5" /> : <span>{i + 1}</span>}
+                      {done ? <CheckCircle2 className="h-3.5 w-3.5" strokeWidth={2.5} /> : <span>{i + 1}</span>}
                     </div>
                     <div className="min-w-0 flex-1">
                       {done ? (
                         <p className="text-sm text-muted-foreground line-through">{label}</p>
                       ) : (
-                        <Link href={href} className="group flex items-center gap-1 text-sm font-medium hover:text-primary transition">
+                        <Link href={href} className="group inline-flex items-center gap-1 text-sm font-medium transition hover:text-primary focus-ring rounded">
                           {label}
-                          <ChevronRight className="h-3.5 w-3.5 opacity-0 transition group-hover:opacity-100" />
+                          <ChevronRight className="h-3.5 w-3.5 opacity-0 transition group-hover:translate-x-0.5 group-hover:opacity-100" />
                         </Link>
                       )}
-                      <p className="text-xs text-muted-foreground">{desc}</p>
+                      <p className="mt-0.5 text-xs leading-relaxed text-muted-foreground">{desc}</p>
                     </div>
                   </li>
                 ))}
               </ol>
-            </div>
+            </SectionCard>
           )
         )}
 
         {/* Top matches */}
         {recentMatches.length > 0 && (
-          <div className="rounded-2xl border border-border bg-card/40 p-5">
-            <div className="mb-4 flex items-center justify-between">
-              <div>
-                <h2 className="text-sm font-semibold">Top matches</h2>
-                <p className="text-xs text-muted-foreground">Ranked by AI fit score</p>
-              </div>
-              <Link href="/matches" className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition">
-                View all <ChevronRight className="h-3 w-3" />
-              </Link>
-            </div>
-            <div className="space-y-2">
+          <SectionCard
+            title="Top matches"
+            subtitle="Ranked by AI fit score"
+            actionHref="/matches"
+            actionLabel="View all"
+          >
+            <div className="space-y-1.5">
               {recentMatches.map((m) => {
                 const job = m.jobs;
                 const company = job?.companies;
-                const verdictColor =
-                  m.verdict === "strong_fit" ? "text-emerald-400" :
-                  m.verdict === "stretch" ? "text-amber-400" :
+                const verdictTone =
+                  m.verdict === "strong_fit"    ? "text-success" :
+                  m.verdict === "stretch"       ? "text-warning" :
                   "text-muted-foreground";
                 const verdictLabel =
-                  m.verdict === "strong_fit" ? "Strong" :
-                  m.verdict === "stretch" ? "Stretch" :
-                  m.verdict === "off_target" ? "Off-target" :
+                  m.verdict === "strong_fit"    ? "Strong" :
+                  m.verdict === "stretch"       ? "Stretch" :
+                  m.verdict === "off_target"    ? "Off-target" :
                   m.verdict === "underqualified" ? "Under" : "—";
                 return (
                   <Link
                     key={m.job_id}
                     href={`/jobs/${m.job_id}`}
-                    className="group flex items-center gap-3 rounded-xl border border-transparent bg-secondary/30 px-3 py-2.5 transition hover:border-primary/20 hover:bg-secondary/60"
+                    className="group flex items-center gap-3 rounded-md px-3 py-2.5 transition hover:bg-secondary focus-ring"
                   >
                     <CompanyLogo name={company?.name ?? "?"} logoUrl={company?.logo_url ?? null} size={32} />
                     <div className="min-w-0 flex-1">
-                      <p className="truncate text-sm font-medium group-hover:text-primary transition">{job?.title ?? "Role"}</p>
+                      <p className="truncate text-sm font-medium transition group-hover:text-primary">{job?.title ?? "Role"}</p>
                       <p className="truncate text-xs text-muted-foreground">{company?.name ?? "—"}</p>
                     </div>
                     <div className="flex shrink-0 flex-col items-end gap-0.5">
-                      <span className="rounded-md bg-secondary px-1.5 py-0.5 text-xs font-bold tabular-nums">{Math.round(m.score)}</span>
-                      <span className={`text-[10px] font-medium ${verdictColor}`}>{verdictLabel}</span>
+                      <span className="rounded bg-secondary px-1.5 py-0.5 text-xs font-semibold tabular-nums">{Math.round(m.score)}</span>
+                      <span className={`text-[10px] font-medium ${verdictTone}`}>{verdictLabel}</span>
                     </div>
                   </Link>
                 );
               })}
             </div>
-          </div>
+          </SectionCard>
         )}
 
         {/* Recent activity */}
         {recentApps.length > 0 && (
-          <div className="rounded-2xl border border-border bg-card/40 p-5">
-            <div className="mb-4 flex items-center justify-between">
-              <div>
-                <h2 className="text-sm font-semibold">Recent activity</h2>
-                <p className="text-xs text-muted-foreground">Your application history</p>
-              </div>
-              <Link href="/applications" className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition">
-                View all <ChevronRight className="h-3 w-3" />
-              </Link>
-            </div>
-            <div className="space-y-2">
+          <SectionCard
+            title="Recent activity"
+            subtitle="Your application history"
+            actionHref="/applications"
+            actionLabel="View all"
+          >
+            <div className="space-y-1.5">
               {recentApps.map((a) => (
                 <Link
                   key={a.id}
                   href={`/applications/${a.id}`}
-                  className="group flex items-center gap-3 rounded-xl border border-transparent bg-secondary/30 px-3 py-2.5 transition hover:border-primary/20 hover:bg-secondary/60"
+                  className="group flex items-center gap-3 rounded-md px-3 py-2.5 transition hover:bg-secondary focus-ring"
                 >
                   <CompanyLogo name={a.jobs?.companies?.name ?? "?"} logoUrl={a.jobs?.companies?.logo_url ?? null} size={32} />
                   <div className="min-w-0 flex-1">
@@ -511,70 +502,59 @@ export default async function DashboardPage() {
                 </Link>
               ))}
             </div>
-          </div>
+          </SectionCard>
         )}
 
         {/* Hiring this week — real job data */}
         {topActiveCompanies.length > 0 && (
-          <div className="rounded-2xl border border-border bg-card/40 p-5">
-            <div className="mb-4 flex items-center justify-between">
-              <div>
-                <h2 className="text-sm font-semibold">Hiring this week</h2>
-                <p className="text-xs text-muted-foreground">New roles at product companies · live data</p>
-              </div>
-              <Link href="/insights" className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition">
-                Full report <ChevronRight className="h-3 w-3" />
-              </Link>
-            </div>
+          <SectionCard
+            title="Hiring this week"
+            subtitle="New roles · live data"
+            actionHref="/insights"
+            actionLabel="Full report"
+            footer="Official career pages only · refreshed daily via crawler"
+          >
             <div className="space-y-2.5">
               {topActiveCompanies.map(({ name, slug, logo_url, count }) => (
                 <div key={slug} className="flex items-center gap-3">
                   <CompanyLogo name={name} logoUrl={logo_url} size={28} />
                   <span className="min-w-0 flex-1 truncate text-sm text-muted-foreground">{name}</span>
-                  <div className="w-24 overflow-hidden rounded-full bg-secondary/60">
+                  <div className="w-24 overflow-hidden rounded-full bg-secondary">
                     <div
-                      className="h-1.5 rounded-full bg-gradient-to-r from-primary/40 to-primary/70 transition-all duration-700"
+                      className="h-1.5 rounded-full bg-primary transition-all duration-700"
                       style={{ width: `${(count / (topActiveCompanies[0]?.count ?? 1)) * 100}%` }}
                     />
                   </div>
-                  <span className="w-6 shrink-0 text-right text-xs font-semibold tabular-nums text-foreground">+{count}</span>
+                  <span className="w-7 shrink-0 text-right text-xs font-semibold tabular-nums text-foreground">+{count}</span>
                 </div>
               ))}
             </div>
-            <p className="mt-3 text-[10px] text-muted-foreground/50">
-              Official career pages only · refreshed daily via crawler
-            </p>
-          </div>
+          </SectionCard>
         )}
 
         {/* Market intelligence — personalized */}
-        <div className="rounded-2xl border border-border bg-card/40 p-5">
-          <div className="mb-4 flex items-center justify-between">
-            <div>
-              <h2 className="text-sm font-semibold">Market intelligence</h2>
-              <p className="text-xs text-muted-foreground">
-                {marketRoleLabel ?? "India product-company trends"}
-              </p>
-            </div>
-            <Link href="/insights" className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition">
-              Explore <ChevronRight className="h-3 w-3" />
-            </Link>
-          </div>
+        <SectionCard
+          title="Market intelligence"
+          subtitle={marketRoleLabel ?? "India product-company trends"}
+          actionHref="/insights"
+          actionLabel="Explore"
+          footer="Demand = active roles per family · Trend = this week vs prior week · Source: 18 official career pages"
+        >
           <div className="space-y-3">
             {marketSignals.length === 0 ? (
-              <p className="text-xs text-muted-foreground">
+              <p className="text-sm text-muted-foreground">
                 Catalog is still warming up — check back after the next crawl.
               </p>
-            ) : marketSignals.map(({ key, label, demand, trend, thisWeek, color }) => {
+            ) : marketSignals.map(({ key, label, demand, trend, thisWeek }) => {
               const trendTone =
                 trend === null              ? "text-muted-foreground/60"
-                : trend.startsWith("+")     ? "text-emerald-400"
-                : "text-rose-400";
+                : trend.startsWith("+")     ? "text-success"
+                : "text-destructive";
               return (
                 <div key={key} className="flex items-center gap-3">
-                  <span className="w-44 shrink-0 text-xs text-muted-foreground truncate" title={`${thisWeek} new in last 7d`}>{label}</span>
-                  <div className="flex-1 overflow-hidden rounded-full bg-secondary/60">
-                    <div className={`h-1.5 rounded-full ${color}`} style={{ width: `${demand}%` }} />
+                  <span className="w-40 shrink-0 truncate text-xs text-muted-foreground" title={`${thisWeek} new in last 7d`}>{label}</span>
+                  <div className="flex-1 overflow-hidden rounded-full bg-secondary">
+                    <div className="h-1.5 rounded-full bg-primary transition-all duration-700" style={{ width: `${demand}%` }} />
                   </div>
                   <span className={`w-14 shrink-0 text-right text-[11px] font-medium tabular-nums ${trendTone}`}>
                     {trend ?? "—"}
@@ -583,25 +563,22 @@ export default async function DashboardPage() {
               );
             })}
           </div>
-          <p className="mt-4 text-[10px] text-muted-foreground/60">
-            Demand = active roles per family · Trend = this week vs prior week · Source: 18 official career pages
-          </p>
-        </div>
+        </SectionCard>
 
         {/* All done */}
         {allDone && (appCount ?? 0) === 0 && (
-          <div className="flex items-start gap-4 rounded-2xl border border-emerald-500/20 bg-emerald-500/5 p-5">
-            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-emerald-400/10">
-              <CheckCircle2 className="h-5 w-5 text-emerald-400" />
+          <div className="flex items-start gap-4 rounded-xl border border-success/30 bg-success/5 p-5">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-success text-success-foreground">
+              <CheckCircle2 className="h-5 w-5" strokeWidth={2.5} />
             </div>
             <div>
               <h2 className="font-semibold">You&apos;re set up!</h2>
-              <p className="mt-1 text-sm text-muted-foreground">
+              <p className="mt-1 text-sm leading-relaxed text-muted-foreground">
                 Start tracking your applications to unlock pipeline analytics.
               </p>
               <Link
                 href="/applications"
-                className="mt-3 inline-flex items-center gap-1.5 text-sm font-medium text-emerald-400 hover:underline"
+                className="mt-3 inline-flex items-center gap-1.5 text-sm font-medium text-success hover:underline focus-ring rounded"
               >
                 Track an application <ChevronRight className="h-3.5 w-3.5" />
               </Link>
@@ -610,20 +587,20 @@ export default async function DashboardPage() {
         )}
       </div>
 
-      {/* ── Quick links row ───────────────────────────────────────── */}
+      {/* ── Quick links row — restrained monochrome ──────────────── */}
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
         {[
-          { href: "/matches", icon: <Briefcase className="h-4 w-4" />, label: "Browse matches", color: "text-violet-400" },
-          { href: "/coach", icon: <Sparkles className="h-4 w-4" />, label: "AI Coach", color: "text-primary" },
-          { href: "/insights", icon: <BarChart3 className="h-4 w-4" />, label: "Market insights", color: "text-amber-400" },
-          { href: "/applications", icon: <Clock className="h-4 w-4" />, label: "Applications", color: "text-emerald-400" },
-        ].map(({ href, icon, label, color }) => (
+          { href: "/matches",      icon: <Briefcase className="h-4 w-4" />,   label: "Browse matches" },
+          { href: "/coach",        icon: <Sparkles className="h-4 w-4" />,    label: "AI Coach" },
+          { href: "/insights",     icon: <BarChart3 className="h-4 w-4" />,   label: "Market insights" },
+          { href: "/applications", icon: <Clock className="h-4 w-4" />,       label: "Applications" },
+        ].map(({ href, icon, label }) => (
           <Link
             key={href}
             href={href}
-            className="group flex items-center gap-2.5 rounded-xl border border-border bg-card/30 px-4 py-3 text-sm font-medium text-muted-foreground transition hover:border-primary/20 hover:bg-card/60 hover:text-foreground"
+            className="group flex items-center gap-2.5 rounded-md border border-border bg-card px-4 py-3 text-sm font-medium text-muted-foreground transition hover:border-primary/30 hover:bg-secondary hover:text-foreground focus-ring"
           >
-            <span className={`shrink-0 transition group-hover:scale-110 ${color}`}>{icon}</span>
+            <span className="shrink-0 text-primary transition group-hover:text-primary-soft-foreground">{icon}</span>
             {label}
           </Link>
         ))}
@@ -632,45 +609,85 @@ export default async function DashboardPage() {
   );
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// SectionCard — unified panel chrome used across the dashboard grid.
+// ─────────────────────────────────────────────────────────────────────────────
+
+function SectionCard({
+  title, subtitle, actionHref, actionLabel, footer, children,
+}: {
+  title: string;
+  subtitle?: string;
+  actionHref?: string;
+  actionLabel?: string;
+  footer?: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <section className="rounded-xl border border-border bg-card p-5">
+      <header className="mb-4 flex items-center justify-between gap-4">
+        <div className="min-w-0">
+          <h2 className="text-sm font-semibold">{title}</h2>
+          {subtitle && <p className="mt-0.5 text-xs text-muted-foreground">{subtitle}</p>}
+        </div>
+        {actionHref && actionLabel && (
+          <Link
+            href={actionHref}
+            className="inline-flex shrink-0 items-center gap-1 text-xs font-medium text-muted-foreground transition hover:text-primary focus-ring rounded"
+          >
+            {actionLabel} <ChevronRight className="h-3 w-3" />
+          </Link>
+        )}
+      </header>
+      {children}
+      {footer && (
+        <p className="mt-4 border-t border-border pt-3 text-[10px] leading-relaxed text-muted-foreground/70">
+          {footer}
+        </p>
+      )}
+    </section>
+  );
+}
+
 // ── Sub-components ────────────────────────────────────────────────────────────
 
-type ColorName = "primary" | "violet" | "emerald" | "amber";
+type BadgeTone = "primary" | "success" | "warning";
 
-const COLOR_CLASSES: Record<ColorName, { icon: string; badge: string }> = {
-  primary: { icon: "bg-primary/10 text-primary", badge: "bg-primary/10 text-primary" },
-  violet:  { icon: "bg-violet-400/10 text-violet-400", badge: "bg-violet-400/10 text-violet-400" },
-  emerald: { icon: "bg-emerald-400/10 text-emerald-400", badge: "bg-emerald-400/10 text-emerald-400" },
-  amber:   { icon: "bg-amber-400/10 text-amber-400", badge: "bg-amber-400/10 text-amber-400" },
+const BADGE_TONE: Record<BadgeTone, string> = {
+  primary: "bg-primary-soft text-primary-soft-foreground",
+  success: "bg-success/10 text-success",
+  warning: "bg-warning/10 text-warning",
 };
 
 function StatCard({
-  icon, label, value, sub, href, color, badge, badgeColor = "primary",
+  icon, label, value, sub, href, badge, badgeTone = "primary",
 }: {
-  icon: React.ReactNode; label: string; value: string;
-  sub: string; href: string; color: ColorName;
-  badge?: string; badgeColor?: ColorName;
+  icon: React.ReactNode;
+  label: string;
+  value: string;
+  sub: string;
+  href: string;
+  badge?: string;
+  badgeTone?: BadgeTone;
 }) {
-  const cls = COLOR_CLASSES[color];
-  const badgeCls = COLOR_CLASSES[badgeColor];
   return (
     <Link
       href={href}
-      className="group relative overflow-hidden rounded-2xl border border-border bg-card/40 p-5 transition hover:border-primary/20 hover:bg-card/60"
+      className="group flex flex-col rounded-xl border border-border bg-card p-4 transition hover:border-primary/30 hover:bg-secondary/40 focus-ring sm:p-5"
     >
-      <div aria-hidden className="absolute -right-4 -top-4 h-20 w-20 rounded-full bg-current/5 blur-2xl transition group-hover:bg-current/10" />
-      <div className={`relative mb-3 inline-flex h-9 w-9 items-center justify-center rounded-xl ${cls.icon}`}>
+      <div className="mb-3 inline-flex h-9 w-9 items-center justify-center rounded-lg bg-primary-soft text-primary-soft-foreground transition group-hover:bg-primary group-hover:text-primary-foreground">
         {icon}
       </div>
-      <div className="relative flex items-end justify-between">
-        <p className="text-2xl font-bold tabular-nums">{value}</p>
+      <div className="flex items-end justify-between gap-2">
+        <p className="text-2xl font-semibold tabular-nums">{value}</p>
         {badge && (
-          <span className={`mb-0.5 rounded-full px-1.5 py-0.5 text-[10px] font-medium ${badgeCls.badge}`}>
+          <span className={`mb-0.5 rounded-full px-1.5 py-0.5 text-[10px] font-medium ${BADGE_TONE[badgeTone]}`}>
             {badge}
           </span>
         )}
       </div>
-      <p className="relative mt-0.5 text-xs text-muted-foreground">{label}</p>
-      <p className="relative text-[10px] text-muted-foreground/70">{sub}</p>
+      <p className="mt-1 text-xs font-medium">{label}</p>
+      <p className="text-[11px] text-muted-foreground">{sub}</p>
     </Link>
   );
 }
