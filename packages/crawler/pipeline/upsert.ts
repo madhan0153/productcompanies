@@ -48,6 +48,19 @@ function asRow(job: EnrichedJob): Record<string, unknown> {
 }
 
 /**
+ * Remove `signature` from a row payload — used when an UPDATE row's new
+ * signature would collide with another row's existing signature. The row's
+ * other fields (last_seen_at, description, parse data, etc.) still update;
+ * only the sig stays at its current DB value. This avoids 23505 violations
+ * without losing the freshness/parse data that the crawl produced.
+ */
+function stripSignature(row: Record<string, unknown>): Record<string, unknown> {
+  const { signature: _s, ...rest } = row;
+  void _s;
+  return rest;
+}
+
+/**
  * Bulk-upsert jobs in 50-row batches.
  *
  * Strategy (one batch):
@@ -92,10 +105,14 @@ async function applyBulkUpsert(
 
   // Signature collision in a bulk insert poisons the whole batch in PG.
   // Fall back to per-row so the OTHER rows in the batch can still land.
+  // Note: the in-process signature reconciliation in upsertJobs() should
+  // prevent these now, so a sig collision arriving here means we hit an
+  // unexpected edge case (concurrent writes, eventual consistency, etc.).
+  // Logged at info-level since per-row recovery handles it cleanly.
   const isSigCollision = isSignatureCollision(error.message);
   log(
     `Bulk ${kindLabel} failed: ${error.message} — falling back to per-row`,
-    "warn",
+    isSigCollision ? "info" : "warn",
     { event: "bulk_upsert_error", data: { kind: kindLabel, batchSize: rows.length, error: error.message, sigCollision: isSigCollision } },
   );
 
@@ -156,52 +173,55 @@ export async function upsertJobs(
     if (extErr) {
       log(`upsert lookup-by-ext error: ${extErr.message}`, "warn", { event: "upsert_lookup_error", data: { error: extErr.message } });
     }
-    const existingExt = new Map((byExt ?? []).map((r) => [r.external_id, r]));
+    const existingExt = new Map<string, { id: string; external_id: string; signature: string }>(
+      (byExt ?? []).map((r) => [r.external_id as string, { id: r.id as string, external_id: r.external_id as string, signature: r.signature as string }]),
+    );
 
-    // Step 2: for unmatched, lookup by signature (rebind path).
-    const unmatched = batch.filter((j) => !existingExt.has(j.external_id));
-    let existingSig = new Map<string, { id: string }>();
-    if (unmatched.length > 0) {
-      const sigs = unmatched.map((j) => j.signature);
-      const { data: bySig, error: sigErr } = await supabase
+    // Step 2: lookup by signature — ALL target signatures the batch plans
+    // to write, not just unmatched-by-external_id rows. This is the bug
+    // that kept tripping ux_jobs_company_signature: we used to only fetch
+    // sigs for new rows, but UPDATE rows (whose content changed) also
+    // re-write their signature, and that new sig could already belong to
+    // ANOTHER existing row. Without checking, the bulk update collided.
+    const allTargetSigs = [...new Set(batch.map((j) => j.signature))];
+    let sigOwnerByExt = new Map<string, { id: string; external_id: string }>();
+    if (allTargetSigs.length > 0) {
+      const { data: sigOwners, error: sigErr } = await supabase
         .from("jobs")
-        .select("id, signature")
+        .select("id, external_id, signature")
         .eq("company_id", companyId)
-        .in("signature", sigs);
+        .in("signature", allTargetSigs);
       if (sigErr) {
         log(`upsert lookup-by-sig error: ${sigErr.message}`, "warn", { event: "upsert_lookup_error", data: { error: sigErr.message } });
       }
-      existingSig = new Map((bySig ?? []).map((r) => [r.signature as string, { id: r.id as string }]));
+      sigOwnerByExt = new Map(
+        (sigOwners ?? []).map((r) => [r.signature as string, { id: r.id as string, external_id: r.external_id as string }]),
+      );
     }
 
-    // Step 3: partition by intent AND by column shape.
+    // Step 3: partition by intent AND by column shape, with
+    // signature-conflict reconciliation done IN-PROCESS so the bulk
+    // call never sees a collision.
     //
     // Why "column shape"? Supabase / PostgREST bulk upsert collects the
     // UNION of keys across all rows in the array. If some rows include
     // `must_have_skills` (because they were re-parsed) and others don't,
     // PostgREST includes the column for every row — and fills NULL where
     // it wasn't supplied. The NOT NULL DEFAULT '{}' constraint then
-    // rejects the whole batch:
-    //   null value in column "must_have_skills" of relation "jobs"
-    //   violates not-null constraint
-    //
-    // The workaround used to be: catch the failure, fall back to per-row,
-    // pay 50 round-trips of latency. Fix: split into uniform-shape sub-
-    // batches BEFORE the call. Each sub-batch has identical keys → no
-    // NULL fill → bulk works on first try every time.
+    // rejects the whole batch. Fix: split into uniform-shape sub-batches
+    // BEFORE the call. Each sub-batch has identical keys → no NULL fill.
     const toRebind: Array<{ rowId: string; job: EnrichedJob }> = [];
     const toUpdateWithParse: Record<string, unknown>[] = [];
     const toUpdateNoParse:   Record<string, unknown>[] = [];
     const toInsertWithParse: Record<string, unknown>[] = [];
     const toInsertNoParse:   Record<string, unknown>[] = [];
 
-    // Within-batch signature de-dup. Two scraped rows with different
-    // external_ids but identical (title, location, description) signature.
-    // The DB has a unique index on (company_id, signature); the second
-    // insert would 23505-error and poison the whole batch. Keep the first
-    // occurrence.
-    const seenSigsInBatch = new Set<string>();
-    let droppedDupSigs = 0;
+    // Tracks which sigs will be "claimed" by some row in this batch after
+    // it lands. Prevents two rows in the same batch from racing to the
+    // same target sig (one would land, the other would 23505).
+    const claimedSigs = new Set<string>();
+    let droppedSigConflicts = 0;
+    let strippedSigOnUpdate = 0;
 
     for (const job of batch) {
       const baseRow = {
@@ -213,34 +233,70 @@ export async function upsertJobs(
       const patch = parsePatch(job);
       const hasParse = Object.keys(patch).length > 0;
 
-      if (existingExt.has(job.external_id)) {
-        // UPDATE path — split by whether we have new parse data. Rows
-        // without new parse omit those columns entirely so the existing
-        // values stay intact (ON CONFLICT DO UPDATE only touches columns
-        // in the EXCLUDED set).
-        if (hasParse) toUpdateWithParse.push({ ...baseRow, ...patch });
-        else          toUpdateNoParse.push(baseRow);
-      } else {
-        const sigMatch = existingSig.get(job.signature);
-        if (sigMatch) {
-          toRebind.push({ rowId: sigMatch.id, job });
+      const dbOwnerOfTargetSig = sigOwnerByExt.get(job.signature);
+      const existing = existingExt.get(job.external_id);
+
+      if (existing) {
+        // UPDATE path: this row's external_id is in DB.
+        //   - If existing.signature === job.signature: trivial no-op on sig.
+        //   - If target sig is owned by another DB row OR claimed by an
+        //     earlier batch row: strip `signature` from the payload (keep
+        //     last_seen_at + parse data; leave DB sig at its current value).
+        //   - Else: claim the new sig.
+        const wouldCollide =
+          existing.signature !== job.signature &&
+          (
+            (dbOwnerOfTargetSig != null && dbOwnerOfTargetSig.id !== existing.id) ||
+            claimedSigs.has(job.signature)
+          );
+
+        const row = wouldCollide
+          ? stripSignature({ ...baseRow, ...patch })
+          : { ...baseRow, ...patch };
+
+        if (wouldCollide) {
+          strippedSigOnUpdate++;
+          // Existing sig stays in DB; don't claim a new one.
         } else {
-          if (seenSigsInBatch.has(job.signature)) {
-            droppedDupSigs++;
-            continue;
-          }
-          seenSigsInBatch.add(job.signature);
+          claimedSigs.add(job.signature);
+        }
+
+        if (hasParse) toUpdateWithParse.push(row);
+        else          toUpdateNoParse.push(row);
+      } else {
+        // INSERT path: this row's external_id is NOT in DB.
+        // Order matters: check claimedSigs FIRST so two batch rows
+        // wanting to rebind to the same DB row don't both attempt it.
+        if (claimedSigs.has(job.signature)) {
+          // Some earlier action in this batch already represents this
+          // content (fresh insert, rebind, or an update keeping the same
+          // sig). Drop this row — it'd just collide.
+          droppedSigConflicts++;
+        } else if (dbOwnerOfTargetSig) {
+          // Target sig already owned by some other row → REBIND
+          // (UPDATE that row with this row's external_id + new content).
+          toRebind.push({ rowId: dbOwnerOfTargetSig.id, job });
+          claimedSigs.add(job.signature);
+        } else {
+          claimedSigs.add(job.signature);
           if (hasParse) toInsertWithParse.push({ ...baseRow, ...patch });
           else          toInsertNoParse.push(baseRow);
         }
       }
     }
 
-    if (droppedDupSigs > 0) {
+    if (droppedSigConflicts > 0) {
       log(
-        `upsert: dropped ${droppedDupSigs} in-batch signature duplicate(s) (same content, different external_id)`,
-        "warn",
-        { event: "upsert_sig_dup", data: { dropped: droppedDupSigs, batchSize: batch.length } },
+        `upsert: dropped ${droppedSigConflicts} in-batch duplicate(s) (same content, different external_id)`,
+        "info",
+        { event: "upsert_sig_dup", data: { dropped: droppedSigConflicts, batchSize: batch.length } },
+      );
+    }
+    if (strippedSigOnUpdate > 0) {
+      log(
+        `upsert: kept ${strippedSigOnUpdate} update(s) with sig unchanged (target sig owned by another row)`,
+        "info",
+        { event: "upsert_sig_stripped", data: { stripped: strippedSigOnUpdate, batchSize: batch.length } },
       );
     }
 
