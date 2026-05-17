@@ -2,8 +2,8 @@ import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import {
   Briefcase, Target, TrendingUp, Building2,
-  ChevronRight, CheckCircle2, Circle, ArrowUpRight,
-  Sparkles, Zap, BarChart3, Activity, Clock,
+  ChevronRight, CheckCircle2,
+  Sparkles, BarChart3, Compass, Clock, AlertCircle,
 } from "lucide-react";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import Link from "next/link";
@@ -13,12 +13,21 @@ import { Tooltip } from "@/components/tooltip";
 import { DnaBreakdownInline } from "@/components/dna-breakdown-panel";
 import type { DnaBreakdown } from "@/lib/matching/dna-breakdown";
 import { computeMarketSignals, type MarketJobLite } from "@/lib/insights/market-intel";
+import { getUserConsents } from "@/lib/dpdp/consent";
+
+// Sprint 6 dashboard surfaces — colocated under app/(app)/dashboard.
+import { MatchBandCard, type MatchBandCounts } from "./match-band-card";
+import { IncompletenessBanner, detectIncompleteness } from "./incompleteness-banner";
+import { NextActionCard, pickNextAction } from "./next-action-card";
+import { ResumeGuidanceCard } from "./resume-guidance-card";
+import { CatalogPulse } from "./catalog-pulse";
+import { SkillCoverageCard, aggregateSkillCoverage } from "./skill-coverage-card";
+import { RecommendedCompaniesCard, rankCompaniesForUser } from "./recommended-companies";
+import { ToolDiscoveryCard } from "./tool-discovery-card";
+import { TopMatchesMobile, type TopMatchCard } from "./top-matches-mobile";
 
 export const metadata: Metadata = { title: "Dashboard" };
 
-// Application-status palette — semantic tokens only. Maps the 6 pipeline
-// stages onto three meaningful tones: primary (in progress), success
-// (positive outcome), destructive (negative outcome), muted (parked).
 const STATUS_COLORS: Record<string, string> = {
   saved:        "bg-primary-soft text-primary-soft-foreground border-primary/20",
   applied:      "bg-primary-soft text-primary-soft-foreground border-primary/20",
@@ -37,6 +46,8 @@ const STATUS_BAR: Record<string, string> = {
   withdrawn:    "bg-muted-foreground/40",
 };
 
+const STUCK_DAYS = 7;
+
 type RecentMatch = {
   score: number;
   verdict: string | null;
@@ -44,8 +55,29 @@ type RecentMatch = {
   jobs: {
     id: string;
     title: string;
-    companies: { name: string; logo_url: string | null } | null;
+    companies: { name: string; slug: string; logo_url: string | null } | null;
   } | null;
+};
+
+type ConfidenceRow = {
+  score: number;
+  verdict: string | null;
+  confidence: number | null;
+  job_id: string;
+  jobs: {
+    id: string;
+    title: string;
+    companies: { name: string; slug: string; logo_url: string | null } | null;
+  } | null;
+};
+
+type TechCoverageRow = { score: number; tech_coverage: unknown };
+
+type StuckApp = {
+  id: string;
+  applied_at: string;
+  status: string;
+  jobs: { title: string; companies: { name: string; logo_url: string | null } | null } | null;
 };
 
 type RecentApp = {
@@ -66,71 +98,105 @@ export default async function DashboardPage() {
 
   const since7d  = new Date(Date.now() - 7  * 24 * 3_600_000).toISOString();
   const since14d = new Date(Date.now() - 14 * 24 * 3_600_000).toISOString();
+  const stuckSince = new Date(Date.now() - STUCK_DAYS * 24 * 3_600_000).toISOString();
 
   const [
     { data: profile },
     { count: matchCount },
     { count: appCount },
-    { data: recentMatchesRaw },
+    bandResults,
     { data: appsByStatus },
     { data: recentAppsRaw },
-    { count: newStrongCount },
+    { data: stuckAppsRaw },
+    { data: topRankedRaw },
+    { data: techCoverageRaw },
+    { data: companyMatchRaw },
     { count: activeJobCount },
-    { data: recentJobsRaw },
     { data: marketJobsRaw },
+    { data: latestCrawl },
+    consents,
+    { count: tailoredCount },
+    { count: memoCount },
   ] = await Promise.all([
     supabase.from("profiles")
-      .select("display_name, resume_storage_path, product_dna_score, dna_breakdown, years_experience, current_role, resume_score, tech_stack")
+      .select("display_name, resume_storage_path, product_dna_score, dna_breakdown, years_experience, current_role, resume_score, resume_score_breakdown, tech_stack, preferred_hubs, resume_embedding_at, last_match_compute_at, resume_signature, resume_parsed")
       .eq("id", user.id).maybeSingle(),
     supabase.from("matches").select("*", { count: "exact", head: true }).eq("user_id", user.id),
     supabase.from("applications").select("*", { count: "exact", head: true }).eq("user_id", user.id),
-    supabase.from("matches")
-      .select("score, verdict, job_id, jobs(id, title, companies(name, logo_url))")
-      .eq("user_id", user.id)
-      .order("score", { ascending: false })
-      .limit(6),
-    supabase.from("applications")
-      .select("status")
-      .eq("user_id", user.id),
+    // Five separate count queries — bands. Cheap (head only), parallelised.
+    Promise.all([
+      supabase.from("matches").select("*", { count: "exact", head: true }).eq("user_id", user.id).gte("score", 90),
+      supabase.from("matches").select("*", { count: "exact", head: true }).eq("user_id", user.id).gte("score", 75).lt("score", 90),
+      supabase.from("matches").select("*", { count: "exact", head: true }).eq("user_id", user.id).gte("score", 60).lt("score", 75),
+      supabase.from("matches").select("*", { count: "exact", head: true }).eq("user_id", user.id).gte("score", 40).lt("score", 60),
+      supabase.from("matches").select("*", { count: "exact", head: true }).eq("user_id", user.id).lt("score", 40),
+    ]),
+    supabase.from("applications").select("status").eq("user_id", user.id),
     supabase.from("applications")
       .select("id, status, applied_at, job_id, jobs(title, companies(name, logo_url))")
       .eq("user_id", user.id)
       .order("created_at", { ascending: false })
       .limit(5),
-    supabase.from("matches")
-      .select("*", { count: "exact", head: true })
+    // Stuck applications — applied >7d ago, still in 'applied' status.
+    supabase.from("applications")
+      .select("id, status, applied_at, jobs(title, companies(name, logo_url))")
       .eq("user_id", user.id)
-      .eq("verdict", "strong_fit")
-      .is("seen_at", null),
+      .eq("status", "applied")
+      .lt("applied_at", stuckSince)
+      .order("applied_at", { ascending: true })
+      .limit(5),
+    // Top-ranked matches for hero/carousel + next-action picks.
+    supabase.from("matches")
+      .select("score, verdict, confidence, job_id, seen_at, user_hidden, jobs(id, title, companies(name, slug, logo_url))")
+      .eq("user_id", user.id)
+      .eq("user_hidden", false)
+      .order("score", { ascending: false })
+      .limit(20),
+    // Tech-coverage rollup — top-50 unhidden matches with non-null coverage.
+    supabase.from("matches")
+      .select("score, tech_coverage")
+      .eq("user_id", user.id)
+      .eq("user_hidden", false)
+      .not("tech_coverage", "is", null)
+      .order("score", { ascending: false })
+      .limit(50),
+    // Company recommendations — top 100 non-hidden matches.
+    supabase.from("matches")
+      .select("score, job_id, jobs(id, companies(name, slug, logo_url))")
+      .eq("user_id", user.id)
+      .eq("user_hidden", false)
+      .order("score", { ascending: false })
+      .limit(100),
     supabase.from("jobs")
       .select("id", { count: "exact", head: true })
       .eq("is_active", true),
-    supabase
-      .from("jobs")
-      .select("company_id, companies(name, slug, logo_url)")
-      .eq("is_active", true)
-      .gte("created_at", since7d)
-      .limit(300),
-    // Market intelligence aggregation — full active catalog (title +
-    // role_function + tech_stack + created_at). Used to compute real
-    // role-family demand and week-over-week trend on the dashboard.
-    supabase
-      .from("jobs")
+    supabase.from("jobs")
       .select("title, tech_stack, role_function, created_at")
       .eq("is_active", true)
       .limit(5000),
+    // Most-recent crawl_runs row.
+    supabase.from("crawl_runs")
+      .select("finished_at, status")
+      .order("started_at", { ascending: false })
+      .limit(1)
+      .maybeSingle(),
+    getUserConsents(user.id),
+    supabase.from("tailored_resumes").select("*", { count: "exact", head: true }).eq("user_id", user.id),
+    supabase.from("negotiation_memos").select("*", { count: "exact", head: true }).eq("user_id", user.id),
   ]);
-  const marketJobs = (marketJobsRaw as MarketJobLite[] | null) ?? [];
 
-  const recentMatches = (recentMatchesRaw as unknown as RecentMatch[] | null) ?? [];
-  const recentApps = (recentAppsRaw as unknown as RecentApp[] | null) ?? [];
+  const marketJobs = (marketJobsRaw as MarketJobLite[] | null) ?? [];
 
   const hasResume = !!profile?.resume_storage_path;
   const dnaScore = profile?.product_dna_score ?? null;
   const dnaBreakdown = ((profile as { dna_breakdown?: DnaBreakdown | null } | null)?.dna_breakdown) ?? null;
   const resumeScore = (profile as { resume_score?: number | null } | null)?.resume_score ?? null;
+  const resumeBreakdown = (profile as { resume_score_breakdown?: unknown } | null)?.resume_score_breakdown ?? null;
   const displayName = profile?.display_name ?? null;
   const techStack = ((profile as { tech_stack?: unknown } | null)?.tech_stack as string[] | null) ?? [];
+  const preferredHubs = ((profile as { preferred_hubs?: string[] | null } | null)?.preferred_hubs) ?? [];
+  const resumeParsed = (profile as { resume_parsed?: { current_role?: string | null } | null } | null)?.resume_parsed ?? null;
+  const matchingConsentGranted = consents.matching === true;
   const careerHealth = dnaScore !== null && resumeScore !== null
     ? Math.round((dnaScore * 0.55 + resumeScore * 0.45))
     : null;
@@ -138,51 +204,135 @@ export default async function DashboardPage() {
     marketJobs, since7d, since14d, techStack, 4,
   );
 
-  type CompanyActivity = { name: string; slug: string; logo_url: string | null; count: number };
-  const activityMap = new Map<string, CompanyActivity>();
-  for (const job of (recentJobsRaw as Array<{ company_id: string; companies: { name: string; slug: string; logo_url: string | null } | null }> | null) ?? []) {
-    const co = job.companies;
-    if (!co?.slug) continue;
-    const e = activityMap.get(co.slug);
-    if (e) { e.count++; } else { activityMap.set(co.slug, { name: co.name, slug: co.slug, logo_url: co.logo_url, count: 1 }); }
-  }
-  const topActiveCompanies = [...activityMap.values()].sort((a, b) => b.count - a.count).slice(0, 5);
+  const bandCounts: MatchBandCounts = {
+    excellent: bandResults[0].count ?? 0,
+    strong:    bandResults[1].count ?? 0,
+    plausible: bandResults[2].count ?? 0,
+    weak:      bandResults[3].count ?? 0,
+    reject:    bandResults[4].count ?? 0,
+    total:     matchCount ?? 0,
+  };
+
+  const topRanked = ((topRankedRaw as unknown as Array<ConfidenceRow & { seen_at: string | null; user_hidden: boolean }> | null) ?? []);
+  const recentMatches = topRanked.slice(0, 6) as RecentMatch[];
+  const unseenStrong = topRanked.find((r) => r.verdict === "strong_fit" && r.seen_at === null);
+  const topMatch = topRanked[0] ?? null;
+
+  const recentApps = (recentAppsRaw as unknown as RecentApp[] | null) ?? [];
+  const stuckApps = (stuckAppsRaw as unknown as StuckApp[] | null) ?? [];
+
+  const skillCoverage = aggregateSkillCoverage({
+    rows: ((techCoverageRaw as TechCoverageRow[] | null) ?? []),
+  });
+
+  const recommendedCompanies = rankCompaniesForUser(
+    (companyMatchRaw as Array<{ score: number; job_id: string; jobs: { id: string; companies: { name: string; slug: string; logo_url: string | null } | null } | null }> | null) ?? [],
+    5,
+  );
 
   const pipeline = (appsByStatus ?? []).reduce<Record<string, number>>((acc, r) => {
     acc[r.status] = (acc[r.status] ?? 0) + 1;
     return acc;
   }, {});
 
-  const steps = [
-    { done: hasResume, label: "Upload your resume", href: "/profile", desc: "We parse and compute your DNA score" },
-    { done: (matchCount ?? 0) > 0, label: "Compute your matches", href: "/matches", desc: "AI ranks every active role for you" },
-    { done: (appCount ?? 0) > 0, label: "Track an application", href: "/applications", desc: "Stay on top of your pipeline" },
-  ];
-  const allDone = steps.every((s) => s.done);
-  const currentStep = steps.findIndex((s) => !s.done);
+  // Stale matches: resume changed AFTER last compute → recompute needed.
+  const resumeAtMs = profile?.resume_embedding_at ? new Date(profile.resume_embedding_at).getTime() : 0;
+  const lastComputeMs = profile?.last_match_compute_at ? new Date(profile.last_match_compute_at).getTime() : 0;
+  const matchesStale = hasResume && resumeAtMs > lastComputeMs && lastComputeMs > 0;
 
-  // Strong fit count for progress indicator
-  const strongFitCount = recentMatches.filter((m) => m.verdict === "strong_fit").length;
+  // Weakest resume dim (under 50% of weight, weight >= 10) for NextActionCard.
+  let weakestResumeDim: { label: string; hint: string } | null = null;
+  if (Array.isArray(resumeBreakdown)) {
+    interface DimRow { label?: string; hint?: string; score?: number; weight?: number }
+    const ranked = (resumeBreakdown as DimRow[])
+      .filter((d): d is Required<DimRow> => typeof d.label === "string" && typeof d.hint === "string" && typeof d.score === "number" && typeof d.weight === "number" && d.weight >= 10)
+      .map((d) => ({ ...d, pct: d.score / d.weight }))
+      .sort((a, b) => a.pct - b.pct);
+    if (ranked.length > 0 && ranked[0].pct < 0.5) {
+      weakestResumeDim = { label: ranked[0].label, hint: ranked[0].hint };
+    }
+  }
+
+  const nextAction = pickNextAction({
+    hasResume,
+    matchingConsentGranted,
+    matchesStale,
+    stuckApps: stuckApps.map((a) => ({
+      id: a.id,
+      job_title: a.jobs?.title ?? "Application",
+      days: Math.max(0, Math.floor((Date.now() - new Date(a.applied_at).getTime()) / 86400000)),
+    })),
+    unseenStrongFit: unseenStrong?.jobs ? {
+      jobId: unseenStrong.jobs.id,
+      title: unseenStrong.jobs.title,
+      company: unseenStrong.jobs.companies?.name ?? "—",
+    } : null,
+    topMatch: topMatch?.jobs ? {
+      jobId: topMatch.jobs.id,
+      title: topMatch.jobs.title,
+      company: topMatch.jobs.companies?.name ?? "—",
+      score: topMatch.score,
+    } : null,
+    coachOrToolUsed: (tailoredCount ?? 0) + (memoCount ?? 0) > 0,
+    preferredHubsCount: preferredHubs.length,
+    weakestResumeDim,
+  });
+
+  const incompleteness = detectIncompleteness({
+    preferredHubsCount: preferredHubs.length,
+    hasResume,
+    matchingConsentGranted,
+    techStackCount: techStack.length,
+  });
 
   const hour = new Date().getHours();
   const greeting = hour < 12 ? "Good morning" : hour < 17 ? "Good afternoon" : "Good evening";
 
-  return (
-    <div className="space-y-6 pb-6">
+  // Sprint 6 — Personalized greeting: use parsed current_role when displayName
+  // is missing (this user's case). Falls back gracefully.
+  const greetingSubject = displayName
+    ? displayName.split(" ")[0]
+    : resumeParsed?.current_role
+      ? resumeParsed.current_role
+      : "there";
 
-      {/* ── Hero greeting ────────────────────────────────────────── */}
+  const subline = profile?.current_role
+    ? `${profile.current_role}${profile.years_experience ? ` · ${profile.years_experience} yrs exp` : ""}`
+    : "Your career intelligence command center.";
+
+  const topMatchesForMobile: TopMatchCard[] = recentMatches.map((m) => {
+    const c = topRanked.find((t) => t.job_id === m.job_id);
+    return {
+      jobId: m.job_id,
+      title: m.jobs?.title ?? "Role",
+      company: m.jobs?.companies?.name ?? "—",
+      logoUrl: m.jobs?.companies?.logo_url ?? null,
+      score: m.score,
+      verdict: m.verdict,
+      confidence: c?.confidence ?? null,
+    };
+  });
+
+  const setupSteps = [
+    { done: hasResume,                   label: "Upload your resume",      href: "/profile",   desc: "We parse and compute your DNA score" },
+    { done: matchingConsentGranted,      label: "Grant matching consent",   href: "/settings/privacy", desc: "DPDP Act 2023 — required to run AI matching" },
+    { done: (matchCount ?? 0) > 0,       label: "Compute your matches",    href: "/matches",   desc: "AI ranks every active role for you" },
+    { done: (appCount ?? 0) > 0,         label: "Track an application",    href: "/applications", desc: "Stay on top of your pipeline" },
+  ];
+  const allSetupDone = setupSteps.every((s) => s.done);
+
+  return (
+    <div className="space-y-5 pb-6">
+
+      {/* ── Hero ─────────────────────────────────────────────────── */}
       <div className="rounded-xl border border-border bg-card p-5 sm:p-6">
-        <div className="flex flex-wrap items-center justify-between gap-6">
-          <div>
+        {/* Responsive reflow: name+role full-width on mobile, DNA below.
+            On `sm+`, flex-row with DNA right-aligned. */}
+        <div className="flex flex-col gap-4 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between sm:gap-6">
+          <div className="min-w-0">
             <p className="text-sm text-muted-foreground">{greeting}</p>
-            <h1 className="mt-0.5 text-2xl font-semibold tracking-tight">
-              {displayName ? displayName.split(" ")[0] : "Welcome back"}
-            </h1>
-            <p className="mt-1.5 text-sm text-muted-foreground">
-              {profile?.current_role
-                ? `${profile.current_role}${profile.years_experience ? ` · ${profile.years_experience} yrs exp` : ""}`
-                : "Your career intelligence command center."}
-            </p>
+            <h1 className="mt-0.5 text-2xl font-semibold tracking-tight">{greetingSubject}</h1>
+            <p className="mt-1.5 text-sm text-muted-foreground">{subline}</p>
           </div>
 
           {dnaScore !== null && (
@@ -203,7 +353,7 @@ export default async function DashboardPage() {
                 )
               }
             >
-              <Link href="/profile#dna-breakdown" className="flex cursor-pointer flex-col items-center gap-1.5">
+              <Link href="/profile#dna-breakdown" className="flex shrink-0 cursor-pointer items-center gap-3 sm:flex-col sm:items-center sm:gap-1.5">
                 <ScoreRing score={dnaScore} size="lg" showLabel={false} />
                 <span className="text-xs font-medium text-muted-foreground">Product DNA</span>
               </Link>
@@ -211,22 +361,14 @@ export default async function DashboardPage() {
           )}
         </div>
 
-        {/* Inline market signal + career health */}
+        {/* Catalog pulse + career health */}
         {((activeJobCount ?? 0) > 0 || careerHealth !== null) && (
           <div className="mt-5 space-y-3 border-t border-border pt-4">
             {(activeJobCount ?? 0) > 0 && (
-              <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                <Activity className="h-3.5 w-3.5 text-success" />
-                <span>
-                  <strong className="text-foreground tabular-nums">{(activeJobCount ?? 0).toLocaleString("en-IN")}</strong> active roles
-                  across 18 product companies
-                  {(newStrongCount ?? 0) > 0 && (
-                    <> · <Link href="/matches?show=new" className="font-medium text-success hover:underline">
-                      {newStrongCount} new strong {(newStrongCount ?? 0) === 1 ? "fit" : "fits"} for you
-                    </Link></>
-                  )}
-                </span>
-              </div>
+              <CatalogPulse
+                lastFinishedAt={latestCrawl?.finished_at ?? null}
+                activeJobCount={activeJobCount ?? 0}
+              />
             )}
             {careerHealth !== null && (
               <div className="flex items-center gap-3">
@@ -250,52 +392,13 @@ export default async function DashboardPage() {
         )}
       </div>
 
-      {/* ── New strong-fit banner ─────────────────────────────────── */}
-      {hasResume && (newStrongCount ?? 0) > 0 && (
-        <Link
-          href="/matches?show=new"
-          className="group flex items-center justify-between gap-4 rounded-xl border border-success/30 bg-success/5 px-5 py-4 transition hover:border-success/50 hover:bg-success/10 focus-ring"
-        >
-          <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-success text-success-foreground">
-              <Zap className="h-5 w-5" strokeWidth={2.5} />
-            </div>
-            <div>
-              <p className="text-sm font-semibold text-success">
-                {newStrongCount} new strong {(newStrongCount ?? 0) === 1 ? "fit" : "fits"} since your last visit
-              </p>
-              <p className="text-xs text-muted-foreground">From this morning&apos;s crawl · 18 target companies</p>
-            </div>
-          </div>
-          <ChevronRight className="h-4 w-4 shrink-0 text-success transition group-hover:translate-x-0.5" />
-        </Link>
-      )}
+      {/* ── Profile incompleteness banner (PR 1.2) ──────────────── */}
+      {incompleteness.length > 0 && <IncompletenessBanner issues={incompleteness} />}
 
-      {/* ── Resume prompt ─────────────────────────────────────────── */}
-      {!hasResume && (
-        <div className="rounded-xl border border-primary/30 bg-primary-soft p-5 sm:p-6">
-          <div className="flex flex-wrap items-start gap-5">
-            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-primary text-primary-foreground">
-              <Sparkles className="h-5 w-5" strokeWidth={2.25} />
-            </div>
-            <div className="min-w-0 flex-1">
-              <h2 className="font-semibold">Start with your resume</h2>
-              <p className="mt-1.5 max-w-md text-sm leading-relaxed text-muted-foreground">
-                Upload your PDF — we&apos;ll compute your Product DNA score and rank every active role
-                across 18 product companies with AI-generated Fit Cards.
-              </p>
-              <Link
-                href="/profile"
-                className="press mt-4 inline-flex h-10 items-center gap-2 rounded-md bg-primary px-4 text-sm font-semibold text-primary-foreground transition hover:bg-primary/90 focus-ring"
-              >
-                Upload resume <ArrowUpRight className="h-3.5 w-3.5" />
-              </Link>
-            </div>
-          </div>
-        </div>
-      )}
+      {/* ── Next best action (PR 3.1) ───────────────────────────── */}
+      {nextAction && <NextActionCard action={nextAction} />}
 
-      {/* ── Stats grid ───────────────────────────────────────────── */}
+      {/* ── Stats grid — Matches card now shows band stack ──────── */}
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
         <StatCard
           icon={<Target className="h-4 w-4" />}
@@ -305,15 +408,7 @@ export default async function DashboardPage() {
           href="/profile"
           badge={dnaScore !== null ? `/ 100` : undefined}
         />
-        <StatCard
-          icon={<Briefcase className="h-4 w-4" />}
-          label="Matches"
-          value={String(matchCount ?? 0)}
-          sub={strongFitCount > 0 ? `${strongFitCount} strong fit` : "compute matches"}
-          href="/matches"
-          badge={strongFitCount > 0 ? `${strongFitCount} strong` : undefined}
-          badgeTone="success"
-        />
+        <MatchBandCard counts={bandCounts} />
         <StatCard
           icon={<TrendingUp className="h-4 w-4" />}
           label="Applications"
@@ -330,48 +425,52 @@ export default async function DashboardPage() {
         />
       </div>
 
-      {/* ── Resume strength indicator ─────────────────────────────── */}
+      {/* ── Resume guidance card (PR 1.4) ───────────────────────── */}
       {resumeScore !== null && (
-        <Link
-          href="/profile#resume-score"
-          className="group flex items-center justify-between gap-4 rounded-xl border border-border bg-card px-5 py-4 transition hover:border-primary/30 hover:bg-secondary/40 focus-ring"
-        >
-          <div className="flex items-center gap-4">
-            <div className="relative h-2 w-32 sm:w-40 overflow-hidden rounded-full bg-secondary">
-              <div
-                className={`h-full rounded-full transition-all duration-700 ${
-                  resumeScore >= 80 ? "bg-success"
-                  : resumeScore >= 60 ? "bg-warning"
-                  : "bg-destructive"
-                }`}
-                style={{ width: `${resumeScore}%` }}
-              />
-            </div>
-            <div>
-              <p className="text-sm font-medium">
-                Resume strength · <span className={`font-semibold tabular-nums ${
-                  resumeScore >= 80 ? "text-success"
-                  : resumeScore >= 60 ? "text-warning"
-                  : "text-destructive"
-                }`}>{resumeScore}/100</span>
-              </p>
-              <p className="text-xs text-muted-foreground">
-                {resumeScore >= 85 ? "Application-ready for top product companies" :
-                 resumeScore >= 70 ? "Strong baseline — minor tweaks recommended" :
-                 resumeScore >= 55 ? "Solid — address gaps to improve match quality" :
-                 "Needs work — review tips on your profile"}
-              </p>
-            </div>
-          </div>
-          <ArrowUpRight className="h-4 w-4 shrink-0 text-muted-foreground transition group-hover:text-primary" />
-        </Link>
+        <ResumeGuidanceCard resumeScore={resumeScore} breakdown={resumeBreakdown} />
       )}
 
-      {/* ── Main content grid ─────────────────────────────────────── */}
+      {/* ── Skill coverage (PR 2.1) ─────────────────────────────── */}
+      <SkillCoverageCard data={skillCoverage} />
+
+      {/* ── Mobile top-matches carousel (PR 3.6) ────────────────── */}
+      <TopMatchesMobile matches={topMatchesForMobile} />
+
+      {/* ── Main content grid ───────────────────────────────────── */}
       <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
 
-        {/* Application pipeline */}
-        {(appCount ?? 0) > 0 ? (
+        {/* Application pipeline OR Stuck apps OR Get-started ladder */}
+        {stuckApps.length > 0 ? (
+          <SectionCard
+            title="Stuck applications"
+            subtitle={`Applied >${STUCK_DAYS} days ago, no status change`}
+            actionHref="/applications"
+            actionLabel="View all"
+          >
+            <ul className="space-y-2">
+              {stuckApps.slice(0, 4).map((a) => {
+                const days = Math.floor((Date.now() - new Date(a.applied_at).getTime()) / 86400000);
+                return (
+                  <li key={a.id}>
+                    <Link
+                      href={`/applications/${a.id}`}
+                      className="group flex items-center gap-3 rounded-md px-2 py-2 -mx-2 transition hover:bg-secondary/40 focus-ring"
+                    >
+                      <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-warning/10 text-warning">
+                        <AlertCircle className="h-3.5 w-3.5" />
+                      </span>
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate text-sm font-medium">{a.jobs?.title ?? "Application"}</p>
+                        <p className="truncate text-xs text-muted-foreground">{a.jobs?.companies?.name ?? "—"} · {days}d ago</p>
+                      </div>
+                      <ChevronRight className="h-3.5 w-3.5 shrink-0 text-muted-foreground transition group-hover:translate-x-0.5" />
+                    </Link>
+                  </li>
+                );
+              })}
+            </ul>
+          </SectionCard>
+        ) : (appCount ?? 0) > 0 ? (
           <SectionCard
             title="Application pipeline"
             subtitle={`${appCount} total tracked`}
@@ -396,83 +495,91 @@ export default async function DashboardPage() {
             </div>
           </SectionCard>
         ) : (
-          !allDone && (
+          !allSetupDone && (
             <SectionCard
               title="Get started"
               subtitle="Complete these steps to get your first matches"
             >
               <ol className="space-y-4">
-                {steps.map(({ done, label, href, desc }, i) => (
-                  <li key={label} className="flex items-start gap-3">
-                    <div className={`mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-xs font-semibold ${
-                      done
-                        ? "bg-primary text-primary-foreground"
-                        : i === currentStep
-                          ? "bg-primary-soft text-primary-soft-foreground ring-1 ring-primary/30"
-                          : "bg-secondary text-muted-foreground ring-1 ring-border"
-                    }`}>
-                      {done ? <CheckCircle2 className="h-3.5 w-3.5" strokeWidth={2.5} /> : <span>{i + 1}</span>}
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      {done ? (
-                        <p className="text-sm text-muted-foreground line-through">{label}</p>
-                      ) : (
-                        <Link href={href} className="group inline-flex items-center gap-1 text-sm font-medium transition hover:text-primary focus-ring rounded">
-                          {label}
-                          <ChevronRight className="h-3.5 w-3.5 opacity-0 transition group-hover:translate-x-0.5 group-hover:opacity-100" />
-                        </Link>
-                      )}
-                      <p className="mt-0.5 text-xs leading-relaxed text-muted-foreground">{desc}</p>
-                    </div>
-                  </li>
-                ))}
+                {setupSteps.map(({ done, label, href, desc }, i) => {
+                  const isCurrent = !done && setupSteps.slice(0, i).every((s) => s.done);
+                  return (
+                    <li key={label} className="flex items-start gap-3">
+                      <div className={`mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-xs font-semibold ${
+                        done
+                          ? "bg-primary text-primary-foreground"
+                          : isCurrent
+                            ? "bg-primary-soft text-primary-soft-foreground ring-1 ring-primary/30"
+                            : "bg-secondary text-muted-foreground ring-1 ring-border"
+                      }`}>
+                        {done ? <CheckCircle2 className="h-3.5 w-3.5" strokeWidth={2.5} /> : <span>{i + 1}</span>}
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        {done ? (
+                          <p className="text-sm text-muted-foreground line-through">{label}</p>
+                        ) : (
+                          <Link href={href} className="group inline-flex items-center gap-1 text-sm font-medium transition hover:text-primary focus-ring rounded">
+                            {label}
+                            <ChevronRight className="h-3.5 w-3.5 opacity-0 transition group-hover:translate-x-0.5 group-hover:opacity-100" />
+                          </Link>
+                        )}
+                        <p className="mt-0.5 text-xs leading-relaxed text-muted-foreground">{desc}</p>
+                      </div>
+                    </li>
+                  );
+                })}
               </ol>
             </SectionCard>
           )
         )}
 
-        {/* Top matches */}
+        {/* Top matches — desktop list (mobile uses the carousel above) */}
         {recentMatches.length > 0 && (
-          <SectionCard
-            title="Top matches"
-            subtitle="Ranked by AI fit score"
-            actionHref="/matches"
-            actionLabel="View all"
-          >
-            <div className="space-y-1.5">
-              {recentMatches.map((m) => {
-                const job = m.jobs;
-                const company = job?.companies;
-                const verdictTone =
-                  m.verdict === "strong_fit"    ? "text-success" :
-                  m.verdict === "stretch"       ? "text-warning" :
-                  "text-muted-foreground";
-                const verdictLabel =
-                  m.verdict === "strong_fit"    ? "Strong" :
-                  m.verdict === "stretch"       ? "Stretch" :
-                  m.verdict === "off_target"    ? "Off-target" :
-                  m.verdict === "underqualified" ? "Under" : "—";
-                return (
-                  <Link
-                    key={m.job_id}
-                    href={`/jobs/${m.job_id}`}
-                    className="group flex items-center gap-3 rounded-md px-3 py-2.5 transition hover:bg-secondary focus-ring"
-                  >
-                    <CompanyLogo name={company?.name ?? "?"} logoUrl={company?.logo_url ?? null} size={32} />
-                    <div className="min-w-0 flex-1">
-                      <p className="truncate text-sm font-medium transition group-hover:text-primary">{job?.title ?? "Role"}</p>
-                      <p className="truncate text-xs text-muted-foreground">{company?.name ?? "—"}</p>
-                    </div>
-                    <div className="flex shrink-0 flex-col items-end gap-0.5">
-                      <span className="rounded bg-secondary px-1.5 py-0.5 text-xs font-semibold tabular-nums">{Math.round(m.score)}</span>
-                      <span className={`text-[10px] font-medium ${verdictTone}`}>{verdictLabel}</span>
-                    </div>
-                  </Link>
-                );
-              })}
-            </div>
-          </SectionCard>
+          <div className="hidden lg:block">
+            <SectionCard
+              title="Top matches"
+              subtitle="Ranked by AI fit score"
+              actionHref="/matches"
+              actionLabel="View all"
+            >
+              <div className="space-y-1.5">
+                {recentMatches.map((m) => {
+                  const job = m.jobs;
+                  const company = job?.companies;
+                  const verdictTone =
+                    m.verdict === "strong_fit"    ? "text-success" :
+                    m.verdict === "stretch"       ? "text-warning" :
+                    "text-muted-foreground";
+                  const verdictLabel =
+                    m.verdict === "strong_fit"    ? "Strong" :
+                    m.verdict === "stretch"       ? "Stretch" :
+                    m.verdict === "off_target"    ? "Off-target" :
+                    m.verdict === "underqualified" ? "Under" : "—";
+                  return (
+                    <Link
+                      key={m.job_id}
+                      href={`/jobs/${m.job_id}`}
+                      className="group flex items-center gap-3 rounded-md px-3 py-2.5 transition hover:bg-secondary focus-ring"
+                    >
+                      <CompanyLogo name={company?.name ?? "?"} logoUrl={company?.logo_url ?? null} size={32} />
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate text-sm font-medium transition group-hover:text-primary">{job?.title ?? "Role"}</p>
+                        <p className="truncate text-xs text-muted-foreground">{company?.name ?? "—"}</p>
+                      </div>
+                      <div className="flex shrink-0 flex-col items-end gap-0.5">
+                        <span className="rounded bg-secondary px-1.5 py-0.5 text-xs font-semibold tabular-nums">{Math.round(m.score)}</span>
+                        <span className={`text-[10px] font-medium ${verdictTone}`}>{verdictLabel}</span>
+                      </div>
+                    </Link>
+                  );
+                })}
+              </div>
+            </SectionCard>
+          </div>
         )}
+
+        {/* Recommended companies (PR 3.3) */}
+        {recommendedCompanies.length > 0 && <RecommendedCompaniesCard companies={recommendedCompanies} />}
 
         {/* Recent activity */}
         {recentApps.length > 0 && (
@@ -505,34 +612,17 @@ export default async function DashboardPage() {
           </SectionCard>
         )}
 
-        {/* Hiring this week — real job data */}
-        {topActiveCompanies.length > 0 && (
-          <SectionCard
-            title="Hiring this week"
-            subtitle="New roles · live data"
-            actionHref="/insights"
-            actionLabel="Full report"
-            footer="Official career pages only · refreshed daily via crawler"
-          >
-            <div className="space-y-2.5">
-              {topActiveCompanies.map(({ name, slug, logo_url, count }) => (
-                <div key={slug} className="flex items-center gap-3">
-                  <CompanyLogo name={name} logoUrl={logo_url} size={28} />
-                  <span className="min-w-0 flex-1 truncate text-sm text-muted-foreground">{name}</span>
-                  <div className="w-24 overflow-hidden rounded-full bg-secondary">
-                    <div
-                      className="h-1.5 rounded-full bg-primary transition-all duration-700"
-                      style={{ width: `${(count / (topActiveCompanies[0]?.count ?? 1)) * 100}%` }}
-                    />
-                  </div>
-                  <span className="w-7 shrink-0 text-right text-xs font-semibold tabular-nums text-foreground">+{count}</span>
-                </div>
-              ))}
-            </div>
-          </SectionCard>
-        )}
+        {/* Tools you haven't tried (PR 3.4) */}
+        <ToolDiscoveryCard
+          inputs={{
+            topJobId: topMatch?.jobs?.id ?? null,
+            topJobTitle: topMatch?.jobs?.title ?? null,
+            tailoredCount: tailoredCount ?? 0,
+            memoCount: memoCount ?? 0,
+          }}
+        />
 
-        {/* Market intelligence — personalized */}
+        {/* Market intelligence (kept as-is) */}
         <SectionCard
           title="Market intelligence"
           subtitle={marketRoleLabel ?? "India product-company trends"}
@@ -564,41 +654,20 @@ export default async function DashboardPage() {
             })}
           </div>
         </SectionCard>
-
-        {/* All done */}
-        {allDone && (appCount ?? 0) === 0 && (
-          <div className="flex items-start gap-4 rounded-xl border border-success/30 bg-success/5 p-5">
-            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-success text-success-foreground">
-              <CheckCircle2 className="h-5 w-5" strokeWidth={2.5} />
-            </div>
-            <div>
-              <h2 className="font-semibold">You&apos;re set up!</h2>
-              <p className="mt-1 text-sm leading-relaxed text-muted-foreground">
-                Start tracking your applications to unlock pipeline analytics.
-              </p>
-              <Link
-                href="/applications"
-                className="mt-3 inline-flex items-center gap-1.5 text-sm font-medium text-success hover:underline focus-ring rounded"
-              >
-                Track an application <ChevronRight className="h-3.5 w-3.5" />
-              </Link>
-            </div>
-          </div>
-        )}
       </div>
 
-      {/* ── Quick links row — restrained monochrome ──────────────── */}
+      {/* ── Quick links ──────────────────────────────────────────── */}
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
         {[
           { href: "/matches",      icon: <Briefcase className="h-4 w-4" />,   label: "Browse matches" },
-          { href: "/coach",        icon: <Sparkles className="h-4 w-4" />,    label: "AI Coach" },
+          { href: "/coach",        icon: <Compass className="h-4 w-4" />,     label: "AI Coach" },
           { href: "/insights",     icon: <BarChart3 className="h-4 w-4" />,   label: "Market insights" },
           { href: "/applications", icon: <Clock className="h-4 w-4" />,       label: "Applications" },
         ].map(({ href, icon, label }) => (
           <Link
             key={href}
             href={href}
-            className="group flex items-center gap-2.5 rounded-md border border-border bg-card px-4 py-3 text-sm font-medium text-muted-foreground transition hover:border-primary/30 hover:bg-secondary hover:text-foreground focus-ring"
+            className="group flex items-center gap-2.5 rounded-md border border-border bg-card px-4 py-3 text-sm font-medium text-muted-foreground transition hover:border-primary/30 hover:bg-secondary hover:text-foreground focus-ring tap-target-sm"
           >
             <span className="shrink-0 text-primary transition group-hover:text-primary-soft-foreground">{icon}</span>
             {label}
@@ -709,9 +778,3 @@ function formatDate(iso: string) {
     return d.toLocaleDateString("en-IN", { day: "numeric", month: "short" });
   } catch { return ""; }
 }
-
-// (Sprint 1 — Item 1) The hardcoded personalizedMarketSignals() function that
-// previously lived here has been removed. Market signals are now computed
-// from the live jobs table via computeMarketSignals() in
-// @/lib/insights/market-intel — real demand counts and real week-over-week
-// trend. See Promise.all above for the data fetch.

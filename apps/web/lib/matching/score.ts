@@ -20,15 +20,24 @@
 // about marketing analytics. Title and role_function are still scored, but
 // content compatibility wins ties between similar-titled roles.
 //
-// Dimensions:
-//   Semantic JD↔Resume   0–35  (cosine on Gemini text-embedding-004)
-//   Tech (must/nice)     0–22  (must-have hits weighted 4× nice-to-have)
-//   Role Function        0–18  (still important, no longer dominant)
-//   Experience           0–12  (asymmetric: overqualified OK, under-qualified penalised)
-//   Seniority Alignment  0–7
-//   Location             0–4
-//   Compensation         0–2
+// Dimensions (Sprint 6 rebalance — dropped seniority + lpa):
+//   Semantic JD↔Resume   0–38  (cosine on Gemini text-embedding-004)
+//   Tech (must/nice)     0–24  (must-have hits weighted 4× nice-to-have)
+//   Role Function        0–20  (still important, no longer dominant)
+//   Experience           0–13  (asymmetric: overqualified OK, under-qualified penalised)
+//   Location             0–5
 // Total                  0–100
+//
+// Why we dropped seniority + lpa:
+//   - Seniority signal was double-counted with experience (years already
+//     captures it). The candidate's "seniority" field was rarely set and
+//     when set, just re-flavoured what years_experience already said.
+//   - Compensation was useless: 95%+ of JDs from the 18 product-co career
+//     pages don't post salary bands. The dimension defaulted to 1/2 on
+//     almost every match, distorting comparisons.
+//   The 9 points are redistributed proportionally to the substantive dims.
+//   The `senior_no_exp` hard cap (in applyHardCaps) still uses jdSeniority
+//   because that's a JD-side signal, not the candidate's profile field.
 
 import { analyzeTechCoverage, type TechCoverage } from "@prodmatch/shared";
 
@@ -498,14 +507,22 @@ export interface RulesScore {
   total: number; // 0–100 — AFTER hard caps applied
   /** Pre-cap sum of weighted dimensions (useful for telemetry / debugging). */
   totalRaw: number;
+  /**
+   * Sprint 6 — seniority + lpa removed. Their values remain in the type as
+   * `0` so legacy callers that destructure them keep compiling. Persisted
+   * matches.score_breakdown stays a flexible jsonb; old rows retain their
+   * shape, new rows omit those dims at the engine layer.
+   */
   breakdown: {
-    semantic: number;   // 0–35  Phase I — biggest weight
-    tech: number;       // 0–22
-    role: number;       // 0–18
-    experience: number; // 0–12
-    seniority: number;  // 0–7
-    hub: number;        // 0–4
-    lpa: number;        // 0–2
+    semantic: number;   // 0–38  Phase I — biggest weight
+    tech: number;       // 0–24
+    role: number;       // 0–20
+    experience: number; // 0–13
+    hub: number;        // 0–5
+    /** @deprecated — always 0 in new computes. Kept for back-compat. */
+    seniority: number;
+    /** @deprecated — always 0 in new computes. Kept for back-compat. */
+    lpa: number;
   };
   /** Set when the row should be hidden from the default list. */
   hardMismatch: boolean;
@@ -681,16 +698,19 @@ export function computeRulesScore(
 
   const cosine = job.semantic_cosine ?? null;
 
-  const semantic   = scoreSemanticFit(cosine);                                                   // 0–35
-  const tech       = scoreTechV3(profile.tech_stack, job.must_have_skills ?? [],
+  // Sprint 6 — scale legacy function outputs to the new dim caps. The inner
+  // functions (scoreSemanticFit, scoreTechV3, …) still return their original
+  // 0–35 / 0–22 / etc. ranges so back-compat callers stay valid; we just
+  // stretch the result here. seniority + lpa intentionally NOT included
+  // (rationale at top of file).
+  const semantic   = Math.round(scoreSemanticFit(cosine) * 38 / 35);                              // 0–38
+  const tech       = Math.round(scoreTechV3(profile.tech_stack, job.must_have_skills ?? [],
                                  job.nice_to_have_skills ?? [], job.tech_stack,
-                                 job.description ?? undefined);                                  // 0–22
-  const role       = scoreRoleFunction(profile.target_role_functions, effectiveRoleFunction);    // 0–18
-  const experience = scoreExperienceV2(profile.years_experience, yMin, yMax);                    // 0–12
-  const seniority  = scoreSeniority(profile.seniority, jdSeniority);                             // 0–7
-  const hub        = scoreHubV2(profile.preferred_hubs, job.hubs);                               // 0–4
-  const lpa        = scoreLpaV2(profile.target_lpa, job.comp_lpa_max);                           // 0–2
-  const totalRaw   = semantic + tech + role + experience + seniority + hub + lpa;
+                                 job.description ?? undefined) * 24 / 22);                        // 0–24
+  const role       = Math.round(scoreRoleFunction(profile.target_role_functions, effectiveRoleFunction) * 20 / 18); // 0–20
+  const experience = Math.round(scoreExperienceV2(profile.years_experience, yMin, yMax) * 13 / 12); // 0–13
+  const hub        = Math.round(scoreHubV2(profile.preferred_hubs, job.hubs) * 5 / 4);            // 0–5
+  const totalRaw   = semantic + tech + role + experience + hub;
 
   // Sprint 6 — Tech coverage breakdown (direct / adjacent / missing).
   // Only meaningful when the JD actually listed must-haves; otherwise null.
@@ -746,7 +766,7 @@ export function computeRulesScore(
   return {
     total: capped.total,
     totalRaw,
-    breakdown: { semantic, tech, role, experience, seniority, hub, lpa },
+    breakdown: { semantic, tech, role, experience, hub, seniority: 0, lpa: 0 },
     hardMismatch: hardMismatchReason !== null,
     hardMismatchReason,
     hardCapReason: capped.reason,

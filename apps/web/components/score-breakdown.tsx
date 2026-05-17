@@ -23,41 +23,37 @@ const HARD_CAP_NOTES: Record<string, string> = {
   senior_no_exp: "Score capped: JD targets senior+ level; <2 yrs professional experience.",
 };
 
+// Sprint 6 rebalance — seniority + lpa dropped (no scoring contribution).
+// Years experience already captures seniority signal; comp is missing on
+// 95% of JDs from the 18 product-co career pages so the lpa dim defaulted
+// to 1/2 on almost every match and distorted comparisons.
 const AXIS_META: Array<{
   key: keyof RulesScoreBreakdown;
   label: string;
   weight: number;
   hintForScore: (score: number) => string;
 }> = [
-  { key: "semantic", label: "Semantic JD ↔ resume", weight: 35,
-    hintForScore: (s) => s >= 22 ? "Tight semantic alignment between JD and resume content."
-                       : s >= 12 ? "Moderate alignment — JD overlaps your resume vocabulary."
+  { key: "semantic", label: "Semantic JD ↔ resume", weight: 38,
+    hintForScore: (s) => s >= 24 ? "Tight semantic alignment between JD and resume content."
+                       : s >= 13 ? "Moderate alignment — JD overlaps your resume vocabulary."
                        : "Weak semantic match — JD content sits far from your resume." },
-  { key: "tech",     label: "Tech stack",            weight: 22,
-    hintForScore: (s) => s >= 18 ? "Hits most must-have skills and some nice-to-haves."
-                       : s >= 12 ? "Covers core must-haves; some gaps."
+  { key: "tech",     label: "Tech stack",            weight: 24,
+    hintForScore: (s) => s >= 20 ? "Hits most must-have skills and some nice-to-haves."
+                       : s >= 13 ? "Covers core must-haves; some gaps."
                        : "Few of the JD's must-have skills are evidenced on your resume." },
-  { key: "role",     label: "Role function",         weight: 18,
-    hintForScore: (s) => s >= 18 ? "Direct match with your target role function."
-                       : s >= 10 ? "Adjacent function — credible lateral move."
+  { key: "role",     label: "Role function",         weight: 20,
+    hintForScore: (s) => s >= 20 ? "Direct match with your target role function."
+                       : s >= 11 ? "Adjacent function — credible lateral move."
                        : "Function doesn't match your stated targets." },
-  { key: "experience", label: "Experience years",    weight: 12,
-    hintForScore: (s) => s >= 11 ? "Years align cleanly with JD's stated range."
-                       : s >= 8  ? "Within range, with a small over- or under-qualification gap."
+  { key: "experience", label: "Experience years",    weight: 13,
+    hintForScore: (s) => s >= 12 ? "Years align cleanly with JD's stated range."
+                       : s >= 9  ? "Within range, with a small over- or under-qualification gap."
                        : s >= 4  ? "Notable years gap — review the JD's minimum closely."
                        : "Years gap is wide enough that ATS may auto-filter." },
-  { key: "seniority", label: "Seniority alignment",  weight: 7,
-    hintForScore: (s) => s >= 6 ? "Seniority signal matches the JD's level."
-                       : s >= 3 ? "One level off — a stretch but not disqualifying."
-                       : "Seniority mismatch — JD targets a different career band." },
-  { key: "hub",      label: "Location",              weight: 4,
-    hintForScore: (s) => s >= 4 ? "Hub matches your preferences."
+  { key: "hub",      label: "Location",              weight: 5,
+    hintForScore: (s) => s >= 5 ? "Hub matches your preferences."
                        : s >= 2 ? "Adjacent hub or remote option available."
                        : "Location not in your preferred hubs." },
-  { key: "lpa",      label: "Compensation",          weight: 2,
-    hintForScore: (s) => s >= 2 ? "JD's posted band meets your target."
-                       : s >= 1 ? "Stretch to your target — negotiable."
-                       : "Posted band below your target." },
 ];
 
 function tone(score: number, weight: number) {

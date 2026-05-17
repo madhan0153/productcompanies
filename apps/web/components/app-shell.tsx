@@ -27,11 +27,13 @@ const NAV = [
 
 type Props = {
   user: { email: string; displayName: string | null; dnascore: number | null };
+  /** Sprint 6 — Mobile bottom-nav badges. Counts of items needing attention. */
+  navBadges?: { matches?: number; applications?: number };
   banner?: React.ReactNode;
   children: React.ReactNode;
 };
 
-export function AppShell({ user, banner, children }: Props) {
+export function AppShell({ user, navBadges, banner, children }: Props) {
   const pathname = usePathname();
   const router = useRouter();
   const [open, setOpen] = useState(false);
@@ -273,7 +275,7 @@ export function AppShell({ user, banner, children }: Props) {
         </motion.main>
       </div>
 
-      <MobileBottomNav />
+      <MobileBottomNav badges={navBadges} />
       <PwaInstallPrompt />
     </div>
   );
