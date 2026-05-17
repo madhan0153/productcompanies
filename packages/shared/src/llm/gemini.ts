@@ -45,6 +45,13 @@ function maskKey(key: string): string {
 // logs alone whether 3 keys means 3× headroom or 1× with rotation theatre.
 const _firstUseLogged = new Set<number>();
 
+// Per-process set of "(modelName||keyIdx)" combos that have already logged
+// their quota-exhaustion reason. Surfaces what Google actually said the
+// first time a key+model is marked dead, then stays silent so the log
+// doesn't spam on every subsequent retry attempt that finds the combo
+// already exhausted.
+const _quotaDisabledLogged = new Set<string>();
+
 function logKeyFirstUse(keyIdx: number, modelName: string, key: string): void {
   if (_firstUseLogged.has(keyIdx)) return;
   _firstUseLogged.add(keyIdx);
@@ -109,22 +116,52 @@ export class LlmRunError extends Error {
 
 function classify(err: unknown): LlmError {
   const msg = err instanceof Error ? err.message : String(err);
-  if (/limit:\s*0/i.test(msg)) {
-    return { kind: "quota_disabled", raw: msg };
-  }
+
+  // 404 / unavailable: hard-permanent for this model name, applies to all keys.
   if (/\b404\b|not found|is not supported|is not found for API|model.*does not exist|UNSUPPORTED/i.test(msg)) {
     return { kind: "model_unavailable", raw: msg };
   }
-  if (/\b429\b|Too Many Requests|RESOURCE_EXHAUSTED/i.test(msg)) {
-    const m = msg.match(/retry in ([\d.]+)s/i) ?? msg.match(/"retryDelay":\s*"(\d+)s"/);
-    const seconds = m ? parseFloat(m[1]) : 5;
-    // Cap at 30s — anything longer and we'd rather rotate to a different key
-    // or model than block a worker.
-    return { kind: "rate_limited", retryAfterMs: Math.min(seconds * 1000, 30_000), raw: msg };
-  }
+
+  // Auth: permanent for this key, applies to all models.
   if (/\b401\b|API key not valid|PERMISSION_DENIED|API_KEY_INVALID/i.test(msg)) {
     return { kind: "auth", raw: msg };
   }
+
+  // Quota / rate limits. Differentiate three cases:
+  //
+  //   (a) True per-day exhaustion: "per day" wording or a QuotaFailure
+  //       payload with limit==0 AND quota_metric indicating "_per_day_".
+  //       Marks (key × model) dead for the rest of this run.
+  //
+  //   (b) Per-minute / TPM throttling: "per minute", "TPM", or a
+  //       retryDelay hint. Recovers — caller should sleep + retry,
+  //       NOT mark dead.
+  //
+  //   (c) "limit:0" without explicit per-day wording: ambiguous. Prefer
+  //       the transient interpretation — better to retry once than burn
+  //       the key for the run on a misclassified transient.
+  //
+  // Prior version of this code matched `/limit:\s*0/i` first and treated
+  // every match as permanent. That caused 12 healthy keys to be marked
+  // dead for the rest of the Microsoft parse in the 16:23 UTC run after
+  // a brief RPM burst — the regex fired on transient throttles too.
+  const isQuotaShaped = /\b429\b|Too Many Requests|RESOURCE_EXHAUSTED|quota/i.test(msg);
+  if (isQuotaShaped) {
+    const explicitPerDay = /per\s*day|requests?\s*per\s*day|daily quota|_per_day_/i.test(msg);
+    const explicitPerMinute = /per\s*minute|requests?\s*per\s*minute|_per_minute_|TPM|tokens.*per.*minute/i.test(msg);
+
+    // Pull a retry-after hint if Google supplied one.
+    const m = msg.match(/retry in ([\d.]+)s/i) ?? msg.match(/"retryDelay":\s*"(\d+)s"/);
+    const seconds = m ? parseFloat(m[1]) : 30;
+
+    if (explicitPerDay && !explicitPerMinute) {
+      // Permanent for this (model × key) until the next UTC day rollover.
+      return { kind: "quota_disabled", raw: msg };
+    }
+    // Everything else: rotate / wait / retry.
+    return { kind: "rate_limited", retryAfterMs: Math.min(seconds * 1000, 30_000), raw: msg };
+  }
+
   return { kind: "unknown", raw: msg };
 }
 
@@ -133,32 +170,38 @@ const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 // ── Cascades ────────────────────────────────────────────────────────────────
 //
 // IMPORTANT: Google's free-tier daily quota is per (project × pinned model
-// name). Calls to "gemini-2.5-flash" share a 20/day counter; calls to the
-// alias "gemini-flash-latest" use a SEPARATE counter and auto-route to
+// name). Calls to "gemini-2.5-flash" share one daily counter; calls to the
+// alias "gemini-flash-latest" use a SEPARATE counter that auto-routes to
 // whichever underlying model is alive. We've observed all pinned-name
 // quotas burn out in production while the -latest aliases stay responsive
-// — so the aliases are first in the cascade.
+// — aliases stay first.
 //
-// 1.5 family was removed from v1beta in May 2026 (404).
+// 2026 model availability (per Google's docs):
+//   - 1.5 family:      removed from v1beta May 2026 (404).
+//   - 2.0 family:      DEPRECATED, dropped from cascade.
+//   - 2.5 family:      stable production.
+//   - 3.x family:      preview / stable, SEPARATE quota pool from 2.5.
+//
+// gemini-3-flash-preview was added because it's quota-independent from the
+// 2.5 family and the -latest aliases. When the 2.5 daily quota is burned
+// for a key, the 3.x preview pool is still untouched.
 //
 // HEAVY_MODELS — used for resume parsing (PDF input, structured output).
 const HEAVY_MODELS = [
   "gemini-flash-latest",
   "gemini-flash-lite-latest",
+  "gemini-3-flash-preview",
   "gemini-2.5-flash",
-  "gemini-2.0-flash",
   "gemini-2.5-flash-lite",
-  "gemini-2.0-flash-lite",
 ] as const;
 
 // LIGHT_MODELS — used for high-volume JD parse / Fit Cards / explanations.
 const LIGHT_MODELS = [
   "gemini-flash-lite-latest",
   "gemini-flash-latest",
+  "gemini-3-flash-preview",
   "gemini-2.5-flash-lite",
-  "gemini-2.0-flash-lite",
   "gemini-2.5-flash",
-  "gemini-2.0-flash",
 ] as const;
 
 export type ModelTier = "heavy" | "light";
@@ -253,7 +296,20 @@ export async function runWithRetry<T>(
         // before, one quota_disabled response would break the entire key
         // loop, so we'd repeatedly hammer key 0 only.
         if (classified.kind === "quota_disabled") {
-          exhausted.add(exhaustedKey(modelName, keyIdx));
+          // First time this (key × model) is marked dead in this process,
+          // log the raw Google error so the next run can be diagnosed
+          // from logs alone. Truncated to 240 chars to keep log lines
+          // readable; the full classification reason is included.
+          const combo = exhaustedKey(modelName, keyIdx);
+          if (!_quotaDisabledLogged.has(combo)) {
+            _quotaDisabledLogged.add(combo);
+            // eslint-disable-next-line no-console
+            console.log(
+              `[gemini-key] key #${keyIdx} (${maskKey(key)}) × ${modelName}: ` +
+              `marked exhausted (RPD). reason="${classified.raw.slice(0, 240).replace(/\s+/g, " ")}"`,
+            );
+          }
+          exhausted.add(combo);
           continue;
         }
 

@@ -185,8 +185,16 @@ const PARSE_BUDGET_PER_RUN = (() => {
 // QUOTA_WINDOW / MIN_OK_BEFORE_BAIL catch (B) — the rolling-window check
 // (full window of quota errors after enough successes to prove keys ARE
 // working). Larger window tolerates transient RPM bursts that recover.
-const COLD_BAIL_AFTER = 18;     // ~6 attempts per key with 3 keys = enough signal
-const QUOTA_WINDOW = 30;
+// The bail constants scale with key count. With 3 keys, 18 attempts is
+// enough signal that quotas are dead. With 12 keys, you need a wider
+// window — 30 outcomes can fill with transient RPM throttles before the
+// cascade has even tried every model. 16:23 UTC run on Microsoft showed
+// this exact symptom: 12 keys × momentary RPM blip filled the 30-window
+// and triggered a false mid-run bail at 51 parses when keys were still
+// healthy. Scale both windows by NUM_KEYS so 12 keys gets ~3× the headroom
+// of 3 keys.
+const COLD_BAIL_AFTER = Math.max(18, NUM_KEYS * 6);
+const QUOTA_WINDOW    = Math.max(30, NUM_KEYS * 10);
 const MIN_OK_BEFORE_BAIL = 10;
 
 // Cross-company quota state — persists across companies in a single
