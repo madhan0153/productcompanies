@@ -52,6 +52,47 @@ const _firstUseLogged = new Set<number>();
 // already exhausted.
 const _quotaDisabledLogged = new Set<string>();
 
+// PROCESS-WIDE exhaustion state — knowledge that a specific (model × key)
+// pair is dead-for-the-run is shared across ALL runWithRetry calls and
+// ALL worker pool members. Before this was per-call (rebuilt each call),
+// so worker 0 would re-discover its dead primary key on every JD it
+// picked up: a wasted 429 round-trip per JD. Module-level Set means once
+// any call marks a combo dead, every other call skips it in O(1).
+//
+// Daily quota resets are calendar-day events at Google's tz; the GitHub
+// Actions process exits in ≤6h, so we never need to un-exhaust within
+// a single run. Process exit clears the state.
+const _processExhausted = new Set<string>(); // "modelName||keyIdx"
+const exhaustedKey = (m: string, i: number) => `${m}||${i}`;
+
+// Per-process tracker for "this key has been exhausted on EVERY model in
+// some cascade" — once logged, surfaces a single line saying the key is
+// fully cooked. Helps the operator see the total wipeout at a glance
+// instead of inferring from N "model × key" lines.
+const _fullyDeadKeysLogged = new Set<number>();
+function maybeLogFullyDeadKey(keyIdx: number, cascade: readonly string[], key: string): void {
+  if (_fullyDeadKeysLogged.has(keyIdx)) return;
+  const allDead = cascade.every((m) => _processExhausted.has(exhaustedKey(m, keyIdx)));
+  if (!allDead) return;
+  _fullyDeadKeysLogged.add(keyIdx);
+  // eslint-disable-next-line no-console
+  console.log(
+    `[gemini-key] key #${keyIdx} (${maskKey(key)}) is fully exhausted across ` +
+    `all ${cascade.length} models in this tier — skipping for the rest of this run`,
+  );
+}
+
+/**
+ * Resets the process-wide exhaustion + first-use state. Intended for tests;
+ * never needed in normal runs (process exit clears everything).
+ */
+export function _resetGeminiRuntimeState(): void {
+  _processExhausted.clear();
+  _quotaDisabledLogged.clear();
+  _firstUseLogged.clear();
+  _fullyDeadKeysLogged.clear();
+}
+
 function logKeyFirstUse(keyIdx: number, modelName: string, key: string): void {
   if (_firstUseLogged.has(keyIdx)) return;
   _firstUseLogged.add(keyIdx);
@@ -255,12 +296,12 @@ export async function runWithRetry<T>(
   let totalWaited = 0;
   let lastError: LlmError | null = null;
 
-  // Track which (model × key) combinations have exhausted daily quota so we
-  // don't retry them across model loops. quota_disabled is per-key-per-model
-  // (Gemini's daily limit is keyed by project × pinned-model), so if model A
-  // returns quota_disabled with key 1, model B with key 1 might still work.
-  const exhausted = new Set<string>(); // "modelName||keyIdx"
-  const exhaustedKey = (m: string, i: number) => `${m}||${i}`;
+  // Knowledge of which (model × key) combos are dead is shared across ALL
+  // runWithRetry calls in this process — _processExhausted is module-level.
+  // The previous code declared `exhausted = new Set()` here per-call, which
+  // meant every JD parse rediscovered the same dead keys via 429 round-trips.
+  // With 12 workers × 100 JDs and one early-dying key, that wasted ~50-100
+  // requests. Now: first call learns it, all subsequent calls skip in O(1).
 
   for (const modelName of cascade) {
     let modelUnavailable = false;
@@ -268,7 +309,7 @@ export async function runWithRetry<T>(
 
     for (let attempt = 0; attempt < keys.length; attempt++) {
       const keyIdx = (startIdx + attempt) % keys.length;
-      if (exhausted.has(exhaustedKey(modelName, keyIdx))) continue;
+      if (_processExhausted.has(exhaustedKey(modelName, keyIdx))) continue;
 
       const key = keys[keyIdx];
       const model = client(key).getGenerativeModel({ model: modelName });
@@ -286,7 +327,8 @@ export async function runWithRetry<T>(
 
         // AUTH = permanent error on this key; skip it for ALL models.
         if (classified.kind === "auth") {
-          for (const m of cascade) exhausted.add(exhaustedKey(m, keyIdx));
+          for (const m of cascade) _processExhausted.add(exhaustedKey(m, keyIdx));
+          maybeLogFullyDeadKey(keyIdx, cascade, key);
           continue; // try next key
         }
 
@@ -309,7 +351,10 @@ export async function runWithRetry<T>(
               `marked exhausted (RPD). reason="${classified.raw.slice(0, 240).replace(/\s+/g, " ")}"`,
             );
           }
-          exhausted.add(combo);
+          _processExhausted.add(combo);
+          // Once this combo dies, check if the WHOLE key is now fully
+          // exhausted across the cascade and surface a summary line.
+          maybeLogFullyDeadKey(keyIdx, cascade, key);
           continue;
         }
 
@@ -317,7 +362,7 @@ export async function runWithRetry<T>(
         // other keys on this model.
         if (classified.kind === "model_unavailable") {
           modelUnavailable = true;
-          for (let i = 0; i < keys.length; i++) exhausted.add(exhaustedKey(modelName, i));
+          for (let i = 0; i < keys.length; i++) _processExhausted.add(exhaustedKey(modelName, i));
           break;
         }
 
