@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
-import { ExternalLink, StickyNote, ChevronRight, BookOpen, CalendarClock, Download, AlertCircle } from "lucide-react";
+import { ExternalLink, StickyNote, ChevronRight, BookOpen, CalendarClock, Download, AlertCircle, Trash2 } from "lucide-react";
 import Link from "next/link";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { CompanyLogo } from "@/components/company-logo";
@@ -14,13 +14,14 @@ export const metadata: Metadata = { title: "Applications" };
 
 type AppStatus = "saved" | "applied" | "interviewing" | "offer" | "rejected" | "withdrawn";
 
-const STATUS_COLORS: Record<AppStatus, string> = {
-  saved: "bg-sky-400/10 text-sky-400 border-sky-400/20",
-  applied: "bg-violet-400/10 text-violet-400 border-violet-400/20",
-  interviewing: "bg-amber-400/10 text-amber-400 border-amber-400/20",
-  offer: "bg-emerald-400/10 text-emerald-400 border-emerald-400/20",
-  rejected: "bg-rose-400/10 text-rose-400 border-rose-400/20",
-  withdrawn: "bg-zinc-400/10 text-zinc-400 border-zinc-400/20",
+// Semantic status palette — every page in the app uses these same six mappings.
+const STATUS_TONE: Record<AppStatus, string> = {
+  saved:        "bg-primary-soft text-primary-soft-foreground border-primary/20",
+  applied:      "bg-primary-soft text-primary-soft-foreground border-primary/20",
+  interviewing: "bg-warning/10 text-warning border-warning/20",
+  offer:        "bg-success/10 text-success border-success/20",
+  rejected:     "bg-destructive/10 text-destructive border-destructive/20",
+  withdrawn:    "bg-muted text-muted-foreground border-border",
 };
 
 const STATUS_TABS: AppStatus[] = ["saved", "applied", "interviewing", "offer", "rejected", "withdrawn"];
@@ -58,8 +59,6 @@ export default async function ApplicationsPage({
       .select("id, status, applied_at, notes, next_action_at, created_at, job_id, jobs(id, title, apply_url, companies(name, slug, logo_url))")
       .eq("user_id", user.id)
       .order("created_at", { ascending: false }),
-    // Query active jobs directly so the "Add application" modal always has options,
-    // even before the user computes their first matches.
     supabase.from("jobs")
       .select("id, title, companies(name)")
       .eq("is_active", true)
@@ -73,15 +72,12 @@ export default async function ApplicationsPage({
     ? apps.filter((a) => a.status === activeStatus)
     : apps;
 
-  // Jobs list for the add form — sourced from all active jobs (not just matches)
   type JobForForm = { id: string; title: string; companies: { name: string } | null };
   const jobsForForm = ((rawJobs as unknown as JobForForm[]) ?? []).map((j) => ({
     id: j.id,
     title: j.title,
     company: j.companies?.name ?? "",
   }));
-
-
 
   const counts = apps.reduce<Record<string, number>>((acc, a) => {
     acc[a.status] = (acc[a.status] ?? 0) + 1;
@@ -101,23 +97,25 @@ export default async function ApplicationsPage({
   const upcoming = followups.filter((f) => f.when >= now + day && f.when < now + 14 * day);
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 pb-6">
       {/* Header */}
-      <div className="flex flex-wrap items-start justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-semibold">Applications</h1>
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div className="min-w-0">
+          <h1 className="text-2xl font-semibold tracking-tight">Applications</h1>
           <p className="mt-1 text-sm text-muted-foreground">
             {apps.length > 0 ? `${apps.length} application${apps.length !== 1 ? "s" : ""} tracked` : "Start tracking your job applications"}
           </p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex shrink-0 items-center gap-2">
           {followups.length > 0 && (
             <a
               href="/api/applications/calendar"
-              className="inline-flex items-center gap-1.5 rounded-xl border border-border px-3 py-2 text-xs text-muted-foreground transition hover:border-primary/40 hover:text-foreground"
+              className="press tap-target-sm inline-flex items-center gap-1.5 rounded-md border border-border bg-card px-3 py-1.5 text-xs font-medium text-muted-foreground transition hover:border-primary/40 hover:text-foreground focus-ring"
               title="Download an iCalendar file with all your follow-ups"
             >
-              <Download className="h-3.5 w-3.5" /> Subscribe (.ics)
+              <Download className="h-3.5 w-3.5" />
+              <span className="hidden sm:inline">Subscribe (.ics)</span>
+              <span className="sm:hidden">ICS</span>
             </a>
           )}
           <AddApplicationButton jobs={jobsForForm} />
@@ -126,12 +124,16 @@ export default async function ApplicationsPage({
 
       {/* Follow-ups overview */}
       {(overdue.length + dueToday.length + upcoming.length) > 0 && (
-        <section className="rounded-2xl border border-border bg-card/40 p-5 lift">
-          <header className="mb-3 flex items-center gap-2">
+        <section className="rounded-xl border border-border bg-card p-5">
+          <header className="mb-3 flex flex-wrap items-center gap-2">
             <CalendarClock className="h-4 w-4 text-primary" />
-            <h2 className="font-display text-sm font-semibold">Follow-ups</h2>
+            <h2 className="text-sm font-semibold">Follow-ups</h2>
             <span className="ml-auto text-xs text-muted-foreground">
-              {overdue.length} overdue · {dueToday.length} today · {upcoming.length} this fortnight
+              <span className={overdue.length > 0 ? "text-destructive" : ""}>{overdue.length} overdue</span>
+              {" · "}
+              <span className={dueToday.length > 0 ? "text-warning" : ""}>{dueToday.length} today</span>
+              {" · "}
+              {upcoming.length} this fortnight
             </span>
           </header>
           <ul className="grid grid-cols-1 gap-2 lg:grid-cols-2">
@@ -140,31 +142,29 @@ export default async function ApplicationsPage({
               const company = job?.companies;
               const isOverdue = when < now - day;
               const isToday = when >= now - day && when < now + day;
+              const tone = isOverdue
+                ? "border-destructive/30 bg-destructive/5"
+                : isToday
+                  ? "border-warning/30 bg-warning/5"
+                  : "border-border bg-secondary/40";
+              const timeTone = isOverdue ? "text-destructive" : isToday ? "text-warning" : "text-muted-foreground";
               return (
                 <li
                   key={a.id}
-                  className={`flex items-center gap-3 rounded-xl border px-3 py-2.5 text-sm ${
-                    isOverdue
-                      ? "border-rose-500/30 bg-rose-500/5"
-                      : isToday
-                        ? "border-amber-500/30 bg-amber-500/5"
-                        : "border-border bg-card/60"
-                  }`}
+                  className={`flex items-center gap-3 rounded-lg border px-3 py-2.5 text-sm ${tone}`}
                 >
                   <CompanyLogo name={company?.name ?? "?"} logoUrl={company?.logo_url ?? null} size={28} />
                   <div className="min-w-0 flex-1">
                     <p className="truncate font-medium">{job?.title ?? "Role"}</p>
                     <p className="truncate text-xs text-muted-foreground">{company?.name ?? ""}</p>
                   </div>
-                  <span className={`shrink-0 inline-flex items-center gap-1 text-xs ${
-                    isOverdue ? "text-rose-400" : isToday ? "text-amber-400" : "text-muted-foreground"
-                  }`}>
+                  <span className={`inline-flex shrink-0 items-center gap-1 text-xs font-medium ${timeTone}`}>
                     {isOverdue && <AlertCircle className="h-3 w-3" />}
                     {formatRelative(a.next_action_at!)}
                   </span>
                   <Link
                     href={`/applications/${a.id}`}
-                    className="shrink-0 rounded-lg border border-border px-2 py-0.5 text-[11px] text-muted-foreground transition hover:border-primary/40 hover:text-foreground"
+                    className="press tap-target-sm shrink-0 rounded-md border border-border bg-card px-2 py-1 text-[11px] font-medium text-muted-foreground transition hover:border-primary/40 hover:text-foreground focus-ring"
                   >
                     Open
                   </Link>
@@ -177,7 +177,7 @@ export default async function ApplicationsPage({
 
       {/* Status tabs */}
       {apps.length > 0 && (
-        <div className="flex flex-wrap gap-2">
+        <div className="no-scrollbar -mx-1 flex gap-2 overflow-x-auto px-1 pb-1 sm:flex-wrap sm:overflow-visible">
           <TabChip href="/applications" active={!activeStatus} label="All" count={apps.length} />
           {STATUS_TABS.filter((s) => (counts[s] ?? 0) > 0).map((s) => (
             <TabChip
@@ -203,7 +203,7 @@ export default async function ApplicationsPage({
             return (
               <div
                 key={app.id}
-                className="group rounded-2xl border border-border bg-card/40 p-5 lift hover:border-primary/30 hover:bg-card/60"
+                className="group rounded-xl border border-border bg-card p-4 transition hover:border-primary/30 hover:bg-secondary/40 sm:p-5"
               >
                 <div className="flex flex-wrap items-start justify-between gap-4">
                   <div className="flex min-w-0 flex-1 items-start gap-3">
@@ -213,9 +213,9 @@ export default async function ApplicationsPage({
                         <span className="text-xs text-muted-foreground">{companyName}</span>
                         <StatusBadge status={app.status} />
                       </div>
-                      <h3 className="font-medium leading-snug">
+                      <h3 className="font-semibold leading-snug">
                         {job ? (
-                          <Link href={`/jobs/${job.id}`} className="hover:text-primary transition">
+                          <Link href={`/jobs/${job.id}`} className="transition hover:text-primary focus-ring rounded">
                             {title}
                           </Link>
                         ) : title}
@@ -223,7 +223,7 @@ export default async function ApplicationsPage({
                       <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground">
                         {app.applied_at && <span>Applied {formatDate(app.applied_at)}</span>}
                         {app.next_action_at && (
-                          <span className="text-amber-400">Follow up {formatDate(app.next_action_at)}</span>
+                          <span className="text-warning">Follow up {formatDate(app.next_action_at)}</span>
                         )}
                         {app.notes && (
                           <span className="flex items-center gap-1">
@@ -235,36 +235,36 @@ export default async function ApplicationsPage({
                   </div>
 
                   {/* Actions */}
-                  <div className="flex items-center gap-2">
+                  <div className="flex shrink-0 flex-wrap items-center gap-2">
                     {job?.apply_url && (
                       <a
                         href={job.apply_url}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="flex items-center gap-1 rounded-lg border border-border px-2.5 py-1.5 text-xs text-muted-foreground transition hover:border-primary/40 hover:text-foreground"
+                        className="press tap-target-sm inline-flex items-center gap-1 rounded-md border border-border bg-card px-2.5 py-1.5 text-xs font-medium text-muted-foreground transition hover:border-primary/40 hover:text-foreground focus-ring"
                       >
                         <ExternalLink className="h-3 w-3" /> Apply
                       </a>
                     )}
                     <Link
                       href={`/applications/${app.id}`}
-                      className="flex items-center gap-1 rounded-lg border border-border px-2.5 py-1.5 text-xs text-muted-foreground transition hover:border-primary/40 hover:text-foreground"
+                      className="press tap-target-sm inline-flex items-center gap-1 rounded-md border border-border bg-card px-2.5 py-1.5 text-xs font-medium text-muted-foreground transition hover:border-primary/40 hover:text-foreground focus-ring"
                     >
                       Notes <ChevronRight className="h-3 w-3" />
                     </Link>
                   </div>
                 </div>
 
-                {/* Quick status update — collapses to a select on mobile, chips on desktop */}
+                {/* Quick status update */}
                 <div className="mt-4 flex flex-wrap items-center gap-2 border-t border-border pt-3">
                   <StatusActions appId={app.id} currentStatus={app.status} />
                   <form action={deleteApplication} className="ml-auto">
                     <input type="hidden" name="app_id" value={app.id} />
                     <button
                       type="submit"
-                      className="rounded-lg border border-rose-500/20 px-2 py-0.5 text-xs text-rose-400 transition hover:bg-rose-500/10"
+                      className="press tap-target-sm inline-flex items-center gap-1 rounded-md border border-destructive/20 px-2.5 py-1 text-xs font-medium text-destructive transition hover:bg-destructive/10 focus-ring"
                     >
-                      Delete
+                      <Trash2 className="h-3 w-3" /> Delete
                     </button>
                   </form>
                 </div>
@@ -293,7 +293,7 @@ export default async function ApplicationsPage({
 
 function StatusBadge({ status }: { status: AppStatus }) {
   return (
-    <span className={`rounded-full border px-2 py-0.5 text-xs font-medium ${STATUS_COLORS[status]}`}>
+    <span className={`rounded-full border px-2 py-0.5 text-[11px] font-medium capitalize ${STATUS_TONE[status]}`}>
       {status}
     </span>
   );
@@ -304,14 +304,14 @@ function TabChip({ href, active, label, count }: { href: string; active: boolean
     <Link
       href={href}
       className={[
-        "flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-medium transition",
+        "press tap-target-sm inline-flex shrink-0 items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-medium transition focus-ring",
         active
-          ? "border-primary bg-primary/10 text-primary"
-          : "border-border text-muted-foreground hover:border-primary/40 hover:text-foreground",
+          ? "border-primary bg-primary text-primary-foreground"
+          : "border-border bg-card text-muted-foreground hover:border-primary/40 hover:text-foreground",
       ].join(" ")}
     >
       {label}
-      <span className={`rounded-full px-1.5 py-0.5 text-[10px] tabular-nums ${active ? "bg-primary/20" : "bg-secondary"}`}>
+      <span className={`rounded-full px-1.5 py-0.5 text-[10px] tabular-nums ${active ? "bg-primary-foreground/15 text-primary-foreground" : "bg-secondary text-muted-foreground"}`}>
         {count}
       </span>
     </Link>

@@ -42,17 +42,17 @@ export async function FreshnessBanner() {
   const ago = formatAgo(finishedAt);
 
   return (
-    <div className="flex items-center justify-between gap-4 border-b border-border/50 bg-card/60 px-4 py-1.5 text-xs text-muted-foreground backdrop-blur">
+    <div className="flex items-center justify-between gap-4 border-b border-border bg-secondary/40 px-4 py-1.5 text-xs text-muted-foreground">
       <div className="flex items-center gap-2.5">
         <span className="relative flex h-1.5 w-1.5 shrink-0">
-          <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400/60" aria-hidden />
-          <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-emerald-400" aria-hidden />
+          <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-success/60" aria-hidden />
+          <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-success" aria-hidden />
         </span>
-        <Database className="h-3 w-3 text-emerald-400/70" aria-hidden />
+        <Database className="h-3 w-3 text-success/80" aria-hidden />
         <span>
           Refreshed <span className="font-medium text-foreground">{ago}</span>
           {(companiesCovered ?? 0) > 0 && <> · <span className="text-foreground/60">{companiesCovered} companies</span></>}
-          {(newToday ?? 0) > 0 && <> · <span className="text-emerald-400 font-medium">+{newToday} new today</span></>}
+          {(newToday ?? 0) > 0 && <> · <span className="font-medium text-success">+{newToday} new today</span></>}
           <span className="ml-2 opacity-50">· Official career pages only</span>
         </span>
       </div>

@@ -19,9 +19,8 @@ type Props = {
   className?: string;
 };
 
-// Unified score ring with 3 size variants. Animates the dash from 0 to score
-// on mount (CSS keyframe) so every ring on the page feels deliberate.
-// Score-banded color: emerald 75+, amber 55+, neutral otherwise.
+// Unified score ring — three size variants. Animates from 0 on mount.
+// Score-banded color via semantic tokens: success ≥75, warning ≥55, muted otherwise.
 export function ScoreRing({ score, size = "md", showLabel = true, className }: Props) {
   const reduce = useReducedMotion();
   const [mounted, setMounted] = useState(false);
@@ -34,20 +33,13 @@ export function ScoreRing({ score, size = "md", showLabel = true, className }: P
   const offset = circ - (clamped / 100) * circ;
 
   const tone =
-    clamped >= 75 ? { stroke: "stroke-emerald-400", text: "text-emerald-400" } :
-    clamped >= 55 ? { stroke: "stroke-amber-400",   text: "text-amber-400" } :
+    clamped >= 75 ? { stroke: "stroke-success", text: "text-success" } :
+    clamped >= 55 ? { stroke: "stroke-warning", text: "text-warning" } :
                     { stroke: "stroke-muted-foreground", text: "text-muted-foreground" };
 
   return (
     <div className={cn("flex shrink-0 flex-col items-center gap-1", className)}>
       <div className="relative" style={{ width: dim.box, height: dim.box }}>
-        {/* Faint glow halo for high scores */}
-        {clamped >= 75 && (
-          <div
-            aria-hidden
-            className="absolute inset-0 rounded-full bg-emerald-400/15 blur-xl"
-          />
-        )}
         <svg
           width={dim.box}
           height={dim.box}

@@ -80,7 +80,7 @@ export function ResumeUpload({ hasExisting, existingRole, existingDnaScore }: Pr
             animate={{ opacity: 1, scale: 1 }}
             exit={{ opacity: 0, scale: 0.98 }}
             transition={{ duration: 0.3 }}
-            className="overflow-hidden rounded-2xl border border-primary/30 bg-gradient-to-br from-primary/8 via-primary/4 to-transparent p-6"
+            className="overflow-hidden rounded-xl border border-primary/30 bg-primary-soft p-5 sm:p-6"
           >
             <div className="mb-5 flex items-center justify-between">
               <div>
@@ -101,9 +101,9 @@ export function ResumeUpload({ hasExisting, existingRole, existingDnaScore }: Pr
                 return (
                   <div key={step.label} className="flex items-center gap-3">
                     <div className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full transition-all ${
-                      isDone ? "bg-emerald-400/20 text-emerald-400" :
-                      isActive ? "bg-primary/20 text-primary" :
-                      "bg-secondary/50 text-muted-foreground/40"
+                      isDone ? "bg-success/15 text-success" :
+                      isActive ? "bg-primary-soft text-primary-soft-foreground" :
+                      "bg-secondary text-muted-foreground/50"
                     }`}>
                       {isDone ? (
                         <CheckCircle2 className="h-3.5 w-3.5" />
@@ -169,10 +169,10 @@ export function ResumeUpload({ hasExisting, existingRole, existingDnaScore }: Pr
               onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") inputRef.current?.click(); }}
               aria-label="Upload resume PDF"
               className={[
-                "flex cursor-pointer flex-col items-center justify-center gap-4 rounded-2xl border-2 border-dashed py-12 transition",
+                "flex cursor-pointer flex-col items-center justify-center gap-4 rounded-xl border-2 border-dashed py-10 transition sm:py-12",
                 dragging
-                  ? "border-primary bg-primary/5"
-                  : "border-border/60 hover:border-primary/40 hover:bg-secondary/20",
+                  ? "border-primary bg-primary-soft"
+                  : "border-border hover:border-primary/40 hover:bg-secondary/40",
               ].join(" ")}
             >
               <input
@@ -182,8 +182,8 @@ export function ResumeUpload({ hasExisting, existingRole, existingDnaScore }: Pr
                 className="sr-only"
                 onChange={(e) => { const f = e.target.files?.[0]; if (f) onFile(f); }}
               />
-              <div className={`flex h-14 w-14 items-center justify-center rounded-2xl transition ${
-                dragging ? "bg-primary/20 text-primary" : "bg-secondary/60 text-muted-foreground"
+              <div className={`flex h-14 w-14 items-center justify-center rounded-xl transition ${
+                dragging ? "bg-primary text-primary-foreground" : "bg-secondary text-muted-foreground"
               }`}>
                 <Upload className="h-6 w-6" />
               </div>
@@ -215,7 +215,7 @@ export function ResumeUpload({ hasExisting, existingRole, existingDnaScore }: Pr
             className={[
               "flex items-start gap-3 rounded-xl border p-4",
               result.ok
-                ? "border-emerald-500/30 bg-emerald-500/5 text-emerald-400"
+                ? "border-success/30 bg-success/5 text-success"
                 : "border-destructive/30 bg-destructive/5 text-destructive",
             ].join(" ")}
           >
@@ -227,16 +227,16 @@ export function ResumeUpload({ hasExisting, existingRole, existingDnaScore }: Pr
             <div className="text-sm">
               {result.ok ? (
                 <>
-                  <p className="font-semibold text-emerald-300">Resume parsed successfully!</p>
-                  <p className="mt-1 text-xs text-emerald-400/80">
+                  <p className="font-semibold text-success">Resume parsed successfully!</p>
+                  <p className="mt-1 text-xs text-success/80">
                     Role: {result.role} · {result.years}y exp · {result.techCount} technologies detected
                   </p>
-                  <p className="mt-0.5 text-xs text-emerald-400/80">
+                  <p className="mt-0.5 text-xs text-success/80">
                     Product DNA score: <strong>{result.dnaScore}/100</strong>
                   </p>
                   <a
                     href="/matches"
-                    className="mt-3 inline-flex items-center gap-1.5 rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-3 py-1.5 text-xs font-semibold text-emerald-300 transition hover:bg-emerald-500/20"
+                    className="press tap-target-sm mt-3 inline-flex items-center gap-1.5 rounded-md border border-success/30 bg-success/10 px-3 py-1.5 text-xs font-semibold text-success transition hover:bg-success/20 focus-ring"
                   >
                     <Zap className="h-3 w-3" /> Compute matches now
                   </a>

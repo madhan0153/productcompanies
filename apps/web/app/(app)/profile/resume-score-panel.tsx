@@ -5,10 +5,9 @@ import { motion, useReducedMotion } from "framer-motion";
 import { RefreshCw, Loader2, Lightbulb, Gauge, ChevronDown, ChevronUp } from "lucide-react";
 import { refreshResumeScore } from "./actions";
 
-// Phase G — Resume Score panel.
-// Standalone from match score: answers "is my resume any good for what I'm
-// targeting?" Five weighted dimensions, three actionable tips, grounded in
-// LIVE demand from the 18 approved companies (not generic ATS rules).
+// Resume Score panel — answers "is my resume any good for what I'm targeting?"
+// Five weighted dimensions, three actionable tips, grounded in LIVE demand
+// from the 18 approved companies (not generic ATS rules).
 
 export interface ResumeScorePanelData {
   score: number | null;
@@ -37,19 +36,19 @@ export function ResumeScorePanel({ score, breakdown, tips, scoredAt }: ResumeSco
     return (
       <section
         id="resume-score"
-        className="rounded-2xl border border-dashed border-border bg-card/30 p-6"
+        className="rounded-xl border border-dashed border-border bg-secondary/30 p-5"
       >
-        <div className="flex items-center gap-3">
-          <Gauge className="h-5 w-5 text-muted-foreground" />
-          <div className="flex-1">
-            <h2 className="text-sm font-medium">Resume score</h2>
-            <p className="mt-0.5 text-xs text-muted-foreground">
+        <div className="flex items-start gap-3">
+          <Gauge className="mt-0.5 h-5 w-5 shrink-0 text-muted-foreground" />
+          <div className="min-w-0 flex-1">
+            <h2 className="text-sm font-semibold">Resume score</h2>
+            <p className="mt-0.5 text-xs leading-relaxed text-muted-foreground">
               Compute your score against live demand from the 18 approved companies.
             </p>
           </div>
           <RefreshButton
             pending={pending}
-            label="Compute score"
+            label="Compute"
             onClick={() => {
               setError(null);
               start(async () => {
@@ -59,15 +58,15 @@ export function ResumeScorePanel({ score, breakdown, tips, scoredAt }: ResumeSco
             }}
           />
         </div>
-        {error && <p className="mt-3 text-xs text-rose-400">{error}</p>}
+        {error && <p className="mt-3 text-xs text-destructive">{error}</p>}
       </section>
     );
   }
 
   const tone =
-    score >= 80 ? "from-emerald-500/15 via-emerald-500/5 to-transparent text-emerald-400 border-emerald-500/30" :
-    score >= 60 ? "from-amber-500/15 via-amber-500/5 to-transparent text-amber-400 border-amber-500/30" :
-                  "from-rose-500/15 via-rose-500/5 to-transparent text-rose-400 border-rose-500/30";
+    score >= 80 ? { text: "text-success", border: "border-success/30", bg: "bg-success/5" } :
+    score >= 60 ? { text: "text-warning", border: "border-warning/30", bg: "bg-warning/5" } :
+                  { text: "text-destructive", border: "border-destructive/30", bg: "bg-destructive/5" };
 
   const grade =
     score >= 85 ? "Application-ready" :
@@ -81,19 +80,17 @@ export function ResumeScorePanel({ score, breakdown, tips, scoredAt }: ResumeSco
       initial={reduce ? {} : { opacity: 0, y: 6 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
-      className={`relative overflow-hidden rounded-2xl border bg-gradient-to-br ${tone} bg-card/50 p-6 elev-1 backdrop-blur`}
+      className={`relative overflow-hidden rounded-xl border ${tone.border} ${tone.bg} p-5 sm:p-6`}
     >
-      <div aria-hidden className="pointer-events-none absolute -top-12 -right-12 h-44 w-44 rounded-full bg-primary/10 blur-3xl" />
-
-      <header className="relative flex flex-wrap items-center justify-between gap-4">
+      <header className="flex flex-wrap items-center justify-between gap-4">
         <div className="flex items-center gap-4">
-          <div className="flex h-16 w-16 items-center justify-center rounded-2xl border border-current/30 bg-card/60 backdrop-blur">
-            <span className="text-2xl font-bold tabular-nums">{score}</span>
+          <div className={`flex h-14 w-14 shrink-0 items-center justify-center rounded-xl border ${tone.border} bg-card ${tone.text}`}>
+            <span className="text-xl font-bold tabular-nums">{score}</span>
           </div>
-          <div>
-            <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">Resume strength</p>
-            <p className="font-display text-lg font-semibold">{grade}</p>
-            <p className="text-xs text-muted-foreground">
+          <div className="min-w-0">
+            <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Resume strength</p>
+            <p className={`text-lg font-semibold ${tone.text}`}>{grade}</p>
+            <p className="text-xs leading-relaxed text-muted-foreground">
               {scoredAt ? `Updated ${formatDate(scoredAt)}` : ""} · grounded in live demand from your 18 target companies
             </p>
           </div>
@@ -112,25 +109,25 @@ export function ResumeScorePanel({ score, breakdown, tips, scoredAt }: ResumeSco
         />
       </header>
 
-      {error && <p className="relative mt-3 text-xs text-rose-400">{error}</p>}
+      {error && <p className="mt-3 text-xs text-destructive">{error}</p>}
 
       {/* Tips — always visible, the actionable part */}
       {tips && tips.length > 0 && (
-        <div className="relative mt-5">
+        <div className="mt-5">
           <header className="mb-3 flex items-center gap-2">
             <Lightbulb className="h-4 w-4 text-primary" />
-            <h3 className="font-display text-sm font-semibold">3 highest-impact tweaks</h3>
+            <h3 className="text-sm font-semibold">3 highest-impact tweaks</h3>
           </header>
           <ol className="space-y-2.5">
             {tips.map((t, i) => (
               <li
                 key={i}
-                className="flex items-start gap-3 rounded-xl border border-border bg-card/60 p-4"
+                className="flex items-start gap-3 rounded-xl border border-border bg-card p-4"
               >
-                <span className="mt-0.5 inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-primary/15 text-[11px] font-bold text-primary">
+                <span className="mt-0.5 inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-primary-soft text-[11px] font-bold text-primary-soft-foreground">
                   {t.priority}
                 </span>
-                <div>
+                <div className="min-w-0">
                   <p className="text-sm font-medium leading-snug">{t.tip}</p>
                   <p className="mt-1 text-xs text-muted-foreground">{t.why}</p>
                 </div>
@@ -142,11 +139,11 @@ export function ResumeScorePanel({ score, breakdown, tips, scoredAt }: ResumeSco
 
       {/* Breakdown — collapsed by default, transparency on demand */}
       {breakdown && breakdown.length > 0 && (
-        <div className="relative mt-5">
+        <div className="mt-5">
           <button
             type="button"
             onClick={() => setExpanded((e) => !e)}
-            className="inline-flex items-center gap-1 rounded-lg border border-border px-2.5 py-1 text-xs text-muted-foreground transition hover:border-primary/40 hover:text-foreground focus-ring"
+            className="press tap-target-sm inline-flex items-center gap-1 rounded-md border border-border bg-card px-3 py-1.5 text-xs font-medium text-muted-foreground transition hover:border-primary/40 hover:text-foreground focus-ring"
           >
             {expanded ? <><ChevronUp className="h-3 w-3" /> Hide breakdown</> : <><ChevronDown className="h-3 w-3" /> See breakdown</>}
           </button>
@@ -154,7 +151,7 @@ export function ResumeScorePanel({ score, breakdown, tips, scoredAt }: ResumeSco
           {expanded && (
             <ul className="mt-3 space-y-2.5">
               {breakdown.map((b) => (
-                <li key={b.dimension} className="rounded-xl border border-border bg-card/60 p-3">
+                <li key={b.dimension} className="rounded-xl border border-border bg-card p-3">
                   <div className="flex items-baseline justify-between gap-3">
                     <span className="text-sm font-medium">{b.label}</span>
                     <span className="text-xs tabular-nums text-muted-foreground">
@@ -163,11 +160,11 @@ export function ResumeScorePanel({ score, breakdown, tips, scoredAt }: ResumeSco
                   </div>
                   <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-secondary">
                     <div
-                      className="h-full rounded-full bg-gradient-to-r from-primary to-glow"
+                      className="h-full rounded-full bg-primary"
                       style={{ width: `${(b.score / b.weight) * 100}%` }}
                     />
                   </div>
-                  <p className="mt-2 text-xs text-muted-foreground">{b.hint}</p>
+                  <p className="mt-2 text-xs leading-relaxed text-muted-foreground">{b.hint}</p>
                 </li>
               ))}
             </ul>
@@ -190,7 +187,7 @@ function RefreshButton({
       type="button"
       onClick={onClick}
       disabled={pending}
-      className="press inline-flex items-center gap-1.5 rounded-xl border border-border bg-card/60 px-3 py-1.5 text-xs font-medium text-muted-foreground transition hover:border-primary/40 hover:text-foreground disabled:opacity-60 focus-ring"
+      className="press tap-target-sm inline-flex items-center gap-1.5 rounded-md border border-border bg-card px-3 py-1.5 text-xs font-medium text-muted-foreground transition hover:border-primary/40 hover:text-foreground disabled:opacity-60 focus-ring"
     >
       {pending ? (
         <>

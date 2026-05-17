@@ -19,8 +19,8 @@ export default function AppError({
 
   return (
     <div className="flex min-h-[50vh] flex-col items-center justify-center gap-5 text-center">
-      <div className="flex h-14 w-14 items-center justify-center rounded-2xl border border-border bg-card/60">
-        <AlertTriangle className="h-7 w-7 text-amber-400" aria-hidden="true" />
+      <div className="flex h-14 w-14 items-center justify-center rounded-xl border border-warning/30 bg-warning/10">
+        <AlertTriangle className="h-7 w-7 text-warning" aria-hidden="true" />
       </div>
       <div className="space-y-1">
         <h2 className="text-lg font-semibold">Something went wrong</h2>
@@ -33,7 +33,7 @@ export default function AppError({
       </div>
       <button
         onClick={reset}
-        className="flex items-center gap-2 rounded-xl border border-border px-4 py-2 text-sm font-medium text-muted-foreground transition hover:border-primary/40 hover:text-foreground focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        className="press tap-target inline-flex items-center gap-2 rounded-md border border-border bg-card px-4 py-2 text-sm font-medium text-muted-foreground transition hover:border-primary/40 hover:text-foreground focus-ring"
       >
         <RefreshCw className="h-4 w-4" aria-hidden="true" />
         Try again

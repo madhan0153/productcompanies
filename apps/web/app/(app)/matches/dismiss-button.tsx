@@ -28,7 +28,7 @@ export function DismissButton({ jobId }: { jobId: string }) {
             else setError(res.error);
           });
         }}
-        className="inline-flex items-center gap-1 rounded-md border border-emerald-500/20 bg-emerald-500/5 px-2 py-1 text-[11px] font-medium text-emerald-300 transition hover:border-emerald-400/40 disabled:opacity-50"
+        className="press inline-flex items-center gap-1 rounded-md border border-success/30 bg-success/10 px-2 py-1 text-[11px] font-medium text-success transition hover:border-success/50 disabled:opacity-50 focus-ring"
         aria-label="Restore this role"
       >
         <Undo2 className="h-3 w-3" />
@@ -49,7 +49,7 @@ export function DismissButton({ jobId }: { jobId: string }) {
           else setError(res.error);
         });
       }}
-      className="inline-flex items-center gap-1 rounded-md border border-border/60 bg-card/50 px-2 py-1 text-[11px] font-medium text-muted-foreground transition hover:border-rose-400/40 hover:text-rose-300 disabled:opacity-50"
+      className="press inline-flex items-center gap-1 rounded-md border border-border bg-card px-2 py-1 text-[11px] font-medium text-muted-foreground transition hover:border-destructive/40 hover:text-destructive disabled:opacity-50 focus-ring"
       title={error ?? "Hide this role from your default list"}
       aria-label="Dismiss this role"
     >
@@ -76,7 +76,7 @@ export function RestoreButton({ jobId }: { jobId: string }) {
           if (res.ok) setRestored(true);
         });
       }}
-      className="inline-flex items-center gap-1 rounded-md border border-border/60 bg-card/50 px-2.5 py-1 text-[11px] font-medium text-muted-foreground transition hover:border-emerald-400/40 hover:text-emerald-300 disabled:opacity-50"
+      className="press inline-flex items-center gap-1 rounded-md border border-border bg-card px-2.5 py-1 text-[11px] font-medium text-muted-foreground transition hover:border-success/40 hover:text-success disabled:opacity-50 focus-ring"
     >
       <Undo2 className="h-3 w-3" />
       {restored ? "Restored" : "Restore"}

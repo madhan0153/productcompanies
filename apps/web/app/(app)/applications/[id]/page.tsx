@@ -6,6 +6,7 @@ import {
 import Link from "next/link";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { CompanyLogo } from "@/components/company-logo";
+import { SectionCard } from "@/components/section-card";
 import { addInterviewNote, deleteInterviewNote, updateStatus } from "../actions";
 
 export const metadata: Metadata = { title: "Application detail" };
@@ -13,13 +14,13 @@ export const metadata: Metadata = { title: "Application detail" };
 type AppStatus = "saved" | "applied" | "interviewing" | "offer" | "rejected" | "withdrawn";
 const STATUS_TABS: AppStatus[] = ["saved", "applied", "interviewing", "offer", "rejected", "withdrawn"];
 
-const STATUS_COLORS: Record<AppStatus, string> = {
-  saved: "bg-sky-400/10 text-sky-400 border-sky-400/20",
-  applied: "bg-violet-400/10 text-violet-400 border-violet-400/20",
-  interviewing: "bg-amber-400/10 text-amber-400 border-amber-400/20",
-  offer: "bg-emerald-400/10 text-emerald-400 border-emerald-400/20",
-  rejected: "bg-rose-400/10 text-rose-400 border-rose-400/20",
-  withdrawn: "bg-zinc-400/10 text-zinc-400 border-zinc-400/20",
+const STATUS_TONE: Record<AppStatus, string> = {
+  saved:        "bg-primary-soft text-primary-soft-foreground border-primary/20",
+  applied:      "bg-primary-soft text-primary-soft-foreground border-primary/20",
+  interviewing: "bg-warning/10 text-warning border-warning/20",
+  offer:        "bg-success/10 text-success border-success/20",
+  rejected:     "bg-destructive/10 text-destructive border-destructive/20",
+  withdrawn:    "bg-muted text-muted-foreground border-border",
 };
 
 type AppRow = {
@@ -57,8 +58,6 @@ function tokenise(s: string): Set<string> {
   );
 }
 
-// Score relevance of a story to a job's signals (title + tech_stack + seniority).
-// Pure heuristic — no LLM call. Returns a 0..N score plus the matching tokens.
 function scoreStoryRelevance(
   story: StoryRow,
   signals: { title: string; tech: string[]; seniority: string | null },
@@ -100,7 +99,6 @@ export default async function ApplicationDetailPage({
 
   const { id } = await params;
 
-  // Join through jobs directly so we don't depend on matches existing.
   const [{ data: rawApp }, { data: rawNotes }, { data: rawStories }] = await Promise.all([
     supabase.from("applications")
       .select(`
@@ -130,7 +128,6 @@ export default async function ApplicationDetailPage({
   const company = job?.companies;
   const appStatus = app.status;
 
-  // Rank stories by relevance to this role
   const ranked = job
     ? stories
         .map((s) => ({
@@ -147,26 +144,26 @@ export default async function ApplicationDetailPage({
     : [];
 
   return (
-    <div className="mx-auto max-w-3xl space-y-6">
-      <Link href="/applications" className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition focus-ring rounded">
+    <div className="mx-auto max-w-3xl space-y-5 pb-6">
+      <Link href="/applications" className="inline-flex items-center gap-1.5 rounded text-sm text-muted-foreground transition hover:text-foreground focus-ring">
         <ArrowLeft className="h-4 w-4" /> Back to applications
       </Link>
 
       {/* Header */}
-      <div className="rounded-2xl border border-border bg-card/50 p-6 elev-1 backdrop-blur">
+      <div className="rounded-xl border border-border bg-card p-5 sm:p-6">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div className="flex min-w-0 flex-1 items-start gap-3">
             <CompanyLogo name={company?.name ?? "?"} logoUrl={company?.logo_url ?? null} size={48} />
             <div className="min-w-0 flex-1 space-y-1">
               <div className="flex flex-wrap items-center gap-2">
                 <span className="text-sm text-muted-foreground">{company?.name ?? "Unknown company"}</span>
-                <span className={`rounded-full border px-2 py-0.5 text-xs font-medium ${STATUS_COLORS[appStatus]}`}>
+                <span className={`rounded-full border px-2 py-0.5 text-[11px] font-medium capitalize ${STATUS_TONE[appStatus]}`}>
                   {appStatus}
                 </span>
               </div>
-              <h1 className="font-display text-xl font-semibold leading-tight">
+              <h1 className="text-xl font-semibold leading-tight">
                 {job?.id ? (
-                  <Link href={`/jobs/${job.id}`} className="hover:text-primary transition">
+                  <Link href={`/jobs/${job.id}`} className="transition hover:text-primary focus-ring rounded">
                     {job.title}
                   </Link>
                 ) : "Role no longer listed"}
@@ -181,7 +178,7 @@ export default async function ApplicationDetailPage({
               href={job.apply_url}
               target="_blank"
               rel="noopener noreferrer"
-              className="press inline-flex items-center gap-1.5 rounded-xl border border-border px-3 py-1.5 text-sm text-muted-foreground transition hover:border-primary/40 hover:text-foreground focus-ring"
+              className="press tap-target inline-flex items-center gap-1.5 rounded-md border border-border bg-card px-3 py-1.5 text-sm font-medium text-muted-foreground transition hover:border-primary/40 hover:text-foreground focus-ring"
             >
               <ExternalLink className="h-3.5 w-3.5" /> Apply
             </a>
@@ -189,7 +186,7 @@ export default async function ApplicationDetailPage({
         </div>
 
         {app.notes && (
-          <p className="mt-3 rounded-lg bg-secondary/60 px-3 py-2 text-sm text-muted-foreground">
+          <p className="mt-4 rounded-md border border-border bg-secondary/40 px-3 py-2 text-sm text-muted-foreground">
             {app.notes}
           </p>
         )}
@@ -197,7 +194,7 @@ export default async function ApplicationDetailPage({
         <div className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground">
           {app.applied_at && <span>Applied {formatDate(app.applied_at)}</span>}
           {app.next_action_at && (
-            <span className="text-amber-400">Follow-up: {formatDate(app.next_action_at)}</span>
+            <span className="text-warning">Follow-up: {formatDate(app.next_action_at)}</span>
           )}
         </div>
 
@@ -210,7 +207,7 @@ export default async function ApplicationDetailPage({
               <input type="hidden" name="status" value={s} />
               <button
                 type="submit"
-                className="press rounded-lg border border-border px-2.5 py-1 text-xs text-muted-foreground transition hover:border-primary/40 hover:text-foreground"
+                className="press tap-target-sm rounded-md border border-border bg-card px-2.5 py-1 text-xs font-medium text-muted-foreground capitalize transition hover:border-primary/40 hover:text-foreground focus-ring"
               >
                 {s}
               </button>
@@ -221,23 +218,16 @@ export default async function ApplicationDetailPage({
 
       {/* Interview prep — STAR stories that may fit */}
       {ranked.length > 0 && (
-        <section className="rounded-2xl border border-border bg-gradient-to-br from-primary/5 via-card/40 to-card/40 p-6">
-          <header className="mb-4 flex items-start gap-2">
-            <Sparkles className="mt-0.5 h-4 w-4 text-primary" />
-            <div>
-              <h2 className="font-display text-sm font-semibold">Stories that may fit this role</h2>
-              <p className="mt-0.5 text-xs text-muted-foreground">
-                Picked from your story library based on the job&apos;s tech, title, and seniority.
-              </p>
-            </div>
-          </header>
+        <SectionCard
+          title="Stories that may fit this role"
+          subtitle="Picked from your story library by tech, title, and seniority"
+          icon={<Sparkles className="h-4 w-4" />}
+        >
           <ul className="space-y-2">
             {ranked.map(({ story, reasons }) => (
               <li key={story.id}>
-                <div
-                  className="group flex items-start gap-3 rounded-xl border border-border bg-card/50 p-3 transition hover:border-primary/30 hover:bg-card/80"
-                >
-                  <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                <div className="group flex items-start gap-3 rounded-lg border border-border bg-secondary/40 p-3 transition hover:border-primary/30 hover:bg-secondary">
+                  <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-primary-soft text-primary-soft-foreground">
                     <Pencil className="h-3.5 w-3.5" />
                   </div>
                   <div className="min-w-0 flex-1">
@@ -246,7 +236,7 @@ export default async function ApplicationDetailPage({
                       <p className="mt-1 flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground">
                         Matches:
                         {reasons.map((r) => (
-                          <span key={r} className="rounded-md bg-primary/10 px-1.5 py-0.5 text-[10px] font-medium text-primary">
+                          <span key={r} className="rounded bg-primary-soft px-1.5 py-0.5 text-[10px] font-medium text-primary-soft-foreground">
                             {r}
                           </span>
                         ))}
@@ -257,48 +247,46 @@ export default async function ApplicationDetailPage({
               </li>
             ))}
           </ul>
-        </section>
+        </SectionCard>
       )}
 
       {/* Interview notes */}
-      <div className="rounded-2xl border border-border bg-card/40 p-6">
-        <h2 className="mb-4 flex items-center gap-2 text-sm font-medium">
-          <MessageSquare className="h-4 w-4 text-muted-foreground" />
-          Interview notes ({notes.length})
-        </h2>
-
-        <form action={addInterviewNote} className="mb-5 space-y-3 rounded-xl border border-border bg-secondary/30 p-4">
+      <SectionCard
+        title={`Interview notes (${notes.length})`}
+        icon={<MessageSquare className="h-4 w-4" />}
+      >
+        <form action={addInterviewNote} className="mb-5 space-y-3 rounded-lg border border-border bg-secondary/30 p-4">
           <input type="hidden" name="app_id" value={app.id} />
-          <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-1">
-              <label className="text-xs text-muted-foreground">Round</label>
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <div className="space-y-1.5">
+              <label className="text-xs font-medium text-muted-foreground">Round</label>
               <input
                 name="round"
                 placeholder="e.g. HR Screen"
-                className="w-full rounded-lg border border-input bg-background px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
+                className="tap-target w-full rounded-md border border-input bg-background px-3 text-sm outline-none focus:ring-1 focus:ring-ring"
               />
             </div>
-            <div className="space-y-1">
-              <label className="text-xs text-muted-foreground">Interviewer</label>
+            <div className="space-y-1.5">
+              <label className="text-xs font-medium text-muted-foreground">Interviewer</label>
               <input
                 name="interviewer"
                 placeholder="Name / LinkedIn"
-                className="w-full rounded-lg border border-input bg-background px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
+                className="tap-target w-full rounded-md border border-input bg-background px-3 text-sm outline-none focus:ring-1 focus:ring-ring"
               />
             </div>
           </div>
-          <div className="space-y-1">
-            <label className="text-xs text-muted-foreground">Notes</label>
+          <div className="space-y-1.5">
+            <label className="text-xs font-medium text-muted-foreground">Notes</label>
             <textarea
               name="notes"
               rows={3}
               placeholder="Questions asked, feedback, next steps…"
-              className="w-full resize-none rounded-lg border border-input bg-background px-3 py-1.5 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring"
+              className="w-full resize-none rounded-md border border-input bg-background px-3 py-2 text-sm placeholder:text-muted-foreground outline-none focus:ring-1 focus:ring-ring"
             />
           </div>
           <button
             type="submit"
-            className="press rounded-xl bg-primary px-4 py-1.5 text-sm font-medium text-primary-foreground shadow shadow-primary/20 transition hover:opacity-90 focus-ring"
+            className="press tap-target rounded-md bg-primary px-4 text-sm font-semibold text-primary-foreground transition hover:bg-primary/90 focus-ring"
           >
             Add note
           </button>
@@ -307,9 +295,9 @@ export default async function ApplicationDetailPage({
         {notes.length > 0 ? (
           <div className="space-y-3">
             {notes.map((note) => (
-              <div key={note.id} className="group rounded-xl border border-border bg-card/60 p-4">
+              <div key={note.id} className="group rounded-lg border border-border bg-card p-4">
                 <div className="flex items-start justify-between gap-3">
-                  <div className="space-y-0.5">
+                  <div className="min-w-0 space-y-0.5">
                     {(note.round || note.interviewer) && (
                       <p className="text-xs font-medium">
                         {note.round && <span className="text-primary">{note.round}</span>}
@@ -326,7 +314,7 @@ export default async function ApplicationDetailPage({
                     <input type="hidden" name="app_id" value={app.id} />
                     <button
                       type="submit"
-                      className="rounded-lg p-1.5 text-muted-foreground opacity-0 transition hover:bg-destructive/10 hover:text-destructive group-hover:opacity-100 focus-ring"
+                      className="tap-target-sm rounded-md p-1.5 text-muted-foreground opacity-0 transition hover:bg-destructive/10 hover:text-destructive group-hover:opacity-100 focus-visible:opacity-100 focus-ring"
                       aria-label="Delete note"
                     >
                       <Trash2 className="h-3.5 w-3.5" />
@@ -334,7 +322,7 @@ export default async function ApplicationDetailPage({
                   </form>
                 </div>
                 {note.notes && (
-                  <p className="mt-2 text-sm text-foreground/80 whitespace-pre-wrap">{note.notes}</p>
+                  <p className="mt-2 whitespace-pre-wrap text-sm text-foreground/80">{note.notes}</p>
                 )}
               </div>
             ))}
@@ -342,7 +330,7 @@ export default async function ApplicationDetailPage({
         ) : (
           <p className="text-center text-sm text-muted-foreground">No notes yet — add your first above.</p>
         )}
-      </div>
+      </SectionCard>
     </div>
   );
 }

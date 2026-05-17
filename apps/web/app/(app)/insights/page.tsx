@@ -1,13 +1,13 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
-import Link from "next/link";
 import {
   Activity, TrendingUp, AlertTriangle, IndianRupee, Sparkles,
-  Building2, Lightbulb, ArrowRight,
+  Building2, Lightbulb,
 } from "lucide-react";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { CompanyLogo } from "@/components/company-logo";
 import { Tooltip } from "@/components/tooltip";
+import { SectionCard, StatCard } from "@/components/section-card";
 import {
   type JobLite, type CompanyLite,
   aggregate, applyJobFilters, adjacencyUnlocks, companyStackDemand,
@@ -64,7 +64,7 @@ export default async function InsightsPage({
   const maxDemand = Math.max(1, ...agg.demand.values());
   const isFiltered = Boolean(seniority || hub);
 
-  // Compute week-over-week company hiring momentum
+  // Week-over-week company hiring momentum
   type MomentumEntry = { companyId: string; thisWeek: number; priorWeek: number; delta: number };
   const momentumMap = new Map<string, { thisWeek: number; priorWeek: number }>();
   for (const j of (recentJobs ?? []) as Array<{ company_id: string; created_at: string }>) {
@@ -79,10 +79,13 @@ export default async function InsightsPage({
     .sort((a, b) => b.thisWeek - a.thisWeek || b.delta - a.delta)
     .slice(0, 8);
 
+  const coverageTone: "success" | "warning" | "destructive" =
+    agg.coverage >= 60 ? "success" : agg.coverage >= 30 ? "warning" : "destructive";
+
   return (
-    <div className="space-y-6">
-      <div className="flex flex-wrap items-start justify-between gap-4">
-        <div>
+    <div className="space-y-6 pb-6">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div className="min-w-0">
           <h1 className="text-2xl font-semibold tracking-tight">Insights</h1>
           <p className="mt-1 text-sm text-muted-foreground">
             A live read on what India&apos;s product companies are actually hiring for, mapped against your profile.
@@ -93,7 +96,7 @@ export default async function InsightsPage({
       <InsightsFilters seniority={seniority} hub={hub} />
 
       {filteredJobs.length === 0 ? (
-        <div className="rounded-2xl border border-dashed border-border bg-card/30 p-10 text-center">
+        <div className="rounded-xl border border-dashed border-border bg-secondary/30 p-10 text-center">
           <p className="text-sm text-muted-foreground">
             {allJobs.length === 0
               ? "We're still ingesting jobs from official career pages. Check back once the daily crawler completes."
@@ -103,44 +106,42 @@ export default async function InsightsPage({
       ) : (
         <>
           {/* Headline stats */}
-          <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
             <StatCard
               icon={<Activity className="h-4 w-4" />}
               label={isFiltered ? "Active roles in slice" : "Active roles"}
               value={filteredJobs.length}
-              tone="text-primary"
+              tone="primary"
             />
             <StatCard
               icon={<Sparkles className="h-4 w-4" />}
-              label="Coverage of top 30 stacks"
+              label="Top 30 stack coverage"
               value={`${agg.coverage}%`}
-              tone={agg.coverage >= 60 ? "text-emerald-400" : agg.coverage >= 30 ? "text-amber-400" : "text-rose-400"}
-              tooltip="What share of the 30 most-demanded technologies appear in your resume."
+              tone={coverageTone}
+              sub="of in-demand technologies"
             />
             <StatCard
               icon={<TrendingUp className="h-4 w-4" />}
               label="In your stack"
               value={agg.yours.length}
-              tone="text-violet-400"
+              tone="primary"
             />
             <StatCard
               icon={<AlertTriangle className="h-4 w-4" />}
               label="Top gaps"
               value={agg.gaps.length}
-              tone="text-amber-400"
+              tone="warning"
             />
           </div>
 
           {/* Stack heatmap */}
-          <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-            <section className="rounded-2xl border border-border bg-card/40 p-5 lift">
-              <header className="mb-4 flex items-center justify-between gap-3">
-                <h2 className="font-display text-sm font-semibold">Your stack × market demand</h2>
-                <Link href="/profile" className="text-xs text-muted-foreground hover:text-foreground transition">
-                  Edit profile →
-                </Link>
-              </header>
-
+          <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
+            <SectionCard
+              title="Your stack × market demand"
+              subtitle="How widely your existing skills appear in live JDs"
+              actionHref="/profile"
+              actionLabel="Edit profile"
+            >
               {agg.yours.length === 0 ? (
                 <p className="text-sm text-muted-foreground">
                   Upload a resume so we can map your stack against the market.
@@ -160,18 +161,14 @@ export default async function InsightsPage({
                   ))}
                 </ul>
               )}
-            </section>
+            </SectionCard>
 
-            <section className="rounded-2xl border border-border bg-card/40 p-5 lift">
-              <header className="mb-4">
-                <h2 className="font-display text-sm font-semibold">Top market demand you don&apos;t cover</h2>
-                <p className="mt-0.5 text-xs text-muted-foreground">
-                  Skills appearing in many active roles that aren&apos;t in your resume yet.
-                </p>
-              </header>
-
+            <SectionCard
+              title="Top market demand you don't cover"
+              subtitle="Skills appearing in many active roles, missing from your resume"
+            >
               {agg.gaps.length === 0 ? (
-                <p className="text-sm text-emerald-400">
+                <p className="text-sm text-success">
                   Your resume covers every top-demand technology. Nice.
                 </p>
               ) : (
@@ -183,41 +180,41 @@ export default async function InsightsPage({
                       value={g.jobs}
                       maxValue={maxDemand}
                       total={filteredJobs.length}
-                      tone="warm"
+                      tone="warning"
                     />
                   ))}
                 </ul>
               )}
-            </section>
+            </SectionCard>
           </div>
 
-          {/* Adjacency unlocks — high-leverage skills to learn next */}
+          {/* Adjacency unlocks */}
           {adjacency.length > 0 && (
-            <section className="rounded-2xl border border-border bg-gradient-to-br from-primary/5 via-card/40 to-card/40 p-5 lift">
-              <header className="mb-4 flex items-center gap-2">
-                <Lightbulb className="h-4 w-4 text-primary" />
-                <h2 className="font-display text-sm font-semibold">High-leverage next skills</h2>
+            <SectionCard
+              title="High-leverage next skills"
+              subtitle="Single skills that push you over a 60% overlap threshold for more roles"
+              icon={<Lightbulb className="h-4 w-4" />}
+              badge={
                 <Tooltip label="Skills where adding just this one would push you over a 60% stack-overlap threshold for additional roles you don't currently match.">
-                  <span className="cursor-help rounded-full border border-border px-1.5 text-[10px] text-muted-foreground">?</span>
+                  <span className="cursor-help rounded-full border border-border bg-secondary px-1.5 text-[10px] font-semibold text-muted-foreground">?</span>
                 </Tooltip>
-                <Link href="/coach" className="ml-auto inline-flex items-center gap-1 text-xs text-primary hover:opacity-80">
-                  Open Coach <ArrowRight className="h-3 w-3" />
-                </Link>
-              </header>
-
+              }
+              actionHref="/coach"
+              actionLabel="Open Coach"
+            >
               <ul className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
                 {adjacency.map((a) => (
                   <li
                     key={a.canon}
-                    className="group rounded-xl border border-border bg-card/60 p-4 transition hover:border-primary/40"
+                    className="rounded-lg border border-border bg-secondary/40 p-4 transition hover:border-primary/30 hover:bg-secondary"
                   >
                     <div className="mb-1 flex items-center justify-between gap-2">
                       <span className="truncate font-medium">{a.label}</span>
-                      <span className="rounded-md bg-primary/10 px-1.5 py-0.5 text-[10px] font-medium text-primary">
+                      <span className="rounded-md bg-primary-soft px-1.5 py-0.5 text-[10px] font-semibold text-primary-soft-foreground">
                         +{a.unlocked} roles
                       </span>
                     </div>
-                    <p className="text-xs text-muted-foreground">
+                    <p className="text-xs leading-relaxed text-muted-foreground">
                       Unlocks {a.unlocked} additional role{a.unlocked === 1 ? "" : "s"} where you currently miss the bar.
                       {" "}
                       <span className="opacity-70">{a.totalDemand} total mentions.</span>
@@ -225,56 +222,55 @@ export default async function InsightsPage({
                   </li>
                 ))}
               </ul>
-            </section>
+            </SectionCard>
           )}
 
-          {/* Company hiring momentum — week-over-week */}
+          {/* Company hiring momentum */}
           {companyMomentum.length > 0 && (
-            <section className="rounded-2xl border border-border bg-card/40 p-5 lift">
-              <header className="mb-4 flex items-center gap-2">
-                <Activity className="h-4 w-4 text-primary" />
-                <h2 className="font-display text-sm font-semibold">Company hiring momentum</h2>
-                <span className="ml-auto rounded-full border border-border px-2 py-0.5 text-[10px] text-muted-foreground">
-                  last 7 days · real data
+            <SectionCard
+              title="Company hiring momentum"
+              subtitle="Roles added this week vs prior week — official career pages only"
+              icon={<Activity className="h-4 w-4" />}
+              badge={
+                <span className="rounded-full border border-border bg-secondary px-2 py-0.5 text-[10px] font-medium text-muted-foreground">
+                  last 7 days
                 </span>
-              </header>
+              }
+              footer="Refreshed daily via crawler"
+            >
               <div className="space-y-3">
                 {companyMomentum.map(({ companyId, thisWeek, delta }) => {
                   const co = companyMap.get(companyId);
                   if (!co) return null;
                   const maxThisWeek = companyMomentum[0]?.thisWeek ?? 1;
-                  const deltaColor = delta > 0 ? "text-emerald-400" : delta < 0 ? "text-rose-400" : "text-muted-foreground";
+                  const deltaTone = delta > 0 ? "text-success" : delta < 0 ? "text-destructive" : "text-muted-foreground";
                   const deltaLabel = delta > 0 ? `+${delta}` : delta < 0 ? `${delta}` : "±0";
                   return (
                     <div key={companyId} className="flex items-center gap-3">
                       <CompanyLogo name={co.name} logoUrl={co.logo_url} size={28} />
-                      <span className="min-w-0 flex-1 truncate text-sm text-muted-foreground">{co.name}</span>
-                      <div className="w-28 overflow-hidden rounded-full bg-secondary/60">
+                      <span className="min-w-0 flex-1 truncate text-sm">{co.name}</span>
+                      <div className="hidden w-28 overflow-hidden rounded-full bg-secondary sm:block">
                         <div
-                          className="h-1.5 rounded-full bg-gradient-to-r from-primary/50 to-primary/80 transition-all duration-700"
+                          className="h-1.5 rounded-full bg-primary transition-all duration-700"
                           style={{ width: `${(thisWeek / maxThisWeek) * 100}%` }}
                         />
                       </div>
                       <span className="w-6 shrink-0 text-right text-xs font-semibold tabular-nums">{thisWeek}</span>
-                      <span className={`w-8 shrink-0 text-right text-[11px] font-medium tabular-nums ${deltaColor}`}>{deltaLabel}</span>
+                      <span className={`w-8 shrink-0 text-right text-[11px] font-semibold tabular-nums ${deltaTone}`}>{deltaLabel}</span>
                     </div>
                   );
                 })}
               </div>
-              <p className="mt-3 text-[10px] text-muted-foreground/50">
-                Roles added this week vs. prior week · official career pages only · refreshed daily
-              </p>
-            </section>
+            </SectionCard>
           )}
 
           {/* Companies hiring most for your stack */}
           {compDemand.length > 0 && (
-            <section className="rounded-2xl border border-border bg-card/40 p-5 lift">
-              <header className="mb-4 flex items-center gap-2">
-                <Building2 className="h-4 w-4 text-primary" />
-                <h2 className="font-display text-sm font-semibold">Where your stack is in demand</h2>
-              </header>
-
+            <SectionCard
+              title="Where your stack is in demand"
+              subtitle="Companies whose live roles match what you already do"
+              icon={<Building2 className="h-4 w-4" />}
+            >
               <ul className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
                 {compDemand.map((c) => {
                   const co = companyMap.get(c.companyId);
@@ -284,19 +280,19 @@ export default async function InsightsPage({
                     .slice(0, 3)
                     .map(([k]) => k);
                   return (
-                    <li key={c.companyId} className="rounded-xl border border-border bg-card/60 p-4">
+                    <li key={c.companyId} className="rounded-lg border border-border bg-secondary/40 p-4">
                       <div className="mb-2 flex items-center gap-3">
                         <CompanyLogo name={co.name} logoUrl={co.logo_url} size={32} />
                         <div className="min-w-0">
-                          <p className="truncate text-sm font-medium">{co.name}</p>
+                          <p className="truncate text-sm font-semibold">{co.name}</p>
                           <p className="text-xs text-muted-foreground tabular-nums">
-                            {c.rolesMatchingStack}/{c.rolesTotal} roles match your stack
+                            {c.rolesMatchingStack}/{c.rolesTotal} roles match
                           </p>
                         </div>
                       </div>
                       <div className="flex flex-wrap gap-1">
                         {topMatched.map((t) => (
-                          <span key={t} className="rounded-md bg-primary/10 px-1.5 py-0.5 text-[10px] text-primary">
+                          <span key={t} className="rounded bg-primary-soft px-1.5 py-0.5 text-[10px] font-medium text-primary-soft-foreground">
                             {t}
                           </span>
                         ))}
@@ -305,79 +301,78 @@ export default async function InsightsPage({
                   );
                 })}
               </ul>
-            </section>
+            </SectionCard>
           )}
 
           {/* Comp benchmarks + hubs */}
-          <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
-            <section className="rounded-2xl border border-border bg-card/40 p-5 lift lg:col-span-2">
-              <header className="mb-4 flex items-center gap-2">
-                <IndianRupee className="h-4 w-4 text-primary" />
-                <h2 className="font-display text-sm font-semibold">Compensation benchmarks</h2>
-              </header>
-              {agg.compStats.length === 0 ? (
-                <p className="text-sm text-muted-foreground">
-                  Not enough comp data published on official career pages yet.
-                </p>
-              ) : (
-                <div className="overflow-hidden rounded-xl border border-border">
-                  <table className="w-full text-sm">
-                    <thead className="bg-secondary/50 text-xs uppercase tracking-wider text-muted-foreground">
-                      <tr>
-                        <th className="px-4 py-2 text-left">Seniority</th>
-                        <th className="px-4 py-2 text-right">Median LPA</th>
-                        <th className="px-4 py-2 text-right">Top 10% LPA</th>
-                        <th className="px-4 py-2 text-right">Roles</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {agg.compStats.map((row) => {
-                        const isUserBand = profile?.seniority === row.seniority;
-                        return (
-                          <tr key={row.seniority} className={isUserBand ? "bg-primary/5" : "border-t border-border"}>
-                            <td className="px-4 py-2.5 text-foreground">
-                              {row.seniority}
-                              {isUserBand && (
-                                <span className="ml-2 rounded-full bg-primary/15 px-1.5 py-0.5 text-[10px] font-medium text-primary">
-                                  you
-                                </span>
-                              )}
-                            </td>
-                            <td className="px-4 py-2.5 text-right tabular-nums">₹{row.median} L</td>
-                            <td className="px-4 py-2.5 text-right tabular-nums text-emerald-400">₹{row.top} L</td>
-                            <td className="px-4 py-2.5 text-right tabular-nums text-muted-foreground">{row.n}</td>
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
-                </div>
-              )}
-              <p className="mt-3 text-xs text-muted-foreground">
-                Computed from active roles where companies publish a max LPA. Your seniority band is highlighted.
-              </p>
-            </section>
+          <div className="grid grid-cols-1 gap-5 lg:grid-cols-3">
+            <div className="lg:col-span-2">
+              <SectionCard
+                title="Compensation benchmarks"
+                subtitle="From active roles where companies publish a max LPA"
+                icon={<IndianRupee className="h-4 w-4" />}
+                footer="Your seniority band is highlighted"
+              >
+                {agg.compStats.length === 0 ? (
+                  <p className="text-sm text-muted-foreground">
+                    Not enough comp data published on official career pages yet.
+                  </p>
+                ) : (
+                  <div className="overflow-hidden rounded-lg border border-border">
+                    <table className="w-full text-sm">
+                      <thead className="bg-secondary/60 text-[11px] uppercase tracking-wider text-muted-foreground">
+                        <tr>
+                          <th className="px-4 py-2 text-left font-semibold">Seniority</th>
+                          <th className="px-4 py-2 text-right font-semibold">Median LPA</th>
+                          <th className="px-4 py-2 text-right font-semibold">Top 10%</th>
+                          <th className="px-4 py-2 text-right font-semibold">Roles</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {agg.compStats.map((row, i) => {
+                          const isUserBand = profile?.seniority === row.seniority;
+                          return (
+                            <tr
+                              key={row.seniority}
+                              className={`${isUserBand ? "bg-primary-soft" : i > 0 ? "border-t border-border" : ""}`}
+                            >
+                              <td className="px-4 py-2.5 capitalize">
+                                {row.seniority}
+                                {isUserBand && (
+                                  <span className="ml-2 rounded-full bg-primary px-1.5 py-0.5 text-[10px] font-semibold text-primary-foreground">
+                                    you
+                                  </span>
+                                )}
+                              </td>
+                              <td className="px-4 py-2.5 text-right tabular-nums">₹{row.median} L</td>
+                              <td className="px-4 py-2.5 text-right tabular-nums font-semibold text-success">₹{row.top} L</td>
+                              <td className="px-4 py-2.5 text-right tabular-nums text-muted-foreground">{row.n}</td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </SectionCard>
+            </div>
 
-            <section className="rounded-2xl border border-border bg-card/40 p-5 lift">
-              <header className="mb-4">
-                <h2 className="font-display text-sm font-semibold">Hiring hubs</h2>
-                <p className="mt-0.5 text-xs text-muted-foreground">Active roles by location.</p>
-              </header>
+            <SectionCard title="Hiring hubs" subtitle="Active roles by location">
               <ul className="space-y-2.5">
                 {agg.topHubs.map(([h, n]) => (
                   <li key={h} className="flex items-center gap-3">
-                    <span className="w-32 shrink-0 truncate text-sm">{h}</span>
+                    <span className="w-28 shrink-0 truncate text-sm">{h}</span>
                     <div className="relative h-1.5 flex-1 overflow-hidden rounded-full bg-secondary">
                       <div
-                        className="absolute inset-y-0 left-0 rounded-full bg-gradient-to-r from-cool to-primary"
+                        className="absolute inset-y-0 left-0 rounded-full bg-primary"
                         style={{ width: `${(n / Math.max(1, agg.topHubs[0][1])) * 100}%` }}
                       />
                     </div>
-                    <span className="w-8 text-right text-xs tabular-nums text-muted-foreground">{n}</span>
+                    <span className="w-8 shrink-0 text-right text-xs font-semibold tabular-nums text-muted-foreground">{n}</span>
                   </li>
                 ))}
               </ul>
-            </section>
+            </SectionCard>
           </div>
         </>
       )}
@@ -387,34 +382,15 @@ export default async function InsightsPage({
 
 // ── Sub-components ──────────────────────────────────────────────────────────
 
-function StatCard({
-  icon, label, value, tone, tooltip,
-}: {
-  icon: React.ReactNode; label: string; value: number | string; tone: string; tooltip?: string;
-}) {
-  const card = (
-    <div className="rounded-2xl border border-border bg-card/40 p-4 lift">
-      <div className={`mb-2 inline-flex h-7 w-7 items-center justify-center rounded-md bg-current/10 ${tone}`}>
-        {icon}
-      </div>
-      <p className="text-xl font-bold tabular-nums">{value}</p>
-      <p className="text-xs text-muted-foreground">{label}</p>
-    </div>
-  );
-  return tooltip ? <Tooltip label={tooltip}>{card}</Tooltip> : card;
-}
-
 function DemandBar({
   label, value, maxValue, total, tone, inTop30,
 }: {
   label: string; value: number; maxValue: number; total: number;
-  tone: "primary" | "warm";
+  tone: "primary" | "warning";
   inTop30?: boolean;
 }) {
   const pct = total > 0 ? Math.round((value / total) * 100) : 0;
-  const fill = tone === "primary"
-    ? "bg-gradient-to-r from-primary to-glow"
-    : "bg-gradient-to-r from-warm to-amber-500";
+  const fill = tone === "primary" ? "bg-primary" : "bg-warning";
 
   return (
     <li className="space-y-1">
@@ -424,7 +400,7 @@ function DemandBar({
           {inTop30 && (
             <span
               title="In the top 30 most-demanded skills"
-              className="shrink-0 rounded-full bg-emerald-400/10 px-1.5 py-0.5 text-[9px] font-medium uppercase tracking-wide text-emerald-400"
+              className="shrink-0 rounded-full border border-success/30 bg-success/10 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide text-success"
             >
               Top 30
             </span>
@@ -436,7 +412,7 @@ function DemandBar({
       </div>
       <div className="relative h-1.5 overflow-hidden rounded-full bg-secondary">
         <div
-          className={`absolute inset-y-0 left-0 rounded-full ${fill}`}
+          className={`absolute inset-y-0 left-0 rounded-full transition-all duration-700 ${fill}`}
           style={{ width: `${maxValue > 0 ? (value / maxValue) * 100 : 0}%` }}
         />
       </div>

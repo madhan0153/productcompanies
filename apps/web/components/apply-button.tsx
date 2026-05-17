@@ -58,7 +58,7 @@ export function ApplyButton({ jobId, applyUrl, variant = "default", className = 
         className={`inline-flex items-center gap-1 text-current transition hover:text-primary disabled:opacity-60 ${className}`}
       >
         {confirmed === "new" ? "Tracked as applied" : confirmed === "existing" ? "Reopened" : "Apply on official site"}
-        {confirmed ? <CheckCircle2 className="h-3 w-3 text-emerald-400" /> : <ExternalLink className="h-3 w-3" />}
+        {confirmed ? <CheckCircle2 className="h-3 w-3 text-success" /> : <ExternalLink className="h-3 w-3" />}
       </button>
     );
   }
@@ -69,9 +69,9 @@ export function ApplyButton({ jobId, applyUrl, variant = "default", className = 
         type="button"
         onClick={handleClick}
         disabled={isPending}
-        className={`inline-flex items-center gap-1.5 rounded-lg border border-border bg-card/50 px-2.5 py-1.5 text-xs font-medium text-foreground transition hover:border-primary/40 hover:bg-card disabled:opacity-60 ${className}`}
+        className={`press tap-target-sm inline-flex items-center gap-1.5 rounded-md border border-border bg-card px-2.5 py-1.5 text-xs font-medium text-foreground transition hover:border-primary/40 hover:bg-secondary disabled:opacity-60 focus-ring ${className}`}
       >
-        {confirmed === "new" ? <CheckCircle2 className="h-3.5 w-3.5 text-emerald-400" /> : <ExternalLink className="h-3.5 w-3.5" />}
+        {confirmed === "new" ? <CheckCircle2 className="h-3.5 w-3.5 text-success" /> : <ExternalLink className="h-3.5 w-3.5" />}
         {confirmed === "new" ? "Tracked as applied" : confirmed === "existing" ? "Reopened — already tracked" : "Apply"}
       </button>
     );
@@ -82,7 +82,7 @@ export function ApplyButton({ jobId, applyUrl, variant = "default", className = 
       type="button"
       onClick={handleClick}
       disabled={isPending}
-      className={`inline-flex items-center justify-center gap-2 rounded-xl bg-primary px-5 py-2.5 text-sm font-semibold text-primary-foreground shadow-lg shadow-primary/20 transition hover:opacity-90 disabled:opacity-60 ${className}`}
+      className={`press tap-target inline-flex items-center justify-center gap-2 rounded-md bg-primary px-5 py-2.5 text-sm font-semibold text-primary-foreground transition hover:bg-primary/90 disabled:opacity-60 focus-ring ${className}`}
     >
       {confirmed === "new" ? <CheckCircle2 className="h-4 w-4" /> : <ExternalLink className="h-4 w-4" />}
       {confirmed === "new" ? "Tracked — opened apply page" : confirmed === "existing" ? "Reopened apply page" : "Apply on official site"}

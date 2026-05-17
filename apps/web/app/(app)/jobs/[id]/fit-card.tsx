@@ -7,10 +7,9 @@ import {
 } from "lucide-react";
 import { motion, useReducedMotion } from "framer-motion";
 
-// Phase G — Fit Card UI.
-// Reads the structured JSON saved on matches.fit_card. Verdict-first; the
-// 0-100 score is shown but de-emphasised. Resume tweaks are copy-pasteable
-// because that's the actual thing that improves the next application.
+// Fit Card — reads the structured JSON saved on matches.fit_card.
+// Verdict-first; the 0-100 score is shown but de-emphasised. Resume tweaks
+// are copy-pasteable because that's the actionable artefact.
 
 type Verdict = "strong_fit" | "stretch" | "underqualified" | "mismatch" | "off_target";
 
@@ -23,7 +22,6 @@ export interface FitCardData {
   level_read: { band: "under" | "at" | "over"; note: string };
   comp_reality: { note: string; negotiate_to_lpa: number | null };
   story_prompts: Array<{ requirement: string; prompt: string }>;
-  // Sprint 3 Item 27/28 — engine-stamped grounding for the comp block.
   market_comp?: {
     basis: "exact" | "seniority_only";
     seniority: string;
@@ -35,18 +33,18 @@ export interface FitCardData {
   } | null;
 }
 
-const VERDICT: Record<Verdict, { label: string; tone: string; bg: string; ring: string; subtitle: string }> = {
-  strong_fit:     { label: "Strong fit",     tone: "text-emerald-400", bg: "from-emerald-500/15 to-transparent",  ring: "ring-emerald-500/30", subtitle: "You hit the must-haves. Tailor and apply." },
-  stretch:        { label: "Stretch",         tone: "text-amber-400",   bg: "from-amber-500/15 to-transparent",     ring: "ring-amber-500/30",   subtitle: "You can win this with a focused application." },
-  off_target:     { label: "Off-target",      tone: "text-violet-400",  bg: "from-violet-500/15 to-transparent",    ring: "ring-violet-500/30",  subtitle: "Adjacent to your stated targets." },
-  underqualified: { label: "Underqualified",  tone: "text-sky-400",     bg: "from-sky-500/15 to-transparent",       ring: "ring-sky-500/30",     subtitle: "JD asks for more than your resume shows today." },
-  mismatch:       { label: "Mismatch",        tone: "text-rose-400",    bg: "from-rose-500/15 to-transparent",      ring: "ring-rose-500/30",    subtitle: "Wrong function. Save your energy." },
+const VERDICT: Record<Verdict, { label: string; tone: string; bg: string; border: string; subtitle: string }> = {
+  strong_fit:     { label: "Strong fit",     tone: "text-success",     bg: "bg-success/5",     border: "border-success/30",     subtitle: "You hit the must-haves. Tailor and apply." },
+  stretch:        { label: "Stretch",        tone: "text-warning",     bg: "bg-warning/5",     border: "border-warning/30",     subtitle: "You can win this with a focused application." },
+  off_target:     { label: "Off-target",     tone: "text-primary",     bg: "bg-primary-soft",  border: "border-primary/30",     subtitle: "Adjacent to your stated targets." },
+  underqualified: { label: "Underqualified", tone: "text-primary",     bg: "bg-primary-soft",  border: "border-primary/30",     subtitle: "JD asks for more than your resume shows today." },
+  mismatch:       { label: "Mismatch",       tone: "text-destructive", bg: "bg-destructive/5", border: "border-destructive/30", subtitle: "Wrong function. Save your energy." },
 };
 
-const BAND: Record<"under" | "at" | "over", { label: string; tone: string }> = {
-  under: { label: "Below your level", tone: "text-amber-400" },
-  at:    { label: "At your level",    tone: "text-emerald-400" },
-  over:  { label: "Above your level", tone: "text-violet-400" },
+const BAND: Record<"under" | "at" | "over", { label: string; tone: string; bg: string; border: string }> = {
+  under: { label: "Below your level", tone: "text-warning", bg: "bg-warning/10", border: "border-warning/30" },
+  at:    { label: "At your level",    tone: "text-success", bg: "bg-success/10", border: "border-success/30" },
+  over:  { label: "Above your level", tone: "text-primary", bg: "bg-primary-soft", border: "border-primary/30" },
 };
 
 export function FitCardPanel({ data, score }: { data: FitCardData; score: number }) {
@@ -58,33 +56,32 @@ export function FitCardPanel({ data, score }: { data: FitCardData; score: number
       initial={reduce ? {} : { opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
-      className={`relative overflow-hidden rounded-2xl border border-border bg-gradient-to-br ${v.bg} bg-card/50 p-6 elev-1 backdrop-blur ring-1 ${v.ring}`}
+      className={`relative overflow-hidden rounded-xl border ${v.border} ${v.bg} p-5 sm:p-6`}
     >
-      {/* Decorative halo */}
-      <div aria-hidden className="pointer-events-none absolute -top-16 -right-16 h-48 w-48 rounded-full bg-primary/15 blur-3xl" />
-
       <header className="relative mb-5 flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <p className="inline-flex items-center gap-1.5 rounded-full border border-current/30 bg-card/60 px-2.5 py-0.5 text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
+        <div className="min-w-0">
+          <p className="inline-flex items-center gap-1.5 rounded-full border border-border bg-card px-2.5 py-0.5 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
             <Compass className="h-3 w-3" /> Fit Card
           </p>
-          <h2 className={`mt-2 font-display text-xl font-semibold tracking-tight ${v.tone}`}>{v.label}</h2>
-          <p className="mt-1 max-w-2xl text-sm text-muted-foreground">{data.one_liner || v.subtitle}</p>
+          <h2 className={`mt-2 text-xl font-semibold tracking-tight ${v.tone}`}>{v.label}</h2>
+          <p className="mt-1 max-w-2xl text-sm leading-relaxed text-muted-foreground">
+            {data.one_liner || v.subtitle}
+          </p>
         </div>
-        <div className="flex flex-col items-end gap-1">
-          <span className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">Score</span>
+        <div className="flex shrink-0 flex-col items-end gap-1">
+          <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Score</span>
           <span className="text-3xl font-bold tabular-nums">{Math.round(score)}</span>
-          <span className="text-[10px] text-muted-foreground/60">verdict, not score</span>
+          <span className="text-[10px] text-muted-foreground">verdict, not score</span>
         </div>
       </header>
 
-      <div className="relative grid grid-cols-1 gap-5 lg:grid-cols-2">
+      <div className="relative grid grid-cols-1 gap-4 lg:grid-cols-2">
         {/* Hard blockers */}
         {data.hard_blockers.length > 0 && (
-          <Block icon={<AlertCircle className="h-3.5 w-3.5 text-rose-400" />} label="Hard blockers" subdued={false}>
+          <Block icon={<AlertCircle className="h-3.5 w-3.5 text-destructive" />} label="Hard blockers">
             <ul className="space-y-1.5">
               {data.hard_blockers.map((b, i) => (
-                <li key={i} className="rounded-lg border border-rose-500/20 bg-rose-500/5 px-3 py-1.5 text-sm text-rose-100/90">
+                <li key={i} className="rounded-md border border-destructive/30 bg-destructive/5 px-3 py-1.5 text-sm">
                   {b}
                 </li>
               ))}
@@ -94,10 +91,13 @@ export function FitCardPanel({ data, score }: { data: FitCardData; score: number
 
         {/* Soft gaps */}
         {data.soft_gaps.length > 0 && (
-          <Block icon={<AlertCircle className="h-3.5 w-3.5 text-amber-400" />} label="Soft gaps">
-            <ul className="space-y-1.5">
+          <Block icon={<AlertCircle className="h-3.5 w-3.5 text-warning" />} label="Soft gaps">
+            <ul className="space-y-1.5 text-sm text-muted-foreground">
               {data.soft_gaps.map((g, i) => (
-                <li key={i} className="text-sm text-muted-foreground">· {g}</li>
+                <li key={i} className="flex items-start gap-2">
+                  <span className="mt-1.5 h-1 w-1 shrink-0 rounded-full bg-warning" />
+                  {g}
+                </li>
               ))}
             </ul>
           </Block>
@@ -105,26 +105,24 @@ export function FitCardPanel({ data, score }: { data: FitCardData; score: number
 
         {/* Level read */}
         <Block icon={<Layers className="h-3.5 w-3.5 text-primary" />} label="Level read">
-          <div className="flex items-center gap-2">
-            <span className={`rounded-full border border-current/30 px-2 py-0.5 text-xs font-medium ${BAND[data.level_read.band].tone}`}>
-              {BAND[data.level_read.band].label}
-            </span>
-          </div>
+          <span className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-xs font-semibold ${BAND[data.level_read.band].tone} ${BAND[data.level_read.band].bg} ${BAND[data.level_read.band].border}`}>
+            {BAND[data.level_read.band].label}
+          </span>
           <p className="mt-2 text-sm text-muted-foreground">{data.level_read.note}</p>
         </Block>
 
-        {/* Comp reality — Sprint 3 Item 27/28: shows the market basis. */}
+        {/* Comp reality */}
         <Block icon={<IndianRupee className="h-3.5 w-3.5 text-primary" />} label="Compensation reality">
           <p className="text-sm text-muted-foreground">{data.comp_reality.note}</p>
           {data.comp_reality.negotiate_to_lpa != null && (
-            <div className="mt-2 inline-flex items-center gap-1.5 rounded-full border border-emerald-500/30 bg-emerald-500/5 px-2.5 py-0.5 text-xs text-emerald-400">
+            <div className="mt-2 inline-flex items-center gap-1.5 rounded-full border border-success/30 bg-success/10 px-2.5 py-0.5 text-xs font-medium text-success">
               <Target className="h-3 w-3" />
               Negotiate toward ₹{data.comp_reality.negotiate_to_lpa} LPA
             </div>
           )}
           {data.market_comp && (
-            <p className="mt-2 text-[11px] text-muted-foreground/80">
-              <ShieldCheck className="mr-1 inline h-3 w-3 text-emerald-400" />
+            <p className="mt-2 text-[11px] leading-relaxed text-muted-foreground/80">
+              <ShieldCheck className="mr-1 inline h-3 w-3 text-success" />
               Grounded in <strong className="text-foreground">n={data.market_comp.n}</strong>{" "}
               {data.market_comp.basis === "exact"
                 ? <>postings of <strong className="text-foreground">{data.market_comp.seniority}{data.market_comp.role_function ? ` · ${data.market_comp.role_function}` : ""}</strong></>
@@ -142,8 +140,8 @@ export function FitCardPanel({ data, score }: { data: FitCardData; score: number
         <div className="relative mt-6">
           <header className="mb-3 flex items-center gap-2">
             <Lightbulb className="h-4 w-4 text-primary" />
-            <h3 className="font-display text-sm font-semibold">Resume tweaks for this application</h3>
-            <span className="ml-auto text-[11px] text-muted-foreground">Click to copy</span>
+            <h3 className="text-sm font-semibold">Resume tweaks for this application</h3>
+            <span className="ml-auto text-[11px] text-muted-foreground">Tap to copy</span>
           </header>
           <ol className="space-y-2.5">
             {data.resume_tweaks.map((t, i) => (
@@ -158,23 +156,20 @@ export function FitCardPanel({ data, score }: { data: FitCardData; score: number
         <div className="relative mt-6">
           <header className="mb-3 flex items-center gap-2">
             <MessagesSquare className="h-4 w-4 text-primary" />
-            <h3 className="font-display text-sm font-semibold">Stories to bring to the interview</h3>
+            <h3 className="text-sm font-semibold">Stories to bring to the interview</h3>
           </header>
-          <ul className="grid grid-cols-1 gap-2.5 sm:grid-cols-3">
+          <ul className="grid grid-cols-1 gap-2.5 sm:grid-cols-2 lg:grid-cols-3">
             {data.story_prompts.map((s, i) => {
-              // Sprint 3 Item 29 — flag "(no matching project on resume…)"
-              // as an action item, not a story to tell. Keeps the panel
-              // honest when the candidate's bullets don't cover a JD must-have.
               const missing = /no matching project|add one before applying/i.test(s.prompt);
               return (
                 <li
                   key={i}
-                  className={`rounded-xl border p-3 ${missing ? "border-amber-500/30 bg-amber-500/5" : "border-border bg-card/60"}`}
+                  className={`rounded-xl border p-3 ${missing ? "border-warning/30 bg-warning/5" : "border-border bg-card"}`}
                 >
-                  <p className={`text-[11px] font-medium uppercase tracking-wider ${missing ? "text-amber-300" : "text-primary"}`}>
+                  <p className={`text-[11px] font-semibold uppercase tracking-wider ${missing ? "text-warning" : "text-primary"}`}>
                     {missing ? "Gap to close" : s.requirement}
                   </p>
-                  <p className="mt-1.5 text-sm text-muted-foreground">
+                  <p className="mt-1.5 text-sm leading-relaxed text-muted-foreground">
                     {missing
                       ? <>No bullet on your resume covers <strong className="text-foreground">{s.requirement}</strong>. Add one before applying.</>
                       : s.prompt}
@@ -195,16 +190,15 @@ export function FitCardPanel({ data, score }: { data: FitCardData; score: number
 }
 
 function Block({
-  icon, label, children, subdued = true,
+  icon, label, children,
 }: {
   icon: React.ReactNode;
   label: string;
   children: React.ReactNode;
-  subdued?: boolean;
 }) {
   return (
-    <div className={`rounded-xl border border-border ${subdued ? "bg-card/40" : "bg-card/60"} p-4`}>
-      <div className="mb-2 flex items-center gap-1.5 text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
+    <div className="rounded-xl border border-border bg-card p-4">
+      <div className="mb-2 flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
         {icon} {label}
       </div>
       {children}
@@ -231,9 +225,9 @@ function ResumeTweakRow({
       <button
         type="button"
         onClick={onClick}
-        className="press group flex w-full items-start gap-3 rounded-xl border border-border bg-card/60 p-4 text-left transition hover:border-primary/40 focus-ring"
+        className="press group flex w-full items-start gap-3 rounded-xl border border-border bg-card p-4 text-left transition hover:border-primary/40 focus-ring tap-target"
       >
-        <span className="mt-0.5 inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-primary/15 text-[11px] font-bold text-primary">
+        <span className="mt-0.5 inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-primary-soft text-[11px] font-bold text-primary-soft-foreground">
           {tweak.priority}
         </span>
         <div className="min-w-0 flex-1">
@@ -241,7 +235,7 @@ function ResumeTweakRow({
           <p className="mt-1 text-xs text-muted-foreground">{tweak.why}</p>
         </div>
         <span className="shrink-0 text-muted-foreground transition group-hover:text-primary">
-          {copied ? <Check className="h-4 w-4 text-emerald-400" /> : <Copy className="h-4 w-4" />}
+          {copied ? <Check className="h-4 w-4 text-success" /> : <Copy className="h-4 w-4" />}
         </span>
       </button>
     </li>

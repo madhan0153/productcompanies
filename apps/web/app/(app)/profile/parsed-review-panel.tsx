@@ -64,8 +64,8 @@ export function ParsedReviewPanel(props: Props) {
   if (dismissed) return null;
 
   return (
-    <div className="rounded-2xl border border-border bg-card/40">
-      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border/50 px-5 py-3">
+    <div className="rounded-xl border border-border bg-card">
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border px-5 py-3">
         <div className="flex items-center gap-2">
           <Sparkles className="h-4 w-4 text-primary" />
           <div>
@@ -76,14 +76,14 @@ export function ParsedReviewPanel(props: Props) {
         <button
           type="button"
           onClick={() => setDismissed(true)}
-          className="inline-flex items-center gap-1.5 rounded-md border border-emerald-500/20 bg-emerald-500/5 px-2.5 py-1 text-xs font-medium text-emerald-300 transition hover:border-emerald-400/40"
+          className="press tap-target-sm inline-flex items-center gap-1.5 rounded-md border border-success/30 bg-success/10 px-2.5 py-1 text-xs font-semibold text-success transition hover:bg-success/15 focus-ring"
         >
           <CheckCircle2 className="h-3.5 w-3.5" />
           Looks right
         </button>
       </div>
 
-      <ul className="divide-y divide-border/40">
+      <ul className="divide-y divide-border">
         <ReviewRow
           label="Current role function"
           value={props.roleFunction ? (ROLE_FUNCTION_LABELS[props.roleFunction] ?? props.roleFunction) : "Not inferred"}
@@ -125,9 +125,9 @@ export function ParsedReviewPanel(props: Props) {
       </ul>
 
       {issues.length > 0 && (
-        <div className="space-y-1.5 border-t border-amber-500/20 bg-amber-500/5 px-5 py-3">
+        <div className="space-y-1.5 border-t border-warning/30 bg-warning/5 px-5 py-3">
           {issues.map((issue) => (
-            <div key={issue} className="flex items-start gap-2 text-xs text-amber-300/90">
+            <div key={issue} className="flex items-start gap-2 text-xs text-warning">
               <AlertTriangle className="mt-0.5 h-3 w-3 shrink-0" />
               <span>{issue}</span>
             </div>
@@ -147,11 +147,11 @@ function ReviewRow({
     <li className="flex flex-wrap items-start justify-between gap-3 px-5 py-3">
       <div className="min-w-0 flex-1">
         <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">{label}</p>
-        <div className={`mt-0.5 text-sm ${missing ? "text-amber-300/90" : "text-foreground"}`}>{value}</div>
+        <div className={`mt-0.5 text-sm ${missing ? "text-warning" : "text-foreground"}`}>{value}</div>
       </div>
       <a
         href={editHref}
-        className="inline-flex items-center gap-1 rounded-md border border-border/60 bg-card/40 px-2 py-1 text-[11px] font-medium text-muted-foreground transition hover:border-primary/40 hover:text-foreground"
+        className="press tap-target-sm inline-flex items-center gap-1 rounded-md border border-border bg-card px-2 py-1 text-[11px] font-medium text-muted-foreground transition hover:border-primary/40 hover:text-foreground focus-ring"
       >
         <Edit3 className="h-3 w-3" />
         Edit

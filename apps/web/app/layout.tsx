@@ -60,7 +60,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <body className="font-sans">
         <ThemeProvider
           attribute="class"
-          defaultTheme="dark"
+          defaultTheme="light"
           enableSystem
           disableTransitionOnChange
         >

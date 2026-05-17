@@ -1,5 +1,3 @@
-// Sprint 1 — Item 3.
-//
 // "Why this score?" — turns the opaque 0-100 match number into the same 7
 // dimensions the matching engine actually computed. Renders compact bars
 // per axis with the points-out-of-max + a one-line hint.
@@ -53,10 +51,10 @@ const AXIS_META: Array<{
 
 function tone(score: number, weight: number) {
   const pct = weight === 0 ? 0 : score / weight;
-  if (pct >= 0.75) return { bar: "bg-emerald-400", text: "text-emerald-400" };
-  if (pct >= 0.5)  return { bar: "bg-amber-400",   text: "text-amber-400"   };
-  if (pct >= 0.25) return { bar: "bg-sky-400",     text: "text-sky-400"     };
-  return                  { bar: "bg-rose-400",   text: "text-rose-400"    };
+  if (pct >= 0.75) return { bar: "bg-success", text: "text-success" };
+  if (pct >= 0.5)  return { bar: "bg-warning", text: "text-warning" };
+  if (pct >= 0.25) return { bar: "bg-primary", text: "text-primary" };
+  return                  { bar: "bg-destructive", text: "text-destructive" };
 }
 
 export function ScoreBreakdownPanel({
@@ -69,7 +67,7 @@ export function ScoreBreakdownPanel({
   compact?: boolean;
 }) {
   return (
-    <div className={`rounded-xl border border-border/60 bg-card/40 ${compact ? "p-3" : "p-4"}`}>
+    <div className={`rounded-xl border border-border bg-card ${compact ? "p-3" : "p-4"}`}>
       <div className="mb-2.5 flex items-center justify-between">
         <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Why this score</p>
         <p className="text-xs tabular-nums">
@@ -90,7 +88,7 @@ export function ScoreBreakdownPanel({
                   +{score}<span className="ml-0.5 text-[10px] font-normal text-muted-foreground">/{axis.weight}</span>
                 </span>
               </div>
-              <div className="mt-1 h-1 w-full overflow-hidden rounded-full bg-secondary/50">
+              <div className="mt-1 h-1 w-full overflow-hidden rounded-full bg-secondary">
                 <div className={`h-full rounded-full transition-all ${t.bar}`} style={{ width: `${pct}%` }} />
               </div>
               {!compact && (

@@ -1,7 +1,7 @@
 "use client";
 
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { Filter, X } from "lucide-react";
+import { Filter, X, Download } from "lucide-react";
 
 const SENIORITY = ["junior", "mid", "senior", "staff", "principal", "manager", "director"];
 const HUBS = [
@@ -32,14 +32,14 @@ export function InsightsFilters({
 
   return (
     <div className="flex flex-wrap items-center gap-2">
-      <span className="inline-flex items-center gap-1.5 text-xs uppercase tracking-wider text-muted-foreground">
+      <span className="inline-flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
         <Filter className="h-3.5 w-3.5" /> Slice
       </span>
 
       <select
         value={seniority ?? ""}
         onChange={(e) => update("seniority", e.target.value || null)}
-        className="rounded-lg border border-border bg-card/60 px-2.5 py-1.5 text-xs focus-ring"
+        className="tap-target-sm rounded-md border border-input bg-background px-2.5 text-xs focus-ring"
         aria-label="Filter by seniority"
       >
         <option value="">Any seniority</option>
@@ -53,7 +53,7 @@ export function InsightsFilters({
       <select
         value={hub ?? ""}
         onChange={(e) => update("hub", e.target.value || null)}
-        className="rounded-lg border border-border bg-card/60 px-2.5 py-1.5 text-xs focus-ring"
+        className="tap-target-sm rounded-md border border-input bg-background px-2.5 text-xs focus-ring"
         aria-label="Filter by hub"
       >
         <option value="">Any hub</option>
@@ -64,8 +64,9 @@ export function InsightsFilters({
 
       {active && (
         <button
+          type="button"
           onClick={() => router.push(pathname)}
-          className="inline-flex items-center gap-1 rounded-lg border border-border px-2 py-1 text-xs text-muted-foreground transition hover:border-primary/40 hover:text-foreground"
+          className="press tap-target-sm inline-flex items-center gap-1 rounded-md border border-border bg-card px-2.5 py-1.5 text-xs font-medium text-muted-foreground transition hover:border-primary/40 hover:text-foreground focus-ring"
         >
           <X className="h-3 w-3" /> Clear
         </button>
@@ -74,9 +75,11 @@ export function InsightsFilters({
       <a
         href="/api/insights/export"
         download
-        className="ml-auto rounded-lg border border-border px-2.5 py-1.5 text-xs text-muted-foreground transition hover:border-primary/40 hover:text-foreground"
+        className="press tap-target-sm ml-auto inline-flex items-center gap-1.5 rounded-md border border-border bg-card px-2.5 py-1.5 text-xs font-medium text-muted-foreground transition hover:border-primary/40 hover:text-foreground focus-ring"
       >
-        Download JSON
+        <Download className="h-3 w-3" />
+        <span className="hidden sm:inline">Download JSON</span>
+        <span className="sm:hidden">JSON</span>
       </a>
     </div>
   );

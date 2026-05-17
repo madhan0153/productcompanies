@@ -40,10 +40,10 @@ export function EmptyState({ icon, title, body, actions, className }: Props) {
         className="pointer-events-none absolute -top-12 left-1/2 h-40 w-40 -translate-x-1/2 rounded-full bg-primary/15 blur-3xl"
       />
 
-      <div className="relative mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl border border-border bg-gradient-to-br from-primary/15 via-glow/10 to-transparent text-primary backdrop-blur">
+      <div className="relative mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl border border-border bg-primary-soft text-primary-soft-foreground">
         {icon}
       </div>
-      <h3 className="relative font-display text-lg font-semibold">{title}</h3>
+      <h3 className="relative text-lg font-semibold">{title}</h3>
       <p className="relative mx-auto mt-1.5 max-w-md text-sm text-muted-foreground">
         {body}
       </p>
@@ -54,9 +54,9 @@ export function EmptyState({ icon, title, body, actions, className }: Props) {
             const cls =
               a.variant === "ghost"
                 ? "border border-border text-muted-foreground hover:border-primary/40 hover:text-foreground"
-                : "bg-primary text-primary-foreground shadow shadow-primary/30 hover:opacity-90";
+                : "bg-primary text-primary-foreground hover:bg-primary/90";
             const className = cn(
-              "press inline-flex items-center gap-1.5 rounded-xl px-4 py-2 text-sm font-medium transition focus-ring",
+              "press tap-target inline-flex items-center gap-1.5 rounded-md px-4 py-2 text-sm font-semibold transition focus-ring",
               cls,
             );
             return a.href ? (

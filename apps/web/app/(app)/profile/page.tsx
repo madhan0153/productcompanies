@@ -6,6 +6,7 @@ import { ResumeUpload } from "./resume-upload";
 import { SaveProfileForm } from "./save-profile-form";
 import { ResumeScorePanel, type ResumeScorePanelData } from "./resume-score-panel";
 import { DnaBreakdownPanel } from "@/components/dna-breakdown-panel";
+import { SectionCard } from "@/components/section-card";
 import type { DnaBreakdown } from "@/lib/matching/dna-breakdown";
 import { listResumeVersions } from "./actions";
 import { ResumeVersionsPanel } from "./resume-versions-panel";
@@ -35,7 +36,6 @@ export default async function ProfilePage() {
   const dnaBreakdown = ((profile as { dna_breakdown?: DnaBreakdown | null } | null)?.dna_breakdown) ?? null;
   const resumeScore = (profile as { resume_score?: number | null } | null)?.resume_score ?? null;
 
-  // Sprint 2 Item 8 — list prior resume snapshots so the user can revert.
   const versions = hasResume ? await listResumeVersions() : [];
 
   const steps = [
@@ -44,20 +44,19 @@ export default async function ProfilePage() {
     { done: resumeScore !== null, label: "Market strength scored" },
   ];
   const progress = steps.filter((s) => s.done).length;
+  const progressPct = Math.round((progress / steps.length) * 100);
 
   return (
-    <div className="max-w-2xl space-y-6 pb-8">
+    <div className="max-w-3xl space-y-5 pb-8">
       {/* ── Header ─────────────────────────────────────────────── */}
-      <div className="relative overflow-hidden rounded-2xl border border-border bg-card/40 p-6">
-        <div aria-hidden className="absolute right-0 top-0 h-32 w-48 rounded-full bg-primary/5 blur-3xl" />
-        <div className="relative flex items-start justify-between gap-4">
-          <div>
-            <h1 className="text-2xl font-bold tracking-tight">My Profile</h1>
+      <div className="rounded-xl border border-border bg-card p-5 sm:p-6">
+        <div className="flex flex-wrap items-start justify-between gap-4">
+          <div className="min-w-0">
+            <h1 className="text-2xl font-semibold tracking-tight">My Profile</h1>
             <p className="mt-1 text-sm text-muted-foreground">
               Your details are used solely for AI matching — never shared or sold.
             </p>
           </div>
-          {/* Progress indicator */}
           <div className="flex shrink-0 flex-col items-center gap-1">
             <div className="relative flex h-12 w-12 items-center justify-center">
               <svg className="absolute inset-0 -rotate-90" width="48" height="48" viewBox="0 0 48 48">
@@ -71,54 +70,60 @@ export default async function ProfilePage() {
                   strokeLinecap="round"
                 />
               </svg>
-              <span className="text-xs font-bold">{progress}/{steps.length}</span>
+              <span className="text-xs font-bold tabular-nums">{progress}/{steps.length}</span>
             </div>
-            <span className="text-[10px] text-muted-foreground">Setup</span>
+            <span className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">Setup</span>
           </div>
         </div>
 
         {/* Steps */}
-        <div className="relative mt-4 flex items-center gap-3">
+        <div className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-1.5 border-t border-border pt-4">
           {steps.map(({ done, label }) => (
             <div key={label} className="flex items-center gap-1.5 text-xs">
               {done
-                ? <CheckCircle2 className="h-3.5 w-3.5 shrink-0 text-emerald-400" />
+                ? <CheckCircle2 className="h-3.5 w-3.5 shrink-0 text-success" />
                 : <div className="h-3.5 w-3.5 shrink-0 rounded-full border-2 border-border" />
               }
-              <span className={done ? "text-muted-foreground" : "text-muted-foreground/60"}>{label}</span>
+              <span className={done ? "text-foreground" : "text-muted-foreground/70"}>{label}</span>
             </div>
           ))}
         </div>
+
+        <div className="mt-3 h-1 w-full overflow-hidden rounded-full bg-secondary">
+          <div
+            className="h-full rounded-full bg-primary transition-all duration-700"
+            style={{ width: `${progressPct}%` }}
+          />
+        </div>
       </div>
 
-      {/* ── DNA score display (when computed) ─────────────────── */}
+      {/* ── DNA score display ──────────────────────────────────── */}
       {hasResume && dnaScore !== null && (
-        <div className="relative overflow-hidden rounded-2xl border border-primary/20 bg-gradient-to-br from-primary/8 via-primary/3 to-transparent p-5">
-          <div aria-hidden className="absolute right-0 top-0 h-24 w-36 rounded-full bg-primary/10 blur-2xl" />
-          <div className="relative flex items-center gap-5">
+        <div className="rounded-xl border border-primary/30 bg-primary-soft p-5 sm:p-6">
+          <div className="flex flex-wrap items-center gap-5">
             <DnaRing score={dnaScore} />
-            <div>
-              <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Product DNA Score</p>
-              <p className="mt-0.5 text-lg font-bold">{dnaScoreLabel(dnaScore)}</p>
-              <p className="mt-1 text-xs text-muted-foreground">
+            <div className="min-w-0 flex-1">
+              <p className="text-[11px] font-semibold uppercase tracking-wider text-primary-soft-foreground/80">Product DNA Score</p>
+              <p className="mt-0.5 text-lg font-semibold">{dnaScoreLabel(dnaScore)}</p>
+              <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
                 Measures your product-company fit: tenure, scale signals, modern stack, and ownership.
               </p>
-              {parsedResume && (
-                <p className="mt-2 text-xs text-muted-foreground line-clamp-2 opacity-80">
-                  {String(parsedResume.summary ?? "").slice(0, 120)}{String(parsedResume.summary ?? "").length > 120 ? "…" : ""}
+              {parsedResume && (parsedResume.summary as string | undefined) && (
+                <p className="mt-2 line-clamp-2 text-xs text-muted-foreground/80">
+                  {String(parsedResume.summary ?? "").slice(0, 140)}{String(parsedResume.summary ?? "").length > 140 ? "…" : ""}
                 </p>
               )}
             </div>
           </div>
-          <div className="relative mt-4 grid grid-cols-3 gap-3 border-t border-border/40 pt-4">
+          <div className="mt-4 grid grid-cols-3 gap-3 border-t border-primary/15 pt-4">
             {[
-              { label: "Current role", value: profile?.current_role ?? "—", icon: <User className="h-3 w-3" /> },
+              { label: "Current role", value: (profile?.current_role as string | null) ?? "—", icon: <User className="h-3 w-3" /> },
               { label: "Experience", value: profile?.years_experience != null ? `${profile.years_experience} yrs` : "—", icon: <TrendingUp className="h-3 w-3" /> },
               { label: "Tech skills", value: techStack.length > 0 ? `${techStack.length} skills` : "—", icon: <Sparkles className="h-3 w-3" /> },
             ].map(({ label, value, icon }) => (
               <div key={label} className="text-center">
                 <div className="mb-1 flex items-center justify-center gap-1 text-muted-foreground">{icon}</div>
-                <p className="text-sm font-semibold">{value}</p>
+                <p className="truncate text-sm font-semibold">{value}</p>
                 <p className="text-[10px] text-muted-foreground">{label}</p>
               </div>
             ))}
@@ -126,7 +131,7 @@ export default async function ProfilePage() {
         </div>
       )}
 
-      {/* ── Parsed review (Sprint 2 Item 7) ─────────────────────── */}
+      {/* ── Parsed review ──────────────────────────────────────── */}
       {hasResume && (
         <ParsedReviewPanel
           roleFunction={(profile?.role_function as string | null) ?? null}
@@ -145,7 +150,7 @@ export default async function ProfilePage() {
         </div>
       )}
 
-      {/* ── Resume history (Sprint 2 Item 8) ────────────────────── */}
+      {/* ── Resume history ─────────────────────────────────────── */}
       {hasResume && (
         <div id="resume-history" className="scroll-mt-20">
           <ResumeVersionsPanel versions={versions} />
@@ -153,29 +158,24 @@ export default async function ProfilePage() {
       )}
 
       {/* ── Resume upload ──────────────────────────────────────── */}
-      <section className="rounded-2xl border border-border bg-card/40">
-        <div className="flex items-center gap-3 border-b border-border/50 px-6 py-4">
-          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10 text-primary">
-            <FileText className="h-4 w-4" />
-          </div>
-          <div className="flex-1">
-            <h2 className="text-sm font-semibold">Resume</h2>
-            <p className="text-xs text-muted-foreground">We extract your skills and compute your Product DNA score</p>
-          </div>
-          {hasResume && (
-            <span className="rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2.5 py-0.5 text-xs font-medium text-emerald-400">
+      <SectionCard
+        title="Resume"
+        subtitle="We extract your skills and compute your Product DNA score"
+        icon={<FileText className="h-4 w-4" />}
+        badge={
+          hasResume ? (
+            <span className="rounded-full border border-success/30 bg-success/10 px-2 py-0.5 text-[11px] font-medium text-success">
               Uploaded
             </span>
-          )}
-        </div>
-        <div className="p-6">
-          <ResumeUpload
-            hasExisting={hasResume}
-            existingRole={profile?.current_role as string | null}
-            existingDnaScore={dnaScore}
-          />
-        </div>
-      </section>
+          ) : undefined
+        }
+      >
+        <ResumeUpload
+          hasExisting={hasResume}
+          existingRole={profile?.current_role as string | null}
+          existingDnaScore={dnaScore}
+        />
+      </SectionCard>
 
       {/* ── Resume score panel ─────────────────────────────────── */}
       {hasResume && (
@@ -206,17 +206,12 @@ export default async function ProfilePage() {
       )}
 
       {/* ── Profile details ─────────────────────────────────────── */}
-      <section className="rounded-2xl border border-border bg-card/40" id="profile-details">
-        <div className="flex items-center gap-3 border-b border-border/50 px-6 py-4">
-          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10 text-primary">
-            <User className="h-4 w-4" />
-          </div>
-          <div>
-            <h2 className="text-sm font-semibold">Profile details</h2>
-            <p className="text-xs text-muted-foreground">Pre-filled from your resume — edit to refine your matches</p>
-          </div>
-        </div>
-        <div className="p-6">
+      <div id="profile-details" className="scroll-mt-20">
+        <SectionCard
+          title="Profile details"
+          subtitle="Pre-filled from your resume — edit to refine your matches"
+          icon={<User className="h-4 w-4" />}
+        >
           <SaveProfileForm
             defaultValues={{
               display_name: (profile?.display_name as string) ?? "",
@@ -229,8 +224,8 @@ export default async function ProfilePage() {
               seniority: (profile?.seniority as string) ?? "",
             }}
           />
-        </div>
-      </section>
+        </SectionCard>
+      </div>
     </div>
   );
 }
@@ -241,14 +236,18 @@ function DnaRing({ score }: { score: number }) {
   const r = 30;
   const circ = 2 * Math.PI * r;
   const dash = (score / 100) * circ;
-  const color = score >= 75 ? "hsl(var(--primary))" : score >= 55 ? "#f59e0b" : "#38bdf8";
+  // Use semantic CSS variables resolved through Tailwind classes via stroke="currentColor".
+  const colorClass =
+    score >= 75 ? "text-success" :
+    score >= 55 ? "text-warning" :
+    "text-primary";
   return (
-    <svg width="80" height="80" viewBox="0 0 80 80" className="shrink-0 -rotate-90">
+    <svg width="80" height="80" viewBox="0 0 80 80" className={`shrink-0 -rotate-90 ${colorClass}`}>
       <circle cx="40" cy="40" r={r} fill="none" stroke="hsl(var(--border))" strokeWidth="6" />
       <circle
         cx="40" cy="40" r={r}
         fill="none"
-        stroke={color}
+        stroke="currentColor"
         strokeWidth="6"
         strokeDasharray={`${dash} ${circ - dash}`}
         strokeLinecap="round"
@@ -256,7 +255,7 @@ function DnaRing({ score }: { score: number }) {
       />
       <text x="40" y="40" dominantBaseline="middle" textAnchor="middle"
         className="fill-foreground"
-        style={{ transform: "rotate(90deg)", transformOrigin: "40px 40px", fontSize: "16px", fontWeight: 700 }}
+        style={{ transform: "rotate(90deg)", transformOrigin: "40px 40px", fontSize: "18px", fontWeight: 700 }}
       >
         {score}
       </text>
@@ -357,59 +356,53 @@ function CareerTrajectoryPanel({
   const displayInsights = insights.slice(0, 3);
 
   return (
-    <section className="overflow-hidden rounded-2xl border border-border bg-card/40">
-      <div className="flex items-center gap-3 border-b border-border/50 px-6 py-4">
-        <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-violet-400/10 text-violet-400">
-          <TrendingUp className="h-4 w-4" />
-        </div>
+    <SectionCard
+      title="Career Trajectory"
+      subtitle="Your progression path in product engineering"
+      icon={<TrendingUp className="h-4 w-4" />}
+    >
+      {/* Stage strip */}
+      <div className="mb-4 grid grid-cols-2 gap-3">
         <div>
-          <h2 className="text-sm font-semibold">Career Trajectory</h2>
-          <p className="text-xs text-muted-foreground">Your progression path in product engineering</p>
+          <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Current level</p>
+          <p className="mt-0.5 text-base font-semibold capitalize">{stageName} engineer</p>
+          {currentRole && <p className="truncate text-xs text-muted-foreground">{currentRole}</p>}
+        </div>
+        <div className="text-right">
+          <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Next level</p>
+          <p className="mt-0.5 text-base font-semibold capitalize text-primary">{nextStageName} engineer</p>
+          <p className="text-[10px] text-muted-foreground">{timeframe}</p>
         </div>
       </div>
 
-      <div className="border-b border-border/40 px-6 py-4">
-        <div className="flex items-start justify-between gap-4">
-          <div>
-            <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Current level</p>
-            <p className="mt-0.5 text-base font-bold capitalize">{stageName} engineer</p>
-            {currentRole && <p className="text-xs text-muted-foreground">{currentRole}</p>}
-          </div>
-          <div className="shrink-0 text-right">
-            <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Next level</p>
-            <p className="mt-0.5 text-base font-bold capitalize text-violet-400">{nextStageName} engineer</p>
-            <p className="text-[10px] text-muted-foreground">{timeframe}</p>
-          </div>
-        </div>
-        <div className="relative mt-3 h-1.5 overflow-hidden rounded-full bg-secondary/60">
-          <div
-            className="h-full rounded-full bg-gradient-to-r from-violet-500 to-primary transition-all duration-700"
-            style={{ width: `${progressPct}%` }}
-          />
-        </div>
-        <div className="mt-1.5 flex justify-between text-[9px] text-muted-foreground/60">
-          <span>Progression readiness</span>
-          <span>{progressPct}%</span>
-        </div>
+      <div className="relative mb-1 h-1.5 overflow-hidden rounded-full bg-secondary">
+        <div
+          className="h-full rounded-full bg-primary transition-all duration-700"
+          style={{ width: `${progressPct}%` }}
+        />
+      </div>
+      <div className="mb-4 flex justify-between text-[10px] text-muted-foreground">
+        <span>Progression readiness</span>
+        <span className="tabular-nums">{progressPct}%</span>
       </div>
 
-      <div className="space-y-2.5 px-6 py-4">
+      <div className="space-y-2.5 border-t border-border pt-4">
         <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Trajectory signals</p>
         {displayInsights.map((insight, i) => (
           <div key={i} className="flex items-start gap-2.5">
-            <span className={`mt-1.5 h-1 w-1 shrink-0 rounded-full ${i === 0 ? "bg-violet-400" : i === 1 ? "bg-primary/60" : "bg-muted-foreground/40"}`} />
+            <span className="mt-1.5 h-1 w-1 shrink-0 rounded-full bg-primary" />
             <p className="text-xs leading-relaxed text-muted-foreground">{insight}</p>
           </div>
         ))}
       </div>
 
       {(currentLpa !== null || targetLpa !== null) && (
-        <div className="flex flex-wrap items-center gap-4 border-t border-border/40 px-6 py-3 text-xs text-muted-foreground">
+        <div className="mt-4 flex flex-wrap items-center gap-4 border-t border-border pt-3 text-xs text-muted-foreground">
           {currentLpa !== null && (
             <span>Current: <strong className="text-foreground">₹{currentLpa} LPA</strong></span>
           )}
           {targetLpa !== null && (
-            <span>Target: <strong className="text-emerald-400">₹{targetLpa} LPA</strong></span>
+            <span>Target: <strong className="text-success">₹{targetLpa} LPA</strong></span>
           )}
           {currentLpa !== null && targetLpa !== null && (
             <span className="ml-auto text-[10px]">
@@ -419,7 +412,7 @@ function CareerTrajectoryPanel({
           )}
         </div>
       )}
-    </section>
+    </SectionCard>
   );
 }
 
@@ -427,9 +420,9 @@ function CareerTrajectoryPanel({
 
 function AtsSignalPanel({ score }: { score: number }) {
   const probability   = score >= 80 ? "High" : score >= 62 ? "Medium" : "Low";
-  const probColor     = score >= 80 ? "text-emerald-400" : score >= 62 ? "text-amber-400" : "text-sky-400";
-  const probBg        = score >= 80 ? "bg-emerald-400/10" : score >= 62 ? "bg-amber-400/10" : "bg-sky-400/10";
-  const probBorder    = score >= 80 ? "border-emerald-400/20" : score >= 62 ? "border-amber-400/20" : "border-sky-400/20";
+  const probTone      = score >= 80 ? { text: "text-success", bg: "bg-success/10", border: "border-success/20" }
+                      : score >= 62 ? { text: "text-warning", bg: "bg-warning/10", border: "border-warning/20" }
+                      : { text: "text-destructive", bg: "bg-destructive/10", border: "border-destructive/20" };
 
   const recruiterRead = score >= 85
     ? "Immediately shortlistable — strong signal-to-noise"
@@ -440,7 +433,12 @@ function AtsSignalPanel({ score }: { score: number }) {
     : "High drop-off risk at screening — review tips above";
 
   const atsGrade      = score >= 85 ? "A" : score >= 72 ? "B" : score >= 58 ? "C" : "D";
-  const atsGradeColor = score >= 85 ? "text-emerald-400" : score >= 72 ? "text-amber-400" : score >= 58 ? "text-sky-400" : "text-rose-400";
+  const atsGradeColor = score >= 85 ? "text-success" : score >= 72 ? "text-warning" : score >= 58 ? "text-primary" : "text-destructive";
+
+  const readinessTone =
+    score >= 75 ? "text-success" :
+    score >= 55 ? "text-warning" :
+    "text-destructive";
 
   const strengths: string[] = score >= 80
     ? ["Strong keyword density", "Seniority signals clear", "Measurable impact present"]
@@ -455,79 +453,69 @@ function AtsSignalPanel({ score }: { score: number }) {
     : ["Low keyword coverage for top roles", "Missing scale / impact signals", "Seniority unclear from resume"];
 
   return (
-    <section className="overflow-hidden rounded-2xl border border-border bg-card/40">
-      <div className="flex items-center gap-3 border-b border-border/50 px-6 py-4">
-        <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10 text-primary">
-          <UserCheck className="h-4 w-4" />
-        </div>
-        <div>
-          <h2 className="text-sm font-semibold">ATS &amp; Recruiter Signal</h2>
-          <p className="text-xs text-muted-foreground">
-            How automated screening and hiring managers are likely to read your profile
-          </p>
-        </div>
-      </div>
-
+    <SectionCard
+      title="ATS & Recruiter Signal"
+      subtitle="How automated screening and hiring managers are likely to read your profile"
+      icon={<UserCheck className="h-4 w-4" />}
+    >
       {/* 3-metric strip */}
-      <div className="grid grid-cols-3 divide-x divide-border/40">
-        <div className={`flex flex-col items-center gap-1 px-4 py-5 ${probBg} border-b border-border/40`}>
-          <span className={`text-[10px] font-semibold uppercase tracking-wider ${probColor}`}>Callback prob.</span>
-          <span className={`text-2xl font-bold tabular-nums ${probColor}`}>{probability}</span>
-          <span className={`rounded-full border px-2 py-0.5 text-[10px] ${probBorder} ${probColor}`}>
+      <div className="mb-4 grid grid-cols-3 gap-3">
+        <div className={`flex flex-col items-center gap-1 rounded-lg border px-3 py-3 ${probTone.border} ${probTone.bg}`}>
+          <span className={`text-[10px] font-semibold uppercase tracking-wider ${probTone.text}`}>Callback</span>
+          <span className={`text-xl font-bold tabular-nums ${probTone.text}`}>{probability}</span>
+          <span className={`rounded-full border px-1.5 py-0.5 text-[10px] ${probTone.border} ${probTone.text}`}>
             {score}/100
           </span>
         </div>
-        <div className="flex flex-col items-center gap-1 border-b border-border/40 px-4 py-5">
+        <div className="flex flex-col items-center gap-1 rounded-lg border border-border px-3 py-3">
           <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">ATS grade</span>
-          <span className={`text-2xl font-bold tabular-nums ${atsGradeColor}`}>{atsGrade}</span>
-          <span className="rounded-full border border-border px-2 py-0.5 text-[10px] text-muted-foreground">
+          <span className={`text-xl font-bold tabular-nums ${atsGradeColor}`}>{atsGrade}</span>
+          <span className="rounded-full border border-border bg-secondary px-1.5 py-0.5 text-[10px] text-muted-foreground">
             {atsGrade === "A" ? "pass" : atsGrade === "B" ? "likely pass" : atsGrade === "C" ? "borderline" : "risk"}
           </span>
         </div>
-        <div className="flex flex-col items-center gap-1 border-b border-border/40 px-4 py-5">
-          <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Interview readiness</span>
-          <span className="flex items-center gap-1 text-2xl font-bold">
-            <BarChart3 className={`h-5 w-5 ${score >= 75 ? "text-emerald-400" : score >= 55 ? "text-amber-400" : "text-sky-400"}`} />
-            <span className={score >= 75 ? "text-emerald-400" : score >= 55 ? "text-amber-400" : "text-sky-400"}>
-              {score >= 75 ? "Ready" : score >= 55 ? "Close" : "Prep needed"}
-            </span>
+        <div className="flex flex-col items-center gap-1 rounded-lg border border-border px-3 py-3">
+          <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Interview</span>
+          <span className={`inline-flex items-center gap-1 text-xl font-bold ${readinessTone}`}>
+            <BarChart3 className="h-4 w-4" />
+            <span>{score >= 75 ? "Ready" : score >= 55 ? "Close" : "Prep"}</span>
           </span>
-          <span className="rounded-full border border-border px-2 py-0.5 text-[10px] text-muted-foreground">
-            for product-co interviews
+          <span className="rounded-full border border-border bg-secondary px-1.5 py-0.5 text-[10px] text-muted-foreground">
+            product co
           </span>
         </div>
       </div>
 
       {/* Recruiter read */}
-      <div className="border-b border-border/40 px-6 py-4">
-        <p className="mb-2 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Recruiter reads your profile as</p>
-        <p className="text-sm text-muted-foreground">{recruiterRead}</p>
+      <div className="mb-4 rounded-lg border border-border bg-secondary/40 px-4 py-3">
+        <p className="mb-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Recruiter reads your profile as</p>
+        <p className="text-sm text-foreground/90">{recruiterRead}</p>
       </div>
 
       {/* Strengths + concerns */}
-      <div className="grid grid-cols-1 gap-4 px-6 py-4 sm:grid-cols-2">
-        <div>
-          <p className="mb-2 flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wider text-emerald-400">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+        <div className="rounded-lg border border-success/20 bg-success/5 p-3">
+          <p className="mb-2 flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wider text-success">
             <CheckCircle2 className="h-3 w-3" /> ATS passes
           </p>
           <ul className="space-y-1">
             {strengths.map((s) => (
               <li key={s} className="flex items-start gap-2 text-xs text-muted-foreground">
-                <span className="mt-1.5 h-1 w-1 shrink-0 rounded-full bg-emerald-400/60" />
+                <span className="mt-1.5 h-1 w-1 shrink-0 rounded-full bg-success" />
                 {s}
               </li>
             ))}
           </ul>
         </div>
         {concerns.length > 0 && (
-          <div>
-            <p className="mb-2 flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wider text-amber-400">
+          <div className="rounded-lg border border-warning/20 bg-warning/5 p-3">
+            <p className="mb-2 flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wider text-warning">
               <Zap className="h-3 w-3" /> Fix before applying
             </p>
             <ul className="space-y-1">
               {concerns.map((c) => (
                 <li key={c} className="flex items-start gap-2 text-xs text-muted-foreground">
-                  <span className="mt-1.5 h-1 w-1 shrink-0 rounded-full bg-amber-400/60" />
+                  <span className="mt-1.5 h-1 w-1 shrink-0 rounded-full bg-warning" />
                   {c}
                 </li>
               ))}
@@ -535,10 +523,6 @@ function AtsSignalPanel({ score }: { score: number }) {
           </div>
         )}
       </div>
-
-      <div className="border-t border-border/40 px-6 py-3 text-[10px] text-muted-foreground/50">
-        Derived from your resume strength score · Not tied to any specific recruiter&apos;s system · Improve score by acting on tips above
-      </div>
-    </section>
+    </SectionCard>
   );
 }

@@ -57,7 +57,7 @@ export function JobActions({ jobId, existingApp }: Props) {
   if (status) {
     return (
       <div className="flex flex-wrap items-center gap-2">
-        <span className="inline-flex items-center gap-1.5 rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-sm text-emerald-300">
+        <span className="inline-flex items-center gap-1.5 rounded-md border border-success/30 bg-success/10 px-3 py-2 text-sm font-medium text-success">
           <Check className="h-3.5 w-3.5" /> Tracked as {STATUS_LABEL[status]}
         </span>
         <select
@@ -65,7 +65,7 @@ export function JobActions({ jobId, existingApp }: Props) {
           disabled={pending}
           value={status}
           onChange={(e) => onTrack(e.target.value as Status)}
-          className="rounded-xl border border-border bg-background px-3 py-2 text-sm"
+          className="tap-target rounded-md border border-input bg-background px-3 text-sm focus:ring-2 focus:ring-primary/20"
         >
           {(Object.keys(STATUS_LABEL) as Status[]).map((s) => (
             <option key={s} value={s}>{STATUS_LABEL[s]}</option>
@@ -75,7 +75,7 @@ export function JobActions({ jobId, existingApp }: Props) {
           type="button"
           onClick={onUntrack}
           disabled={pending}
-          className="inline-flex items-center gap-1.5 rounded-xl border border-border px-3 py-2 text-sm text-muted-foreground transition hover:border-rose-500/40 hover:text-rose-400 disabled:opacity-50"
+          className="press tap-target inline-flex items-center gap-1.5 rounded-md border border-border bg-card px-3 py-2 text-sm font-medium text-muted-foreground transition hover:border-destructive/40 hover:text-destructive disabled:opacity-50 focus-ring"
         >
           <Trash2 className="h-3.5 w-3.5" /> Untrack
         </button>
@@ -89,7 +89,7 @@ export function JobActions({ jobId, existingApp }: Props) {
         type="button"
         onClick={() => onTrack("saved")}
         disabled={pending}
-        className="inline-flex items-center gap-2 rounded-xl border border-border px-4 py-2 text-sm font-medium transition hover:border-primary/40 hover:bg-secondary disabled:opacity-50"
+        className="press tap-target inline-flex items-center gap-2 rounded-md border border-border bg-card px-4 py-2 text-sm font-medium transition hover:border-primary/40 hover:bg-secondary disabled:opacity-50 focus-ring"
       >
         {pending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Bookmark className="h-3.5 w-3.5" />}
         Save for later
@@ -98,7 +98,7 @@ export function JobActions({ jobId, existingApp }: Props) {
         type="button"
         onClick={() => onTrack("applied")}
         disabled={pending}
-        className="inline-flex items-center gap-2 rounded-xl border border-primary/30 bg-primary/10 px-4 py-2 text-sm font-medium text-primary transition hover:bg-primary/20 disabled:opacity-50"
+        className="press tap-target inline-flex items-center gap-2 rounded-md border border-primary/30 bg-primary-soft px-4 py-2 text-sm font-semibold text-primary-soft-foreground transition hover:bg-primary/15 disabled:opacity-50 focus-ring"
       >
         Mark as applied
       </button>

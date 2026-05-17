@@ -3,13 +3,14 @@ import { notFound, redirect } from "next/navigation";
 import Link from "next/link";
 import {
   ArrowLeft, ExternalLink, MapPin, Briefcase, Calendar,
-  Sparkles, CheckCircle2, AlertCircle, TrendingUp,
-  ChevronRight, Zap,
+  Sparkles, CheckCircle2, AlertCircle, TrendingUp, Target,
+  ChevronRight, ShieldCheck,
 } from "lucide-react";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { CompanyLogo } from "@/components/company-logo";
 import { ScoreRing } from "@/components/score-ring";
 import { Tooltip } from "@/components/tooltip";
+import { SectionCard } from "@/components/section-card";
 import { JobActions } from "./job-actions";
 import { StickyApplyBar } from "./sticky-apply-bar";
 import { JobDescription } from "./job-description";
@@ -36,7 +37,6 @@ type JobRow = {
   seniority: string | null; apply_url: string | null;
   posted_at: string | null; last_seen_at: string | null;
   is_active: boolean; company_id: string;
-  // Sprint 5 — fields the Apply Toolkit needs
   must_have_skills: string[] | null;
   nice_to_have_skills: string[] | null;
   role_function: string | null;
@@ -51,6 +51,16 @@ type SimilarRow = {
     id: string; title: string;
     companies: { name: string; logo_url: string | null } | null;
   } | null;
+};
+
+// Verdict styling — semantic tokens only, mirrors /matches.
+type Verdict = "strong_fit" | "stretch" | "off_target" | "underqualified" | "mismatch";
+const VERDICT_META: Record<Verdict, { label: string; tone: string; bg: string; border: string; icon: React.ReactNode }> = {
+  strong_fit:     { label: "Strong fit",     tone: "text-success",     bg: "bg-success/10",     border: "border-success/30",     icon: <CheckCircle2 className="h-3 w-3" /> },
+  stretch:        { label: "Stretch",        tone: "text-warning",     bg: "bg-warning/10",     border: "border-warning/30",     icon: <TrendingUp className="h-3 w-3" /> },
+  off_target:     { label: "Off-target",     tone: "text-primary",     bg: "bg-primary-soft",   border: "border-primary/30",     icon: <Target className="h-3 w-3" /> },
+  underqualified: { label: "Underqualified", tone: "text-primary",     bg: "bg-primary-soft",   border: "border-primary/30",     icon: <AlertCircle className="h-3 w-3" /> },
+  mismatch:       { label: "Mismatch",       tone: "text-destructive", bg: "bg-destructive/10", border: "border-destructive/30", icon: <ShieldCheck className="h-3 w-3" /> },
 };
 
 export async function generateMetadata({ params }: { params: Promise<{ id: string }> }): Promise<Metadata> {
@@ -127,21 +137,10 @@ export default async function JobDetailPage({ params }: { params: Promise<{ id: 
   const compRange = formatComp(job.comp_lpa_min, job.comp_lpa_max);
   const expRange = formatExp(job.min_experience_years, job.max_experience_years);
 
-  const verdictColor = match?.verdict === "strong_fit" ? "text-emerald-400 border-emerald-400/30 bg-emerald-400/8"
-    : match?.verdict === "stretch" ? "text-amber-400 border-amber-400/30 bg-amber-400/8"
-    : match?.verdict === "off_target" ? "text-violet-400 border-violet-400/30 bg-violet-400/8"
-    : "text-sky-400 border-sky-400/30 bg-sky-400/8";
+  const verdictKey = (match?.verdict as Verdict | undefined) ?? null;
+  const verdictMeta = verdictKey ? VERDICT_META[verdictKey] : null;
 
-  const verdictLabel = match?.verdict === "strong_fit" ? "Strong fit"
-    : match?.verdict === "stretch" ? "Stretch"
-    : match?.verdict === "off_target" ? "Off-target"
-    : match?.verdict === "underqualified" ? "Underqualified"
-    : match?.verdict === "mismatch" ? "Mismatch" : null;
-
-  // ── Sprint 5 — Apply Toolkit data load ────────────────────────────────
-  // We load these in parallel after the main job fetch. The toolkit
-  // component renders gracefully when any of them are null (showing a
-  // "Generate" CTA instead of cached state).
+  // ── Apply Toolkit data load ────────────────────────────────────────
   const consents = await getUserConsents(user.id);
   const admin = createSupabaseAdminClient();
 
@@ -152,9 +151,6 @@ export default async function JobDetailPage({ params }: { params: Promise<{ id: 
       .select("resume_parsed, resume_storage_path")
       .eq("id", user.id)
       .maybeSingle() as any,
-    // Service-role for the toolkit cache reads — RLS would also allow these
-    // for the owner, but using admin keeps the path consistent with the
-    // server action.
     admin
       .from("tailored_resumes")
       .select("content, docx_storage_path, generated_at")
@@ -176,9 +172,6 @@ export default async function JobDetailPage({ params }: { params: Promise<{ id: 
   const parsedResume = profileRow?.resume_parsed ?? null;
   const hasResume = Boolean(profileRow?.resume_storage_path && parsedResume);
 
-  // Compute the ATS view server-side (zero-cost, deterministic). Only when
-  // we have both the parsed resume AND the JD's parsed must/nice arrays —
-  // otherwise the keyword scan has no signal to work against.
   const atsView = parsedResume && hasResume
     ? computeAtsView({
         resume: parsedResume,
@@ -187,8 +180,6 @@ export default async function JobDetailPage({ params }: { params: Promise<{ id: 
       })
     : null;
 
-  // Mint a fresh signed URL for the cached .docx (if any). Lasts 10 min;
-  // re-mint via getTailoredResumeDownloadUrl from the client when expired.
   let initialTailorUrl: string | null = null;
   if (tailoredRow?.docx_storage_path) {
     const { data: signed } = await admin.storage
@@ -199,7 +190,6 @@ export default async function JobDetailPage({ params }: { params: Promise<{ id: 
 
   return (
     <div className="space-y-5 pb-6">
-      {/* Sticky apply bar */}
       <StickyApplyBar
         companyName={company?.name ?? ""}
         companyLogoUrl={company?.logo_url ?? null}
@@ -210,43 +200,39 @@ export default async function JobDetailPage({ params }: { params: Promise<{ id: 
 
       {/* Breadcrumb */}
       <nav aria-label="Breadcrumb" className="flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground">
-        <Link href="/matches" className="inline-flex items-center gap-1 rounded-lg transition hover:text-foreground focus-ring">
+        <Link href="/matches" className="inline-flex items-center gap-1 rounded transition hover:text-foreground focus-ring">
           <ArrowLeft className="h-3 w-3" /> Matches
         </Link>
         <ChevronRight className="h-3 w-3 opacity-40" />
         {company?.name && <span className="text-foreground/70">{company.name}</span>}
         <ChevronRight className="h-3 w-3 opacity-40" />
-        <span className="truncate max-w-xs text-foreground/50">{job.title}</span>
+        <span className="max-w-xs truncate text-foreground/50">{job.title}</span>
       </nav>
 
       {/* ── Job hero card ─────────────────────────────────────── */}
-      <div className="relative overflow-hidden rounded-2xl border border-border bg-card/50 p-6 backdrop-blur">
-        <div aria-hidden className="absolute right-0 top-0 h-40 w-60 rounded-full bg-primary/5 blur-3xl" />
-
-        <div className="relative flex flex-wrap items-start gap-5">
-          <CompanyLogo name={company?.name ?? "?"} logoUrl={company?.logo_url ?? null} size={72} />
+      <div className="rounded-xl border border-border bg-card p-5 sm:p-6">
+        <div className="flex flex-wrap items-start gap-4 sm:gap-5">
+          <CompanyLogo name={company?.name ?? "?"} logoUrl={company?.logo_url ?? null} size={64} />
 
           <div className="min-w-0 flex-1">
             <div className="flex flex-wrap items-center gap-2">
               <p className="text-sm font-medium text-muted-foreground">{company?.name ?? ""}</p>
-              {verdictLabel && match && (
-                <span className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-0.5 text-xs font-semibold ${verdictColor}`}>
-                  {match.verdict === "strong_fit" && <CheckCircle2 className="h-3 w-3" />}
-                  {match.verdict === "stretch" && <TrendingUp className="h-3 w-3" />}
-                  {match.verdict === "underqualified" && <AlertCircle className="h-3 w-3" />}
-                  {verdictLabel}
+              {verdictMeta && (
+                <span className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-0.5 text-xs font-semibold ${verdictMeta.tone} ${verdictMeta.bg} ${verdictMeta.border}`}>
+                  {verdictMeta.icon}
+                  {verdictMeta.label}
                 </span>
               )}
               {!job.is_active && (
-                <span className="rounded-full bg-rose-500/10 border border-rose-500/20 px-2 py-0.5 text-xs text-rose-400">
-                  Stale — may be closed
+                <span className="inline-flex items-center gap-1 rounded-full border border-destructive/30 bg-destructive/10 px-2 py-0.5 text-xs font-medium text-destructive">
+                  <AlertCircle className="h-3 w-3" /> Stale — may be closed
                 </span>
               )}
             </div>
 
-            <h1 className="mt-1.5 text-2xl font-bold leading-tight">{job.title}</h1>
+            <h1 className="mt-2 text-xl font-semibold leading-tight sm:text-2xl">{job.title}</h1>
 
-            <div className="mt-2.5 flex flex-wrap items-center gap-x-4 gap-y-1.5 text-sm text-muted-foreground">
+            <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1.5 text-sm text-muted-foreground">
               {(job.hubs ?? []).slice(0, 3).map((h) => (
                 <span key={h} className="inline-flex items-center gap-1.5">
                   <MapPin className="h-3.5 w-3.5" />{h}
@@ -265,13 +251,13 @@ export default async function JobDetailPage({ params }: { params: Promise<{ id: 
             </div>
 
             {compRange && (
-              <p className="mt-3 text-xl font-bold text-primary">{compRange}</p>
+              <p className="mt-3 text-lg font-semibold text-primary sm:text-xl">{compRange}</p>
             )}
           </div>
 
           {match && (
             <Tooltip label="Score combines a rules engine (experience, location, comp, tech overlap) with Gemini-graded fit. 75+ is a strong fit.">
-              <div className="flex cursor-help flex-col items-center gap-1.5">
+              <div className="flex shrink-0 cursor-help flex-col items-center gap-1.5">
                 <ScoreRing score={match.score} size="lg" showLabel={false} />
                 <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Match</span>
               </div>
@@ -279,10 +265,8 @@ export default async function JobDetailPage({ params }: { params: Promise<{ id: 
           )}
         </div>
 
-        {/* Action bar — Sprint 2 Items 9 + 10: ApplyButton tracks the click
-            and auto-creates the application row instead of forcing the user
-            to track it manually after returning from the careers page. */}
-        <div className="relative mt-5 flex flex-wrap items-center gap-2 border-t border-border/50 pt-5">
+        {/* Action bar */}
+        <div className="mt-5 flex flex-wrap items-center gap-2 border-t border-border pt-4">
           {job.apply_url && (
             <ApplyButton jobId={job.id} applyUrl={job.apply_url} variant="default" />
           )}
@@ -292,9 +276,11 @@ export default async function JobDetailPage({ params }: { params: Promise<{ id: 
               href={company.careers_url}
               target="_blank"
               rel="noopener noreferrer"
-              className="ml-auto inline-flex items-center gap-1.5 rounded-xl border border-border px-3 py-2 text-xs text-muted-foreground transition hover:border-primary/30 hover:text-foreground"
+              className="press tap-target ml-auto inline-flex items-center gap-1.5 rounded-md border border-border bg-card px-3 py-2 text-xs font-medium text-muted-foreground transition hover:border-primary/40 hover:text-foreground focus-ring"
             >
-              <ExternalLink className="h-3 w-3" /> Official careers page
+              <ExternalLink className="h-3 w-3" />
+              <span className="hidden sm:inline">Official careers page</span>
+              <span className="sm:hidden">Careers</span>
             </a>
           )}
         </div>
@@ -304,18 +290,16 @@ export default async function JobDetailPage({ params }: { params: Promise<{ id: 
       {match && match.fit_card ? (
         <FitCardPanel data={match.fit_card} score={match.score} />
       ) : match && match.reasoning ? (
-        <div className="rounded-2xl border border-border bg-card/40 p-6">
-          <h2 className="mb-2 flex items-center gap-2 text-sm font-semibold">
-            <Sparkles className="h-4 w-4 text-primary" /> Match snapshot
-          </h2>
-          <p className="text-sm text-muted-foreground">{match.reasoning}</p>
-          <p className="mt-3 text-xs text-muted-foreground/70">
-            Score {Math.round(match.score)}. The detailed Fit Card lands after the next match compute.
-          </p>
-        </div>
+        <SectionCard
+          title="Match snapshot"
+          icon={<Sparkles className="h-4 w-4" />}
+          subtitle={`Score ${Math.round(match.score)} — full Fit Card lands after the next match compute`}
+        >
+          <p className="text-sm leading-relaxed text-muted-foreground">{match.reasoning}</p>
+        </SectionCard>
       ) : null}
 
-      {/* ── Apply Toolkit (Sprint 5) ──────────────────────────── */}
+      {/* ── Apply Toolkit ─────────────────────────────────────── */}
       <ApplyToolkit
         jobId={job.id}
         jobTitle={job.title}
@@ -326,7 +310,7 @@ export default async function JobDetailPage({ params }: { params: Promise<{ id: 
           atsView
             ? <RecruiterView view={atsView} />
             : (
-              <div className="rounded-xl border border-dashed border-border bg-card/20 p-5 text-center text-xs text-muted-foreground">
+              <div className="rounded-xl border border-dashed border-border bg-secondary/30 p-5 text-center text-xs text-muted-foreground">
                 The recruiter view needs your parsed resume and a parsed JD. Upload your resume on /profile, then return here.
               </div>
             )
@@ -347,14 +331,14 @@ export default async function JobDetailPage({ params }: { params: Promise<{ id: 
       {match && !match.fit_card && match.strengths && match.gaps && (
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           {match.strengths && match.strengths.length > 0 && (
-            <div className="rounded-2xl border border-emerald-500/20 bg-emerald-500/5 p-5">
-              <p className="mb-3 flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-emerald-400">
+            <div className="rounded-xl border border-success/30 bg-success/5 p-5">
+              <p className="mb-3 flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-success">
                 <CheckCircle2 className="h-3.5 w-3.5" /> Your strengths
               </p>
               <ul className="space-y-2">
                 {match.strengths.slice(0, 3).map((s, i) => (
                   <li key={i} className="flex items-start gap-2 text-sm text-muted-foreground">
-                    <span className="mt-1.5 h-1 w-1 shrink-0 rounded-full bg-emerald-400" />
+                    <span className="mt-1.5 h-1 w-1 shrink-0 rounded-full bg-success" />
                     {s}
                   </li>
                 ))}
@@ -362,14 +346,14 @@ export default async function JobDetailPage({ params }: { params: Promise<{ id: 
             </div>
           )}
           {match.gaps && match.gaps.length > 0 && (
-            <div className="rounded-2xl border border-amber-500/20 bg-amber-500/5 p-5">
-              <p className="mb-3 flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-amber-400">
+            <div className="rounded-xl border border-warning/30 bg-warning/5 p-5">
+              <p className="mb-3 flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-warning">
                 <TrendingUp className="h-3.5 w-3.5" /> Gaps to address
               </p>
               <ul className="space-y-2">
                 {match.gaps.slice(0, 3).map((g, i) => (
                   <li key={i} className="flex items-start gap-2 text-sm text-muted-foreground">
-                    <span className="mt-1.5 h-1 w-1 shrink-0 rounded-full bg-amber-400" />
+                    <span className="mt-1.5 h-1 w-1 shrink-0 rounded-full bg-warning" />
                     {g}
                   </li>
                 ))}
@@ -390,7 +374,7 @@ export default async function JobDetailPage({ params }: { params: Promise<{ id: 
 
       {/* ── Description + sidebar ─────────────────────────────── */}
       <div className="grid grid-cols-1 gap-5 lg:grid-cols-3">
-        <div className="rounded-2xl border border-border bg-card/40 p-6 lg:col-span-2">
+        <div className="rounded-xl border border-border bg-card p-5 sm:p-6 lg:col-span-2">
           <h2 className="mb-4 text-sm font-semibold">Job description</h2>
           {job.description ? (
             <JobDescription text={job.description} />
@@ -405,7 +389,7 @@ export default async function JobDetailPage({ params }: { params: Promise<{ id: 
               <h3 className="mb-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">Tech stack</h3>
               <div className="flex flex-wrap gap-2">
                 {(job.tech_stack ?? []).map((t) => (
-                  <span key={t} className="rounded-lg border border-border bg-secondary/50 px-2.5 py-1 font-mono text-xs">
+                  <span key={t} className="rounded-md border border-border bg-secondary/50 px-2.5 py-1 font-mono text-xs">
                     {t}
                   </span>
                 ))}
@@ -417,55 +401,55 @@ export default async function JobDetailPage({ params }: { params: Promise<{ id: 
         {/* Sidebar */}
         <div className="space-y-4">
           {similar.length > 0 && (
-            <div className="rounded-2xl border border-border bg-card/40 p-5">
-              <h3 className="mb-3 text-sm font-semibold">More at {company?.name}</h3>
-              <div className="space-y-2">
+            <SectionCard title={`More at ${company?.name ?? ""}`} subtitle="Similar roles for you">
+              <div className="space-y-1">
                 {similar.map((s) => (
                   <Link
                     key={s.job_id}
                     href={`/jobs/${s.job_id}`}
-                    className="group flex items-center gap-3 rounded-xl border border-transparent bg-secondary/30 px-3 py-2.5 transition hover:border-primary/20 hover:bg-secondary/60"
+                    className="group flex items-center gap-3 rounded-md px-2 py-2.5 transition hover:bg-secondary focus-ring"
                   >
                     <CompanyLogo name={s.jobs?.companies?.name ?? "?"} logoUrl={s.jobs?.companies?.logo_url ?? null} size={28} />
                     <div className="min-w-0 flex-1">
-                      <p className="truncate text-sm group-hover:text-primary transition">{s.jobs?.title ?? "Role"}</p>
+                      <p className="truncate text-sm transition group-hover:text-primary">{s.jobs?.title ?? "Role"}</p>
                     </div>
-                    <span className="shrink-0 rounded-md bg-secondary px-1.5 py-0.5 text-xs font-bold tabular-nums">{Math.round(s.score)}</span>
+                    <span className="shrink-0 rounded bg-secondary px-1.5 py-0.5 text-xs font-bold tabular-nums">{Math.round(s.score)}</span>
                   </Link>
                 ))}
               </div>
-            </div>
+            </SectionCard>
           )}
 
           {/* Trust badge */}
-          <div className="rounded-2xl border border-border bg-card/30 p-5">
-            <h3 className="mb-2 text-sm font-semibold">Source</h3>
-            {company?.careers_url && (
-              <a
-                href={company.careers_url}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex items-center gap-2 text-xs text-muted-foreground hover:text-foreground transition"
-              >
-                <ExternalLink className="h-3 w-3 shrink-0" />
-                {company.name} official careers page
-              </a>
-            )}
-            <div className="mt-3 space-y-1.5 text-xs text-muted-foreground">
-              <p className="flex items-start gap-1.5">
-                <CheckCircle2 className="mt-0.5 h-3 w-3 shrink-0 text-emerald-400" />
+          <SectionCard title="Source" subtitle="Where this listing came from">
+            <ul className="space-y-2 text-xs text-muted-foreground">
+              {company?.careers_url && (
+                <li>
+                  <a
+                    href={company.careers_url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-2 text-foreground/80 transition hover:text-foreground focus-ring rounded"
+                  >
+                    <ExternalLink className="h-3 w-3 shrink-0" />
+                    {company.name} official careers page
+                  </a>
+                </li>
+              )}
+              <li className="flex items-start gap-1.5">
+                <CheckCircle2 className="mt-0.5 h-3 w-3 shrink-0 text-success" />
                 Sourced from official career page only
-              </p>
-              <p className="flex items-start gap-1.5">
-                <CheckCircle2 className="mt-0.5 h-3 w-3 shrink-0 text-emerald-400" />
+              </li>
+              <li className="flex items-start gap-1.5">
+                <CheckCircle2 className="mt-0.5 h-3 w-3 shrink-0 text-success" />
                 No aggregators or third-party boards
-              </p>
-              <p className="flex items-start gap-1.5">
-                <CheckCircle2 className="mt-0.5 h-3 w-3 shrink-0 text-emerald-400" />
+              </li>
+              <li className="flex items-start gap-1.5">
+                <CheckCircle2 className="mt-0.5 h-3 w-3 shrink-0 text-success" />
                 Updated daily via automated crawler
-              </p>
-            </div>
-          </div>
+              </li>
+            </ul>
+          </SectionCard>
         </div>
       </div>
     </div>

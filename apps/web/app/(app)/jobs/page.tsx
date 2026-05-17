@@ -4,18 +4,21 @@ import Link from "next/link";
 import { ExternalLink, MapPin, Briefcase, Building2, Search } from "lucide-react";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { CompanyLogo } from "@/components/company-logo";
+import { StaggerList } from "@/components/stagger-list";
+import { EmptyState } from "@/components/empty-state";
 
 export const metadata: Metadata = { title: "Jobs" };
 
-const SENIORITY_COLORS: Record<string, string> = {
-  intern:    "text-sky-400 bg-sky-400/10",
-  junior:    "text-emerald-400 bg-emerald-400/10",
-  mid:       "text-violet-400 bg-violet-400/10",
-  senior:    "text-amber-400 bg-amber-400/10",
-  staff:     "text-rose-400 bg-rose-400/10",
-  principal: "text-rose-400 bg-rose-400/10",
-  manager:   "text-primary bg-primary-soft",
-  director:  "text-primary bg-primary-soft",
+// Seniority pill — collapses six raw colors to three semantic tones.
+const SENIORITY_TONE: Record<string, string> = {
+  intern:    "bg-primary-soft text-primary-soft-foreground border-primary/20",
+  junior:    "bg-primary-soft text-primary-soft-foreground border-primary/20",
+  mid:       "bg-secondary text-foreground border-border",
+  senior:    "bg-warning/10 text-warning border-warning/20",
+  staff:     "bg-success/10 text-success border-success/20",
+  principal: "bg-success/10 text-success border-success/20",
+  manager:   "bg-primary-soft text-primary-soft-foreground border-primary/20",
+  director:  "bg-primary-soft text-primary-soft-foreground border-primary/20",
 };
 
 type JobRow = {
@@ -73,33 +76,31 @@ export default async function JobsPage({
   });
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 pb-6">
       {/* Header */}
       <div>
-        <h1 className="text-2xl font-semibold">All jobs</h1>
+        <h1 className="text-2xl font-semibold tracking-tight">All jobs</h1>
         <p className="mt-1 text-sm text-muted-foreground">
           {allJobs.length} active roles from 18 product companies
         </p>
       </div>
 
-      {/* Filters */}
-      <form method="GET" className="flex flex-wrap items-center gap-3">
-        {/* Search */}
-        <div className="relative flex-1 min-w-48">
-          <Search className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
+      {/* Filters — mobile-first: stack vertically until sm */}
+      <form method="GET" className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
+        <div className="relative min-w-0 flex-1 sm:min-w-48">
+          <Search className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
           <input
             name="q"
             defaultValue={params.q ?? ""}
             placeholder="Search title, company, tech…"
-            className="w-full rounded-xl border border-border bg-background pl-9 pr-4 py-2 text-sm outline-none focus:border-primary/60 focus:ring-2 focus:ring-primary/20"
+            className="tap-target w-full rounded-md border border-input bg-background pl-9 pr-3 text-sm outline-none focus:border-primary/60 focus:ring-2 focus:ring-primary/20"
           />
         </div>
 
-        {/* Company filter */}
         <select
           name="c"
           defaultValue={selectedSlug}
-          className="rounded-xl border border-border bg-background px-3 py-2 text-sm outline-none focus:border-primary/60 focus:ring-2 focus:ring-primary/20"
+          className="tap-target rounded-md border border-input bg-background px-3 text-sm outline-none focus:border-primary/60 focus:ring-2 focus:ring-primary/20"
         >
           <option value="">All companies</option>
           {(companies ?? []).map((c) => (
@@ -107,21 +108,23 @@ export default async function JobsPage({
           ))}
         </select>
 
-        <button
-          type="submit"
-          className="rounded-xl bg-primary px-4 py-2 text-sm font-medium text-primary-foreground shadow shadow-primary/20 transition hover:opacity-90"
-        >
-          Filter
-        </button>
-
-        {(selectedSlug || query) && (
-          <Link
-            href="/jobs"
-            className="rounded-xl border border-border px-4 py-2 text-sm text-muted-foreground transition hover:text-foreground"
+        <div className="flex gap-2">
+          <button
+            type="submit"
+            className="press tap-target rounded-md bg-primary px-4 text-sm font-semibold text-primary-foreground transition hover:bg-primary/90 focus-ring"
           >
-            Clear
-          </Link>
-        )}
+            Filter
+          </button>
+
+          {(selectedSlug || query) && (
+            <Link
+              href="/jobs"
+              className="press tap-target inline-flex items-center rounded-md border border-border bg-card px-4 text-sm text-muted-foreground transition hover:border-primary/40 hover:text-foreground focus-ring"
+            >
+              Clear
+            </Link>
+          )}
+        </div>
       </form>
 
       {/* Result count when filtered */}
@@ -137,16 +140,14 @@ export default async function JobsPage({
 
       {/* Job list */}
       {jobs.length === 0 ? (
-        <div className="rounded-2xl border border-dashed border-border p-12 text-center">
-          <Building2 className="mx-auto h-8 w-8 text-muted-foreground/40" />
-          <p className="mt-3 text-sm font-medium">No jobs found</p>
-          <p className="mt-1 text-xs text-muted-foreground">Try clearing your filters.</p>
-          <Link href="/jobs" className="mt-3 inline-block text-xs text-primary hover:underline">
-            Clear filters →
-          </Link>
-        </div>
+        <EmptyState
+          icon={<Building2 className="h-5 w-5" />}
+          title="No jobs found"
+          body="Try clearing your filters or widening the search."
+          actions={[{ label: "Clear filters", href: "/jobs", variant: "primary" }]}
+        />
       ) : (
-        <div className="space-y-3">
+        <StaggerList className="space-y-3">
           {jobs.map((job) => {
             const company = job.companies;
             const tech = job.tech_stack ?? [];
@@ -155,7 +156,7 @@ export default async function JobsPage({
             return (
               <div
                 key={job.id}
-                className="group rounded-2xl border border-border bg-card/40 p-5 transition hover:border-primary/30 hover:bg-card/70"
+                className="group rounded-xl border border-border bg-card p-4 transition hover:border-primary/30 hover:bg-secondary/40 sm:p-5"
               >
                 <div className="flex flex-wrap items-start justify-between gap-4">
                   <div className="flex min-w-0 flex-1 items-start gap-3">
@@ -164,14 +165,14 @@ export default async function JobsPage({
                       <div className="flex flex-wrap items-center gap-2">
                         <span className="text-xs font-medium text-muted-foreground">{company?.name}</span>
                         {job.seniority && (
-                          <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${SENIORITY_COLORS[job.seniority] ?? "bg-secondary text-foreground"}`}>
+                          <span className={`rounded-full border px-2 py-0.5 text-[11px] font-medium capitalize ${SENIORITY_TONE[job.seniority] ?? "bg-secondary text-foreground border-border"}`}>
                             {job.seniority}
                           </span>
                         )}
                       </div>
 
-                      <Link href={`/jobs/${job.id}`} className="block">
-                        <h2 className="font-medium leading-snug group-hover:text-primary transition">
+                      <Link href={`/jobs/${job.id}`} className="block focus-ring rounded">
+                        <h2 className="font-semibold leading-snug transition group-hover:text-primary">
                           {job.title}
                         </h2>
                       </Link>
@@ -183,7 +184,7 @@ export default async function JobsPage({
                           </span>
                         ))}
                         {job.comp_lpa_max != null && (
-                          <span className="text-primary/80">Up to {job.comp_lpa_max} LPA</span>
+                          <span className="font-medium text-primary">Up to ₹{job.comp_lpa_max} LPA</span>
                         )}
                         {job.min_experience_years != null && (
                           <span className="inline-flex items-center gap-1">
@@ -195,7 +196,7 @@ export default async function JobsPage({
                       {tech.length > 0 && (
                         <div className="flex flex-wrap gap-1.5 pt-1">
                           {tech.slice(0, 8).map((t) => (
-                            <span key={t} className="rounded-md bg-secondary px-2 py-0.5 text-xs text-muted-foreground">
+                            <span key={t} className="rounded border border-border bg-secondary px-2 py-0.5 font-mono text-[11px] text-muted-foreground">
                               {t}
                             </span>
                           ))}
@@ -207,10 +208,10 @@ export default async function JobsPage({
                     </div>
                   </div>
 
-                  <div className="flex shrink-0 items-center gap-2">
+                  <div className="flex shrink-0 flex-wrap items-center gap-2">
                     <Link
                       href={`/jobs/${job.id}`}
-                      className="rounded-lg border border-border px-3 py-1.5 text-xs font-medium transition hover:border-primary/40 hover:bg-secondary"
+                      className="press tap-target-sm rounded-md border border-border bg-card px-3 py-1.5 text-xs font-medium transition hover:border-primary/40 hover:bg-secondary focus-ring"
                     >
                       View details
                     </Link>
@@ -219,7 +220,7 @@ export default async function JobsPage({
                         href={job.apply_url}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="flex items-center gap-1.5 rounded-lg bg-primary/90 px-3 py-1.5 text-xs font-medium text-primary-foreground transition hover:bg-primary"
+                        className="press tap-target-sm inline-flex items-center gap-1.5 rounded-md bg-primary px-3 py-1.5 text-xs font-semibold text-primary-foreground transition hover:bg-primary/90 focus-ring"
                       >
                         Apply <ExternalLink className="h-3 w-3" />
                       </a>
@@ -229,7 +230,7 @@ export default async function JobsPage({
               </div>
             );
           })}
-        </div>
+        </StaggerList>
       )}
     </div>
   );

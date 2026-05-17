@@ -19,7 +19,7 @@ export function GenerateButton({ hasPlan }: { hasPlan: boolean }) {
           });
         }}
         disabled={pending}
-        className="press inline-flex items-center gap-2 rounded-xl bg-primary px-4 py-2 text-sm font-medium text-primary-foreground shadow shadow-primary/30 transition hover:opacity-90 disabled:opacity-60 focus-ring"
+        className="press tap-target inline-flex items-center gap-2 rounded-md bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground transition hover:bg-primary/90 disabled:opacity-60 focus-ring"
       >
         {pending ? (
           <>
@@ -31,7 +31,7 @@ export function GenerateButton({ hasPlan }: { hasPlan: boolean }) {
           </>
         )}
       </button>
-      {error && <p className="text-xs text-rose-400">{error}</p>}
+      {error && <p className="text-xs text-destructive">{error}</p>}
     </div>
   );
 }

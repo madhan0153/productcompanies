@@ -9,7 +9,7 @@ import { revertResumeToVersion, type ResumeVersionLite } from "./actions";
 export function ResumeVersionsPanel({ versions }: { versions: ResumeVersionLite[] }) {
   if (versions.length === 0) {
     return (
-      <div className="rounded-2xl border border-dashed border-border bg-card/30 p-5 text-center">
+      <div className="rounded-xl border border-dashed border-border bg-secondary/30 p-5 text-center">
         <p className="text-xs text-muted-foreground">
           No prior versions yet. We snapshot your resume automatically before every re-upload so you can revert.
         </p>
@@ -17,15 +17,15 @@ export function ResumeVersionsPanel({ versions }: { versions: ResumeVersionLite[
     );
   }
   return (
-    <div className="rounded-2xl border border-border bg-card/40">
-      <div className="flex items-center gap-2 border-b border-border/50 px-5 py-3">
+    <div className="rounded-xl border border-border bg-card">
+      <div className="flex items-center gap-2 border-b border-border px-5 py-3">
         <History className="h-4 w-4 text-muted-foreground" />
         <div>
           <p className="text-sm font-semibold">Resume history</p>
           <p className="text-xs text-muted-foreground">Snapshots taken before each overwrite. Last 5 kept per user.</p>
         </div>
       </div>
-      <ul className="divide-y divide-border/40">
+      <ul className="divide-y divide-border">
         {versions.map((v) => (
           <VersionRow key={v.id} version={v} />
         ))}
@@ -53,7 +53,7 @@ function VersionRow({ version }: { version: ResumeVersionLite }) {
             </span>
           )}
           {version.product_dna_score != null && (
-            <span className="rounded-full border border-border bg-secondary/50 px-1.5 py-0.5 text-[10px] tabular-nums">
+            <span className="rounded-full border border-border bg-secondary px-1.5 py-0.5 text-[10px] font-medium tabular-nums">
               DNA {version.product_dna_score}
             </span>
           )}
@@ -63,7 +63,7 @@ function VersionRow({ version }: { version: ResumeVersionLite }) {
         </p>
       </div>
       {done ? (
-        <span className="inline-flex items-center gap-1 text-xs text-emerald-400">
+        <span className="inline-flex items-center gap-1 text-xs font-medium text-success">
           <CheckCircle2 className="h-3.5 w-3.5" />
           Reverted
         </span>
@@ -79,14 +79,14 @@ function VersionRow({ version }: { version: ResumeVersionLite }) {
               else setError(res.error);
             });
           }}
-          className="inline-flex items-center gap-1.5 rounded-md border border-border bg-card/50 px-2.5 py-1 text-xs font-medium text-muted-foreground transition hover:border-primary/40 hover:text-foreground disabled:opacity-50"
+          className="press tap-target-sm inline-flex items-center gap-1.5 rounded-md border border-border bg-card px-2.5 py-1 text-xs font-medium text-muted-foreground transition hover:border-primary/40 hover:text-foreground disabled:opacity-50 focus-ring"
         >
           <Undo2 className="h-3 w-3" />
           {isPending ? "Reverting…" : "Revert"}
         </button>
       )}
       {error && (
-        <span className="inline-flex items-center gap-1 text-[11px] text-rose-400">
+        <span className="inline-flex items-center gap-1 text-[11px] text-destructive">
           <AlertCircle className="h-3 w-3" /> {error}
         </span>
       )}
