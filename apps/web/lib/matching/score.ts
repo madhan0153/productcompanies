@@ -1,5 +1,19 @@
 // Rules-based scoring layer — Phase I rebalance (semantic-led).
 //
+// Sprint 6 — added on top:
+//   - analyzeTechCoverage: surfaces direct / adjacent / missing must-haves
+//     using the cross-domain adjacency taxonomy in @prodmatch/shared.
+//   - applyHardCaps: bounds the rubric total when key signals are weak
+//     (thin JD, no stack overlap, senior role + no professional experience).
+//     Caps do NOT hide the row (that's hardMismatch's job) — they prevent
+//     inflated scores when the underlying evidence is thin.
+//   - computeConfidence: 0–100 estimate of how trustworthy the score is,
+//     derived from data completeness (embeddings, JD parse, years known…).
+//
+// The added fields on RulesScore are optional in shape but always set by
+// computeRulesScore — older callers that destructure { total, breakdown,
+// hardMismatch, hardMismatchReason, cosine } continue to work unchanged.
+//
 // Score composition: 0–100 total. The semantic alignment dimension (cosine
 // similarity between resume embedding and JD embedding) is the biggest weight
 // because a "Senior Data Engineer" title means nothing if the JD is actually
@@ -15,6 +29,8 @@
 //   Location             0–4
 //   Compensation         0–2
 // Total                  0–100
+
+import { analyzeTechCoverage, type TechCoverage } from "@prodmatch/shared";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Role function taxonomy
@@ -161,6 +177,22 @@ function skillsToDomains(skills: string[]): Set<string> {
     domains.add(n);
   }
   return domains;
+}
+
+/**
+ * Sprint 6 — Direct (exact or same-domain) match predicate.
+ *
+ * `analyzeTechCoverage` calls back into this to decide whether a JD must-have
+ * is covered by the candidate's stack. Exported so the engine can pass it
+ * unchanged into the analyser.
+ */
+export function isDirectTechMatch(resumeSkills: string[], jdSkill: string): boolean {
+  const resumeDomains = skillsToDomains(resumeSkills);
+  const jdDomains = skillsToDomains([jdSkill]);
+  for (const d of jdDomains) {
+    if (resumeDomains.has(d)) return true;
+  }
+  return false;
 }
 
 /** Phase I: scoreTechV3 — must-haves are 4× nice-to-haves. Max 22.
@@ -463,7 +495,9 @@ export function inferRoleFunctionFromTitle(title: string | null | undefined): st
 // ─────────────────────────────────────────────────────────────────────────────
 
 export interface RulesScore {
-  total: number; // 0–100
+  total: number; // 0–100 — AFTER hard caps applied
+  /** Pre-cap sum of weighted dimensions (useful for telemetry / debugging). */
+  totalRaw: number;
   breakdown: {
     semantic: number;   // 0–35  Phase I — biggest weight
     tech: number;       // 0–22
@@ -477,8 +511,135 @@ export interface RulesScore {
   hardMismatch: boolean;
   /** What triggered the hard-mismatch (for logging / hidden_reason). */
   hardMismatchReason: "role_function" | "title_pattern" | "years_gap" | null;
+  /** Sprint 6 — When set, the raw total exceeded this cap and was lowered.
+   *  Distinct from hardMismatch: caps reduce, hardMismatch hides. */
+  hardCapReason: HardCapReason | null;
+  /** Sprint 6 — Direct / adjacent / missing breakdown of must-have tech. */
+  techCoverage: TechCoverage | null;
+  /** Sprint 6 — How trustworthy the score is, 0–100. */
+  confidence: number;
   /** Cosine that fed scoreSemanticFit, exposed for debugging. null when no embedding. */
   cosine: number | null;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Hard caps (Sprint 6)
+// ─────────────────────────────────────────────────────────────────────────────
+//
+// Caps that reduce score WITHOUT hiding the row. Triggered when the data
+// behind the score is too thin to justify the rubric total. The user still
+// sees the role (hardMismatch is the lethal filter) but the score honestly
+// reflects the missing signal.
+//
+// Order matters: most specific first. Only one reason recorded per row;
+// the cap value itself is min'd across all triggered rules.
+
+export type HardCapReason =
+  | "thin_jd"          // JD body too short to score reliably
+  | "no_stack"         // zero direct + zero adjacent must-have hits
+  | "adjacent_only"    // matches exist but only via adjacency, no direct
+  | "senior_no_exp"    // JD asks for senior+, candidate has <2 yrs pro exp
+  ;
+
+const CAPS: Record<HardCapReason, number> = {
+  thin_jd:       70,
+  no_stack:      50,
+  adjacent_only: 70,
+  senior_no_exp: 45,
+};
+
+const SENIOR_PLUS = new Set([
+  "senior", "staff", "principal", "lead", "manager", "director", "vp",
+]);
+
+/**
+ * Compute and apply hard caps to a raw rubric total.
+ * Returns the capped score and the reason that fired (if any).
+ */
+export function applyHardCaps(input: {
+  rawTotal: number;
+  resumeYears: number | null;
+  jdSeniority: string | null;
+  description: string | null | undefined;
+  hasMustHaves: boolean;
+  techCoverage: TechCoverage | null;
+}): { total: number; reason: HardCapReason | null } {
+  const triggered: HardCapReason[] = [];
+
+  // (1) Thin JD: too little signal to justify a high score, regardless of
+  //     what embeddings or fallback heuristics produced.
+  const descLen = (input.description ?? "").trim().length;
+  if (descLen > 0 && descLen < 200) {
+    triggered.push("thin_jd");
+  }
+
+  // (2) Stack overlap: only meaningful when the JD actually listed must-haves.
+  //     If it did and the candidate has zero direct AND zero adjacent hits,
+  //     no rubric weight should compensate for the missing core stack.
+  if (input.hasMustHaves && input.techCoverage) {
+    if (input.techCoverage.noCoverage) {
+      triggered.push("no_stack");
+    } else if (input.techCoverage.noDirect && input.techCoverage.adjacent.length > 0) {
+      triggered.push("adjacent_only");
+    }
+  }
+
+  // (3) Senior role × no professional experience. The semantic and tech
+  //     dimensions can still mark a strong fit on paper (resume keywords
+  //     match), but the candidate provably can't satisfy the years floor.
+  if (
+    input.resumeYears !== null &&
+    input.resumeYears < 2 &&
+    input.jdSeniority &&
+    SENIOR_PLUS.has(input.jdSeniority.toLowerCase())
+  ) {
+    triggered.push("senior_no_exp");
+  }
+
+  if (triggered.length === 0) {
+    return { total: Math.min(100, Math.max(0, input.rawTotal)), reason: null };
+  }
+
+  // Pick the strictest cap; tie-break by triggering order (most-specific first).
+  let strictest: HardCapReason = triggered[0];
+  for (const r of triggered) {
+    if (CAPS[r] < CAPS[strictest]) strictest = r;
+  }
+
+  return {
+    total: Math.min(input.rawTotal, CAPS[strictest]),
+    reason: strictest,
+  };
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Confidence (Sprint 6)
+// ─────────────────────────────────────────────────────────────────────────────
+//
+// 0–100 estimate of how trustworthy the score is, independent of the score
+// itself. Useful pairing: "78 (conf 90)" reads very differently from
+// "78 (conf 35)" — the UI can render the low-confidence row with a softer
+// emphasis so users don't anchor on a flimsy number.
+
+function computeConfidence(input: {
+  cosine: number | null;
+  jdSeniority: string | null;
+  jdMinYears: number | null;
+  jdMaxYears: number | null;
+  hasMustHaves: boolean;
+  hasJdSummary: boolean;
+  descriptionLen: number;
+  resumeYearsKnown: boolean;
+}): number {
+  let c = 100;
+  if (input.cosine === null) c -= 20;        // semantic dim used fallback
+  if (!input.hasMustHaves)    c -= 18;       // JD wasn't parsed yet
+  if (!input.hasJdSummary)    c -= 6;
+  if (input.jdMinYears === null && input.jdMaxYears === null) c -= 8;
+  if (!input.jdSeniority)     c -= 5;
+  if (input.descriptionLen > 0 && input.descriptionLen < 200) c -= 10;
+  if (!input.resumeYearsKnown) c -= 8;
+  return Math.max(30, Math.min(100, c));
 }
 
 export function computeRulesScore(
@@ -529,7 +690,36 @@ export function computeRulesScore(
   const seniority  = scoreSeniority(profile.seniority, jdSeniority);                             // 0–7
   const hub        = scoreHubV2(profile.preferred_hubs, job.hubs);                               // 0–4
   const lpa        = scoreLpaV2(profile.target_lpa, job.comp_lpa_max);                           // 0–2
-  const total      = semantic + tech + role + experience + seniority + hub + lpa;
+  const totalRaw   = semantic + tech + role + experience + seniority + hub + lpa;
+
+  // Sprint 6 — Tech coverage breakdown (direct / adjacent / missing).
+  // Only meaningful when the JD actually listed must-haves; otherwise null.
+  const mustHaves = job.must_have_skills ?? [];
+  const techCoverage = mustHaves.length > 0
+    ? analyzeTechCoverage(profile.tech_stack, mustHaves, isDirectTechMatch)
+    : null;
+
+  // Sprint 6 — Apply hard caps. These reduce the score but never hide a row.
+  const capped = applyHardCaps({
+    rawTotal:      totalRaw,
+    resumeYears:   profile.years_experience,
+    jdSeniority,
+    description:   job.description,
+    hasMustHaves:  mustHaves.length > 0,
+    techCoverage,
+  });
+
+  // Sprint 6 — Confidence (0–100) reflects data quality, not match quality.
+  const confidence = computeConfidence({
+    cosine,
+    jdSeniority,
+    jdMinYears:       yMin,
+    jdMaxYears:       yMax,
+    hasMustHaves:     mustHaves.length > 0,
+    hasJdSummary:     Boolean(job.title), // crude proxy — JD summary lives on the engine side
+    descriptionLen:   (job.description ?? "").length,
+    resumeYearsKnown: profile.years_experience !== null,
+  });
 
   // Hard mismatch ladder, most-specific first:
   let hardMismatchReason: RulesScore["hardMismatchReason"] = null;
@@ -554,10 +744,14 @@ export function computeRulesScore(
   }
 
   return {
-    total,
+    total: capped.total,
+    totalRaw,
     breakdown: { semantic, tech, role, experience, seniority, hub, lpa },
     hardMismatch: hardMismatchReason !== null,
     hardMismatchReason,
+    hardCapReason: capped.reason,
+    techCoverage,
+    confidence,
     cosine,
   };
 }

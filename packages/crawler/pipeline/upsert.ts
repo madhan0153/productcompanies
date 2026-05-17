@@ -42,9 +42,22 @@ function parsePatch(j: EnrichedJob): Record<string, unknown> {
 
 // Strip the EnrichedJob-only fields before write — they aren't columns.
 function asRow(job: EnrichedJob): Record<string, unknown> {
-  const { parsed: _p, embedding: _e, needsParse: _n, ...row } = job;
-  void _p; void _e; void _n;
+  const { parsed: _p, embedding: _e, needsParse: _n, quality: _q, ...row } = job;
+  void _p; void _e; void _n; void _q;
   return row;
+}
+
+// Sprint 6 — Quality columns patch. Always written when the crawler evaluated
+// quality for this row (i.e. quality is set). Stamping quality_gated_at lets
+// the matching engine distinguish "never evaluated" (legacy) from "currently
+// fine" (high quality_score). Idempotent — applied on every upsert path.
+function qualityPatch(job: EnrichedJob): Record<string, unknown> {
+  if (!job.quality) return {};
+  return {
+    quality_score:    job.quality.score,
+    quality_reasons:  job.quality.reasons,
+    quality_gated_at: new Date().toISOString(),
+  };
 }
 
 /**
@@ -237,6 +250,7 @@ export async function upsertJobs(
     for (const job of batch) {
       const baseRow = {
         ...asRow(job),
+        ...qualityPatch(job),
         last_seen_at: now,
         is_active: true,
         freshness_score: 100,
@@ -327,6 +341,7 @@ export async function upsertJobs(
           description: job.description,
           last_seen_at: now,
           is_active: true,
+          ...qualityPatch(job),
           ...parsePatch(job),
         })
         .eq("id", rowId);

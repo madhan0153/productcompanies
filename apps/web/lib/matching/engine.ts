@@ -31,6 +31,12 @@ import {
   buildCompPercentileTable, lookupCompBracket,
   type CompPercentileTable,
 } from "@/lib/insights/comp-percentiles";
+import { buildFeedbackModel, feedbackDelta, type FeedbackModel } from "./feedback";
+
+// Sprint 6 — Jobs with quality_score below this threshold are excluded from
+// the user's match feed entirely. The crawler already declined to LLM-parse
+// them; this is the read-side enforcement.
+const MIN_QUALITY_FOR_FEED = 40;
 
 // Dynamic Fit Card sizing: cover all strong fits + a buffer of stretches,
 // capped so a power user with 100 strong fits doesn't blow our LLM budget.
@@ -55,6 +61,7 @@ interface JobRow {
   tech_stack: string[];
   seniority: string | null;
   location: string;
+  company_id: string | null;
   company_name: string;
   role_function: string | null;
   must_have_skills: string[];
@@ -69,6 +76,8 @@ interface JobRow {
   embedding_at: string | null;
   /** Sprint 1 Item 6 — SHA256 of the JD description. Used to cache Fit Cards. */
   signature: string | null;
+  /** Sprint 6 — defaults to 100 for legacy rows. */
+  quality_score: number;
 }
 
 interface ProfileRow {
@@ -129,9 +138,12 @@ async function fetchAllActiveJobs(
     const { data: rows } = await (admin
       .from("jobs")
       .select(
-        "id, title, description, hubs, min_experience_years, max_experience_years, comp_lpa_min, comp_lpa_max, tech_stack, seniority, location, role_function, must_have_skills, nice_to_have_skills, jd_min_years, jd_max_years, jd_seniority_signal, jd_summary, is_likely_ghost, jd_parsed_at, embedding, embedding_at, signature, companies(name)",
+        "id, title, description, hubs, min_experience_years, max_experience_years, comp_lpa_min, comp_lpa_max, tech_stack, seniority, location, company_id, role_function, must_have_skills, nice_to_have_skills, jd_min_years, jd_max_years, jd_seniority_signal, jd_summary, is_likely_ghost, jd_parsed_at, embedding, embedding_at, signature, quality_score, companies(name)",
       )
       .eq("is_active", true)
+      // Sprint 6 — read-side quality enforcement. Legacy rows default to 100
+      // so we never accidentally hide pre-Sprint-6 jobs.
+      .gte("quality_score", MIN_QUALITY_FOR_FEED)
       .range(from, from + JOBS_PAGE_SIZE - 1) as any) as { data: Array<Record<string, unknown>> | null };
 
     const batch = rows ?? [];
@@ -149,6 +161,7 @@ async function fetchAllActiveJobs(
         tech_stack:           (r.tech_stack as string[] | null) ?? [],
         seniority:            r.seniority as string | null,
         location:             (r.location as string | null) ?? "",
+        company_id:           (r.company_id as string | null) ?? null,
         company_name:         ((r.companies as Record<string, unknown>)?.name as string) ?? "",
         role_function:        (r.role_function as string | null) ?? null,
         must_have_skills:     (r.must_have_skills as string[] | null) ?? [],
@@ -162,6 +175,7 @@ async function fetchAllActiveJobs(
         embedding:            (r.embedding as number[] | null) ?? null,
         embedding_at:         (r.embedding_at as string | null) ?? null,
         signature:            (r.signature as string | null) ?? null,
+        quality_score:        typeof r.quality_score === "number" ? (r.quality_score as number) : 100,
       });
     }
     if (batch.length < JOBS_PAGE_SIZE) break;
@@ -241,6 +255,12 @@ export async function computeMatchesForUser(
   const existingByJob = new Map<string, ExistingMatch>();
   for (const m of existingMatchRows ?? []) existingByJob.set(m.job_id, m);
 
+  // Sprint 6 — Build the feedback model once per compute. Reads user_hidden
+  // matches + applications, accumulates per-feature signal. Cold-start users
+  // get an empty model (delta=0 across the board); the rubric drives ranking
+  // unchanged until they have history.
+  const feedbackModel: FeedbackModel = await buildFeedbackModel(admin, userId);
+
   // 4. Score: for each job, decide reuse-existing vs recompute.
   const resumeEmbedding = profile.resume_embedding;
   const scored: ScoredJob[] = jobs.map((job) => {
@@ -262,6 +282,7 @@ export async function computeMatchesForUser(
         existing,
         rescored: false,
         cosine: null,
+        feedback_adjustment: 0,
       };
     }
 
@@ -296,14 +317,28 @@ export async function computeMatchesForUser(
         comp_lpa_max:          job.comp_lpa_max,
       },
     );
+
+    // Sprint 6 — Feedback re-rank. Hard-mismatch rows skip the bonus (they're
+    // going to be hidden anyway, no point distorting the model). Cold-start
+    // users get delta=0.
+    const feedback_adjustment = rules.hardMismatch ? 0 : feedbackDelta(feedbackModel, {
+      company_id:       job.company_id,
+      role_function:    job.role_function,
+      seniority:        job.seniority,
+      hubs:             job.hubs,
+      must_have_skills: job.must_have_skills,
+    });
+    const finalScore = Math.max(0, Math.min(100, rules.total + feedback_adjustment));
+
     return {
       job,
       rules,
-      score: rules.total,
-      verdict: deterministicVerdict(rules.total, rules.hardMismatch, rules.breakdown.role, rules.breakdown.experience),
+      score: finalScore,
+      verdict: deterministicVerdict(finalScore, rules.hardMismatch, rules.breakdown.role, rules.breakdown.experience),
       existing,
       rescored: true,
       cosine,
+      feedback_adjustment,
     };
   });
 
@@ -350,7 +385,7 @@ export async function computeMatchesForUser(
   const rescored = validMatches.filter((s) => s.rescored);
   let newMatchCount = 0;
 
-  const baselineRows: BaselineUpsertRow[] = rescored.map(({ job, rules, score, verdict, existing }) => {
+  const baselineRows: BaselineUpsertRow[] = rescored.map(({ job, rules, score, verdict, existing, feedback_adjustment }) => {
     // First-seen rows OR significant score change → seen_at=NULL ("new").
     // Fit-card-only updates without score movement → keep existing seen_at.
     const isNew = !existing || Math.abs((existing.score ?? 0) - score) >= 3;
@@ -365,6 +400,14 @@ export async function computeMatchesForUser(
     const score_breakdown = rules
       ? (rules.breakdown as unknown as Json)
       : (existing?.score_breakdown ?? null);
+    // Sprint 6 — persist confidence + hard-cap reason + tech coverage so the
+    // UI can render "Excellent fit (87, confidence 90)" and explain caps in
+    // tooltips without recomputing.
+    const confidence    = rules ? rules.confidence : null;
+    const hardCapReason = rules ? rules.hardCapReason : null;
+    const techCoverage  = rules?.techCoverage
+      ? (rules.techCoverage as unknown as Json)
+      : null;
     return {
       user_id:       userId,
       job_id:        job.id,
@@ -374,6 +417,10 @@ export async function computeMatchesForUser(
       fit_card_at:   existing?.fit_card_at ?? null,
       hidden_reason,
       score_breakdown,
+      confidence,
+      hard_cap_reason: hardCapReason,
+      tech_coverage:   techCoverage,
+      feedback_adjustment,
       strengths:     [],
       gaps:          [],
       reasoning:     job.jd_summary ?? "Score computed. Open the role for the full Fit Card.",
@@ -576,6 +623,8 @@ type ScoredJob = {
   existing: ExistingMatch | undefined;
   rescored: boolean;
   cosine: number | null;
+  /** Sprint 6 — re-rank delta applied to baseline rubric total. */
+  feedback_adjustment: number;
 };
 
 // Two distinct upsert shapes — supabase-js v2 writes every column the row
@@ -595,6 +644,11 @@ type BaselineUpsertRow = {
   fit_card_at: string | null;
   hidden_reason: string | null;
   score_breakdown: Json | null;
+  /** Sprint 6 fields — null/0 when reusing an existing score row. */
+  confidence: number | null;
+  hard_cap_reason: string | null;
+  tech_coverage: Json | null;
+  feedback_adjustment: number;
   strengths: string[];
   gaps: string[];
   reasoning: string;

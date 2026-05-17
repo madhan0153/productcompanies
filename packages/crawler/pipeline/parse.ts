@@ -29,6 +29,7 @@ import {
 } from "@prodmatch/shared";
 import { log } from "../lib/logger.js";
 import { isNonEngineeringTitle, stripBoilerplate } from "./job-filter.js";
+import { evaluateJobQuality, type QualityResult } from "./quality.js";
 
 /**
  * Did this error indicate Gemini said "no more requests right now"?
@@ -53,6 +54,8 @@ export interface EnrichedJob extends NormalizedJob {
   embedding?: number[];
   /** True if we should write parse fields (new or signature-changed row). */
   needsParse: boolean;
+  /** Sprint 6 — populated for every kept row so upsert can write quality cols. */
+  quality?: QualityResult;
 }
 
 export interface EnrichResult {
@@ -62,6 +65,8 @@ export interface EnrichResult {
   skippedBudget: number;
   skippedQuota: number;
   rejectedNonEng: number;
+  /** Sprint 6 — count of jobs that failed the quality gate (still upserted with low quality_score). */
+  qualityGated: number;
 }
 
 export interface ParseDecision {
@@ -94,6 +99,7 @@ const EMBED_BATCH = 100;
 export function decideWork(
   jobs: NormalizedJob[],
   existing: Map<string, ExistingMeta>,
+  qualities?: Map<string, QualityResult>,
 ): ParseDecision {
   const parse: NormalizedJob[] = [];
   const skip: NormalizedJob[] = [];
@@ -110,6 +116,15 @@ export function decideWork(
 
     const ex = existing.get(j.external_id);
     if (!ex) {
+      // Sprint 6 — Quality gate. Low-quality rows skip the LLM parse but
+      // STILL upsert (with their quality_score / quality_reasons populated)
+      // so they appear in `skip`. The matching engine filters them out at
+      // read time via quality_score >= 40.
+      const q = qualities?.get(j.external_id);
+      if (q && !q.parseable) {
+        skip.push(j);
+        continue;
+      }
       parse.push(j);
       continue;
     }
@@ -121,6 +136,13 @@ export function decideWork(
       continue;
     }
     // Either never parsed, or description changed materially → (re-)parse.
+    // Apply quality gate to re-parse candidates too — if a posting decayed
+    // (e.g. a previously-rich JD got truncated), don't waste tokens on it.
+    const q = qualities?.get(j.external_id);
+    if (q && !q.parseable) {
+      skip.push(j);
+      continue;
+    }
     parse.push(j);
   }
   return { parse, skip, rejected };
@@ -484,7 +506,7 @@ export async function enrichWithParse(
   cLog: (msg: string, level?: "info" | "warn" | "error", extra?: { event?: string; data?: Record<string, unknown> }) => void,
 ): Promise<EnrichResult> {
   if (jobs.length === 0) {
-    return { jobs: [], parseOk: 0, parseErr: 0, skippedBudget: 0, skippedQuota: 0, rejectedNonEng: 0 };
+    return { jobs: [], parseOk: 0, parseErr: 0, skippedBudget: 0, skippedQuota: 0, rejectedNonEng: 0, qualityGated: 0 };
   }
 
   const existing = await fetchExistingMeta(
@@ -493,9 +515,37 @@ export async function enrichWithParse(
     jobs.map((j) => j.external_id),
   );
 
-  const { parse, skip, rejected } = decideWork(jobs, existing);
+  // Sprint 6 — Quality gate. Evaluate every job up front. Low-quality rows
+  // still upsert (with their quality fields populated) but skip the LLM
+  // parse — that's where the token saving lives.
+  const qualityByExt = new Map<string, QualityResult>();
+  const qualityReasonCounts: Record<string, number> = {};
+  let qualityGated = 0;
+  for (const j of jobs) {
+    const q = evaluateJobQuality(j);
+    qualityByExt.set(j.external_id, q);
+    if (!q.parseable) qualityGated++;
+    for (const r of q.reasons) {
+      qualityReasonCounts[r] = (qualityReasonCounts[r] ?? 0) + 1;
+    }
+  }
+  if (qualityGated > 0) {
+    const top = Object.entries(qualityReasonCounts)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 5)
+      .map(([r, n]) => `${r}=${n}`)
+      .join(", ");
+    cLog(
+      `Quality gate: ${qualityGated}/${jobs.length} job(s) below threshold (${top}). ` +
+      `They will upsert with quality_score populated but skip LLM parse.`,
+      "info",
+      { event: "quality_gate", data: { gated: qualityGated, total: jobs.length, reasons: qualityReasonCounts } },
+    );
+  }
+
+  const { parse, skip, rejected } = decideWork(jobs, existing, qualityByExt);
   cLog(
-    `Parse decision: ${parse.length} to parse, ${skip.length} skip (already parsed, unchanged)` +
+    `Parse decision: ${parse.length} to parse, ${skip.length} skip (already parsed, unchanged, or quality-gated)` +
     (rejected.length > 0 ? `, ${rejected.length} rejected (non-engineering title)` : ""),
   );
 
@@ -513,7 +563,13 @@ export async function enrichWithParse(
     );
     const rejectedIds = new Set(rejected.map((j) => j.external_id));
     const keep = jobs.filter((j) => !rejectedIds.has(j.external_id));
-    const enrichedJobs = keep.map((j) => ({ ...j, parsed: undefined, embedding: undefined, needsParse: false }));
+    const enrichedJobs = keep.map((j) => ({
+      ...j,
+      parsed: undefined,
+      embedding: undefined,
+      needsParse: false,
+      quality: qualityByExt.get(j.external_id),
+    }));
     return {
       jobs: enrichedJobs,
       parseOk: 0,
@@ -521,6 +577,7 @@ export async function enrichWithParse(
       skippedBudget: 0,
       skippedQuota: parse.length,
       rejectedNonEng: rejected.length,
+      qualityGated,
     };
   }
 
@@ -543,6 +600,7 @@ export async function enrichWithParse(
       parsed,
       embedding: embedMap.get(j.external_id),
       needsParse,
+      quality: qualityByExt.get(j.external_id),
     };
   });
 
@@ -553,6 +611,7 @@ export async function enrichWithParse(
     skippedBudget: stats.skippedBudget,
     skippedQuota: stats.skippedQuota,
     rejectedNonEng: rejected.length,
+    qualityGated,
   };
 }
 

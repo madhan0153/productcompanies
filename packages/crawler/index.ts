@@ -209,7 +209,7 @@ async function main() {
         await dryRunParse(normalized, companyName, cLog, 5);
       } else if (!dryRun && normalized.length > 0) {
         // Inline parse + embed BEFORE upsert.
-        const { jobs: enriched, parseOk, parseErr, skippedBudget, skippedQuota, rejectedNonEng } =
+        const { jobs: enriched, parseOk, parseErr, skippedBudget, skippedQuota, rejectedNonEng, qualityGated } =
           await enrichWithParse(supabase, companyId, companyName, normalized, cLog);
         const result = await upsertJobs(supabase, companyId, enriched);
         inserted = result.inserted;
@@ -222,6 +222,7 @@ async function main() {
         cLog(
           `Inserted: ${inserted}, Updated: ${updated}, Stale: ${stale}` +
           (rejectedNonEng > 0 ? `, Rejected: ${rejectedNonEng}` : "") +
+          (qualityGated > 0 ? `, QualityGated: ${qualityGated}` : "") +
           (skippedBudget + skippedQuota > 0 ? `, deferred: ${skippedBudget + skippedQuota}` : "") +
           (coverageSkipped ? `  ⚠ partial — stale-mark skipped` : ""),
           "info",
@@ -229,7 +230,7 @@ async function main() {
             event: "company_done",
             data: {
               inserted, updated, stale,
-              parseOk, parseErr, skippedBudget, skippedQuota, rejectedNonEng,
+              parseOk, parseErr, skippedBudget, skippedQuota, rejectedNonEng, qualityGated,
               coverageSkipped,
               elapsedMs: Date.now() - t0,
             },

@@ -2,6 +2,8 @@
 // dimensions the matching engine actually computed. Renders compact bars
 // per axis with the points-out-of-max + a one-line hint.
 
+import { getScoreBand, getConfidenceLabel } from "@/lib/matching/bands";
+
 export type RulesScoreBreakdown = {
   semantic: number;   // 0-35
   tech: number;       // 0-22
@@ -10,6 +12,15 @@ export type RulesScoreBreakdown = {
   seniority: number;  // 0-7
   hub: number;        // 0-4
   lpa: number;        // 0-2
+};
+
+// Sprint 6 — human-readable explanations for the hard-cap reasons surfaced
+// by the rules engine. UI shows these in a small inline note when set.
+const HARD_CAP_NOTES: Record<string, string> = {
+  thin_jd:       "Score capped: JD body too short to score reliably.",
+  no_stack:      "Score capped: none of the JD's must-have skills are on your resume.",
+  adjacent_only: "Score capped: must-haves matched only by adjacent skills, not direct hits.",
+  senior_no_exp: "Score capped: JD targets senior+ level; <2 yrs professional experience.",
 };
 
 const AXIS_META: Array<{
@@ -61,19 +72,45 @@ export function ScoreBreakdownPanel({
   breakdown,
   total,
   compact = false,
+  confidence,
+  hardCapReason,
+  feedbackAdjustment,
 }: {
   breakdown: RulesScoreBreakdown;
   total: number;
   compact?: boolean;
+  /** Sprint 6 — 0-100 confidence; renders alongside score when provided. */
+  confidence?: number | null;
+  /** Sprint 6 — reason code when score was capped. Surfaces a small note. */
+  hardCapReason?: string | null;
+  /** Sprint 6 — re-rank delta applied. Surfaces "+2 from your activity" when nonzero. */
+  feedbackAdjustment?: number | null;
 }) {
+  const band = getScoreBand(total);
+  const confLabel = confidence != null ? getConfidenceLabel(confidence) : null;
+  const confTone =
+    confLabel === "high" ? "text-success"
+    : confLabel === "low" ? "text-warning"
+    : "text-muted-foreground";
+
   return (
     <div className={`rounded-xl border border-border bg-card ${compact ? "p-3" : "p-4"}`}>
-      <div className="mb-2.5 flex items-center justify-between">
-        <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Why this score</p>
-        <p className="text-xs tabular-nums">
-          <span className="font-bold">{Math.round(total)}</span>
-          <span className="text-muted-foreground">/100</span>
-        </p>
+      <div className="mb-2.5 flex items-center justify-between gap-2">
+        <div className="flex flex-col">
+          <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Why this score</p>
+          <p className="text-[11px] text-muted-foreground/80">{band.label}</p>
+        </div>
+        <div className="flex flex-col items-end">
+          <p className="text-xs tabular-nums">
+            <span className="font-bold">{Math.round(total)}</span>
+            <span className="text-muted-foreground">/100</span>
+          </p>
+          {confidence != null && (
+            <p className={`text-[10px] tabular-nums ${confTone}`} title="How trustworthy this score is, based on data completeness.">
+              confidence {Math.round(confidence)}
+            </p>
+          )}
+        </div>
       </div>
       <ul className="space-y-2">
         {AXIS_META.map((axis) => {
@@ -98,6 +135,16 @@ export function ScoreBreakdownPanel({
           );
         })}
       </ul>
+      {hardCapReason && HARD_CAP_NOTES[hardCapReason] && (
+        <p className="mt-3 rounded-md border border-warning/30 bg-warning/5 px-2 py-1.5 text-[11px] text-warning">
+          {HARD_CAP_NOTES[hardCapReason]}
+        </p>
+      )}
+      {!compact && feedbackAdjustment != null && Math.abs(feedbackAdjustment) >= 0.5 && (
+        <p className="mt-2 text-[11px] text-muted-foreground/80">
+          {feedbackAdjustment > 0 ? "+" : ""}{feedbackAdjustment.toFixed(1)} from your activity (saves / dismisses).
+        </p>
+      )}
     </div>
   );
 }

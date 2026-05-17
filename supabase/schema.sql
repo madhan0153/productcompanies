@@ -984,6 +984,55 @@ create policy "resumes_owner_delete" on storage.objects for delete
   using (bucket_id = 'resumes' and (storage.foldername(name))[1] = (select auth.uid())::text);
 
 
+-- ─────────────────────────────────────────────────────────────────────────────
+-- Sprint 6: Quality gate + hard caps + confidence + feedback re-rank
+-- ─────────────────────────────────────────────────────────────────────────────
+-- Three independent improvements, one section because they share defaults
+-- and never break existing reads (every column has a default; engine code
+-- reads them defensively).
+--
+--   (1) Quality gate — every job gets a quality_score (0–100) at ingest.
+--       Crawler refuses to parse anything <40 (saves Gemini tokens) and the
+--       matching engine filters anything <40 from the user feed. Reasons are
+--       persisted as a text[] so QA can audit why a job was gated.
+--
+--   (2) Confidence + hard caps — matches now carry a `confidence` (0–100)
+--       independent of `score` and a `hard_cap_reason` documenting whether
+--       the score was capped (e.g., thin posting, no stack overlap). UI can
+--       show "78 (confidence 40)" differently from "78 (confidence 90)".
+--
+--   (3) Feedback adjustment — derived at compute time from user's prior
+--       dismissals + applications. Stored on the match row so the UI can
+--       surface "boosted/lowered because…" without re-deriving.
+
+-- (1) Quality gate columns on jobs.
+alter table public.jobs add column if not exists quality_score numeric not null default 100;
+alter table public.jobs add column if not exists quality_reasons text[] not null default '{}';
+alter table public.jobs add column if not exists quality_gated_at timestamptz;
+
+-- Partial index: cheap filter for the common "exclude low-quality" predicate.
+create index if not exists idx_jobs_quality_high
+  on public.jobs (quality_score desc)
+  where is_active = true and quality_score >= 40;
+
+-- (2) Match-level explainability columns.
+alter table public.matches add column if not exists confidence numeric;
+alter table public.matches add column if not exists hard_cap_reason text;
+alter table public.matches add column if not exists tech_coverage jsonb;
+
+-- (3) Feedback re-rank delta.
+alter table public.matches add column if not exists feedback_adjustment numeric not null default 0;
+
+-- Doc comments — these survive replication and show up in psql \d+.
+comment on column public.jobs.quality_score        is 'Ingest-time quality score (0-100). Jobs <40 are hidden from match feed.';
+comment on column public.jobs.quality_reasons      is 'Reason codes contributing to quality_score, e.g. {thin_description, stale_posting}.';
+comment on column public.jobs.quality_gated_at     is 'When quality was last evaluated. NULL = never gated (legacy row).';
+comment on column public.matches.confidence        is 'How confident the matcher is in this score, 0-100. Independent of score itself.';
+comment on column public.matches.hard_cap_reason   is 'When set, score was capped below the raw rubric total. One of: thin_jd | no_stack | senior_no_exp | wrong_field.';
+comment on column public.matches.tech_coverage     is 'JSON breakdown {direct:[], adjacent:[], missing:[]} of must-have tech vs candidate stack.';
+comment on column public.matches.feedback_adjustment is 'Per-user re-rank delta from prior dismissals/applies. Clamped [-18, 18].';
+
+
 -- -----------------------------------------------------------------------------
 -- 8. SEED — 18 approved product companies (no jobs)
 -- -----------------------------------------------------------------------------
