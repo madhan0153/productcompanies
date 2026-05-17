@@ -39,11 +39,27 @@ import { evaluateJobQuality, type QualityResult } from "./quality.js";
  */
 function isQuotaSignal(err: unknown): boolean {
   if (err instanceof LlmRunError) {
-    return err.detail.kind === "rate_limited" || err.detail.kind === "quota_disabled";
+    // Sprint 6 — `all_keys_exhausted` joins the quota family. Without it,
+    // post-Amazon companies in the 2026-05-17 run synchronously threw 164
+    // "unknown" errors with no rolling-window contribution → no bail.
+    return err.detail.kind === "rate_limited"
+        || err.detail.kind === "quota_disabled"
+        || err.detail.kind === "all_keys_exhausted";
   }
   // Fallback for raw errors that escaped the runWithRetry classifier.
   const msg = err instanceof Error ? err.message : String(err);
   return /\b429\b|RESOURCE_EXHAUSTED|Too Many Requests|limit:\s*0/i.test(msg);
+}
+
+/**
+ * Sprint 6 — Process-level "every key is dead" signal. When runWithRetry
+ * couldn't even attempt one call (all combos pre-marked in _processExhausted),
+ * it throws this kind. Treat as immediate bail: a rolling-window vote is
+ * useless because the throws are synchronous — 12 workers can burn 100
+ * "errors" in a single event-loop tick before the window ever fills.
+ */
+function isAllKeysExhausted(err: unknown): boolean {
+  return err instanceof LlmRunError && err.detail.kind === "all_keys_exhausted";
 }
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
@@ -324,6 +340,27 @@ async function parseWithWorkers(
         const reason = err instanceof Error ? err.message.split("\n")[0] : String(err);
         if (stats.errSamples.length < 5) {
           stats.errSamples.push({ title: j.title.slice(0, 60), reason: reason.slice(0, 140) });
+        }
+        // Sprint 6 — Fast bail: runWithRetry signalled that EVERY (model × key)
+        // is pre-exhausted. No point letting workers spin through more jobs;
+        // their calls would synchronously throw the same error. Flip the run
+        // flag, drain the queue, exit. Without this short-circuit, a 12-key
+        // run after Amazon exhausts quota burns 164 JDs in milliseconds (see
+        // 2026-05-17 16:51 UTC log: SAP Labs 118/118 ok=0 err=118 in 0s).
+        if (isAllKeysExhausted(err) && !bailReason) {
+          bailReason = "quota";
+          _runQuotaExhausted = true;
+          _quotaExhaustedAt = new Date().toISOString();
+          const remaining = queue.splice(0);
+          stats.skippedQuota += remaining.length;
+          cLog(
+            `All Gemini keys pre-exhausted at job #${stats.ok + stats.err} — no API call attempted. ` +
+            `Deferring ${stats.skippedQuota} JD${stats.skippedQuota === 1 ? "" : "s"} to next crawl. ` +
+            `Marking quota exhausted for the rest of this run.`,
+            "warn",
+            { event: "all_keys_exhausted_bail", data: { successes: stats.ok, deferred: stats.skippedQuota } },
+          );
+          return;
         }
         // Only count Gemini-quota signals toward the bail window. Network
         // blips, JSON parse failures, model unavailability — none of those

@@ -147,6 +147,12 @@ export type LlmError =
   | { kind: "quota_disabled"; raw: string }   // limit:0 → API not enabled / billing
   | { kind: "model_unavailable"; raw: string } // 404 / not supported
   | { kind: "auth"; raw: string }
+  /** Sprint 6 — every (model × key) combo was already in _processExhausted
+   *  before this runWithRetry call. No network attempt was made. Distinct
+   *  from `quota_disabled` (which fires per-call) because callers should
+   *  treat this as a process-level signal and bail their loops immediately,
+   *  not let it accumulate in a rolling window. */
+  | { kind: "all_keys_exhausted"; raw: string }
   | { kind: "unknown"; raw: string };
 
 export class LlmRunError extends Error {
@@ -295,6 +301,15 @@ export async function runWithRetry<T>(
   const maxWait = opts.maxRateLimitWaitMs ?? 60_000;
   let totalWaited = 0;
   let lastError: LlmError | null = null;
+  // Sprint 6 — track whether ANY (model × key) combo was attempted in this
+  // call. When zero attempts were made, every combo was already dead from a
+  // prior call, and we surface that with a distinct `all_keys_exhausted` kind
+  // so the caller can bail immediately. Without this, the throw fell through
+  // to `kind: "unknown"`, which parse.ts's isQuotaSignal didn't recognise —
+  // letting every subsequent company waste its full parse list on synchronous
+  // throws. Confirmed in the 2026-05-17 16:51 UTC log: SAP Labs burned
+  // through 118 errors in 0s after Amazon exhausted the keys.
+  let attemptCount = 0;
 
   // Knowledge of which (model × key) combos are dead is shared across ALL
   // runWithRetry calls in this process — _processExhausted is module-level.
@@ -313,6 +328,7 @@ export async function runWithRetry<T>(
 
       const key = keys[keyIdx];
       const model = client(key).getGenerativeModel({ model: modelName });
+      attemptCount++;
       try {
         const result = await build(model);
         // First-success-per-key diagnostic — proves each key index actually
@@ -393,6 +409,18 @@ export async function runWithRetry<T>(
     }
   }
 
+  // Sprint 6 — zero attempts → every combo was pre-marked dead. Surface
+  // this explicitly so callers can bail their workers without waiting for
+  // a rolling window to fill. With the old `kind: "unknown"` fallback, the
+  // crawler's parse.ts didn't recognise this as a quota signal and every
+  // post-Amazon company in the 2026-05-17 run burned its entire parse list.
+  if (attemptCount === 0) {
+    throw new LlmRunError({
+      kind: "all_keys_exhausted",
+      raw: `All ${cascade.length} model(s) × ${keys.length} key(s) were already marked exhausted in this process. ` +
+           `No call attempted. Defer to next UTC day rollover.`,
+    });
+  }
   throw new LlmRunError(lastError ?? { kind: "unknown", raw: "All Gemini calls failed" });
 }
 
