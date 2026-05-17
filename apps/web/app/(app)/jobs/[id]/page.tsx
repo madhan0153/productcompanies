@@ -16,6 +16,7 @@ import { StickyApplyBar } from "./sticky-apply-bar";
 import { JobDescription } from "./job-description";
 import { PrepBrief } from "./prep-brief";
 import { FitCardPanel, type FitCardData } from "./fit-card";
+import { ScoreEvidence } from "./score-evidence";
 import { ApplyButton } from "@/components/apply-button";
 import { ApplyToolkit } from "./apply-toolkit";
 import { RecruiterView } from "@/components/recruiter-view";
@@ -96,7 +97,7 @@ export default async function JobDetailPage({ params }: { params: Promise<{ id: 
       .eq("id", id)
       .maybeSingle(),
     supabase.from("matches")
-      .select("score, strengths, gaps, reasoning, computed_at, verdict, fit_card, fit_card_at")
+      .select("score, strengths, gaps, reasoning, computed_at, verdict, fit_card, fit_card_at, confidence, hard_cap_reason, tech_coverage, feedback_adjustment, score_breakdown")
       .eq("user_id", user.id)
       .eq("job_id", id)
       .maybeSingle(),
@@ -132,6 +133,12 @@ export default async function JobDetailPage({ params }: { params: Promise<{ id: 
     verdict?: string | null;
     fit_card?: FitCardData | null;
     fit_card_at?: string | null;
+    /** Sprint 6 */
+    confidence?: number | null;
+    hard_cap_reason?: string | null;
+    tech_coverage?: unknown;
+    feedback_adjustment?: number | null;
+    score_breakdown?: unknown;
   } | null;
   const application = appRaw as { id: string; status: string; applied_at: string | null; notes: string | null } | null;
   const compRange = formatComp(job.comp_lpa_min, job.comp_lpa_max);
@@ -298,6 +305,17 @@ export default async function JobDetailPage({ params }: { params: Promise<{ id: 
           <p className="text-sm leading-relaxed text-muted-foreground">{match.reasoning}</p>
         </SectionCard>
       ) : null}
+
+      {/* ── Sprint 6: Score evidence (tech coverage, confidence, cap reason) ── */}
+      {match && (
+        <ScoreEvidence
+          score={match.score}
+          confidence={match.confidence}
+          hardCapReason={match.hard_cap_reason}
+          techCoverage={match.tech_coverage}
+          feedbackAdjustment={match.feedback_adjustment}
+        />
+      )}
 
       {/* ── Apply Toolkit ─────────────────────────────────────── */}
       <ApplyToolkit

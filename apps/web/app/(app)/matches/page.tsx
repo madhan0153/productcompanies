@@ -119,6 +119,11 @@ type MatchRow = {
   seen_at: string | null;
   score_breakdown: Json | null;
   user_hidden: boolean;
+  /** Sprint 6 — surfaced in the UI via the score chip + Why-this-score panel. */
+  confidence: number | null;
+  hard_cap_reason: string | null;
+  tech_coverage: Json | null;
+  feedback_adjustment: number | null;
   jobs: {
     id: string; title: string; location: string | null;
     hubs: string[] | null; tech_stack: string[] | null;
@@ -176,6 +181,7 @@ export default async function MatchesPage({
     .select(`
       score, verdict, fit_card, fit_card_at, hidden_reason, reasoning, computed_at, seen_at,
       score_breakdown, user_hidden,
+      confidence, hard_cap_reason, tech_coverage, feedback_adjustment,
       jobs (
         id, title, location, hubs, tech_stack,
         comp_lpa_min, comp_lpa_max, seniority,
@@ -564,7 +570,7 @@ function MatchCard({
   allScores,
   hiddenView = false,
 }: {
-  match: Pick<MatchRow, "score" | "fit_card" | "reasoning" | "hidden_reason" | "score_breakdown"> & {
+  match: Pick<MatchRow, "score" | "fit_card" | "reasoning" | "hidden_reason" | "score_breakdown" | "confidence" | "hard_cap_reason" | "feedback_adjustment"> & {
     jobs: NonNullable<MatchRow["jobs"]>;
   };
   verdict: Verdict;
@@ -622,11 +628,23 @@ function MatchCard({
           <CompanyLogo name={company?.name ?? "?"} logoUrl={company?.logo_url ?? null} size={48} />
           <div
             className={`flex min-w-[3rem] items-center justify-center gap-1 rounded-lg px-1.5 py-0.5 text-xs font-bold tabular-nums ${meta.scoreTone}`}
-            aria-label={`${meta.label} — ${Math.round(match.score)} of 100`}
+            aria-label={`${meta.label} — ${Math.round(match.score)} of 100${match.confidence != null ? `, confidence ${Math.round(match.confidence)}` : ""}`}
           >
             <span aria-hidden>{meta.icon}</span>
             {Math.round(match.score)}
           </div>
+          {/* Sprint 6 — confidence subscript. Low confidence (<55) is warned;
+              high (>=80) stays muted; out-of-band scores hide it. */}
+          {match.confidence != null && (
+            <span
+              className={`text-[9px] font-medium tabular-nums leading-none ${
+                match.confidence < 55 ? "text-warning" : "text-muted-foreground/70"
+              }`}
+              title={`Score confidence ${Math.round(match.confidence)}/100 — derived from JD completeness, embeddings, and years signal.`}
+            >
+              conf {Math.round(match.confidence)}
+            </span>
+          )}
         </div>
 
         {/* Main content */}
@@ -698,7 +716,13 @@ function MatchCard({
 
           {/* Why this score — interactive disclosure */}
           {scoreBreakdown && (
-            <WhyScoreToggle breakdown={scoreBreakdown} total={match.score} />
+            <WhyScoreToggle
+              breakdown={scoreBreakdown}
+              total={match.score}
+              confidence={match.confidence}
+              hardCapReason={match.hard_cap_reason}
+              feedbackAdjustment={match.feedback_adjustment}
+            />
           )}
 
           {/* Top resume tweak */}

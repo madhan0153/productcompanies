@@ -14,9 +14,16 @@ import {
 export function WhyScoreToggle({
   breakdown,
   total,
+  confidence,
+  hardCapReason,
+  feedbackAdjustment,
 }: {
   breakdown: RulesScoreBreakdown;
   total: number;
+  /** Sprint 6 — surfaced inside the expanded panel. */
+  confidence?: number | null;
+  hardCapReason?: string | null;
+  feedbackAdjustment?: number | null;
 }) {
   const [open, setOpen] = useState(false);
 
@@ -37,7 +44,13 @@ export function WhyScoreToggle({
       </button>
       {open && (
         <div className="mt-2" onClick={(e) => { e.preventDefault(); e.stopPropagation(); }}>
-          <ScoreBreakdownPanel breakdown={breakdown} total={total} />
+          <ScoreBreakdownPanel
+            breakdown={breakdown}
+            total={total}
+            confidence={confidence}
+            hardCapReason={hardCapReason}
+            feedbackAdjustment={feedbackAdjustment}
+          />
         </div>
       )}
     </div>
