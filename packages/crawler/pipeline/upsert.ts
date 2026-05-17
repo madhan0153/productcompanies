@@ -210,9 +210,20 @@ export async function upsertJobs(
     // it wasn't supplied. The NOT NULL DEFAULT '{}' constraint then
     // rejects the whole batch. Fix: split into uniform-shape sub-batches
     // BEFORE the call. Each sub-batch has identical keys → no NULL fill.
+    //
+    // The same union-of-keys behaviour bites a third dimension: SIGNATURE.
+    // When the pre-emption code below decides a row's target sig would
+    // collide, it strips `signature` from the payload so the existing DB
+    // value is preserved. But if that stripped row sits in the same bulk
+    // array as a "normal" row that DOES have `signature`, PostgREST unions
+    // → adds signature: null to the stripped row → "null in NOT NULL
+    // column 'signature'" violation. Fix: stripped-sig rows are NEVER
+    // batched. They get applied per-row through a dedicated update path
+    // that doesn't include the signature column at all.
     const toRebind: Array<{ rowId: string; job: EnrichedJob }> = [];
     const toUpdateWithParse: Record<string, unknown>[] = [];
     const toUpdateNoParse:   Record<string, unknown>[] = [];
+    const toUpdateStrippedSig: Array<{ rowId: string; payload: Record<string, unknown> }> = [];
     const toInsertWithParse: Record<string, unknown>[] = [];
     const toInsertNoParse:   Record<string, unknown>[] = [];
 
@@ -240,9 +251,10 @@ export async function upsertJobs(
         // UPDATE path: this row's external_id is in DB.
         //   - If existing.signature === job.signature: trivial no-op on sig.
         //   - If target sig is owned by another DB row OR claimed by an
-        //     earlier batch row: strip `signature` from the payload (keep
-        //     last_seen_at + parse data; leave DB sig at its current value).
-        //   - Else: claim the new sig.
+        //     earlier batch row: strip `signature` from the payload AND
+        //     route to the per-row stripped-sig path (NOT the bulk array),
+        //     so PostgREST can't union-fill signature: null.
+        //   - Else: claim the new sig and ride the bulk path.
         const wouldCollide =
           existing.signature !== job.signature &&
           (
@@ -250,19 +262,24 @@ export async function upsertJobs(
             claimedSigs.has(job.signature)
           );
 
-        const row = wouldCollide
-          ? stripSignature({ ...baseRow, ...patch })
-          : { ...baseRow, ...patch };
-
         if (wouldCollide) {
           strippedSigOnUpdate++;
-          // Existing sig stays in DB; don't claim a new one.
+          // Existing sig stays in DB; don't claim a new one. Send to the
+          // per-row updater keyed by the existing row id, so we can use
+          // .update().eq("id", id) — the column-union trap doesn't apply
+          // to single-row updates.
+          const stripped = stripSignature({ ...baseRow, ...patch });
+          // external_id never changes on this path (we're keying by id),
+          // but stripping it from the payload keeps the update narrow.
+          const { external_id: _ext, company_id: _cid, ...patchOnly } = stripped;
+          void _ext; void _cid;
+          toUpdateStrippedSig.push({ rowId: existing.id, payload: patchOnly });
         } else {
           claimedSigs.add(job.signature);
+          const row = { ...baseRow, ...patch };
+          if (hasParse) toUpdateWithParse.push(row);
+          else          toUpdateNoParse.push(row);
         }
-
-        if (hasParse) toUpdateWithParse.push(row);
-        else          toUpdateNoParse.push(row);
       } else {
         // INSERT path: this row's external_id is NOT in DB.
         // Order matters: check claimedSigs FIRST so two batch rows
@@ -327,6 +344,26 @@ export async function upsertJobs(
     updated  += await applyBulkUpsert(supabase, toUpdateNoParse,   "update");
     inserted += await applyBulkUpsert(supabase, toInsertWithParse, "insert");
     inserted += await applyBulkUpsert(supabase, toInsertNoParse,   "insert");
+
+    // Step 6: stripped-sig rows go per-row through `.update().eq("id", …)`.
+    // PostgREST's column-union behaviour does NOT apply to a single-row
+    // update, so the absence of `signature` in the payload simply means
+    // "don't touch that column" — exactly what we want.
+    for (const { rowId, payload } of toUpdateStrippedSig) {
+      const { error } = await supabase
+        .from("jobs")
+        .update(payload)
+        .eq("id", rowId);
+      if (error) {
+        log(
+          `Stripped-sig update failed for row=${rowId}: ${error.message}`,
+          "warn",
+          { event: "stripped_sig_update_error", data: { rowId, error: error.message } },
+        );
+      } else {
+        updated++;
+      }
+    }
   }
 
   return { inserted, updated };
