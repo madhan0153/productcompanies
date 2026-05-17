@@ -174,47 +174,64 @@ export async function upsertJobs(
       existingSig = new Map((bySig ?? []).map((r) => [r.signature as string, { id: r.id as string }]));
     }
 
-    // Step 3: partition by intent. Keep insert vs update arrays separate so
-    // we can attribute count increments truthfully after each bulk call.
+    // Step 3: partition by intent AND by column shape.
+    //
+    // Why "column shape"? Supabase / PostgREST bulk upsert collects the
+    // UNION of keys across all rows in the array. If some rows include
+    // `must_have_skills` (because they were re-parsed) and others don't,
+    // PostgREST includes the column for every row — and fills NULL where
+    // it wasn't supplied. The NOT NULL DEFAULT '{}' constraint then
+    // rejects the whole batch:
+    //   null value in column "must_have_skills" of relation "jobs"
+    //   violates not-null constraint
+    //
+    // The workaround used to be: catch the failure, fall back to per-row,
+    // pay 50 round-trips of latency. Fix: split into uniform-shape sub-
+    // batches BEFORE the call. Each sub-batch has identical keys → no
+    // NULL fill → bulk works on first try every time.
     const toRebind: Array<{ rowId: string; job: EnrichedJob }> = [];
-    const toUpdateList: Record<string, unknown>[] = [];
-    const toInsertList: Record<string, unknown>[] = [];
+    const toUpdateWithParse: Record<string, unknown>[] = [];
+    const toUpdateNoParse:   Record<string, unknown>[] = [];
+    const toInsertWithParse: Record<string, unknown>[] = [];
+    const toInsertNoParse:   Record<string, unknown>[] = [];
 
-    // Within-batch signature de-dup. Scenario: two scraped rows have
-    // different external_ids but identical (title, location, description)
-    // — usually nav links or duplicate postings. The DB has a unique index
-    // on (company_id, signature), so the second insert would 23505-error.
-    // Keep the first occurrence; log skipped count.
+    // Within-batch signature de-dup. Two scraped rows with different
+    // external_ids but identical (title, location, description) signature.
+    // The DB has a unique index on (company_id, signature); the second
+    // insert would 23505-error and poison the whole batch. Keep the first
+    // occurrence.
     const seenSigsInBatch = new Set<string>();
     let droppedDupSigs = 0;
 
     for (const job of batch) {
+      const baseRow = {
+        ...asRow(job),
+        last_seen_at: now,
+        is_active: true,
+        freshness_score: 100,
+      };
+      const patch = parsePatch(job);
+      const hasParse = Object.keys(patch).length > 0;
+
       if (existingExt.has(job.external_id)) {
-        toUpdateList.push({
-          ...asRow(job),
-          last_seen_at: now,
-          is_active: true,
-          freshness_score: 100,
-          ...parsePatch(job),
-        });
+        // UPDATE path — split by whether we have new parse data. Rows
+        // without new parse omit those columns entirely so the existing
+        // values stay intact (ON CONFLICT DO UPDATE only touches columns
+        // in the EXCLUDED set).
+        if (hasParse) toUpdateWithParse.push({ ...baseRow, ...patch });
+        else          toUpdateNoParse.push(baseRow);
       } else {
         const sigMatch = existingSig.get(job.signature);
         if (sigMatch) {
           toRebind.push({ rowId: sigMatch.id, job });
         } else {
-          // First time we see this signature in the batch?
           if (seenSigsInBatch.has(job.signature)) {
             droppedDupSigs++;
             continue;
           }
           seenSigsInBatch.add(job.signature);
-          toInsertList.push({
-            ...asRow(job),
-            last_seen_at: now,
-            is_active: true,
-            freshness_score: 100,
-            ...parsePatch(job),
-          });
+          if (hasParse) toInsertWithParse.push({ ...baseRow, ...patch });
+          else          toInsertNoParse.push(baseRow);
         }
       }
     }
@@ -247,10 +264,13 @@ export async function upsertJobs(
       }
     }
 
-    // Step 5: two bulk upserts — one for updates, one for inserts. Counts
-    // only advance for rows the DB actually accepted.
-    updated += await applyBulkUpsert(supabase, toUpdateList, "update");
-    inserted += await applyBulkUpsert(supabase, toInsertList, "insert");
+    // Step 5: four bulk upserts — one per (kind × shape) combination.
+    // Each has uniform column shape; PostgREST won't NULL-fill missing
+    // keys, so the bulk path succeeds first try in the steady state.
+    updated  += await applyBulkUpsert(supabase, toUpdateWithParse, "update");
+    updated  += await applyBulkUpsert(supabase, toUpdateNoParse,   "update");
+    inserted += await applyBulkUpsert(supabase, toInsertWithParse, "insert");
+    inserted += await applyBulkUpsert(supabase, toInsertNoParse,   "insert");
   }
 
   return { inserted, updated };
