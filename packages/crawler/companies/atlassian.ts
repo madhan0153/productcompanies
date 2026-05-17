@@ -95,13 +95,18 @@ export const atlassianConfig: CompanyConfig = {
         return false;
       };
 
+      // Broader selector net — Atlassian's careers page has gone through
+      // multiple platform changes (Lever → SmartRecruiters → custom).
+      // Match anything that COULD be a job link; the job-url heuristic
+      // filters out nav slugs that sneak through.
       const links = await page.$$eval(
-        'a[href*="/company/careers/details"], a[href*="smartrecruiters"], a[href*="workday"], a[href*="/jobs/"]',
+        'a[href*="/company/careers/details"], a[href*="smartrecruiters"], a[href*="workday"], a[href*="/jobs/"], a[href*="/job/"], a[href*="/careers/"]',
         (els) =>
           els.map((el) => ({
             href: (el as HTMLAnchorElement).href,
             title:
               el.closest?.("[class*='job']")?.querySelector?.("h3, h4, [class*='title']")?.textContent?.trim() ??
+              el.querySelector?.("h3, h4, [class*='title']")?.textContent?.trim() ??
               el.textContent?.trim() ?? "",
           })).filter((l) => l.title.length > 3 && l.href.length > 10),
       );
@@ -114,6 +119,23 @@ export const atlassianConfig: CompanyConfig = {
       });
 
       log(`HTML fallback: ${jobLinks.length} job link(s) (filtered ${links.length - jobLinks.length} nav)`);
+
+      // If we STILL got zero, log a diagnostic snapshot so we can see what
+      // the page actually shipped. Hidden behind a 0-result gate so the
+      // logs stay quiet in the happy path.
+      if (jobLinks.length === 0) {
+        const anchorCount = await page.$$eval("a", (els) => els.length);
+        const sampleHrefs = await page.$$eval("a", (els) =>
+          els.slice(0, 12).map((el) => (el as HTMLAnchorElement).href).filter(Boolean),
+        );
+        const titleTag = await page.title();
+        log(
+          `Atlassian fallback drained: 0 links matched. page.title="${titleTag}", anchors=${anchorCount}, ` +
+          `sample=${JSON.stringify(sampleHrefs)}`,
+          "warn",
+        );
+      }
+
       for (const l of jobLinks.slice(0, 300)) {
         const id = l.href.split("/").at(-1) ?? l.href;
         collected.push({

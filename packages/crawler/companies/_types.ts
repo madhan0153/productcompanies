@@ -90,13 +90,23 @@ export async function enrichDescriptions(
   if (queue.length === 0) return;
 
   const startedAt = Date.now();
-  let done = 0, ok = 0, errs = 0;
+  let done = 0, ok = 0, errs = 0, emptyExtractions = 0;
+  let budgetTripped = false;
 
   const worker = async () => {
     const detailPage = await ctxBrowser.newPage();
     try {
       while (queue.length > 0) {
-        if (Date.now() - startedAt > budgetMs) return;
+        if (Date.now() - startedAt > budgetMs) {
+          // Don't silently abandon — the prior version of this worker simply
+          // `return`-ed when the budget tripped, leaving the queue length
+          // un-accounted-for in the final summary. The result was lines like
+          // "Enriched descriptions: 107/165 | errors=0" where 58 jobs vanished
+          // with no error trail. Mark the flag once; the queue gets drained
+          // by the final accounting below.
+          budgetTripped = true;
+          return;
+        }
         const job = queue.shift();
         if (!job?.apply_url) continue;
         try {
@@ -106,6 +116,10 @@ export async function enrichDescriptions(
           if (typeof text === "string" && text.length >= 60) {
             job.description = text.slice(0, 12_000); // cap; some pages dump the entire careers page
             ok++;
+          } else {
+            // Extractor returned <60 chars — selector miss, not a navigation
+            // failure. Count it explicitly so the run summary tells the truth.
+            emptyExtractions++;
           }
         } catch (err) {
           errs++;
@@ -121,5 +135,27 @@ export async function enrichDescriptions(
   };
 
   await Promise.allSettled(Array.from({ length: concurrency }, worker));
-  log(`Enriched descriptions: ${ok}/${jobs.length} | errors=${errs} | ${Math.round((Date.now() - startedAt)/1000)}s`);
+
+  // Anything still in the queue was abandoned because the budget tripped
+  // (workers return early). Account for it in the summary so 107/165 with
+  // errors=0 is never the answer again.
+  const budgetAbandoned = queue.length;
+  if (budgetTripped || budgetAbandoned > 0) {
+    log(
+      `enrich budget tripped after ${Math.round((Date.now() - startedAt)/1000)}s — ${budgetAbandoned} job(s) deferred to next crawl`,
+      "warn",
+    );
+  }
+  if (emptyExtractions > 0) {
+    log(
+      `enrich: ${emptyExtractions} job(s) loaded but extractor returned <60 chars — selector may need updating`,
+      "warn",
+    );
+  }
+  log(
+    `Enriched descriptions: ${ok}/${jobs.length} | errors=${errs}` +
+    (emptyExtractions > 0 ? ` | empty=${emptyExtractions}` : "") +
+    (budgetAbandoned > 0 ? ` | abandoned=${budgetAbandoned}` : "") +
+    ` | ${Math.round((Date.now() - startedAt)/1000)}s`,
+  );
 }

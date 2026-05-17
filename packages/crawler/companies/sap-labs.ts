@@ -79,9 +79,10 @@ export const sapLabsConfig: CompanyConfig = {
 
     log(`Total: ${allJobs.length} India jobs`);
 
-    // SAP detail pages are heavily JS-rendered — initial HTML is only the
-    // bootstrap shell, the JD content lands via XHR after load. Use
-    // networkidle and a larger grace period.
+    // SAP detail pages: networkidle NEVER fires because jobs.sap.com keeps
+    // long-poll XHRs alive. The previous setting got us 0/142 with all 40s
+    // timeouts. Switch to domcontentloaded + grace period — DOM is fully
+    // hydrated within ~3s and we don't wait for analytics beacons to finish.
     await enrichDescriptions(ctx, allJobs, () => {
       const tryEls = [
         "#jobdescription",
@@ -108,7 +109,7 @@ export const sapLabsConfig: CompanyConfig = {
         if (t.length > best.length && t.length < 50_000) best = t;
       }
       return Promise.resolve(best.length >= 400 ? best : "");
-    }, { waitUntil: "networkidle", extraWaitMs: 3000, timeoutMs: 40_000 });
+    }, { waitUntil: "domcontentloaded", extraWaitMs: 3500, timeoutMs: 25_000 });
 
     return allJobs;
   },

@@ -126,7 +126,10 @@ export const zomatoConfig: CompanyConfig = {
           if (text.length >= 100) return Promise.resolve(text);
         }
         return Promise.resolve("");
-      }, { waitUntil: "networkidle", extraWaitMs: 1500, timeoutMs: 35_000 });
+      // Zoho Recruit fires analytics XHRs every few seconds so networkidle
+      // never settles; domcontentloaded + grace gets us the painted JD body
+      // inside 4 seconds reliably.
+      }, { waitUntil: "domcontentloaded", extraWaitMs: 2500, timeoutMs: 22_000 });
 
       log(`Total: ${jobs.length} jobs`);
       return jobs;

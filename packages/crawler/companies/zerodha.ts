@@ -9,26 +9,57 @@ export const zerodhaConfig: CompanyConfig = {
     const jobs: RawJob[] = [];
 
     await page.goto("https://zerodha.com/careers/", {
-      waitUntil: "networkidle",
+      waitUntil: "domcontentloaded",
       timeout: 60_000,
     });
 
-    await sleep(1500);
+    await sleep(2500);
 
-    // Zerodha's careers page lists jobs in a simple table/list
+    // Zerodha careers is server-rendered HTML — no SPA, no XHR. Every job
+    // is a plain anchor whose href deepens past /careers/. The old selector
+    // matched `/careers/` literally (including the index page link itself),
+    // then filtered out nothing useful. Tighten to anchors whose href has
+    // more path beyond /careers/.
     const items = await page.$$eval(
-      // Common selectors for Zerodha's careers page
-      'a[href*="/careers/"], .job-listing a, [class*="job"] a, table tr a',
+      'a[href*="/careers/"]',
       (els) =>
         els
           .map((el) => ({
             href: (el as HTMLAnchorElement).href,
             title: el.textContent?.trim() ?? "",
           }))
-          .filter((l) => l.href.includes("/careers/") && l.title.length > 3),
+          // Must have something after /careers/ — drop the careers index
+          // self-link. Title must be non-trivial.
+          .filter((l) => /\/careers\/[^/?#]+/.test(l.href) && l.title.length > 3)
+          // Drop the obvious nav links by stripping known non-job tail slugs.
+          .filter((l) => {
+            const tail = l.href.replace(/[?#].*$/, "").split("/").filter(Boolean).pop() ?? "";
+            const navWords = new Set(["careers", "about", "team", "culture", "perks", "benefits", "process", "faq"]);
+            return !navWords.has(tail);
+          })
+          // Dedup by href.
+          .filter((l, i, arr) => arr.findIndex((x) => x.href === l.href) === i),
     );
 
     log(`Found ${items.length} job links`);
+
+    // Diagnostic: when we drain zero, dump what was on the page so the next
+    // run can be fixed without a debug deployment.
+    if (items.length === 0) {
+      const anchorCount = await page.$$eval("a", (els) => els.length);
+      const sampleHrefs = await page.$$eval("a", (els) =>
+        els
+          .slice(0, 20)
+          .map((el) => (el as HTMLAnchorElement).href)
+          .filter((h) => h && !h.startsWith("javascript:")),
+      );
+      const titleTag = await page.title();
+      log(
+        `Zerodha: 0 links matched. page.title="${titleTag}", anchors=${anchorCount}, ` +
+        `sample=${JSON.stringify(sampleHrefs)}`,
+        "warn",
+      );
+    }
 
     for (const item of items.slice(0, 200)) {
       // Extract job ID from URL path

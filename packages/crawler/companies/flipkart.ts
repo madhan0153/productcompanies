@@ -109,8 +109,10 @@ export const flipkartConfig: CompanyConfig = {
     log(`Total: ${jobs.length} India jobs`);
 
     // Pull full JD body. TurboHire's SPA paints the JD into the dashboard
-    // shell when ?jobId=... is in the URL. networkidle + grace period catches
-    // late paints; broad selector chain handles minor DOM variations.
+    // shell when ?jobId=... is in the URL. networkidle never fires (their
+    // analytics ping every few seconds), which caused 0/12 with all
+    // 35s timeouts in the 2026-05-17 run. Domcontentloaded + a longer grace
+    // period reaches the painted JD reliably.
     await enrichDescriptions({ page, log }, jobs, () => {
       const tryEls = [
         "[class*='job-detail'i]",
@@ -126,7 +128,7 @@ export const flipkartConfig: CompanyConfig = {
         if (text.length >= 200) return Promise.resolve(text);
       }
       return Promise.resolve("");
-    }, { waitUntil: "networkidle", extraWaitMs: 2000, timeoutMs: 35_000 });
+    }, { waitUntil: "domcontentloaded", extraWaitMs: 3000, timeoutMs: 25_000 });
 
     return jobs;
   },

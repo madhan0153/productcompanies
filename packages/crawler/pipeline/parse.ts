@@ -189,6 +189,34 @@ const COLD_BAIL_AFTER = 18;     // ~6 attempts per key with 3 keys = enough sign
 const QUOTA_WINDOW = 30;
 const MIN_OK_BEFORE_BAIL = 10;
 
+// Cross-company quota state — persists across companies in a single
+// sequential crawl run. Once any company has confirmed all Gemini keys are
+// dead (mid-run or cold bail), every subsequent company in the run skips
+// the parse phase entirely.
+//
+// Without this, after Amazon burned all 3 keys at company #4, every later
+// company (NVIDIA, Oracle, Salesforce, SAP Labs, Razorpay, PhonePe, Swiggy)
+// still kicked off parse workers, hit COLD_BAIL_AFTER attempts of 18 wasted
+// quota_disabled calls, waited a long time on retry backoffs, and added up
+// to ~45 minutes of wall-clock with zero useful work. The state below lets
+// every later company short-circuit in milliseconds.
+//
+// State resets when the Node process exits → next GitHub Actions run starts
+// fresh, which is the correct semantic (the new run gets a new day or a
+// new RPD window). NOT exported — only the parseWithWorkers function flips
+// the flag, and only enrichWithParse reads it.
+let _runQuotaExhausted = false;
+let _quotaExhaustedAt: string | null = null;
+
+/**
+ * Lets callers (or tests) reset the cross-company quota flag between runs.
+ * The flag also implicitly resets when the process exits.
+ */
+export function resetRunQuotaState(): void {
+  _runQuotaExhausted = false;
+  _quotaExhaustedAt = null;
+}
+
 interface ParseStats {
   ok: number;
   err: number;
@@ -289,11 +317,14 @@ async function parseWithWorkers(
         recentOutcomes.every((v) => !v)
       ) {
         bailReason = "quota";
+        _runQuotaExhausted = true;
+        _quotaExhaustedAt = new Date().toISOString();
         const remaining = queue.splice(0);
         stats.skippedQuota += remaining.length;
         cLog(
           `Gemini quota exhausted before this company could start (0 successes in ${stats.err} attempts). ` +
-          `${stats.skippedQuota} job(s) deferred — will be retried next crawl.`,
+          `${stats.skippedQuota} job(s) deferred — will be retried next crawl. ` +
+          `Marking quota exhausted for the rest of this run.`,
           "warn",
           { event: "cold_quota_bail", data: { attempts: stats.err, deferred: stats.skippedQuota } },
         );
@@ -309,11 +340,14 @@ async function parseWithWorkers(
         recentOutcomes.every((v) => !v)
       ) {
         bailReason = "quota";
+        _runQuotaExhausted = true;
+        _quotaExhaustedAt = new Date().toISOString();
         const remaining = queue.splice(0);
         stats.skippedQuota += remaining.length;
         cLog(
           `Gemini daily quota exhausted after ${stats.ok} parse(s). ` +
-          `${stats.skippedQuota} job(s) deferred — will be retried next crawl.`,
+          `${stats.skippedQuota} job(s) deferred — will be retried next crawl. ` +
+          `Marking quota exhausted for the rest of this run.`,
           "warn",
           { event: "midrun_quota_bail", data: { successes: stats.ok, deferred: stats.skippedQuota } },
         );
@@ -456,6 +490,31 @@ export async function enrichWithParse(
     `Parse decision: ${parse.length} to parse, ${skip.length} skip (already parsed, unchanged)` +
     (rejected.length > 0 ? `, ${rejected.length} rejected (non-engineering title)` : ""),
   );
+
+  // Cross-company quota short-circuit. If an earlier company in this run
+  // already proved all keys are dead, every parse here would just produce
+  // 18 quota_disabled attempts and another cold-bail log. Skip the LLM
+  // phase entirely and defer parse to the next crawl. Saves ~5 minutes per
+  // affected company; saved ~45 min cumulatively in the 2026-05-17 run.
+  if (_runQuotaExhausted && parse.length > 0) {
+    cLog(
+      `Gemini quota already exhausted earlier in this run (at ${_quotaExhaustedAt}). ` +
+      `Skipping parse for ${parse.length} JD${parse.length === 1 ? "" : "s"} — will be retried next crawl.`,
+      "warn",
+      { event: "run_quota_skip", data: { deferred: parse.length, exhaustedAt: _quotaExhaustedAt } },
+    );
+    const rejectedIds = new Set(rejected.map((j) => j.external_id));
+    const keep = jobs.filter((j) => !rejectedIds.has(j.external_id));
+    const enrichedJobs = keep.map((j) => ({ ...j, parsed: undefined, embedding: undefined, needsParse: false }));
+    return {
+      jobs: enrichedJobs,
+      parseOk: 0,
+      parseErr: 0,
+      skippedBudget: 0,
+      skippedQuota: parse.length,
+      rejectedNonEng: rejected.length,
+    };
+  }
 
   const { map: parsedMap, stats } = await parseWithWorkers(parse, companyName, cLog);
   const embedMap = await embedJobsBatched(parse, parsedMap, companyName, cLog);
