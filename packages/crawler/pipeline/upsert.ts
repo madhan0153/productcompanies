@@ -68,6 +68,16 @@ function asRow(job: EnrichedJob): Record<string, unknown> {
  */
 const CONFLICT_TARGET = "company_id,external_id";
 
+/**
+ * Recognize signature-collision errors. When two distinct external_ids carry
+ * identical content (same title+location+description hash), the second
+ * insert violates ux_jobs_company_signature. We treat these as "an existing
+ * row already represents this content" — silent skip rather than an alert.
+ */
+function isSignatureCollision(msg: string): boolean {
+  return /ux_jobs_company_signature/.test(msg);
+}
+
 async function applyBulkUpsert(
   supabase: SupabaseClient,
   rows: Record<string, unknown>[],
@@ -80,32 +90,43 @@ async function applyBulkUpsert(
     .upsert(rows, { onConflict: CONFLICT_TARGET, ignoreDuplicates: false });
   if (!error) return rows.length;
 
+  // Signature collision in a bulk insert poisons the whole batch in PG.
+  // Fall back to per-row so the OTHER rows in the batch can still land.
+  const isSigCollision = isSignatureCollision(error.message);
   log(
     `Bulk ${kindLabel} failed: ${error.message} — falling back to per-row`,
     "warn",
-    { event: "bulk_upsert_error", data: { kind: kindLabel, batchSize: rows.length, error: error.message } },
+    { event: "bulk_upsert_error", data: { kind: kindLabel, batchSize: rows.length, error: error.message, sigCollision: isSigCollision } },
   );
 
   // Per-row recovery so a single bad row doesn't sink the whole batch.
   let ok = 0;
+  let sigSkipped = 0;
   for (const row of rows) {
     const { error: e2 } = await supabase
       .from("jobs")
       .upsert(row, { onConflict: CONFLICT_TARGET, ignoreDuplicates: false });
     if (e2) {
-      log(
-        `Per-row ${kindLabel} failed for external_id=${(row as { external_id?: string }).external_id}: ${e2.message}`,
-        "warn",
-        { event: "row_upsert_error", data: { kind: kindLabel, error: e2.message } },
-      );
+      if (isSignatureCollision(e2.message)) {
+        // Silent skip — an existing row at this signature already represents
+        // this content. Not a real failure.
+        sigSkipped++;
+      } else {
+        log(
+          `Per-row ${kindLabel} failed for external_id=${(row as { external_id?: string }).external_id}: ${e2.message}`,
+          "warn",
+          { event: "row_upsert_error", data: { kind: kindLabel, error: e2.message } },
+        );
+      }
     } else {
       ok++;
     }
   }
   log(
-    `Per-row recovery: ${ok}/${rows.length} ${kindLabel}s succeeded`,
+    `Per-row recovery: ${ok}/${rows.length} ${kindLabel}s succeeded` +
+    (sigSkipped > 0 ? ` (skipped ${sigSkipped} signature-collisions)` : ""),
     "info",
-    { event: "bulk_upsert_recovered", data: { kind: kindLabel, recovered: ok, total: rows.length } },
+    { event: "bulk_upsert_recovered", data: { kind: kindLabel, recovered: ok, total: rows.length, sigSkipped } },
   );
   return ok;
 }
@@ -159,6 +180,14 @@ export async function upsertJobs(
     const toUpdateList: Record<string, unknown>[] = [];
     const toInsertList: Record<string, unknown>[] = [];
 
+    // Within-batch signature de-dup. Scenario: two scraped rows have
+    // different external_ids but identical (title, location, description)
+    // — usually nav links or duplicate postings. The DB has a unique index
+    // on (company_id, signature), so the second insert would 23505-error.
+    // Keep the first occurrence; log skipped count.
+    const seenSigsInBatch = new Set<string>();
+    let droppedDupSigs = 0;
+
     for (const job of batch) {
       if (existingExt.has(job.external_id)) {
         toUpdateList.push({
@@ -173,6 +202,12 @@ export async function upsertJobs(
         if (sigMatch) {
           toRebind.push({ rowId: sigMatch.id, job });
         } else {
+          // First time we see this signature in the batch?
+          if (seenSigsInBatch.has(job.signature)) {
+            droppedDupSigs++;
+            continue;
+          }
+          seenSigsInBatch.add(job.signature);
           toInsertList.push({
             ...asRow(job),
             last_seen_at: now,
@@ -182,6 +217,14 @@ export async function upsertJobs(
           });
         }
       }
+    }
+
+    if (droppedDupSigs > 0) {
+      log(
+        `upsert: dropped ${droppedDupSigs} in-batch signature duplicate(s) (same content, different external_id)`,
+        "warn",
+        { event: "upsert_sig_dup", data: { dropped: droppedDupSigs, batchSize: batch.length } },
+      );
     }
 
     // Step 4: rebinds (per-row, count only on success).

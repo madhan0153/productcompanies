@@ -166,12 +166,26 @@ const PARSE_BUDGET_PER_RUN = (() => {
   return Number.isFinite(v) && v > 0 ? v : 10_000;
 })();
 
-// Quota-exhaustion detection: if the last N attempts are ALL errors AND we've
-// had at least this many successes (so it's not a startup misconfiguration),
-// the daily quota is burned — bail the queue immediately rather than grinding
-// through every remaining job. Window enlarged from 12 → 30 to tolerate
-// transient RPM bursts that recover on retry (e.g., when all keys briefly
-// 429 in sync but free up within a minute).
+// Quota-exhaustion detection.
+//
+// Two scenarios we need to detect:
+//
+// (A) "Cold quota" — every key was already exhausted before this company
+//     started parsing (e.g., previous company consumed the day's RPD).
+//     We see N consecutive quota errors with ZERO successes. The old
+//     heuristic required 10 successes first — so Apple grinded for 70
+//     minutes with 0/217 successes before giving up. Wrong.
+//
+// (B) "Mid-run quota" — most jobs parsed cleanly, then keys drained mid-
+//     run. We see a long window of trailing failures after many successes.
+//
+// COLD_BAIL_AFTER catches (A) fast — after this many consecutive quota
+// errors with no successes, bail immediately. Saves 60+ min of wasted work.
+//
+// QUOTA_WINDOW / MIN_OK_BEFORE_BAIL catch (B) — the rolling-window check
+// (full window of quota errors after enough successes to prove keys ARE
+// working). Larger window tolerates transient RPM bursts that recover.
+const COLD_BAIL_AFTER = 18;     // ~6 attempts per key with 3 keys = enough signal
 const QUOTA_WINDOW = 30;
 const MIN_OK_BEFORE_BAIL = 10;
 
@@ -186,7 +200,7 @@ interface ParseStats {
 async function parseWithWorkers(
   jobs: NormalizedJob[],
   companyName: string,
-  cLog: (msg: string, level?: "info" | "warn" | "error") => void,
+  cLog: (msg: string, level?: "info" | "warn" | "error", extra?: { event?: string; data?: Record<string, unknown> }) => void,
 ): Promise<{ map: Map<string, ParsedJD>; stats: ParseStats }> {
   const map = new Map<string, ParsedJD>();
   const stats: ParseStats = { ok: 0, err: 0, skippedBudget: 0, skippedQuota: 0, errSamples: [] };
@@ -263,9 +277,31 @@ async function parseWithWorkers(
       // Keep window bounded.
       if (recentOutcomes.length > QUOTA_WINDOW) recentOutcomes.shift();
 
-      // Quota-exhaustion check: if the rolling window is full, all quota
-      // errors, and we've had enough successes to rule out a config
-      // problem → bail.
+      // (A) Cold-bail: started this company with already-exhausted keys.
+      // If we've hit COLD_BAIL_AFTER attempts with 0 successes and the
+      // recent window is all-quota-errors, the keys are cooked. Stop now —
+      // Apple's case where this would have saved 60+ minutes.
+      if (
+        !bailReason &&
+        stats.ok === 0 &&
+        stats.err >= COLD_BAIL_AFTER &&
+        recentOutcomes.length >= COLD_BAIL_AFTER &&
+        recentOutcomes.every((v) => !v)
+      ) {
+        bailReason = "quota";
+        const remaining = queue.splice(0);
+        stats.skippedQuota += remaining.length;
+        cLog(
+          `Gemini quota exhausted before this company could start (0 successes in ${stats.err} attempts). ` +
+          `${stats.skippedQuota} job(s) deferred — will be retried next crawl.`,
+          "warn",
+          { event: "cold_quota_bail", data: { attempts: stats.err, deferred: stats.skippedQuota } },
+        );
+        return;
+      }
+
+      // (B) Mid-run bail: rolling window full of quota errors after enough
+      // successes to prove keys WERE working. Daily quota burned mid-run.
       if (
         !bailReason &&
         recentOutcomes.length >= QUOTA_WINDOW &&
@@ -277,8 +313,9 @@ async function parseWithWorkers(
         stats.skippedQuota += remaining.length;
         cLog(
           `Gemini daily quota exhausted after ${stats.ok} parse(s). ` +
-          `${stats.skippedQuota} job(s) skipped — will be retried next crawl.`,
+          `${stats.skippedQuota} job(s) deferred — will be retried next crawl.`,
           "warn",
+          { event: "midrun_quota_bail", data: { successes: stats.ok, deferred: stats.skippedQuota } },
         );
         return;
       }
@@ -318,7 +355,7 @@ async function embedJobsBatched(
   jobs: NormalizedJob[],
   parsedMap: Map<string, ParsedJD>,
   companyName: string,
-  cLog: (msg: string, level?: "info" | "warn" | "error") => void,
+  cLog: (msg: string, level?: "info" | "warn" | "error", extra?: { event?: string; data?: Record<string, unknown> }) => void,
 ): Promise<Map<string, number[]>> {
   const out = new Map<string, number[]>();
   const targets = jobs.filter((j) => parsedMap.has(j.external_id));
@@ -402,7 +439,7 @@ export async function enrichWithParse(
   companyId: string,
   companyName: string,
   jobs: NormalizedJob[],
-  cLog: (msg: string, level?: "info" | "warn" | "error") => void,
+  cLog: (msg: string, level?: "info" | "warn" | "error", extra?: { event?: string; data?: Record<string, unknown> }) => void,
 ): Promise<EnrichResult> {
   if (jobs.length === 0) {
     return { jobs: [], parseOk: 0, parseErr: 0, skippedBudget: 0, skippedQuota: 0, rejectedNonEng: 0 };
@@ -457,7 +494,7 @@ export async function enrichWithParse(
 export async function dryRunParse(
   jobs: NormalizedJob[],
   companyName: string,
-  cLog: (msg: string, level?: "info" | "warn" | "error") => void,
+  cLog: (msg: string, level?: "info" | "warn" | "error", extra?: { event?: string; data?: Record<string, unknown> }) => void,
   count = 5,
 ): Promise<void> {
   const sample = jobs.slice(0, count);

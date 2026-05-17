@@ -170,39 +170,78 @@ export async function runWithRetry<T>(
   let totalWaited = 0;
   let lastError: LlmError | null = null;
 
+  // Track which (model × key) combinations have exhausted daily quota so we
+  // don't retry them across model loops. quota_disabled is per-key-per-model
+  // (Gemini's daily limit is keyed by project × pinned-model), so if model A
+  // returns quota_disabled with key 1, model B with key 1 might still work.
+  const exhausted = new Set<string>(); // "modelName||keyIdx"
+  const exhaustedKey = (m: string, i: number) => `${m}||${i}`;
+
   for (const modelName of cascade) {
     let modelUnavailable = false;
+    let allKeysExhaustedForModel = true;
 
     for (let attempt = 0; attempt < keys.length; attempt++) {
-      const key = keys[(startIdx + attempt) % keys.length];
+      const keyIdx = (startIdx + attempt) % keys.length;
+      if (exhausted.has(exhaustedKey(modelName, keyIdx))) continue;
+
+      const key = keys[keyIdx];
       const model = client(key).getGenerativeModel({ model: modelName });
       try {
         const result = await build(model);
-        _keyIndex = (startIdx + attempt + 1) % keys.length;
+        _keyIndex = (keyIdx + 1) % keys.length;
         return result;
       } catch (err) {
         const classified = classify(err);
         lastError = classified;
 
-        if (classified.kind === "quota_disabled" || classified.kind === "auth") {
-          break;
+        // AUTH = permanent error on this key; skip it for ALL models.
+        if (classified.kind === "auth") {
+          for (const m of cascade) exhausted.add(exhaustedKey(m, keyIdx));
+          continue; // try next key
         }
-        if (classified.kind === "model_unavailable") {
-          modelUnavailable = true;
-          break;
-        }
-        if (classified.kind === "rate_limited" && attempt < keys.length - 1) {
-          const wait = classified.retryAfterMs;
-          if (totalWaited + wait > maxWait) break;
-          totalWaited += wait;
-          await sleep(wait);
+
+        // QUOTA_DISABLED = daily quota for this (model × key). Mark this combo
+        // exhausted and try the next key — DON'T break out, the other keys
+        // may still have their own daily quota intact. This was the bug:
+        // before, one quota_disabled response would break the entire key
+        // loop, so we'd repeatedly hammer key 0 only.
+        if (classified.kind === "quota_disabled") {
+          exhausted.add(exhaustedKey(modelName, keyIdx));
           continue;
         }
-        break;
+
+        // MODEL_UNAVAILABLE = whole model is gone (404). No point trying
+        // other keys on this model.
+        if (classified.kind === "model_unavailable") {
+          modelUnavailable = true;
+          for (let i = 0; i < keys.length; i++) exhausted.add(exhaustedKey(modelName, i));
+          break;
+        }
+
+        // RATE_LIMITED = per-minute throttle. Wait per server retry-after
+        // hint (capped) then try next key. The next key likely has its own
+        // RPM counter, so this is usually fast.
+        if (classified.kind === "rate_limited") {
+          allKeysExhaustedForModel = false;
+          const wait = classified.retryAfterMs;
+          if (totalWaited + wait <= maxWait) {
+            totalWaited += wait;
+            await sleep(wait);
+          }
+          continue;
+        }
+
+        // UNKNOWN error — don't burn other keys on it, but don't mark
+        // exhausted either. Try the next key with the same model.
+        allKeysExhaustedForModel = false;
+        continue;
       }
     }
 
-    if (!modelUnavailable && lastError?.kind === "rate_limited") {
+    // Inter-model wait — gives the prior model's per-minute window a chance
+    // to recover before we hammer the next one with the same keys.
+    if (!modelUnavailable && lastError?.kind === "rate_limited" && !allKeysExhaustedForModel) {
       await sleep(400);
     }
   }

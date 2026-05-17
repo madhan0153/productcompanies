@@ -62,9 +62,41 @@ export const atlassianConfig: CompanyConfig = {
     }
 
     if (collected.length === 0) {
-      // HTML fallback
+      // HTML fallback — careers SPA didn't expose its JSON; scrape anchor
+      // tags directly. Filter aggressively: the careers shell page links to
+      // dozens of nav pages (/careers/applying, /careers/interviewing,
+      // /careers/awards, /careers/recruitment-fraud, /careers/all-jobs,
+      // /careers/employee-awards, /careers/team-everyone, etc.) that the
+      // old loose filter happily ingested as "jobs" — they all came in
+      // with empty descriptions and identical signatures, which then poisoned
+      // the upsert with ux_jobs_company_signature collisions.
+      const NAV_SLUGS = new Set([
+        "applying", "interviewing", "awards", "all-jobs",
+        "earlycareers", "early-careers", "career-growth",
+        "employee-awards", "perk-and-benefits", "perks-and-benefits",
+        "recruitment-fraud", "resources", "teamanywhere", "team-anywhere",
+        "team-everyone", "events", "blog", "stories",
+        "diversity", "internships", "interns", "students",
+        "locations", "teams", "remote", "leadership", "values",
+        "candidate-resources", "interview-process", "faq", "faqs",
+        "students-and-graduates", "graduate-program",
+      ]);
+
+      const looksLikeJobUrl = (href: string): boolean => {
+        // Atlassian job detail URLs end in a long alphanumeric ID
+        // (UUID-like) or a Workday/SmartRecruiters req number. Pure
+        // nav slugs are short and word-like.
+        const last = href.split("/").filter(Boolean).pop() ?? "";
+        // Accept anything that looks UUID-y, req-id-y, or contains digits.
+        if (/^[0-9a-f]{8}-[0-9a-f]{4}/.test(last)) return true;       // uuid
+        if (/^[A-Z]{2,4}[-_]?\d{4,}/.test(last)) return true;         // JR-12345
+        if (/\d{4,}/.test(last)) return true;                          // any 4+ digit id
+        if (last.length > 30) return true;                             // long slug → likely job-title-NNNNN
+        return false;
+      };
+
       const links = await page.$$eval(
-        'a[href*="/company/careers/"], a[href*="jobs/"]',
+        'a[href*="/company/careers/details"], a[href*="smartrecruiters"], a[href*="workday"], a[href*="/jobs/"]',
         (els) =>
           els.map((el) => ({
             href: (el as HTMLAnchorElement).href,
@@ -73,8 +105,16 @@ export const atlassianConfig: CompanyConfig = {
               el.textContent?.trim() ?? "",
           })).filter((l) => l.title.length > 3 && l.href.length > 10),
       );
-      log(`HTML fallback: ${links.length} links`);
-      for (const l of links.slice(0, 300)) {
+
+      // Filter out nav slugs and links that don't pass the job-url heuristic.
+      const jobLinks = links.filter((l) => {
+        const last = l.href.split("/").filter(Boolean).pop() ?? "";
+        if (NAV_SLUGS.has(last)) return false;
+        return looksLikeJobUrl(l.href);
+      });
+
+      log(`HTML fallback: ${jobLinks.length} job link(s) (filtered ${links.length - jobLinks.length} nav)`);
+      for (const l of jobLinks.slice(0, 300)) {
         const id = l.href.split("/").at(-1) ?? l.href;
         collected.push({
           external_id: id,
