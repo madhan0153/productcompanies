@@ -4,9 +4,8 @@
 import type { DnaBreakdown } from "@/lib/matching/dna-breakdown";
 
 const AXIS_ORDER: Array<DnaBreakdown["axes"][number]["axis"]> = [
-  "product_co_tenure",
-  "scale_impact",
   "modern_stack",
+  "scale_impact",
   "ownership_signals",
 ];
 

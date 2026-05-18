@@ -6,12 +6,9 @@ import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { ResumeUpload } from "./resume-upload";
 import { SaveProfileForm } from "./save-profile-form";
 import { ResumeScorePanel, type ResumeScorePanelData } from "./resume-score-panel";
-import { DnaBreakdownPanel } from "@/components/dna-breakdown-panel";
 import { SectionCard } from "@/components/section-card";
-import type { DnaBreakdown } from "@/lib/matching/dna-breakdown";
 import { listResumeVersions } from "./actions";
 import { ResumeVersionsPanel } from "./resume-versions-panel";
-import { ParsedReviewPanel } from "./parsed-review-panel";
 import { EnhancementHistoryPanel } from "./enhancement-history-panel";
 
 export const metadata: Metadata = { title: "My Profile" };
@@ -33,145 +30,61 @@ export default async function ProfilePage() {
   const preferredHubs = (profile?.preferred_hubs as string[] | null) ?? [];
   const techStack = (profile?.tech_stack as string[] | null) ?? [];
   const hasResume = !!profile?.resume_storage_path;
-  const parsedResume = profile?.resume_parsed as Record<string, unknown> | null;
   const dnaScore = profile?.product_dna_score as number | null ?? null;
-  const dnaBreakdown = ((profile as { dna_breakdown?: DnaBreakdown | null } | null)?.dna_breakdown) ?? null;
   const resumeScore = (profile as { resume_score?: number | null } | null)?.resume_score ?? null;
 
   const versions = hasResume ? await listResumeVersions() : [];
 
-  const steps = [
-    { done: hasResume, label: "Resume uploaded" },
-    { done: dnaScore !== null, label: "Readiness computed" },
-    { done: resumeScore !== null, label: "Market strength scored" },
-  ];
-  const progress = steps.filter((s) => s.done).length;
-  const progressPct = Math.round((progress / steps.length) * 100);
-
   return (
-    <div className="max-w-3xl space-y-5 pb-8">
-      {/* ── Header ─────────────────────────────────────────────── */}
-      <div className="rounded-xl border border-border bg-card p-5 sm:p-6">
-        <div className="flex flex-wrap items-start justify-between gap-4">
-          <div className="min-w-0">
-            <h1 className="text-2xl font-semibold tracking-tight">My Profile</h1>
-            <p className="mt-1 text-sm text-muted-foreground">
-              Your details are used solely for AI matching — never shared or sold.
-            </p>
-          </div>
-          <div className="flex shrink-0 flex-col items-center gap-1">
-            <div className="relative flex h-12 w-12 items-center justify-center">
-              <svg className="absolute inset-0 -rotate-90" width="48" height="48" viewBox="0 0 48 48">
-                <circle cx="24" cy="24" r="20" fill="none" stroke="hsl(var(--border))" strokeWidth="4" />
-                <circle
-                  cx="24" cy="24" r="20"
-                  fill="none"
-                  stroke="hsl(var(--primary))"
-                  strokeWidth="4"
-                  strokeDasharray={`${(progress / steps.length) * 125.6} 125.6`}
-                  strokeLinecap="round"
-                />
-              </svg>
-              <span className="text-xs font-bold tabular-nums">{progress}/{steps.length}</span>
-            </div>
-            <span className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">Setup</span>
-          </div>
+    <div className="max-w-3xl space-y-4 pb-8">
+      {/* ── Compact header — single row ─────────────────────────── */}
+      <div className="flex items-center justify-between gap-3">
+        <div className="min-w-0">
+          <h1 className="text-xl font-semibold tracking-tight sm:text-2xl">My Profile</h1>
+          <p className="mt-0.5 text-[11px] text-muted-foreground sm:text-xs">
+            Used only for AI matching. Never shared or sold.
+          </p>
         </div>
-
-        {/* Steps */}
-        <div className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-1.5 border-t border-border pt-4">
-          {steps.map(({ done, label }) => (
-            <div key={label} className="flex items-center gap-1.5 text-xs">
-              {done
-                ? <CheckCircle2 className="h-3.5 w-3.5 shrink-0 text-success" />
-                : <div className="h-3.5 w-3.5 shrink-0 rounded-full border-2 border-border" />
-              }
-              <span className={done ? "text-foreground" : "text-muted-foreground/70"}>{label}</span>
-            </div>
-          ))}
-        </div>
-
-        <div className="mt-3 h-1 w-full overflow-hidden rounded-full bg-secondary">
-          <div
-            className="h-full rounded-full bg-primary transition-all duration-700"
-            style={{ width: `${progressPct}%` }}
-          />
-        </div>
+        {hasResume && dnaScore !== null && (
+          <Link
+            href="#readiness"
+            className="press tap-target-sm flex shrink-0 flex-col items-center gap-0.5 rounded-md px-2 py-1 transition hover:bg-secondary focus-ring"
+          >
+            <span className={`text-lg font-bold tabular-nums ${
+              dnaScore >= 75 ? "text-success" : dnaScore >= 55 ? "text-warning" : "text-primary"
+            }`}>{dnaScore}</span>
+            <span className="text-[9px] font-medium uppercase tracking-wider text-muted-foreground">
+              Ready
+            </span>
+          </Link>
+        )}
       </div>
 
-      {/* ── Product-Co Readiness card ──────────────────────────
-          Renamed from "Product DNA" to a neutral readiness signal.
-          Doesn't gate matching — purely a profile-side coaching signal.
-          Background (services / product / mixed) is not a judgment;
-          it's information you can act on. */}
-      {hasResume && dnaScore !== null && (
-        <div className="rounded-xl border border-primary/30 bg-primary-soft p-5 sm:p-6">
-          <div className="flex flex-wrap items-center gap-5">
-            <DnaRing score={dnaScore} />
-            <div className="min-w-0 flex-1">
-              <p className="text-[11px] font-semibold uppercase tracking-wider text-primary-soft-foreground/80">Product-Co Readiness</p>
-              <p className="mt-0.5 text-lg font-semibold">{dnaScoreLabel(dnaScore)}</p>
-              <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
-                A coaching signal — not a gate. Built from scale of work, modern stack, ownership, and product-co exposure. It does not affect your match scores.
-              </p>
-              {parsedResume && (parsedResume.summary as string | undefined) && (
-                <p className="mt-2 line-clamp-2 text-xs text-muted-foreground/80">
-                  {String(parsedResume.summary ?? "").slice(0, 140)}{String(parsedResume.summary ?? "").length > 140 ? "…" : ""}
-                </p>
-              )}
+      {/* ── Enhance my resume — MAIN USP, top placement ─────────── */}
+      {hasResume && (
+        <Link
+          href="/profile/enhance"
+          className="press tap-target group block rounded-xl border-2 border-primary/40 bg-primary-soft p-4 transition hover:border-primary hover:bg-primary-soft/90 focus-ring"
+        >
+          <div className="flex items-start gap-3">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary text-primary-foreground">
+              <Sparkles className="h-5 w-5" aria-hidden />
             </div>
+            <div className="min-w-0 flex-1">
+              <p className="text-sm font-semibold sm:text-base">Enhance my resume</p>
+              <p className="mt-0.5 text-xs leading-relaxed text-muted-foreground">
+                AI reviews ATS readability + bullet quality. <strong className="text-foreground/90">You approve every change.</strong> Never invents experience.
+              </p>
+            </div>
+            <ChevronRightIcon aria-hidden className="mt-1 h-4 w-4 shrink-0 text-primary transition group-hover:translate-x-0.5" />
           </div>
-          <div className="mt-4 grid grid-cols-3 gap-3 border-t border-primary/15 pt-4">
-            {[
-              { label: "Current role", value: (profile?.current_role as string | null) ?? "—", icon: <User className="h-3 w-3" /> },
-              { label: "Experience", value: profile?.years_experience != null ? `${profile.years_experience} yrs` : "—", icon: <TrendingUp className="h-3 w-3" /> },
-              { label: "Tech skills", value: techStack.length > 0 ? `${techStack.length} skills` : "—", icon: <Sparkles className="h-3 w-3" /> },
-            ].map(({ label, value, icon }) => (
-              <div key={label} className="text-center">
-                <div className="mb-1 flex items-center justify-center gap-1 text-muted-foreground">{icon}</div>
-                <p className="truncate text-sm font-semibold">{value}</p>
-                <p className="text-[10px] text-muted-foreground">{label}</p>
-              </div>
-            ))}
-          </div>
-        </div>
+        </Link>
       )}
 
-      {/* ── Parsed review ──────────────────────────────────────── */}
-      {hasResume && (
-        <ParsedReviewPanel
-          roleFunction={(profile?.role_function as string | null) ?? null}
-          targetRoleFunctions={(profile?.target_role_functions as string[] | null) ?? []}
-          yearsExperience={(profile?.years_experience as number | null) ?? null}
-          techStack={techStack}
-          preferredHubs={preferredHubs}
-          editHref="#profile-details"
-        />
-      )}
-
-      {/* ── DNA axis breakdown ─────────────────────────────────── */}
-      {hasResume && dnaBreakdown && (
-        <div id="dna-breakdown" className="scroll-mt-20">
-          <DnaBreakdownPanel breakdown={dnaBreakdown} />
-        </div>
-      )}
-
-      {/* ── Resume history ─────────────────────────────────────── */}
-      {hasResume && (
-        <div id="resume-history" className="scroll-mt-20">
-          <ResumeVersionsPanel versions={versions} />
-        </div>
-      )}
-
-      {/* ── Enhancement history (Phase R4) ─────────────────────── */}
-      {hasResume && (
-        <EnhancementHistoryPanel userId={user.id} />
-      )}
-
-      {/* ── Resume upload ──────────────────────────────────────── */}
+      {/* ── Resume upload (compact when resume already present) ─── */}
       <SectionCard
         title="Resume"
-        subtitle="We parse your resume to populate your profile and inform your readiness signal"
+        subtitle={hasResume ? "Upload a new version to replace" : "Upload your PDF to get started"}
         icon={<FileText className="h-4 w-4" />}
         badge={
           hasResume ? (
@@ -188,6 +101,26 @@ export default async function ProfilePage() {
         />
       </SectionCard>
 
+      {/* ── Product-Co Readiness — slim 1-line strip with summary ─ */}
+      {hasResume && dnaScore !== null && (
+        <Link
+          href="#profile-details"
+          id="readiness"
+          className="press tap-target-sm flex items-center gap-3 rounded-xl border border-border bg-card px-4 py-3 transition hover:border-primary/30 focus-ring"
+        >
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary-soft text-primary-soft-foreground">
+            <span className="text-sm font-bold tabular-nums">{dnaScore}</span>
+          </div>
+          <div className="min-w-0 flex-1">
+            <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+              Product-Co Readiness
+            </p>
+            <p className="truncate text-sm font-medium">{dnaScoreLabel(dnaScore)}</p>
+          </div>
+          <ChevronRightIcon aria-hidden className="h-4 w-4 shrink-0 text-muted-foreground/50" />
+        </Link>
+      )}
+
       {/* ── Resume score panel ─────────────────────────────────── */}
       {hasResume && (
         <ResumeScorePanel
@@ -196,28 +129,6 @@ export default async function ProfilePage() {
           tips={(profile as { resume_tips?: ResumeScorePanelData["tips"] } | null)?.resume_tips ?? null}
           scoredAt={(profile as { resume_score_at?: string | null } | null)?.resume_score_at ?? null}
         />
-      )}
-
-      {/* ── Enhance my resume — Phase R2 ────────────────────────── */}
-      {hasResume && (
-        <Link
-          href="/profile/enhance"
-          className="press tap-target group block rounded-xl border border-primary/30 bg-primary-soft p-4 transition hover:border-primary/50 hover:bg-primary-soft/80 focus-ring"
-        >
-          <div className="flex items-start gap-3">
-            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary text-primary-foreground">
-              <Sparkles className="h-4 w-4" aria-hidden />
-            </div>
-            <div className="min-w-0 flex-1">
-              <p className="text-sm font-semibold">Enhance my resume</p>
-              <p className="mt-0.5 text-xs leading-relaxed text-muted-foreground">
-                AI reviews your resume for ATS readability and bullet quality.{" "}
-                <strong className="text-foreground/90">Every change is yours to accept.</strong> We never invent experience.
-              </p>
-            </div>
-            <ChevronRightIcon aria-hidden className="mt-1 h-4 w-4 shrink-0 text-muted-foreground transition group-hover:translate-x-0.5 group-hover:text-primary" />
-          </div>
-        </Link>
       )}
 
       {/* ── ATS & Recruiter Signal ─────────────────────────────── */}
@@ -236,6 +147,18 @@ export default async function ProfilePage() {
           currentLpa={(profile?.current_lpa as number | null) ?? null}
           targetLpa={(profile?.target_lpa as number | null) ?? null}
         />
+      )}
+
+      {/* ── Enhancement history (Phase R4) ─────────────────────── */}
+      {hasResume && (
+        <EnhancementHistoryPanel userId={user.id} />
+      )}
+
+      {/* ── Resume version history (collapsed by default in panel) */}
+      {hasResume && (
+        <div id="resume-history" className="scroll-mt-20">
+          <ResumeVersionsPanel versions={versions} />
+        </div>
       )}
 
       {/* ── Profile details ─────────────────────────────────────── */}

@@ -17,10 +17,15 @@
 
 import type { ParsedResume } from "@/lib/llm/prompts/resume-parse";
 
+// Phase R2 follow-up — `product_co_tenure` removed.
+// Where a candidate has worked is NOT a fair criterion for readiness; many
+// strong engineers come from services backgrounds with deeper hands-on
+// breadth than typical product-co peers. Skills + ownership + scale of work
+// are what actually predict product-co success, so the 3 remaining axes
+// carry the full 100. Weights redistributed to emphasise skill signal.
 export type DnaAxis =
-  | "product_co_tenure"
-  | "scale_impact"
   | "modern_stack"
+  | "scale_impact"
   | "ownership_signals";
 
 export interface DnaAxisScore {
@@ -37,10 +42,10 @@ export interface DnaBreakdown {
 }
 
 const WEIGHTS: Record<DnaAxis, number> = {
-  product_co_tenure: 35,
-  scale_impact:      25,
-  modern_stack:      20,
-  ownership_signals: 20,
+  modern_stack:      40,  // skills matter most — was 20
+  scale_impact:      35,  // demonstrated impact — was 25
+  ownership_signals: 25,  // initiative language    — was 20
+  // product_co_tenure was 35 — removed entirely.
 };
 
 // Curated modern-stack canonicals. Anything else still counts toward the
@@ -89,49 +94,6 @@ const SCALE_PATTERNS: RegExp[] = [
 
 function normTech(t: string): string {
   return t.toLowerCase().replace(/\s+/g, " ").trim();
-}
-
-function scoreProductCoTenure(resume: ParsedResume): DnaAxisScore {
-  const weight = WEIGHTS.product_co_tenure;
-  const companies = resume.companies ?? [];
-  if (companies.length === 0) {
-    return {
-      axis: "product_co_tenure", weight, score: 0,
-      label: "Product-company exposure",
-      hint: "Add your work history so we can credit your experience here.",
-    };
-  }
-  const totalYears = companies.reduce((s, c) => s + (Number.isFinite(c.years) ? c.years : 0), 0);
-  const productYears = companies
-    .filter((c) => c.is_product_company)
-    .reduce((s, c) => s + (Number.isFinite(c.years) ? c.years : 0), 0);
-
-  if (totalYears <= 0) {
-    return {
-      axis: "product_co_tenure", weight, score: 0,
-      label: "Product-company exposure",
-      hint: "We couldn't infer tenure — add years to each role to surface this signal.",
-    };
-  }
-
-  const ratio = productYears / totalYears;
-  // Linear up to 80%, then saturate — 100% product-co tenure is rare, 80%+ is
-  // already exceptional.
-  const curved = Math.min(1, ratio / 0.8);
-  const score = Math.round(curved * weight);
-
-  const pctText = Math.round(ratio * 100);
-  // Neutral, non-judgmental wording — services experience still counts toward
-  // other axes (scale, ownership, modern stack); this axis is just a signal
-  // of product-co familiarity, not a verdict on the candidate's value.
-  const productNote = pctText === 0
-    ? `${totalYears.toFixed(0)}y of experience so far — product-co exposure can grow as you add roles in this segment.`
-    : `${pctText}% of your ${totalYears.toFixed(0)}y has been at product companies (${productYears.toFixed(1)}y).`;
-  return {
-    axis: "product_co_tenure", weight, score,
-    label: "Product-company exposure",
-    hint: productNote,
-  };
 }
 
 function scoreScaleImpact(resume: ParsedResume): DnaAxisScore {
@@ -228,10 +190,12 @@ function scoreOwnershipSignals(resume: ParsedResume): DnaAxisScore {
 }
 
 export function computeDnaBreakdown(resume: ParsedResume): DnaBreakdown {
+  // 3 axes, weights 40/35/25 = 100. Skills + impact + ownership.
+  // No "where you worked" signal — services-background engineers get a
+  // fair shot purely on what they've actually built.
   const axes = [
-    scoreProductCoTenure(resume),
-    scoreScaleImpact(resume),
     scoreModernStack(resume),
+    scoreScaleImpact(resume),
     scoreOwnershipSignals(resume),
   ];
   const total = axes.reduce((s, a) => s + a.score, 0);

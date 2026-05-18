@@ -45,6 +45,42 @@ const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/
 const STORAGE_BUCKET = "tailored-resumes";
 const SIGNED_URL_TTL = 600;
 
+// Synthesise an ATS-shaped text payload from the parsed JSON. Used by the
+// diagnosis prompt to quote verbatim — the profiles table has no raw
+// resume_text column so we reconstruct it from what the parser already
+// captured.
+function synthesiseResumeText(parsed: ParsedResume): string {
+  const parts: string[] = [];
+  if (parsed.name) parts.push(parsed.name);
+  if (parsed.current_role) parts.push(parsed.current_role);
+  if (parsed.summary) parts.push("\nSummary\n" + parsed.summary);
+  const stack = parsed.tech_stack ?? [];
+  if (stack.length > 0) parts.push("\nSkills\n" + stack.join(", "));
+  const companies = parsed.companies ?? [];
+  if (companies.length > 0) {
+    parts.push("\nExperience");
+    for (const c of companies) {
+      const dur = c.years > 0 ? ` (${c.years}+ yrs)` : "";
+      parts.push(`${c.role || "Engineer"} — ${c.name}${dur}`);
+      if (c.role) parts.push(`• ${c.role}`);
+    }
+  }
+  const products = parsed.products_built ?? [];
+  if (products.length > 0) {
+    parts.push("\nProjects");
+    for (const p of products) parts.push(`• ${p}`);
+  }
+  const edu = parsed.education ?? [];
+  if (edu.length > 0) {
+    parts.push("\nEducation");
+    for (const e of edu) {
+      const y = e.year ? `, ${e.year}` : "";
+      parts.push(`${e.degree} — ${e.institution}${y}`);
+    }
+  }
+  return parts.join("\n");
+}
+
 function friendlyLlmError(err: unknown): string {
   if (err instanceof LlmRunError) {
     switch (err.detail.kind) {
@@ -78,16 +114,15 @@ async function preflight(jobId: string) {
   }
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { data: profile } = await (supabase
+  const { data: profileRow } = await (supabase
     .from("profiles")
-    .select("display_name, role_function, resume_parsed, resume_text, resume_signature, resume_storage_path, tech_stack, preferred_hubs")
+    .select("display_name, role_function, resume_parsed, resume_signature, resume_storage_path, tech_stack, preferred_hubs")
     .eq("id", user.id)
     .maybeSingle() as any) as {
       data: {
         display_name: string | null;
         role_function: string | null;
         resume_parsed: ParsedResume | null;
-        resume_text: string | null;
         resume_signature: string | null;
         resume_storage_path: string | null;
         tech_stack: string[] | null;
@@ -95,9 +130,17 @@ async function preflight(jobId: string) {
       } | null;
     };
 
-  if (!profile?.resume_parsed || !profile.resume_text || !profile.resume_signature) {
+  if (!profileRow?.resume_parsed || !profileRow.resume_signature) {
     return { ok: false as const, error: "Upload your resume first." };
   }
+
+  // The profiles table has no raw resume_text column — synthesise an
+  // ATS-shaped text payload from the parsed JSON so the diagnosis prompt
+  // can still quote verbatim. Same content the parser already extracted.
+  const profile = {
+    ...profileRow,
+    resume_text: synthesiseResumeText(profileRow.resume_parsed),
+  };
 
   const admin = createSupabaseAdminClient();
   // eslint-disable-next-line @typescript-eslint/no-explicit-any

@@ -31,14 +31,13 @@ export default async function TailorPage({ params }: { params: Promise<{ id: str
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { data: profile } = await (supabase
     .from("profiles")
-    .select("resume_storage_path, resume_signature, resume_parsed, resume_text, role_function")
+    .select("resume_storage_path, resume_signature, resume_parsed, role_function")
     .eq("id", user.id)
     .maybeSingle() as any) as {
       data: {
         resume_storage_path: string | null;
         resume_signature: string | null;
         resume_parsed: ParsedResume | null;
-        resume_text: string | null;
         role_function: string | null;
       } | null;
     };
@@ -78,11 +77,21 @@ export default async function TailorPage({ params }: { params: Promise<{ id: str
 
   const quota = await getQuotaState(user.id, "tailored");
 
-  // Compute the ats_before scorecard inline (cheap, deterministic).
-  const ats_before = hasResume && profile?.resume_parsed && profile.resume_text
+  // Synthesise resume text from parsed JSON for the deterministic ATS
+  // scorecard — the profiles table has no raw resume_text column.
+  const resumeText = profile?.resume_parsed
+    ? [
+        profile.resume_parsed.summary ?? "",
+        (profile.resume_parsed.tech_stack ?? []).join(", "),
+        (profile.resume_parsed.products_built ?? []).join("\n"),
+        (profile.resume_parsed.companies ?? []).map((c) => `${c.role ?? ""} — ${c.name}`).join("\n"),
+      ].join("\n")
+    : "";
+
+  const ats_before = hasResume && profile?.resume_parsed
     ? computeAtsScorecard({
         resume:        profile.resume_parsed,
-        resume_text:   profile.resume_text,
+        resume_text:   resumeText,
         role_function: profile.role_function ?? null,
         // JD must-haves drive the keyword-density axis for the tailored
         // flow — much sharper signal than the role-function default pool.

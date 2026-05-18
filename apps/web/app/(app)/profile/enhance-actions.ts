@@ -78,6 +78,47 @@ function friendlyLlmError(err: unknown): string {
 // Shared preflight
 // ─────────────────────────────────────────────────────────────────────────────
 
+// The `profiles` table doesn't store raw resume_text — the original schema
+// only persists `resume_parsed` (jsonb). To run the diagnosis prompt we
+// synthesise a faithful text payload FROM the parsed structure (summary +
+// experience role descriptions + projects). This is the same content the
+// parser already extracted, so verbatim quoting still works.
+function synthesiseResumeText(parsed: ParsedResume): string {
+  const parts: string[] = [];
+  if (parsed.name) parts.push(parsed.name);
+  if (parsed.current_role) parts.push(parsed.current_role);
+  if (parsed.summary) parts.push("\nSummary\n" + parsed.summary);
+
+  const stack = parsed.tech_stack ?? [];
+  if (stack.length > 0) parts.push("\nSkills\n" + stack.join(", "));
+
+  const companies = parsed.companies ?? [];
+  if (companies.length > 0) {
+    parts.push("\nExperience");
+    for (const c of companies) {
+      const dur = c.years > 0 ? ` (${c.years}+ yrs)` : "";
+      parts.push(`${c.role || "Engineer"} — ${c.name}${dur}`);
+      if (c.role) parts.push(`• ${c.role}`);
+    }
+  }
+
+  const products = parsed.products_built ?? [];
+  if (products.length > 0) {
+    parts.push("\nProjects");
+    for (const p of products) parts.push(`• ${p}`);
+  }
+
+  const edu = parsed.education ?? [];
+  if (edu.length > 0) {
+    parts.push("\nEducation");
+    for (const e of edu) {
+      const y = e.year ? `, ${e.year}` : "";
+      parts.push(`${e.degree} — ${e.institution}${y}`);
+    }
+  }
+  return parts.join("\n");
+}
+
 async function preflight() {
   const supabase = await createSupabaseServerClient();
   const { data: { user } } = await supabase.auth.getUser();
@@ -91,7 +132,7 @@ async function preflight() {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { data: profile } = await (supabase
     .from("profiles")
-    .select("display_name, role_function, target_role_functions, resume_parsed, resume_text, resume_signature, resume_storage_path, tech_stack, preferred_hubs")
+    .select("display_name, role_function, target_role_functions, resume_parsed, resume_signature, resume_storage_path, tech_stack, preferred_hubs")
     .eq("id", user.id)
     .maybeSingle() as any) as {
       data: {
@@ -99,7 +140,6 @@ async function preflight() {
         role_function: string | null;
         target_role_functions: string[] | null;
         resume_parsed: ParsedResume | null;
-        resume_text: string | null;
         resume_signature: string | null;
         resume_storage_path: string | null;
         tech_stack: string[] | null;
@@ -107,14 +147,20 @@ async function preflight() {
       } | null;
     };
 
-  if (!profile?.resume_parsed || !profile.resume_text) {
-    return { ok: false as const, error: "Upload your resume first. We need the parsed content + raw text to enhance." };
+  if (!profile?.resume_parsed) {
+    return { ok: false as const, error: "Upload your resume first so we can analyse it." };
   }
   if (!profile.resume_signature) {
-    return { ok: false as const, error: "Resume not yet processed. Try again in a few seconds." };
+    return { ok: false as const, error: "Resume still processing — try again in a few seconds." };
   }
 
-  return { ok: true as const, user, supabase, admin: createSupabaseAdminClient(), profile };
+  // Synthesise resume_text from the parsed JSON. This is identical to the
+  // content the parser extracted, so verbatim quoting in the diagnosis is
+  // still accurate. Returned alongside the typed profile so downstream
+  // callers don't need to repeat the synthesis.
+  const resume_text = synthesiseResumeText(profile.resume_parsed);
+
+  return { ok: true as const, user, supabase, admin: createSupabaseAdminClient(), profile: { ...profile, resume_text } };
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
