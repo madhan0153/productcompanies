@@ -194,15 +194,33 @@ function TailorTab({ jobId, initial }: { jobId: string; initial: CachedTailor | 
 
   if (!data) {
     return (
-      <EmptyStateGenerate
-        title="Tailor your resume for this role"
-        body="Generates a JD-targeted .docx using your parsed resume + the JD's must-haves + your Fit Card's pre-approved tweaks. Caches per role — re-runs are instant."
-        ctaLabel="Generate tailored resume"
-        ctaIcon={<FileDown className="h-3.5 w-3.5" />}
-        onClick={() => trigger(false)}
-        pending={pending}
-        error={error}
-      />
+      <div className="space-y-3">
+        <EmptyStateGenerate
+          title="Tailor your resume for this role"
+          body="One-click: generates a JD-targeted .docx using your resume + the JD's must-haves. Cached per role — re-runs are instant."
+          ctaLabel="Generate tailored resume"
+          ctaIcon={<FileDown className="h-3.5 w-3.5" />}
+          onClick={() => trigger(false)}
+          pending={pending}
+          error={error}
+        />
+        {/* Phase R3 — diff-review flow for users who want to approve each change. */}
+        <a
+          href={`/jobs/${jobId}/tailor`}
+          className="press tap-target group flex items-start gap-3 rounded-xl border border-primary/30 bg-primary-soft/60 p-4 transition hover:border-primary/50 hover:bg-primary-soft focus-ring"
+        >
+          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary text-primary-foreground">
+            <Eye className="h-4 w-4" aria-hidden />
+          </div>
+          <div className="min-w-0 flex-1">
+            <p className="text-sm font-semibold">Review changes before saving</p>
+            <p className="mt-0.5 text-xs leading-relaxed text-muted-foreground">
+              See every proposed rewrite side-by-side with your original. Pick Polish (minimal edits) or Tailor (aggressive JD-alignment).{" "}
+              <strong className="text-foreground/90">No fact gets added that isn&apos;t already in your resume.</strong>
+            </p>
+          </div>
+        </a>
+      </div>
     );
   }
 
@@ -218,7 +236,7 @@ function TailorTab({ jobId, initial }: { jobId: string; initial: CachedTailor | 
             Generated {new Date(data.generated_at).toLocaleString()}.
           </p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <button
             type="button"
             onClick={() => refreshSignedUrl()}
@@ -227,6 +245,14 @@ function TailorTab({ jobId, initial }: { jobId: string; initial: CachedTailor | 
             <FileDown className="h-3.5 w-3.5" />
             Download .docx
           </button>
+          <a
+            href={`/jobs/${jobId}/tailor`}
+            className="inline-flex items-center gap-1.5 rounded-lg border border-primary/30 bg-primary-soft px-3 py-1.5 text-xs font-medium text-primary transition hover:bg-primary-soft/80"
+            title="Review proposed changes one by one"
+          >
+            <Eye className="h-3.5 w-3.5" />
+            Review changes
+          </a>
           <button
             type="button"
             disabled={pending}
