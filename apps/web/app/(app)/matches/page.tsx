@@ -1,145 +1,36 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import {
-  ExternalLink, ChevronRight, ShieldCheck, Eye, EyeOff,
-  Sparkles, Target, ArrowUpRight, Activity, Ghost,
-  CheckCircle2, AlertCircle, Zap, TrendingUp,
+  ChevronRight, Eye,
+  ArrowUpRight, Activity,
+  AlertCircle,
 } from "lucide-react";
 import Link from "next/link";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
-import { CompanyLogo } from "@/components/company-logo";
 import { StaggerList } from "@/components/stagger-list";
 import { EmptyState } from "@/components/empty-state";
 import type { Verdict, Json } from "@/lib/supabase/types";
 import { ComputeButton } from "./compute-button";
 import { MatchFilters } from "./filters";
-import { asRulesScoreBreakdown } from "@/components/score-breakdown";
-import { WhyScoreToggle } from "./why-score-toggle";
-import { DismissButton, RestoreButton } from "./dismiss-button";
-import { ApplyButton } from "@/components/apply-button";
+import { MatchCard, type MatchCardData } from "./match-card";
+import { BandStrip, classifyMatch, type MatchTab, type BandCounts } from "./band-strip";
+import { MissingSkillsBanner, aggregateMissingSkills } from "./missing-skills-banner";
 
 export const metadata: Metadata = { title: "Matches" };
-// Sprint 2 Item 5 — page is read-only now (no synchronous compute), so the
-// default 60s ceiling is plenty. Background compute runs via after() in
-// matches/actions.ts and revalidates this path when done.
 export const maxDuration = 60;
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Verdict design system
-// ─────────────────────────────────────────────────────────────────────────────
-
-type VerdictMeta = {
-  label: string;
-  short: string;
-  tone: string;
-  bgTone: string;
-  borderTone: string;
-  scoreTone: string;
-  description: string;
-  rank: number;
-  icon: React.ReactNode;
-};
-
-// Five verdicts → three semantic tones (success, warning, primary, destructive).
-// Off-target & underqualified share `primary` since both communicate
-// "informational, not actionable today" — a less alarming color than the
-// previous violet/sky pair. Mismatch keeps destructive to signal "drop it".
-const VERDICT_META: Record<Verdict, VerdictMeta> = {
-  strong_fit: {
-    label: "Strong fit",
-    short: "Strong",
-    tone: "text-success",
-    bgTone: "bg-success/5",
-    borderTone: "border-success/25",
-    scoreTone: "text-success bg-success/10",
-    description: "You hit the must-haves and the level. Worth a tailored application.",
-    rank: 1,
-    icon: <CheckCircle2 className="h-3.5 w-3.5" />,
-  },
-  stretch: {
-    label: "Stretch",
-    short: "Stretch",
-    tone: "text-warning",
-    bgTone: "bg-warning/5",
-    borderTone: "border-warning/25",
-    scoreTone: "text-warning bg-warning/10",
-    description: "Most must-haves covered with a gap or two. Apply if the role excites you.",
-    rank: 2,
-    icon: <TrendingUp className="h-3.5 w-3.5" />,
-  },
-  off_target: {
-    label: "Off-target",
-    short: "Off-target",
-    tone: "text-primary",
-    bgTone: "bg-primary-soft",
-    borderTone: "border-primary/20",
-    scoreTone: "text-primary bg-primary-soft",
-    description: "Adjacent to your stated targets — a pivot, not a natural next step.",
-    rank: 3,
-    icon: <Target className="h-3.5 w-3.5" />,
-  },
-  underqualified: {
-    label: "Underqualified",
-    short: "Under",
-    tone: "text-primary",
-    bgTone: "bg-primary-soft",
-    borderTone: "border-primary/20",
-    scoreTone: "text-primary bg-primary-soft",
-    description: "JD asks for more years or skills than your resume shows today.",
-    rank: 4,
-    icon: <AlertCircle className="h-3.5 w-3.5" />,
-  },
-  mismatch: {
-    label: "Mismatch",
-    short: "Mismatch",
-    tone: "text-destructive",
-    bgTone: "bg-destructive/5",
-    borderTone: "border-destructive/25",
-    scoreTone: "text-destructive bg-destructive/10",
-    description: "Wrong function. Hidden by default to keep your list focused.",
-    rank: 5,
-    icon: <ShieldCheck className="h-3.5 w-3.5" />,
-  },
-};
-
-const DEFAULT_VISIBLE: Verdict[] = ["strong_fit", "stretch", "off_target", "underqualified"];
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Types
 // ─────────────────────────────────────────────────────────────────────────────
 
-type MatchRow = {
-  score: number;
+type MatchRow = MatchCardData & {
   verdict: Verdict | null;
-  fit_card: Json | null;
   fit_card_at: string | null;
-  hidden_reason: string | null;
-  reasoning: string | null;
   computed_at: string;
   seen_at: string | null;
-  score_breakdown: Json | null;
   user_hidden: boolean;
-  /** Sprint 6 — surfaced in the UI via the score chip + Why-this-score panel. */
-  confidence: number | null;
-  hard_cap_reason: string | null;
-  tech_coverage: Json | null;
-  feedback_adjustment: number | null;
-  jobs: {
-    id: string; title: string; location: string | null;
-    hubs: string[] | null; tech_stack: string[] | null;
-    comp_lpa_min: number | null; comp_lpa_max: number | null;
-    seniority: string | null; apply_url: string | null;
-    posted_at: string | null; is_likely_ghost: boolean | null;
-    jd_summary: string | null;
-    companies: { name: string; slug: string; logo_url: string | null } | null;
-  } | null;
-};
-
-type FitCardLite = {
-  one_liner?: string;
-  resume_tweaks?: Array<{ priority?: number; suggestion?: string; why?: string }>;
-  strengths?: string[];
-  gaps?: string[];
+  /** Phase G derived field — kept for routing/cap reads. */
+  hidden_reason: string | null;
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -149,7 +40,7 @@ type FitCardLite = {
 export default async function MatchesPage({
   searchParams,
 }: {
-  searchParams: Promise<{ c?: string; h?: string; min_score?: string; show?: string }>;
+  searchParams: Promise<{ c?: string; h?: string; min_score?: string; show?: string; tab?: string }>;
 }) {
   const supabase = await createSupabaseServerClient();
   const { data: { user } } = await supabase.auth.getUser();
@@ -159,10 +50,19 @@ export default async function MatchesPage({
   const selectedCompanies = (params.c ?? "").split(",").filter(Boolean);
   const selectedHubs = (params.h ?? "").split(",").filter(Boolean);
   const minScore = params.min_score ? parseInt(params.min_score, 10) : null;
-  const showHidden = params.show === "all";
-  const showOnlyNew = params.show === "new";
-  // Sprint 1 Item 4 — dedicated "Hidden" tab for user-dismissed roles.
-  const showOnlyHidden = params.show === "hidden";
+
+  // Sprint 6 — Tab is the spine. Back-compat with the legacy ?show= param:
+  //   ?show=new     → tab=new
+  //   ?show=hidden  → tab=dismissed
+  //   ?show=all     → tab=filtered (lets users see capped/mismatched)
+  // Default tab is "shortlist" so the user lands on actionable rows.
+  const legacyShow = params.show;
+  const tab: MatchTab =
+    (params.tab as MatchTab) ??
+    (legacyShow === "new"    ? "new"
+    : legacyShow === "hidden" ? "dismissed"
+    : legacyShow === "all"    ? "filtered"
+    : "shortlist");
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { data: profile } = await (supabase
@@ -175,6 +75,9 @@ export default async function MatchesPage({
   const resumeScore = profile?.resume_score ?? null;
   const lastComputeAt = profile?.last_match_compute_at ?? null;
 
+  // Single read, all visible+hidden+dismissed. We slice in-memory by tab —
+  // 500-row cap holds for our 18-company catalog (~1000 active matches per
+  // user max, but most are already capped/hidden so ≤500 visible).
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   let query: any = supabase
     .from("matches")
@@ -194,75 +97,115 @@ export default async function MatchesPage({
     .limit(500);
 
   if (minScore !== null) query = query.gte("score", minScore);
-  if (showOnlyNew) query = query.is("seen_at", null);
-  // Hidden tab: only user-dismissed rows. Default + new / all: only visible.
-  if (showOnlyHidden) query = query.eq("user_hidden", true);
-  else                 query = query.eq("user_hidden", false);
 
   const { data: rawData } = await query;
   const matchRows = rawData as unknown as MatchRow[] | null;
   const allRows = (matchRows ?? []).filter((m): m is MatchRow & { jobs: NonNullable<MatchRow["jobs"]> } => !!m.jobs);
   const allScores = allRows.map(m => m.score).sort((a, b) => a - b);
 
-  // Count of user-hidden rows — drives the "N dismissed" link in the header.
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { count: dismissedCount } = await (supabase
-    .from("matches") as any)
-    .select("*", { count: "exact", head: true })
-    .eq("user_id", user.id)
-    .eq("user_hidden", true) as { count: number | null };
-
-  const unseenIds = allRows.filter((m) => m.seen_at === null).map((m) => m.jobs.id);
-  if (unseenIds.length > 0) {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    void (supabase.from("matches") as any)
-      .update({ seen_at: new Date().toISOString() })
-      .eq("user_id", user.id)
-      .is("seen_at", null);
-  }
-
-  const filtered = allRows.filter((m) => {
+  // Counts for the band strip — pre-filter by company/hub but NOT by tab,
+  // so the strip always shows the same numbers regardless of which tab the
+  // user is on.
+  const passesScopeFilters = (m: MatchRow) => {
     const slug = m.jobs.companies?.slug ?? "";
     if (selectedCompanies.length > 0 && !selectedCompanies.includes(slug)) return false;
     const hubs = m.jobs.hubs ?? [];
     if (selectedHubs.length > 0 && !hubs.some((h) => selectedHubs.includes(h))) return false;
     return true;
+  };
+  const scopedRows = allRows.filter(passesScopeFilters);
+
+  const bandCounts: BandCounts = scopedRows.reduce<BandCounts>(
+    (acc, m) => {
+      const cls = classifyMatch(m);
+      if (cls === "shortlist")    acc.shortlist++;
+      if (cls === "worth_a_look") acc.worthALook++;
+      if (cls === "filtered")     acc.filtered++;
+      if (cls === "dismissed")    acc.dismissed++;
+      if (m.seen_at === null && !m.user_hidden) acc.newCount++;
+      return acc;
+    },
+    { shortlist: 0, worthALook: 0, filtered: 0, newCount: 0, dismissed: 0 },
+  );
+
+  // Tab slicing — single source of truth.
+  const tabRows = scopedRows.filter((m) => {
+    const cls = classifyMatch(m);
+    if (tab === "shortlist")    return cls === "shortlist";
+    if (tab === "worth_a_look") return cls === "worth_a_look";
+    if (tab === "filtered")     return cls === "filtered";
+    if (tab === "dismissed")    return cls === "dismissed";
+    if (tab === "new")          return m.seen_at === null && !m.user_hidden;
+    return true;
   });
 
-  const groups = new Map<Verdict, typeof filtered>();
-  for (const m of filtered) {
-    const v: Verdict = (m.verdict ?? "stretch") as Verdict;
-    if (!groups.has(v)) groups.set(v, []);
-    groups.get(v)!.push(m);
+  // Sprint 6 — fold in application status for the cards in view.
+  const visibleJobIds = tabRows.map((m) => m.jobs.id);
+  const applicationStatus = new Map<string, string>();
+  if (visibleJobIds.length > 0) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data: apps } = await (supabase
+      .from("applications")
+      .select("job_id, status")
+      .eq("user_id", user.id)
+      .in("job_id", visibleJobIds) as any) as { data: Array<{ job_id: string; status: string }> | null };
+    for (const a of apps ?? []) applicationStatus.set(a.job_id, a.status);
   }
 
-  const visibleVerdicts: Verdict[] = showHidden
-    ? (Object.keys(VERDICT_META) as Verdict[])
-    : DEFAULT_VISIBLE;
+  // Mark unseen items in this tab as seen (fire-and-forget — same as before).
+  const unseenInTab = tabRows.filter((m) => m.seen_at === null).map((m) => m.jobs.id);
+  if (unseenInTab.length > 0) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    void (supabase.from("matches") as any)
+      .update({ seen_at: new Date().toISOString() })
+      .eq("user_id", user.id)
+      .in("job_id", unseenInTab)
+      .is("seen_at", null);
+  }
 
-  const visibleCount = visibleVerdicts.reduce((acc, v) => acc + (groups.get(v)?.length ?? 0), 0);
-  const hiddenCount = filtered.length - visibleCount;
-
+  // Filter chip data — companies/hubs derived from the full scope, not the
+  // tab slice, so users can switch companies even while in "Filtered".
   const companies = [...new Map(
     allRows
       .map((m) => m.jobs.companies)
       .filter((c): c is NonNullable<typeof c> => !!c)
       .map((c) => [c.slug, { slug: c.slug, name: c.name }]),
   ).values()].sort((a, b) => a.name.localeCompare(b.name));
-
   const allHubs = [...new Set(allRows.flatMap((m) => m.jobs.hubs ?? []))].sort();
 
-  const counts = {
-    strong_fit:     groups.get("strong_fit")?.length ?? 0,
-    stretch:        groups.get("stretch")?.length ?? 0,
-    off_target:     groups.get("off_target")?.length ?? 0,
-    underqualified: groups.get("underqualified")?.length ?? 0,
-    mismatch:       groups.get("mismatch")?.length ?? 0,
+  // Missing-skills aggregation — across the CURRENT tab + scope, not the
+  // whole catalog. Updates dynamically as the user filters.
+  const missingSkills = aggregateMissingSkills({
+    rows: tabRows.map((m) => ({ score: m.score, tech_coverage: m.tech_coverage })),
+  });
+
+  const newCount       = scopedRows.filter((m) => m.seen_at === null && !m.user_hidden).length;
+  const computeAgo     = lastComputeAt ? humanAgo(lastComputeAt) : null;
+
+  // URL builder for the band strip — preserves company/hub/min_score filters
+  // across tab changes so a user filtered by Apple+Hyderabad doesn't lose
+  // them when they hop to "Worth a look".
+  const buildHref = (nextTab: MatchTab): string => {
+    const sp = new URLSearchParams();
+    if (selectedCompanies.length > 0) sp.set("c", selectedCompanies.join(","));
+    if (selectedHubs.length > 0)      sp.set("h", selectedHubs.join(","));
+    if (minScore !== null)            sp.set("min_score", String(minScore));
+    if (nextTab !== "shortlist")      sp.set("tab", nextTab);
+    const qs = sp.toString();
+    return qs ? `/matches?${qs}` : "/matches";
   };
 
-  const newCount       = unseenIds.length;
-  const newStrongCount = allRows.filter((m) => m.seen_at === null && m.verdict === "strong_fit").length;
-  const computeAgo     = lastComputeAt ? humanAgo(lastComputeAt) : null;
+  const scopeLabel = (() => {
+    const parts: string[] = [];
+    if (tab === "shortlist")    parts.push("your shortlist");
+    if (tab === "worth_a_look") parts.push("worth-a-look matches");
+    if (tab === "filtered")     parts.push("filtered roles");
+    if (tab === "new")          parts.push("new since last visit");
+    if (tab === "dismissed")    parts.push("dismissed roles");
+    if (selectedCompanies.length > 0) parts.push(`${selectedCompanies.length} compan${selectedCompanies.length === 1 ? "y" : "ies"}`);
+    if (selectedHubs.length > 0)      parts.push(`${selectedHubs.length} hub${selectedHubs.length === 1 ? "" : "s"}`);
+    return parts.join(" · ");
+  })();
 
   return (
     <div className="space-y-6 pb-6">
@@ -273,11 +216,9 @@ export default async function MatchesPage({
           <h1 className="text-2xl font-semibold tracking-tight">Matches</h1>
           {allRows.length > 0 ? (
             <p className="mt-1 text-sm text-muted-foreground">
-              <span className="font-medium text-success">{counts.strong_fit} strong</span>
-              {" · "}{counts.stretch} stretch
-              {" · "}{counts.off_target} off-target
-              {" · "}{counts.underqualified} under
-              {" · "}<span className="opacity-60">{counts.mismatch} hidden</span>
+              <span className="font-medium text-success tabular-nums">{bandCounts.shortlist}</span> shortlist
+              {" · "}<span className="tabular-nums">{bandCounts.worthALook}</span> worth a look
+              {" · "}<span className="opacity-60 tabular-nums">{bandCounts.filtered}</span> filtered
             </p>
           ) : (
             <p className="mt-1 text-sm text-muted-foreground">Compute your first matches below</p>
@@ -287,11 +228,8 @@ export default async function MatchesPage({
               <Activity className="h-3 w-3 text-success" />
               <span>
                 Last refreshed {computeAgo}
-                {newCount > 0 && (
-                  <> · <Link href="/matches?show=new" className="font-medium text-success hover:underline focus-ring rounded">{newCount} new</Link></>
-                )}
-                {(dismissedCount ?? 0) > 0 && (
-                  <> · <Link href="/matches?show=hidden" className="hover:text-foreground hover:underline focus-ring rounded">{dismissedCount} dismissed</Link></>
+                {newCount > 0 && tab !== "new" && (
+                  <> · <Link href={buildHref("new")} className="font-medium text-success hover:underline focus-ring rounded">{newCount} new</Link></>
                 )}
               </span>
             </div>
@@ -299,65 +237,6 @@ export default async function MatchesPage({
         </div>
         <ComputeButton hasResume={hasResume} />
       </div>
-
-      {/* ── Verdict summary strip ──────────────────────────────── */}
-      {allRows.length > 0 && (
-        <div className="grid grid-cols-2 gap-2 sm:grid-cols-5">
-          {(Object.entries(counts) as [Verdict, number][]).map(([verdict, count]) => {
-            const meta = VERDICT_META[verdict];
-            return (
-              <div
-                key={verdict}
-                className={`flex flex-col items-center gap-1 rounded-xl border px-3 py-2.5 ${meta.bgTone} ${meta.borderTone}`}
-              >
-                <span className={`text-xl font-bold tabular-nums ${meta.tone}`}>{count}</span>
-                <span className="text-[11px] text-muted-foreground">{meta.label}</span>
-              </div>
-            );
-          })}
-        </div>
-      )}
-
-      {/* ── New strong fits banner ─────────────────────────────── */}
-      {newStrongCount > 0 && !showOnlyNew && (
-        <Link
-          href="/matches?show=new"
-          className="group flex items-center justify-between gap-4 rounded-xl border border-success/30 bg-success/5 px-5 py-4 transition hover:border-success/50 hover:bg-success/10 focus-ring"
-        >
-          <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-success text-success-foreground">
-              <Zap className="h-4 w-4" strokeWidth={2.5} />
-            </div>
-            <div>
-              <p className="text-sm font-semibold text-success">
-                {newStrongCount} new strong {newStrongCount === 1 ? "fit" : "fits"} since your last visit
-              </p>
-              <p className="text-xs text-muted-foreground">Tap to filter to just the new ones.</p>
-            </div>
-          </div>
-          <ChevronRight className="h-4 w-4 text-success transition group-hover:translate-x-0.5" />
-        </Link>
-      )}
-
-      {showOnlyNew && (
-        <div className="flex items-center justify-between gap-3 rounded-md border border-success/30 bg-success/5 px-4 py-3 text-sm">
-          <span className="text-success">Showing {allRows.length} new match{allRows.length === 1 ? "" : "es"} since your last visit.</span>
-          <Link href="/matches" className="rounded-md border border-border bg-card px-2.5 py-1 text-xs font-medium text-muted-foreground transition hover:border-primary/40 hover:text-foreground focus-ring">
-            Show all
-          </Link>
-        </div>
-      )}
-
-      {showOnlyHidden && (
-        <div className="flex items-center justify-between gap-3 rounded-md border border-border bg-secondary/40 px-4 py-3 text-sm">
-          <span className="text-muted-foreground">
-            Showing {allRows.length} dismissed {allRows.length === 1 ? "role" : "roles"} — hidden from your default list.
-          </span>
-          <Link href="/matches" className="rounded-md border border-border bg-card px-2.5 py-1 text-xs font-medium text-muted-foreground transition hover:border-primary/40 hover:text-foreground focus-ring">
-            Back to matches
-          </Link>
-        </div>
-      )}
 
       {/* ── Resume score banner ────────────────────────────────── */}
       {hasResume && resumeScore !== null && (
@@ -380,96 +259,53 @@ export default async function MatchesPage({
         </div>
       )}
 
-      {/* ── Filters ───────────────────────────────────────────── */}
+      {/* ── Band strip — sticky tab spine ───────────────────────── */}
+      {allRows.length > 0 && (
+        <BandStrip counts={bandCounts} active={tab} buildHref={buildHref} />
+      )}
+
+      {/* ── Filters (company/hub/min-score) ─────────────────────── */}
       {allRows.length > 0 && (
         <MatchFilters
           allCompanies={companies}
           allHubs={allHubs}
           totalCount={allRows.length}
-          filteredCount={filtered.length}
+          filteredCount={scopedRows.length}
         />
       )}
 
-      {/* ── Show/hide mismatches gate ──────────────────────────── */}
-      {allRows.length > 0 && hiddenCount > 0 && (
-        <div className="flex items-center justify-between gap-3 rounded-md border border-dashed border-border bg-secondary/40 px-4 py-2.5 text-sm">
-          <span className="flex items-center gap-2 text-muted-foreground">
-            <ShieldCheck className="h-3.5 w-3.5" />
-            {showHidden
-              ? `Showing ${hiddenCount} mismatch / underqualified roles. Most users keep these hidden.`
-              : `Hiding ${hiddenCount} role${hiddenCount === 1 ? "" : "s"} not worth your time right now.`}
-          </span>
-          <Link
-            href={showHidden ? "/matches" : "/matches?show=all"}
-            className="inline-flex shrink-0 items-center gap-1 rounded-md border border-border bg-card px-2.5 py-1 text-xs font-medium text-muted-foreground transition hover:border-primary/40 hover:text-foreground focus-ring"
-          >
-            {showHidden ? <><EyeOff className="h-3 w-3" /> Hide</> : <><Eye className="h-3 w-3" /> Show all</>}
-          </Link>
+      {/* ── Missing-skills banner — scoped to current tab ──────── */}
+      {tabRows.length > 0 && (tab === "shortlist" || tab === "worth_a_look") && (
+        <MissingSkillsBanner data={missingSkills} scopeLabel={scopeLabel} />
+      )}
+
+      {/* ── Filtered tab inline note ────────────────────────────── */}
+      {tab === "filtered" && tabRows.length > 0 && (
+        <div className="flex items-start gap-2.5 rounded-md border border-dashed border-border bg-secondary/40 px-4 py-3 text-sm">
+          <AlertCircle className="mt-0.5 h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+          <p className="text-muted-foreground">
+            These roles scored below 40, hit a hard cap, or were classified as a mismatch. Most users skip them — but if you want to see why each was filtered, open the Fit Card on any row.
+          </p>
         </div>
       )}
 
-      {/* ── Verdict bands (hidden view bypasses grouping) ─────── */}
-      {showOnlyHidden ? (
-        allRows.length > 0 ? (
-          <StaggerList className="space-y-3">
-            {filtered.map((m) => (
-              <MatchCard
-                key={m.jobs.id}
-                match={m}
-                verdict={(m.verdict ?? "stretch") as Verdict}
-                isNew={false}
-                allScores={allScores}
-                hiddenView
-              />
-            ))}
-          </StaggerList>
-        ) : (
-          <EmptyState
-            icon={<EyeOff className="h-5 w-5" />}
-            title="No dismissed roles"
-            body="Roles you dismiss from the main list will show up here so you can restore them anytime."
-          />
-        )
-      ) : visibleCount > 0 ? (
-        <div className="space-y-10">
-          {visibleVerdicts.map((v) => {
-            const items = groups.get(v) ?? [];
-            if (items.length === 0) return null;
-            const meta = VERDICT_META[v];
-            return (
-              <section key={v} aria-label={`${meta.label} matches`}>
-                {/* Section header — verdict pill + dashed separator + caption */}
-                <div className="mb-4 flex items-center gap-3">
-                  <div className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-semibold ${meta.tone} ${meta.borderTone} ${meta.bgTone}`}>
-                    {meta.icon}
-                    {meta.label}
-                    <span className="ml-0.5 rounded-full bg-card/60 px-1.5 py-0.5 text-[10px] font-semibold tabular-nums text-foreground">{items.length}</span>
-                  </div>
-                  <span className="hidden flex-1 border-t border-dashed border-border sm:block" aria-hidden />
-                  <span className="hidden text-xs text-muted-foreground sm:inline">{meta.description}</span>
-                </div>
-
-                <StaggerList className="space-y-3">
-                  {items.map((m) => (
-                    <MatchCard key={m.jobs.id} match={m} verdict={v} isNew={m.seen_at === null} allScores={allScores} />
-                  ))}
-                </StaggerList>
-              </section>
-            );
-          })}
-        </div>
+      {/* ── Card list ───────────────────────────────────────────── */}
+      {tabRows.length > 0 ? (
+        <StaggerList className="space-y-3">
+          {tabRows.map((m) => (
+            <MatchCard
+              key={m.jobs.id}
+              match={m}
+              verdict={(m.verdict ?? "stretch") as Verdict}
+              isNew={m.seen_at === null && !m.user_hidden}
+              allScores={allScores}
+              applicationStatus={applicationStatus.get(m.jobs.id) ?? null}
+              hiddenView={tab === "dismissed"}
+            />
+          ))}
+        </StaggerList>
       ) : allRows.length > 0 ? (
-        // Sprint 2 Item 18 — clear empty-state when filters slice to zero.
-        <EmptyState
-          icon={<Eye className="h-5 w-5" />}
-          title="No matches in this slice"
-          body={
-            (selectedCompanies.length > 0 || selectedHubs.length > 0 || minScore !== null)
-              ? "Try clearing or widening a filter. There may be roles you'd qualify for hiding behind the current selection."
-              : "You may have hidden mismatches. Toggle 'Show all' below to see the full list."
-          }
-          actions={[{ label: "Clear filters", href: "/matches", variant: "primary" }]}
-        />
+        emptyStateForTab(tab, selectedCompanies.length + selectedHubs.length + (minScore !== null ? 1 : 0))
       ) : hasResume ? (
         <EmptyState
           icon={<Activity className="h-5 w-5" />}
@@ -482,7 +318,71 @@ export default async function MatchesPage({
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Resume Score Banner
+// Empty states per tab — keeps the user oriented when a slice is empty.
+// ─────────────────────────────────────────────────────────────────────────────
+
+function emptyStateForTab(tab: MatchTab, activeFilterCount: number): React.ReactNode {
+  if (activeFilterCount > 0) {
+    return (
+      <EmptyState
+        icon={<Eye className="h-5 w-5" />}
+        title="No matches in this slice"
+        body="Try clearing or widening a filter — there may be roles you'd qualify for hiding behind the current selection."
+        actions={[{ label: "Clear filters", href: `/matches?tab=${tab}`, variant: "primary" }]}
+      />
+    );
+  }
+  if (tab === "shortlist") {
+    return (
+      <EmptyState
+        icon={<Activity className="h-5 w-5" />}
+        title="Your shortlist is empty"
+        body="Nothing scored ≥60 yet. Check 'Worth a look' for partial fits, or set your preferred hubs / strengthen your resume to lift more roles."
+        actions={[
+          { label: "Worth a look", href: "/matches?tab=worth_a_look", variant: "primary" },
+          { label: "Edit profile", href: "/profile", variant: "ghost" },
+        ]}
+      />
+    );
+  }
+  if (tab === "worth_a_look") {
+    return (
+      <EmptyState
+        icon={<Eye className="h-5 w-5" />}
+        title="Nothing in this range"
+        body="No matches between 40 and 60. Likely most of your matches are either strong fits or capped."
+      />
+    );
+  }
+  if (tab === "new") {
+    return (
+      <EmptyState
+        icon={<Activity className="h-5 w-5" />}
+        title="No new matches yet"
+        body="The catalog refreshes daily. Anything new since your last visit will surface here."
+      />
+    );
+  }
+  if (tab === "dismissed") {
+    return (
+      <EmptyState
+        icon={<Eye className="h-5 w-5" />}
+        title="No dismissed roles"
+        body="Roles you dismiss from the main list will show up here so you can restore them anytime."
+      />
+    );
+  }
+  return (
+    <EmptyState
+      icon={<Eye className="h-5 w-5" />}
+      title="Nothing here"
+      body="Switch tabs above to see your shortlist or worth-a-look roles."
+    />
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Resume Score Banner — unchanged from previous version.
 // ─────────────────────────────────────────────────────────────────────────────
 
 function ResumeScoreBanner({ score }: { score: number }) {
@@ -532,244 +432,7 @@ function ResumeScoreBanner({ score }: { score: number }) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Match card — premium enterprise SaaS feel
-// ─────────────────────────────────────────────────────────────────────────────
-
-function rankingNarrative(verdict: Verdict, topPct: number): string {
-  if (verdict === "strong_fit" && topPct <= 15)
-    return "Strong must-have alignment — seniority, stack, and domain all signal high recruiter confidence.";
-  if (verdict === "strong_fit")
-    return `You're in the top ${topPct}% of your matches. Core requirements align — a targeted application is worth the effort.`;
-  if (verdict === "stretch" && topPct <= 35)
-    return "You meet most of the bar. A focused cover letter on the 1–2 gaps could carry you through initial screening.";
-  if (verdict === "stretch")
-    return "Major requirements covered with notable gaps. Strengthen the weaknesses flagged above before applying.";
-  if (verdict === "underqualified")
-    return "This role expects more seniority than your resume currently demonstrates. A realistic target for 12–18 months out.";
-  if (verdict === "off_target")
-    return "A lateral pivot from your primary domain. Possible, but address the function shift directly in your application.";
-  return `Limited alignment with this role's requirements. Focus on closing the gaps above before applying.`;
-}
-
-function recruiterConfidence(score: number, verdict: Verdict): { label: string; tone: string } {
-  if (verdict === "strong_fit" && score >= 82)
-    return { label: "High recruiter confidence", tone: "text-success" };
-  if (verdict === "strong_fit" || (verdict === "stretch" && score >= 68))
-    return { label: "Moderate recruiter confidence", tone: "text-warning" };
-  if (verdict === "underqualified")
-    return { label: "Low recruiter confidence", tone: "text-primary" };
-  if (verdict === "mismatch")
-    return { label: "Role mismatch", tone: "text-destructive" };
-  return { label: "Low–moderate confidence", tone: "text-muted-foreground" };
-}
-
-function MatchCard({
-  match,
-  verdict,
-  isNew,
-  allScores,
-  hiddenView = false,
-}: {
-  match: Pick<MatchRow, "score" | "fit_card" | "reasoning" | "hidden_reason" | "score_breakdown" | "confidence" | "hard_cap_reason" | "feedback_adjustment"> & {
-    jobs: NonNullable<MatchRow["jobs"]>;
-  };
-  verdict: Verdict;
-  isNew: boolean;
-  allScores: number[];
-  /** When true: greyed-out card with Restore button instead of Dismiss. */
-  hiddenView?: boolean;
-}) {
-  const job = match.jobs;
-  const company = job.companies;
-  const meta = VERDICT_META[verdict];
-  const card = (match.fit_card as FitCardLite | null) ?? null;
-  const oneLiner = card?.one_liner ?? match.reasoning ?? job.jd_summary ?? "";
-  const topTweak = card?.resume_tweaks?.find((t) => t.priority === 1) ?? card?.resume_tweaks?.[0];
-  const strengths = card?.strengths?.slice(0, 2) ?? [];
-  const gaps = card?.gaps?.slice(0, 1) ?? [];
-  const scoreBreakdown = asRulesScoreBreakdown(match.score_breakdown);
-  const isGhost = job.is_likely_ghost === true;
-  const confidence = recruiterConfidence(match.score, verdict);
-
-  const below = allScores.filter(s => s < match.score).length;
-  const rankFromTop = allScores.length - below;
-  const topPct = allScores.length >= 5 ? Math.round((rankFromTop / allScores.length) * 100) : 0;
-  const showRanking = allScores.length >= 5;
-
-  return (
-    <Link
-      href={`/jobs/${job.id}`}
-      className={`group relative block overflow-hidden rounded-xl border bg-card p-4 transition hover:border-primary/30 hover:bg-secondary/40 focus-ring sm:p-5 ${
-        hiddenView
-          ? "border-border opacity-60 hover:opacity-100"
-          : isNew
-            ? "border-success/30 hover:border-success/50"
-            : "border-border"
-      }`}
-    >
-      {/* New indicator stripe — semantic success on left edge */}
-      {isNew && !hiddenView && (
-        <div aria-hidden className="absolute left-0 top-0 h-full w-1 bg-success" />
-      )}
-
-      {/* Sprint 1 Item 4 — corner dismiss / restore action. Sprint 4 Item 24:
-          add 4rem right-padding on the card header so the Dismiss button
-          doesn't overlap the title on phone widths. */}
-      <div className="absolute right-3 top-3 z-10">
-        {hiddenView
-          ? <RestoreButton jobId={job.id} />
-          : <DismissButton jobId={job.id} />}
-      </div>
-
-      <div className="flex flex-wrap items-start gap-3 pr-20 sm:pr-0 sm:gap-4">
-
-        {/* Company logo + score chip — Sprint 2 Item 20: icon + color, not color alone. */}
-        <div className="flex flex-col items-center gap-2">
-          <CompanyLogo name={company?.name ?? "?"} logoUrl={company?.logo_url ?? null} size={48} />
-          <div
-            className={`flex min-w-[3rem] items-center justify-center gap-1 rounded-lg px-1.5 py-0.5 text-xs font-bold tabular-nums ${meta.scoreTone}`}
-            aria-label={`${meta.label} — ${Math.round(match.score)} of 100${match.confidence != null ? `, confidence ${Math.round(match.confidence)}` : ""}`}
-          >
-            <span aria-hidden>{meta.icon}</span>
-            {Math.round(match.score)}
-          </div>
-          {/* Sprint 6 — confidence subscript. Low confidence (<55) is warned;
-              high (>=80) stays muted; out-of-band scores hide it. */}
-          {match.confidence != null && (
-            <span
-              className={`text-[9px] font-medium tabular-nums leading-none ${
-                match.confidence < 55 ? "text-warning" : "text-muted-foreground/70"
-              }`}
-              title={`Score confidence ${Math.round(match.confidence)}/100 — derived from JD completeness, embeddings, and years signal.`}
-            >
-              conf {Math.round(match.confidence)}
-            </span>
-          )}
-        </div>
-
-        {/* Main content */}
-        <div className="min-w-0 flex-1">
-          {/* Header row — Sprint 4 Item 24: confidence label drops off on
-              very narrow screens to keep the row to two lines max. */}
-          <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
-            <span className="text-xs font-medium text-muted-foreground">{company?.name}</span>
-            <div className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] font-semibold ${meta.tone} ${meta.borderTone} ${meta.bgTone}`}>
-              {meta.icon}
-              {meta.short}
-            </div>
-            {isNew && (
-              <span className="rounded-full border border-success/30 bg-success/10 px-2 py-0.5 text-[11px] font-semibold text-success">
-                New
-              </span>
-            )}
-            {isGhost && (
-              <span className="inline-flex items-center gap-1 rounded-full border border-border bg-muted px-2 py-0.5 text-[11px] text-muted-foreground">
-                <Ghost className="h-3 w-3" /> Older listing
-              </span>
-            )}
-            <span className={`hidden sm:inline ml-auto text-[10px] font-medium ${confidence.tone}`}>
-              {confidence.label}
-            </span>
-          </div>
-
-          {/* Job title */}
-          <h3 className="mt-1.5 font-semibold leading-snug group-hover:text-primary transition">
-            {job.title}
-          </h3>
-
-          {/* One-liner */}
-          {oneLiner && (
-            <p className="mt-1 text-sm leading-relaxed text-muted-foreground line-clamp-2">{oneLiner}</p>
-          )}
-
-          {/* Meta row */}
-          <div className="mt-2.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
-            {(job.hubs ?? []).slice(0, 3).map((h) => (<span key={h}>{h}</span>))}
-            {job.comp_lpa_max != null && (
-              <span className="font-medium text-primary/80">Up to ₹{job.comp_lpa_max} LPA</span>
-            )}
-            {job.seniority && (
-              <span className="capitalize">{job.seniority}</span>
-            )}
-            {(job.tech_stack ?? []).slice(0, 3).map((t) => (
-              <span key={t} className="rounded border border-border bg-secondary px-1.5 py-0.5 font-mono text-[10px]">{t}</span>
-            ))}
-          </div>
-
-          {/* Inline fit signals — show when Fit Card exists */}
-          {(strengths.length > 0 || gaps.length > 0) && (
-            <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2">
-              {strengths.length > 0 && (
-                <div className="rounded-md border border-success/20 bg-success/5 px-3 py-2">
-                  <p className="mb-1 text-[10px] font-semibold uppercase tracking-wider text-success">Strength</p>
-                  <p className="line-clamp-2 text-xs leading-relaxed text-muted-foreground">{strengths[0]}</p>
-                </div>
-              )}
-              {gaps.length > 0 && (
-                <div className="rounded-md border border-warning/20 bg-warning/5 px-3 py-2">
-                  <p className="mb-1 text-[10px] font-semibold uppercase tracking-wider text-warning">Gap</p>
-                  <p className="line-clamp-2 text-xs leading-relaxed text-muted-foreground">{gaps[0]}</p>
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* Why this score — interactive disclosure */}
-          {scoreBreakdown && (
-            <WhyScoreToggle
-              breakdown={scoreBreakdown}
-              total={match.score}
-              confidence={match.confidence}
-              hardCapReason={match.hard_cap_reason}
-              feedbackAdjustment={match.feedback_adjustment}
-            />
-          )}
-
-          {/* Top resume tweak */}
-          {topTweak?.suggestion && (
-            <div className="mt-3 flex items-start gap-2 rounded-md border border-primary/20 bg-primary-soft px-3 py-2">
-              <Target className="mt-0.5 h-3.5 w-3.5 shrink-0 text-primary" />
-              <div className="min-w-0">
-                <p className="text-[10px] font-semibold uppercase tracking-wider text-primary">Top resume tweak</p>
-                <p className="line-clamp-2 text-xs leading-relaxed text-muted-foreground">{topTweak.suggestion}</p>
-              </div>
-            </div>
-          )}
-        </div>
-      </div>
-
-      {/* Footer — stacks vertically on phone widths so neither the
-          Why-you-rank panel nor the Apply button wrap awkwardly. */}
-      <div className="mt-4 space-y-2.5 border-t border-border pt-3 text-xs text-muted-foreground">
-        {showRanking && (
-          <div className="flex items-start gap-2.5 rounded-md border border-border bg-secondary/40 px-3 py-2 sm:gap-3">
-            <div className="shrink-0 text-center min-w-[2.75rem]">
-              <p className={`text-xs font-semibold tabular-nums ${meta.tone}`}>Top {topPct}%</p>
-              <p className="text-[9px] text-muted-foreground/70">{allScores.length} matches</p>
-            </div>
-            <div className="min-w-0">
-              <p className="mb-0.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Why you rank here</p>
-              <p className="line-clamp-3 leading-relaxed sm:line-clamp-none">{rankingNarrative(verdict, topPct)}</p>
-            </div>
-          </div>
-        )}
-        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between sm:gap-3">
-          <span className="inline-flex items-center gap-1.5">
-            <Sparkles className="h-3 w-3 text-primary" />
-            <span className="font-medium text-foreground/70 group-hover:text-primary transition">Open Fit Card</span>
-            <ChevronRight className="h-3 w-3 transition group-hover:translate-x-0.5" />
-          </span>
-          {job.apply_url && (
-            <ApplyButton jobId={job.id} applyUrl={job.apply_url} variant="compact" />
-          )}
-        </div>
-      </div>
-    </Link>
-  );
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Relative-time helper
+// Helpers
 // ─────────────────────────────────────────────────────────────────────────────
 
 function humanAgo(iso: string): string {
@@ -782,3 +445,6 @@ function humanAgo(iso: string): string {
   if (diff < 7 * day) return `${Math.round(diff / day)}d ago`;
   return new Date(iso).toLocaleDateString();
 }
+
+// Suppress unused-Json complaint at the type-level (referenced by MatchCardData).
+export type { Json };
