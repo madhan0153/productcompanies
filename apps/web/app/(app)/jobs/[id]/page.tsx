@@ -11,6 +11,7 @@ import { CompanyLogo } from "@/components/company-logo";
 import { ScoreRing } from "@/components/score-ring";
 import { Tooltip } from "@/components/tooltip";
 import { SectionCard } from "@/components/section-card";
+import { StaggerList } from "@/components/stagger-list";
 import { JobActions } from "./job-actions";
 import { StickyApplyBar } from "./sticky-apply-bar";
 import { JobDescription } from "./job-description";
@@ -189,6 +190,7 @@ export default async function JobDetailPage({ params }: { params: Promise<{ id: 
 
   return (
     <div className="space-y-5 pb-6">
+      <StaggerList step={0.05} className="space-y-5">
       <StickyApplyBar
         companyName={company?.name ?? ""}
         companyLogoUrl={company?.logo_url ?? null}
@@ -462,6 +464,7 @@ export default async function JobDetailPage({ params }: { params: Promise<{ id: 
           </div>
         </div>
       </div>
+      </StaggerList>
     </div>
   );
 }

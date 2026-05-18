@@ -7,7 +7,7 @@ import {
   LayoutDashboard, Briefcase, ShieldCheck, LogOut, Menu, X, User,
   BarChart3, Compass, ClipboardList, Zap, Search,
 } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, Suspense } from "react";
 import { createSupabaseBrowserClient } from "@/lib/supabase/browser";
 import { useFocusTrap } from "@/hooks/use-focus-trap";
 import { useEscapeKey } from "@/hooks/use-escape-key";
@@ -268,9 +268,9 @@ export function AppShell({ user, navBadges, banner, children }: Props) {
         <motion.main
           id="main-content"
           key={pathname}
-          initial={reduce ? false : { opacity: 0, y: 3 }}
+          initial={reduce ? false : { opacity: 0, y: 8 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.13, ease: [0.22, 1, 0.36, 1] }}
+          transition={{ duration: 0.25, ease: [0.22, 1, 0.36, 1] }}
           className="flex-1 overflow-y-auto px-4 pb-24 pt-5 sm:px-6 sm:pt-6 lg:px-8 lg:pb-8"
           tabIndex={-1}
         >
@@ -283,7 +283,9 @@ export function AppShell({ user, navBadges, banner, children }: Props) {
       {/* Sprint 6 — session history: pathname-scoped scroll restore +
           recently-visited tracking for the dashboard "Continue" card.
           Both client-only; never touches the network. */}
-      <RecordLastVisit />
+      <Suspense fallback={null}>
+        <RecordLastVisit />
+      </Suspense>
     </div>
   );
 }

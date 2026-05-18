@@ -1,5 +1,6 @@
 "use client";
 
+import * as React from "react";
 import { motion, useReducedMotion } from "framer-motion";
 import { cn } from "@/lib/utils";
 
@@ -19,7 +20,7 @@ export function StaggerList({ children, className, step = 0.04 }: Props) {
     return <div className={className}>{children}</div>;
   }
 
-  const items = Array.isArray(children) ? children : [children];
+  const items = React.Children.toArray(children);
 
   return (
     <div className={cn(className)}>

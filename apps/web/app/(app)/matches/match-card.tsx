@@ -167,7 +167,7 @@ export function MatchCard({
     <Link
       href={`/jobs/${job.id}`}
       prefetch
-      className={`group relative block overflow-hidden rounded-xl border bg-card px-3.5 py-3 transition hover:border-primary/30 hover:bg-secondary/40 focus-ring sm:px-4 sm:py-3.5 ${
+      className={`group relative block overflow-hidden rounded-xl border bg-card px-3.5 py-3 transition-all duration-200 ease-out hover:border-primary/30 hover:bg-secondary/40 active:scale-[0.98] focus-ring sm:px-4 sm:py-3.5 ${
         isNew ? "border-success/30 hover:border-success/50" : "border-border"
       }`}
     >
