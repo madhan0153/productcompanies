@@ -1,0 +1,1060 @@
+﻿2026-05-17T05:52:21.9002305Z Current runner version: '2.334.0'
+2026-05-17T05:52:21.9026320Z ##[group]Runner Image Provisioner
+2026-05-17T05:52:21.9027170Z Hosted Compute Agent
+2026-05-17T05:52:21.9027849Z Version: 20260213.493
+2026-05-17T05:52:21.9028455Z Commit: 5c115507f6dd24b8de37d8bbe0bb4509d0cc0fa3
+2026-05-17T05:52:21.9029159Z Build Date: 2026-02-13T00:28:41Z
+2026-05-17T05:52:21.9029845Z Worker ID: {60da1cb3-ded9-47f0-a0f8-3964ea202226}
+2026-05-17T05:52:21.9030553Z Azure Region: westus
+2026-05-17T05:52:21.9031086Z ##[endgroup]
+2026-05-17T05:52:21.9032556Z ##[group]Operating System
+2026-05-17T05:52:21.9033195Z Ubuntu
+2026-05-17T05:52:21.9033693Z 24.04.4
+2026-05-17T05:52:21.9034182Z LTS
+2026-05-17T05:52:21.9034679Z ##[endgroup]
+2026-05-17T05:52:21.9035456Z ##[group]Runner Image
+2026-05-17T05:52:21.9036119Z Image: ubuntu-24.04
+2026-05-17T05:52:21.9036667Z Version: 20260513.135.3
+2026-05-17T05:52:21.9037884Z Included Software: https://github.com/actions/runner-images/blob/ubuntu24/20260513.135/images/ubuntu/Ubuntu2404-Readme.md
+2026-05-17T05:52:21.9039419Z Image Release: https://github.com/actions/runner-images/releases/tag/ubuntu24%2F20260513.135
+2026-05-17T05:52:21.9040411Z ##[endgroup]
+2026-05-17T05:52:21.9041442Z ##[group]GITHUB_TOKEN Permissions
+2026-05-17T05:52:21.9043444Z Contents: read
+2026-05-17T05:52:21.9044175Z Metadata: read
+2026-05-17T05:52:21.9044750Z ##[endgroup]
+2026-05-17T05:52:21.9047121Z Secret source: Actions
+2026-05-17T05:52:21.9047986Z Prepare workflow directory
+2026-05-17T05:52:21.9654606Z Prepare all required actions
+2026-05-17T05:52:21.9692090Z Getting action download info
+2026-05-17T05:52:22.5098335Z Download action repository 'actions/checkout@v5' (SHA:93cb6efe18208431cddfb8368fd83d5badbf9bfd)
+2026-05-17T05:52:22.6636129Z Download action repository 'pnpm/action-setup@v4' (SHA:b906affcce14559ad1aafd4ab0e942779e9f58b1)
+2026-05-17T05:52:23.1663407Z Download action repository 'actions/setup-node@v5' (SHA:a0853c24544627f65ddf259abe73b1d18a591444)
+2026-05-17T05:52:23.3086200Z Download action repository 'nick-fields/retry@v3' (SHA:ce71cc2ab81d554ebbe88c79ab5975992d79ba08)
+2026-05-17T05:52:23.6018033Z Download action repository 'actions/upload-artifact@v5' (SHA:330a01c490aca151604b8cf639adc76d48f6c5d4)
+2026-05-17T05:52:23.8814218Z Complete job name: Crawl all (sequential)
+2026-05-17T05:52:23.9538152Z ##[group]Run actions/checkout@v5
+2026-05-17T05:52:23.9539163Z with:
+2026-05-17T05:52:23.9539676Z   repository: madhan0153/productcompanies
+2026-05-17T05:52:23.9540639Z   token: ***
+2026-05-17T05:52:23.9541080Z   ssh-strict: true
+2026-05-17T05:52:23.9541611Z   ssh-user: git
+2026-05-17T05:52:23.9542149Z   persist-credentials: true
+2026-05-17T05:52:23.9542769Z   clean: true
+2026-05-17T05:52:23.9543307Z   sparse-checkout-cone-mode: true
+2026-05-17T05:52:23.9543950Z   fetch-depth: 1
+2026-05-17T05:52:23.9544424Z   fetch-tags: false
+2026-05-17T05:52:23.9544925Z   show-progress: true
+2026-05-17T05:52:23.9545634Z   lfs: false
+2026-05-17T05:52:23.9546082Z   submodules: false
+2026-05-17T05:52:23.9546587Z   set-safe-directory: true
+2026-05-17T05:52:23.9547429Z env:
+2026-05-17T05:52:23.9547846Z   CRAWL_RUN_ID: 25982828171-1
+2026-05-17T05:52:23.9548410Z ##[endgroup]
+2026-05-17T05:52:24.0573466Z Syncing repository: madhan0153/productcompanies
+2026-05-17T05:52:24.0576278Z ##[group]Getting Git version info
+2026-05-17T05:52:24.0577981Z Working directory is '/home/runner/work/productcompanies/productcompanies'
+2026-05-17T05:52:24.0579542Z [command]/usr/bin/git version
+2026-05-17T05:52:24.0625729Z git version 2.54.0
+2026-05-17T05:52:24.0649165Z ##[endgroup]
+2026-05-17T05:52:24.0666772Z Temporarily overriding HOME='/home/runner/work/_temp/727637d2-0d2d-4241-a803-58aca17266d5' before making global git config changes
+2026-05-17T05:52:24.0670862Z Adding repository directory to the temporary git global config as a safe directory
+2026-05-17T05:52:24.0674440Z [command]/usr/bin/git config --global --add safe.directory /home/runner/work/productcompanies/productcompanies
+2026-05-17T05:52:24.0721771Z Deleting the contents of '/home/runner/work/productcompanies/productcompanies'
+2026-05-17T05:52:24.0726066Z ##[group]Initializing the repository
+2026-05-17T05:52:24.0730577Z [command]/usr/bin/git init /home/runner/work/productcompanies/productcompanies
+2026-05-17T05:52:24.0851045Z hint: Using 'master' as the name for the initial branch. This default branch name
+2026-05-17T05:52:24.0853737Z hint: will change to "main" in Git 3.0. To configure the initial branch name
+2026-05-17T05:52:24.0856438Z hint: to use in all of your new repositories, which will suppress this warning,
+2026-05-17T05:52:24.0858293Z hint: call:
+2026-05-17T05:52:24.0859000Z hint:
+2026-05-17T05:52:24.0859993Z hint: 	git config --global init.defaultBranch <name>
+2026-05-17T05:52:24.0861358Z hint:
+2026-05-17T05:52:24.0862648Z hint: Names commonly chosen instead of 'master' are 'main', 'trunk' and
+2026-05-17T05:52:24.0865112Z hint: 'development'. The just-created branch can be renamed via this command:
+2026-05-17T05:52:24.0867104Z hint:
+2026-05-17T05:52:24.0867764Z hint: 	git branch -m <name>
+2026-05-17T05:52:24.0868805Z hint:
+2026-05-17T05:52:24.0870250Z hint: Disable this message with "git config set advice.defaultBranchName false"
+2026-05-17T05:52:24.0873150Z Initialized empty Git repository in /home/runner/work/productcompanies/productcompanies/.git/
+2026-05-17T05:52:24.0877520Z [command]/usr/bin/git remote add origin https://github.com/madhan0153/productcompanies
+2026-05-17T05:52:24.0910894Z ##[endgroup]
+2026-05-17T05:52:24.0911813Z ##[group]Disabling automatic garbage collection
+2026-05-17T05:52:24.0914477Z [command]/usr/bin/git config --local gc.auto 0
+2026-05-17T05:52:24.0943895Z ##[endgroup]
+2026-05-17T05:52:24.0945528Z ##[group]Setting up auth
+2026-05-17T05:52:24.0950619Z [command]/usr/bin/git config --local --name-only --get-regexp core\.sshCommand
+2026-05-17T05:52:24.0985174Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'core\.sshCommand' && git config --local --unset-all 'core.sshCommand' || :"
+2026-05-17T05:52:24.1320063Z [command]/usr/bin/git config --local --name-only --get-regexp http\.https\:\/\/github\.com\/\.extraheader
+2026-05-17T05:52:24.1351537Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'http\.https\:\/\/github\.com\/\.extraheader' && git config --local --unset-all 'http.https://github.com/.extraheader' || :"
+2026-05-17T05:52:24.1562744Z [command]/usr/bin/git config --local --name-only --get-regexp ^includeIf\.gitdir:
+2026-05-17T05:52:24.1594445Z [command]/usr/bin/git submodule foreach --recursive git config --local --show-origin --name-only --get-regexp remote.origin.url
+2026-05-17T05:52:24.1808246Z [command]/usr/bin/git config --local http.https://github.com/.extraheader AUTHORIZATION: basic ***
+2026-05-17T05:52:24.1841190Z ##[endgroup]
+2026-05-17T05:52:24.1842781Z ##[group]Fetching the repository
+2026-05-17T05:52:24.1853744Z [command]/usr/bin/git -c protocol.version=2 fetch --no-tags --prune --no-recurse-submodules --depth=1 origin +d407a92a6bdbccfb7f51396f1731cc6be7cc828f:refs/remotes/origin/main
+2026-05-17T05:52:24.6968652Z From https://github.com/madhan0153/productcompanies
+2026-05-17T05:52:24.6972015Z  * [new ref]         d407a92a6bdbccfb7f51396f1731cc6be7cc828f -> origin/main
+2026-05-17T05:52:24.7003818Z ##[endgroup]
+2026-05-17T05:52:24.7005025Z ##[group]Determining the checkout info
+2026-05-17T05:52:24.7006790Z ##[endgroup]
+2026-05-17T05:52:24.7011908Z [command]/usr/bin/git sparse-checkout disable
+2026-05-17T05:52:24.7056122Z [command]/usr/bin/git config --local --unset-all extensions.worktreeConfig
+2026-05-17T05:52:24.7081365Z ##[group]Checking out the ref
+2026-05-17T05:52:24.7085187Z [command]/usr/bin/git checkout --progress --force -B main refs/remotes/origin/main
+2026-05-17T05:52:24.7267467Z Switched to a new branch 'main'
+2026-05-17T05:52:24.7270733Z branch 'main' set up to track 'origin/main'.
+2026-05-17T05:52:24.7278618Z ##[endgroup]
+2026-05-17T05:52:24.7317654Z [command]/usr/bin/git log -1 --format=%H
+2026-05-17T05:52:24.7340241Z d407a92a6bdbccfb7f51396f1731cc6be7cc828f
+2026-05-17T05:52:24.7684008Z ##[group]Run pnpm/action-setup@v4
+2026-05-17T05:52:24.7685633Z with:
+2026-05-17T05:52:24.7686742Z   dest: ~/setup-pnpm
+2026-05-17T05:52:24.7687887Z   run_install: null
+2026-05-17T05:52:24.7689138Z   cache: false
+2026-05-17T05:52:24.7690438Z   cache_dependency_path: pnpm-lock.yaml
+2026-05-17T05:52:24.7691859Z   package_json_file: package.json
+2026-05-17T05:52:24.7692854Z   standalone: false
+2026-05-17T05:52:24.7693666Z env:
+2026-05-17T05:52:24.7694398Z   CRAWL_RUN_ID: 25982828171-1
+2026-05-17T05:52:24.7695571Z ##[endgroup]
+2026-05-17T05:52:24.9116945Z ##[group]Running self-installer...
+2026-05-17T05:52:25.4773233Z Progress: resolved 1, reused 0, downloaded 0, added 0
+2026-05-17T05:52:25.4894920Z Packages: +1
+2026-05-17T05:52:25.4896288Z +
+2026-05-17T05:52:25.8739875Z Progress: resolved 1, reused 0, downloaded 1, added 1, done
+2026-05-17T05:52:25.9021095Z 
+2026-05-17T05:52:25.9021679Z dependencies:
+2026-05-17T05:52:25.9022214Z + pnpm 9.12.0 (11.1.2 is available)
+2026-05-17T05:52:25.9022634Z 
+2026-05-17T05:52:25.9055239Z Done in 821ms
+2026-05-17T05:52:25.9243036Z ##[endgroup]
+2026-05-17T05:52:25.9249045Z Installation Completed!
+2026-05-17T05:52:25.9412722Z ##[group]Run actions/setup-node@v5
+2026-05-17T05:52:25.9413002Z with:
+2026-05-17T05:52:25.9413185Z   node-version: 20
+2026-05-17T05:52:25.9413380Z   cache: pnpm
+2026-05-17T05:52:25.9413570Z   always-auth: false
+2026-05-17T05:52:25.9413769Z   check-latest: false
+2026-05-17T05:52:25.9414096Z   token: ***
+2026-05-17T05:52:25.9414322Z   package-manager-cache: true
+2026-05-17T05:52:25.9414561Z env:
+2026-05-17T05:52:25.9414746Z   CRAWL_RUN_ID: 25982828171-1
+2026-05-17T05:52:25.9415039Z   PNPM_HOME: /home/runner/setup-pnpm/node_modules/.bin
+2026-05-17T05:52:25.9415649Z ##[endgroup]
+2026-05-17T05:52:26.0860176Z Found in cache @ /opt/hostedtoolcache/node/20.20.2/x64
+2026-05-17T05:52:26.0864631Z (node:2319) [DEP0040] DeprecationWarning: The `punycode` module is deprecated. Please use a userland alternative instead.
+2026-05-17T05:52:26.0865647Z (Use `node --trace-deprecation ...` to show where the warning was created)
+2026-05-17T05:52:26.0867966Z ##[group]Environment details
+2026-05-17T05:52:28.5326045Z node: v20.20.2
+2026-05-17T05:52:28.5326446Z npm: 10.8.2
+2026-05-17T05:52:28.5326752Z yarn: 1.22.22
+2026-05-17T05:52:28.5328139Z ##[endgroup]
+2026-05-17T05:52:28.5354104Z [command]/home/runner/setup-pnpm/node_modules/.bin/pnpm store path --silent
+2026-05-17T05:52:29.0878943Z /home/runner/setup-pnpm/node_modules/.bin/store/v3
+2026-05-17T05:52:29.3677311Z pnpm cache is not found
+2026-05-17T05:52:29.3794836Z ##[group]Run sudo apt-get update && sudo apt-get install -y jq
+2026-05-17T05:52:29.3795703Z [36;1msudo apt-get update && sudo apt-get install -y jq[0m
+2026-05-17T05:52:29.3840745Z shell: /usr/bin/bash -e {0}
+2026-05-17T05:52:29.3841006Z env:
+2026-05-17T05:52:29.3841183Z   CRAWL_RUN_ID: 25982828171-1
+2026-05-17T05:52:29.3841474Z   PNPM_HOME: /home/runner/setup-pnpm/node_modules/.bin
+2026-05-17T05:52:29.3841775Z ##[endgroup]
+2026-05-17T05:52:29.4658278Z Get:1 file:/etc/apt/apt-mirrors.txt Mirrorlist [144 B]
+2026-05-17T05:52:29.4960498Z Hit:2 http://azure.archive.ubuntu.com/ubuntu noble InRelease
+2026-05-17T05:52:29.4974755Z Get:3 http://azure.archive.ubuntu.com/ubuntu noble-updates InRelease [126 kB]
+2026-05-17T05:52:29.5076077Z Get:4 http://azure.archive.ubuntu.com/ubuntu noble-backports InRelease [126 kB]
+2026-05-17T05:52:29.5077950Z Hit:6 https://packages.microsoft.com/repos/azure-cli noble InRelease
+2026-05-17T05:52:29.5079568Z Get:5 http://azure.archive.ubuntu.com/ubuntu noble-security InRelease [126 kB]
+2026-05-17T05:52:29.5089393Z Get:7 https://packages.microsoft.com/ubuntu/24.04/prod noble InRelease [3600 B]
+2026-05-17T05:52:29.5651593Z Get:8 https://dl.google.com/linux/chrome-stable/deb stable InRelease [1825 B]
+2026-05-17T05:52:29.6243866Z Get:9 http://azure.archive.ubuntu.com/ubuntu noble-updates/main amd64 Packages [2003 kB]
+2026-05-17T05:52:29.6401019Z Get:10 http://azure.archive.ubuntu.com/ubuntu noble-updates/main Translation-en [354 kB]
+2026-05-17T05:52:29.6423613Z Get:11 http://azure.archive.ubuntu.com/ubuntu noble-updates/main amd64 Components [177 kB]
+2026-05-17T05:52:29.6439911Z Get:12 http://azure.archive.ubuntu.com/ubuntu noble-updates/universe amd64 Packages [1689 kB]
+2026-05-17T05:52:29.6522205Z Get:13 http://azure.archive.ubuntu.com/ubuntu noble-updates/universe amd64 Components [386 kB]
+2026-05-17T05:52:29.6547525Z Get:14 http://azure.archive.ubuntu.com/ubuntu noble-updates/restricted amd64 Packages [3187 kB]
+2026-05-17T05:52:29.6714430Z Get:15 http://azure.archive.ubuntu.com/ubuntu noble-updates/restricted Translation-en [738 kB]
+2026-05-17T05:52:29.6768025Z Get:16 http://azure.archive.ubuntu.com/ubuntu noble-updates/multiverse amd64 Components [940 B]
+2026-05-17T05:52:29.6872793Z Get:17 http://azure.archive.ubuntu.com/ubuntu noble-backports/main amd64 Components [5796 B]
+2026-05-17T05:52:29.6887425Z Get:18 http://azure.archive.ubuntu.com/ubuntu noble-backports/universe amd64 Components [10.5 kB]
+2026-05-17T05:52:29.8074963Z Get:19 https://packages.microsoft.com/ubuntu/24.04/prod noble/main arm64 Packages [120 kB]
+2026-05-17T05:52:29.8100027Z Get:20 https://packages.microsoft.com/ubuntu/24.04/prod noble/main amd64 Packages [147 kB]
+2026-05-17T05:52:29.8970999Z Get:21 http://azure.archive.ubuntu.com/ubuntu noble-security/main amd64 Packages [1668 kB]
+2026-05-17T05:52:29.9060810Z Get:22 http://azure.archive.ubuntu.com/ubuntu noble-security/main amd64 Components [21.9 kB]
+2026-05-17T05:52:29.9068906Z Get:23 http://azure.archive.ubuntu.com/ubuntu noble-security/universe amd64 Packages [1187 kB]
+2026-05-17T05:52:29.9136152Z Get:24 http://azure.archive.ubuntu.com/ubuntu noble-security/universe amd64 Components [74.2 kB]
+2026-05-17T05:52:29.9257480Z Get:25 https://dl.google.com/linux/chrome-stable/deb stable/main amd64 Packages [1208 B]
+2026-05-17T05:52:34.0180490Z Fetched 12.2 MB in 1s (8984 kB/s)
+2026-05-17T05:52:34.7933584Z Reading package lists...
+2026-05-17T05:52:34.8250793Z Reading package lists...
+2026-05-17T05:52:35.0107472Z Building dependency tree...
+2026-05-17T05:52:35.0114550Z Reading state information...
+2026-05-17T05:52:35.1854266Z jq is already the newest version (1.7.1-3ubuntu0.24.04.2).
+2026-05-17T05:52:35.1854922Z 0 upgraded, 0 newly installed, 0 to remove and 7 not upgraded.
+2026-05-17T05:52:35.1925931Z ##[group]Run nick-fields/retry@v3
+2026-05-17T05:52:35.1926211Z with:
+2026-05-17T05:52:35.1926392Z   timeout_minutes: 10
+2026-05-17T05:52:35.1926588Z   max_attempts: 3
+2026-05-17T05:52:35.1926783Z   retry_wait_seconds: 30
+2026-05-17T05:52:35.1927025Z   command: pnpm install --frozen-lockfile
+2026-05-17T05:52:35.1927304Z   polling_interval_seconds: 1
+2026-05-17T05:52:35.1927532Z   warning_on_retry: true
+2026-05-17T05:52:35.1927745Z   continue_on_error: false
+2026-05-17T05:52:35.1927949Z env:
+2026-05-17T05:52:35.1928126Z   CRAWL_RUN_ID: 25982828171-1
+2026-05-17T05:52:35.1928413Z   PNPM_HOME: /home/runner/setup-pnpm/node_modules/.bin
+2026-05-17T05:52:35.1928703Z ##[endgroup]
+2026-05-17T05:52:35.2630901Z ##[group]Attempt 1
+2026-05-17T05:52:35.6985720Z Scope: all 4 workspace projects
+2026-05-17T05:52:35.7627659Z Lockfile is up to date, resolution step is skipped
+2026-05-17T05:52:35.8201474Z Progress: resolved 1, reused 0, downloaded 0, added 0
+2026-05-17T05:52:35.9272507Z Packages: +450
+2026-05-17T05:52:35.9304551Z ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+2026-05-17T05:52:36.8238362Z Progress: resolved 450, reused 0, downloaded 82, added 70
+2026-05-17T05:52:37.8271489Z Progress: resolved 450, reused 0, downloaded 135, added 121
+2026-05-17T05:52:38.8292357Z Progress: resolved 450, reused 0, downloaded 363, added 356
+2026-05-17T05:52:39.8291510Z Progress: resolved 450, reused 0, downloaded 448, added 448
+2026-05-17T05:52:40.2437164Z Progress: resolved 450, reused 0, downloaded 450, added 450, done
+2026-05-17T05:52:40.4732615Z .../node_modules/unrs-resolver postinstall$ napi-postinstall unrs-resolver 1.11.1 check
+2026-05-17T05:52:40.4740991Z .../sharp@0.34.5/node_modules/sharp install$ node install/check.js || npm run build
+2026-05-17T05:52:40.4745596Z .../esbuild@0.27.7/node_modules/esbuild postinstall$ node install.js
+2026-05-17T05:52:40.5522423Z .../node_modules/unrs-resolver postinstall: Done
+2026-05-17T05:52:40.5863013Z .../esbuild@0.27.7/node_modules/esbuild postinstall: Done
+2026-05-17T05:52:40.6077816Z .../sharp@0.34.5/node_modules/sharp install: Done
+2026-05-17T05:52:40.7254415Z 
+2026-05-17T05:52:40.7255138Z devDependencies:
+2026-05-17T05:52:40.7255850Z + typescript 5.9.3
+2026-05-17T05:52:40.7256080Z 
+2026-05-17T05:52:40.7487057Z Done in 5.4s
+2026-05-17T05:52:41.2730280Z Command completed after 1 attempt(s).
+2026-05-17T05:52:41.2731538Z ##[endgroup]
+2026-05-17T05:52:41.2819706Z ##[group]Run nick-fields/retry@v3
+2026-05-17T05:52:41.2819980Z with:
+2026-05-17T05:52:41.2820160Z   timeout_minutes: 10
+2026-05-17T05:52:41.2820357Z   max_attempts: 2
+2026-05-17T05:52:41.2820550Z   retry_wait_seconds: 20
+2026-05-17T05:52:41.2820926Z   command: pnpm --filter @prodmatch/crawler exec playwright install --with-deps chromium
+2026-05-17T05:52:41.2821372Z   polling_interval_seconds: 1
+2026-05-17T05:52:41.2821593Z   warning_on_retry: true
+2026-05-17T05:52:41.2821800Z   continue_on_error: false
+2026-05-17T05:52:41.2822001Z env:
+2026-05-17T05:52:41.2822169Z   CRAWL_RUN_ID: 25982828171-1
+2026-05-17T05:52:41.2822437Z   PNPM_HOME: /home/runner/setup-pnpm/node_modules/.bin
+2026-05-17T05:52:41.2822715Z ##[endgroup]
+2026-05-17T05:52:41.3547260Z ##[group]Attempt 1
+2026-05-17T05:52:42.0500929Z Installing dependencies...
+2026-05-17T05:52:42.0578803Z Switching to root user to install dependencies...
+2026-05-17T05:52:42.1269806Z Get:1 file:/etc/apt/apt-mirrors.txt Mirrorlist [144 B]
+2026-05-17T05:52:42.1663441Z Hit:2 http://azure.archive.ubuntu.com/ubuntu noble InRelease
+2026-05-17T05:52:42.1670045Z Hit:3 http://azure.archive.ubuntu.com/ubuntu noble-updates InRelease
+2026-05-17T05:52:42.1697165Z Hit:4 http://azure.archive.ubuntu.com/ubuntu noble-backports InRelease
+2026-05-17T05:52:42.1724334Z Hit:5 http://azure.archive.ubuntu.com/ubuntu noble-security InRelease
+2026-05-17T05:52:42.1786244Z Hit:6 https://packages.microsoft.com/repos/azure-cli noble InRelease
+2026-05-17T05:52:42.1816257Z Hit:7 https://packages.microsoft.com/ubuntu/24.04/prod noble InRelease
+2026-05-17T05:52:42.1867208Z Hit:8 https://dl.google.com/linux/chrome-stable/deb stable InRelease
+2026-05-17T05:52:43.3938502Z Reading package lists...
+2026-05-17T05:52:43.4170117Z Reading package lists...
+2026-05-17T05:52:43.5923994Z Building dependency tree...
+2026-05-17T05:52:43.5931091Z Reading state information...
+2026-05-17T05:52:43.7451926Z libasound2t64 is already the newest version (1.2.11-1ubuntu0.2).
+2026-05-17T05:52:43.7452801Z libasound2t64 set to manually installed.
+2026-05-17T05:52:43.7453599Z libatk-bridge2.0-0t64 is already the newest version (2.52.0-1build1).
+2026-05-17T05:52:43.7454169Z libatk-bridge2.0-0t64 set to manually installed.
+2026-05-17T05:52:43.7454701Z libatk1.0-0t64 is already the newest version (2.52.0-1build1).
+2026-05-17T05:52:43.7455160Z libatk1.0-0t64 set to manually installed.
+2026-05-17T05:52:43.7456014Z libatspi2.0-0t64 is already the newest version (2.52.0-1build1).
+2026-05-17T05:52:43.7456769Z libatspi2.0-0t64 set to manually installed.
+2026-05-17T05:52:43.7457802Z libcairo2 is already the newest version (1.18.0-3build1).
+2026-05-17T05:52:43.7458487Z libcairo2 set to manually installed.
+2026-05-17T05:52:43.7458993Z libcups2t64 is already the newest version (2.4.7-1.2ubuntu7.9).
+2026-05-17T05:52:43.7459462Z libcups2t64 set to manually installed.
+2026-05-17T05:52:43.7459942Z libdbus-1-3 is already the newest version (1.14.10-4ubuntu4.1).
+2026-05-17T05:52:43.7460405Z libdbus-1-3 set to manually installed.
+2026-05-17T05:52:43.7460888Z libdrm2 is already the newest version (2.4.125-1ubuntu0.1~24.04.1).
+2026-05-17T05:52:43.7461348Z libdrm2 set to manually installed.
+2026-05-17T05:52:43.7461811Z libgbm1 is already the newest version (25.2.8-0ubuntu0.24.04.1).
+2026-05-17T05:52:43.7462250Z libgbm1 set to manually installed.
+2026-05-17T05:52:43.7463152Z libglib2.0-0t64 is already the newest version (2.80.0-6ubuntu3.8).
+2026-05-17T05:52:43.7463628Z libglib2.0-0t64 set to manually installed.
+2026-05-17T05:52:43.7464099Z libnspr4 is already the newest version (2:4.35-1.1build1).
+2026-05-17T05:52:43.7464539Z libnspr4 set to manually installed.
+2026-05-17T05:52:43.7464985Z libnss3 is already the newest version (2:3.98-1ubuntu0.1).
+2026-05-17T05:52:43.7465754Z libnss3 set to manually installed.
+2026-05-17T05:52:43.7466231Z libpango-1.0-0 is already the newest version (1.52.1+ds-1build1).
+2026-05-17T05:52:43.7466701Z libpango-1.0-0 set to manually installed.
+2026-05-17T05:52:43.7467359Z libx11-6 is already the newest version (2:1.8.7-1build1).
+2026-05-17T05:52:43.7467782Z libx11-6 set to manually installed.
+2026-05-17T05:52:43.7468203Z libxcb1 is already the newest version (1.15-1ubuntu2).
+2026-05-17T05:52:43.7468611Z libxcb1 set to manually installed.
+2026-05-17T05:52:43.7469078Z libxcomposite1 is already the newest version (1:0.4.5-1build3).
+2026-05-17T05:52:43.7469557Z libxcomposite1 set to manually installed.
+2026-05-17T05:52:43.7470037Z libxdamage1 is already the newest version (1:1.1.6-1build1).
+2026-05-17T05:52:43.7470460Z libxdamage1 set to manually installed.
+2026-05-17T05:52:43.7470828Z libxext6 is already the newest version (2:1.3.4-1build2).
+2026-05-17T05:52:43.7471169Z libxext6 set to manually installed.
+2026-05-17T05:52:43.7471533Z libxfixes3 is already the newest version (1:6.0.0-2build1).
+2026-05-17T05:52:43.7471888Z libxfixes3 set to manually installed.
+2026-05-17T05:52:43.7472262Z libxkbcommon0 is already the newest version (1.6.0-1build1).
+2026-05-17T05:52:43.7472630Z libxkbcommon0 set to manually installed.
+2026-05-17T05:52:43.7473008Z libxrandr2 is already the newest version (2:1.5.2-2build1).
+2026-05-17T05:52:43.7473362Z libxrandr2 set to manually installed.
+2026-05-17T05:52:43.7473726Z xvfb is already the newest version (2:21.1.12-1ubuntu1.5).
+2026-05-17T05:52:43.7474227Z fonts-noto-color-emoji is already the newest version (2.047-0ubuntu0.24.04.1).
+2026-05-17T05:52:43.7474763Z libfontconfig1 is already the newest version (2.15.0-1.1ubuntu2).
+2026-05-17T05:52:43.7475155Z libfontconfig1 set to manually installed.
+2026-05-17T05:52:43.7475732Z libfreetype6 is already the newest version (2.13.2+dfsg-1ubuntu0.1).
+2026-05-17T05:52:43.7476125Z libfreetype6 set to manually installed.
+2026-05-17T05:52:43.7476517Z fonts-liberation is already the newest version (1:2.1.5-3).
+2026-05-17T05:52:43.7476904Z fonts-liberation set to manually installed.
+2026-05-17T05:52:43.7477282Z The following additional packages will be installed:
+2026-05-17T05:52:43.7477615Z   xfonts-encodings xfonts-utils
+2026-05-17T05:52:43.7477884Z Recommended packages:
+2026-05-17T05:52:43.7478134Z   fonts-ipafont-mincho fonts-tlwg-loma
+2026-05-17T05:52:43.7651607Z The following NEW packages will be installed:
+2026-05-17T05:52:43.7652446Z   fonts-freefont-ttf fonts-ipafont-gothic fonts-tlwg-loma-otf fonts-unifont
+2026-05-17T05:52:43.7659147Z   fonts-wqy-zenhei xfonts-cyrillic xfonts-encodings xfonts-scalable
+2026-05-17T05:52:43.7660059Z   xfonts-utils
+2026-05-17T05:52:43.7834029Z 0 upgraded, 9 newly installed, 0 to remove and 7 not upgraded.
+2026-05-17T05:52:43.7834639Z Need to get 21.1 MB of archives.
+2026-05-17T05:52:43.7835065Z After this operation, 79.5 MB of additional disk space will be used.
+2026-05-17T05:52:43.7835840Z Get:1 file:/etc/apt/apt-mirrors.txt Mirrorlist [144 B]
+2026-05-17T05:52:43.8630870Z Get:2 http://azure.archive.ubuntu.com/ubuntu noble/universe amd64 fonts-ipafont-gothic all 00303-21ubuntu1 [3513 kB]
+2026-05-17T05:52:43.9981010Z Get:3 http://azure.archive.ubuntu.com/ubuntu noble/main amd64 fonts-freefont-ttf all 20211204+svn4273-2 [5641 kB]
+2026-05-17T05:52:44.1864165Z Get:4 http://azure.archive.ubuntu.com/ubuntu noble/universe amd64 fonts-tlwg-loma-otf all 1:0.7.3-1 [107 kB]
+2026-05-17T05:52:44.2536375Z Get:5 http://azure.archive.ubuntu.com/ubuntu noble/universe amd64 fonts-unifont all 1:15.1.01-1build1 [2993 kB]
+2026-05-17T05:52:44.3776535Z Get:6 http://azure.archive.ubuntu.com/ubuntu noble/universe amd64 fonts-wqy-zenhei all 0.9.45-8 [7472 kB]
+2026-05-17T05:52:44.6068358Z Get:7 http://azure.archive.ubuntu.com/ubuntu noble/main amd64 xfonts-encodings all 1:1.0.5-0ubuntu2 [578 kB]
+2026-05-17T05:52:44.6818967Z Get:8 http://azure.archive.ubuntu.com/ubuntu noble/main amd64 xfonts-utils amd64 1:7.7+6build3 [94.4 kB]
+2026-05-17T05:52:44.7479148Z Get:9 http://azure.archive.ubuntu.com/ubuntu noble/universe amd64 xfonts-cyrillic all 1:1.0.5+nmu1 [384 kB]
+2026-05-17T05:52:44.8187326Z Get:10 http://azure.archive.ubuntu.com/ubuntu noble/main amd64 xfonts-scalable all 1:1.0.3-1.3 [304 kB]
+2026-05-17T05:52:45.0864193Z Fetched 21.1 MB in 1s (20.1 MB/s)
+2026-05-17T05:52:45.1096877Z Selecting previously unselected package fonts-ipafont-gothic.
+2026-05-17T05:52:45.1373322Z (Reading database ... 
+2026-05-17T05:52:45.1373923Z (Reading database ... 5%
+2026-05-17T05:52:45.1374283Z (Reading database ... 10%
+2026-05-17T05:52:45.1374585Z (Reading database ... 15%
+2026-05-17T05:52:45.1374891Z (Reading database ... 20%
+2026-05-17T05:52:45.1375445Z (Reading database ... 25%
+2026-05-17T05:52:45.1375782Z (Reading database ... 30%
+2026-05-17T05:52:45.1376054Z (Reading database ... 35%
+2026-05-17T05:52:45.1376322Z (Reading database ... 40%
+2026-05-17T05:52:45.1376583Z (Reading database ... 45%
+2026-05-17T05:52:45.1376854Z (Reading database ... 50%
+2026-05-17T05:52:45.1425044Z (Reading database ... 55%
+2026-05-17T05:52:45.3150253Z (Reading database ... 60%
+2026-05-17T05:52:45.5177993Z (Reading database ... 65%
+2026-05-17T05:52:45.7078936Z (Reading database ... 70%
+2026-05-17T05:52:45.8684148Z (Reading database ... 75%
+2026-05-17T05:52:46.1133751Z (Reading database ... 80%
+2026-05-17T05:52:46.3035151Z (Reading database ... 85%
+2026-05-17T05:52:46.4611101Z (Reading database ... 90%
+2026-05-17T05:52:46.6672033Z (Reading database ... 95%
+2026-05-17T05:52:46.6672442Z (Reading database ... 100%
+2026-05-17T05:52:46.6672998Z (Reading database ... 202288 files and directories currently installed.)
+2026-05-17T05:52:46.6722230Z Preparing to unpack .../0-fonts-ipafont-gothic_00303-21ubuntu1_all.deb ...
+2026-05-17T05:52:46.7282799Z Unpacking fonts-ipafont-gothic (00303-21ubuntu1) ...
+2026-05-17T05:52:46.9606828Z Selecting previously unselected package fonts-freefont-ttf.
+2026-05-17T05:52:46.9734316Z Preparing to unpack .../1-fonts-freefont-ttf_20211204+svn4273-2_all.deb ...
+2026-05-17T05:52:46.9741799Z Unpacking fonts-freefont-ttf (20211204+svn4273-2) ...
+2026-05-17T05:52:47.0531891Z Selecting previously unselected package fonts-tlwg-loma-otf.
+2026-05-17T05:52:47.0662819Z Preparing to unpack .../2-fonts-tlwg-loma-otf_1%3a0.7.3-1_all.deb ...
+2026-05-17T05:52:47.0670955Z Unpacking fonts-tlwg-loma-otf (1:0.7.3-1) ...
+2026-05-17T05:52:47.0885985Z Selecting previously unselected package fonts-unifont.
+2026-05-17T05:52:47.1014732Z Preparing to unpack .../3-fonts-unifont_1%3a15.1.01-1build1_all.deb ...
+2026-05-17T05:52:47.1021709Z Unpacking fonts-unifont (1:15.1.01-1build1) ...
+2026-05-17T05:52:47.2052910Z Selecting previously unselected package fonts-wqy-zenhei.
+2026-05-17T05:52:47.2180408Z Preparing to unpack .../4-fonts-wqy-zenhei_0.9.45-8_all.deb ...
+2026-05-17T05:52:47.2280124Z Unpacking fonts-wqy-zenhei (0.9.45-8) ...
+2026-05-17T05:52:47.6881066Z Selecting previously unselected package xfonts-encodings.
+2026-05-17T05:52:47.7007030Z Preparing to unpack .../5-xfonts-encodings_1%3a1.0.5-0ubuntu2_all.deb ...
+2026-05-17T05:52:47.7015595Z Unpacking xfonts-encodings (1:1.0.5-0ubuntu2) ...
+2026-05-17T05:52:47.7318965Z Selecting previously unselected package xfonts-utils.
+2026-05-17T05:52:47.7446429Z Preparing to unpack .../6-xfonts-utils_1%3a7.7+6build3_amd64.deb ...
+2026-05-17T05:52:47.7453542Z Unpacking xfonts-utils (1:7.7+6build3) ...
+2026-05-17T05:52:47.8036147Z Selecting previously unselected package xfonts-cyrillic.
+2026-05-17T05:52:47.8164375Z Preparing to unpack .../7-xfonts-cyrillic_1%3a1.0.5+nmu1_all.deb ...
+2026-05-17T05:52:47.8172262Z Unpacking xfonts-cyrillic (1:1.0.5+nmu1) ...
+2026-05-17T05:52:47.8518937Z Selecting previously unselected package xfonts-scalable.
+2026-05-17T05:52:47.8646114Z Preparing to unpack .../8-xfonts-scalable_1%3a1.0.3-1.3_all.deb ...
+2026-05-17T05:52:47.8653114Z Unpacking xfonts-scalable (1:1.0.3-1.3) ...
+2026-05-17T05:52:47.9054755Z Setting up fonts-wqy-zenhei (0.9.45-8) ...
+2026-05-17T05:52:47.9169396Z Setting up fonts-freefont-ttf (20211204+svn4273-2) ...
+2026-05-17T05:52:47.9188377Z Setting up fonts-tlwg-loma-otf (1:0.7.3-1) ...
+2026-05-17T05:52:47.9208691Z Setting up xfonts-encodings (1:1.0.5-0ubuntu2) ...
+2026-05-17T05:52:47.9227638Z Setting up fonts-ipafont-gothic (00303-21ubuntu1) ...
+2026-05-17T05:52:47.9296418Z update-alternatives: using /usr/share/fonts/opentype/ipafont-gothic/ipag.ttf to provide /usr/share/fonts/truetype/fonts-japanese-gothic.ttf (fonts-japanese-gothic.ttf) in auto mode
+2026-05-17T05:52:47.9312627Z Setting up fonts-unifont (1:15.1.01-1build1) ...
+2026-05-17T05:52:47.9332002Z Setting up xfonts-utils (1:7.7+6build3) ...
+2026-05-17T05:52:47.9372376Z Setting up xfonts-cyrillic (1:1.0.5+nmu1) ...
+2026-05-17T05:52:47.9700545Z Setting up xfonts-scalable (1:1.0.3-1.3) ...
+2026-05-17T05:52:47.9978441Z Processing triggers for man-db (2.12.0-4build2) ...
+2026-05-17T05:52:47.9999026Z Not building database; man-db/auto-update is not 'true'.
+2026-05-17T05:52:48.0014587Z Processing triggers for fontconfig (2.15.0-1.1ubuntu2) ...
+2026-05-17T05:52:48.7906473Z 
+2026-05-17T05:52:48.7907416Z Running kernel seems to be up-to-date.
+2026-05-17T05:52:48.7907952Z 
+2026-05-17T05:52:48.7908273Z No services need to be restarted.
+2026-05-17T05:52:48.7908629Z 
+2026-05-17T05:52:48.7908985Z No containers need to be restarted.
+2026-05-17T05:52:48.7909378Z 
+2026-05-17T05:52:48.7909796Z No user sessions are running outdated binaries.
+2026-05-17T05:52:48.7910228Z 
+2026-05-17T05:52:48.7910832Z No VM guests are running outdated hypervisor (qemu) binaries on this host.
+2026-05-17T05:52:49.6959559Z Downloading Chrome for Testing 147.0.7727.15 (playwright chromium v1217) from https://cdn.playwright.dev/builds/cft/147.0.7727.15/linux64/chrome-linux64.zip
+2026-05-17T05:52:50.5273320Z |                                                                                |   0% of 170.4 MiB
+2026-05-17T05:52:50.7048033Z |■■■■■■■■                                                                        |  10% of 170.4 MiB
+2026-05-17T05:52:50.8253897Z |■■■■■■■■■■■■■■■■                                                                |  20% of 170.4 MiB
+2026-05-17T05:52:50.9551747Z |■■■■■■■■■■■■■■■■■■■■■■■■                                                        |  30% of 170.4 MiB
+2026-05-17T05:52:51.0764732Z |■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■                                                |  40% of 170.4 MiB
+2026-05-17T05:52:51.2297333Z |■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■                                        |  50% of 170.4 MiB
+2026-05-17T05:52:51.3935748Z |■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■                                |  60% of 170.4 MiB
+2026-05-17T05:52:51.5240799Z |■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■                        |  70% of 170.4 MiB
+2026-05-17T05:52:51.6516744Z |■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■                |  80% of 170.4 MiB
+2026-05-17T05:52:51.7752340Z |■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■        |  90% of 170.4 MiB
+2026-05-17T05:52:51.9208953Z |■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■| 100% of 170.4 MiB
+2026-05-17T05:52:55.2869183Z Chrome for Testing 147.0.7727.15 (playwright chromium v1217) downloaded to /home/runner/.cache/ms-playwright/chromium-1217
+2026-05-17T05:52:55.2872618Z Downloading FFmpeg (playwright ffmpeg v1011) from https://cdn.playwright.dev/dbazure/download/playwright/builds/ffmpeg/1011/ffmpeg-linux.zip
+2026-05-17T05:52:56.0432304Z |                                                                                |   0% of 2.3 MiB
+2026-05-17T05:52:56.0501809Z |■■■■■■■■                                                                        |  10% of 2.3 MiB
+2026-05-17T05:52:56.0528216Z |■■■■■■■■■■■■■■■■                                                                |  20% of 2.3 MiB
+2026-05-17T05:52:56.0550095Z |■■■■■■■■■■■■■■■■■■■■■■■■                                                        |  30% of 2.3 MiB
+2026-05-17T05:52:56.0573051Z |■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■                                                |  40% of 2.3 MiB
+2026-05-17T05:52:56.0596504Z |■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■                                        |  50% of 2.3 MiB
+2026-05-17T05:52:56.0620118Z |■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■                                |  60% of 2.3 MiB
+2026-05-17T05:52:56.0647235Z |■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■                        |  70% of 2.3 MiB
+2026-05-17T05:52:56.0668587Z |■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■                |  80% of 2.3 MiB
+2026-05-17T05:52:56.0689546Z |■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■        |  90% of 2.3 MiB
+2026-05-17T05:52:56.0708038Z |■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■| 100% of 2.3 MiB
+2026-05-17T05:52:56.1485011Z FFmpeg (playwright ffmpeg v1011) downloaded to /home/runner/.cache/ms-playwright/ffmpeg-1011
+2026-05-17T05:52:56.1489400Z Downloading Chrome Headless Shell 147.0.7727.15 (playwright chromium-headless-shell v1217) from https://cdn.playwright.dev/builds/cft/147.0.7727.15/linux64/chrome-headless-shell-linux64.zip
+2026-05-17T05:52:56.9692271Z |                                                                                |   0% of 112 MiB
+2026-05-17T05:52:57.1009190Z |■■■■■■■■                                                                        |  10% of 112 MiB
+2026-05-17T05:52:57.1855142Z |■■■■■■■■■■■■■■■■                                                                |  20% of 112 MiB
+2026-05-17T05:52:57.2791167Z |■■■■■■■■■■■■■■■■■■■■■■■■                                                        |  30% of 112 MiB
+2026-05-17T05:52:57.3899051Z |■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■                                                |  40% of 112 MiB
+2026-05-17T05:52:57.4946873Z |■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■                                        |  50% of 112 MiB
+2026-05-17T05:52:57.6037346Z |■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■                                |  60% of 112 MiB
+2026-05-17T05:52:57.7065769Z |■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■                        |  70% of 112 MiB
+2026-05-17T05:52:57.8083792Z |■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■                |  80% of 112 MiB
+2026-05-17T05:52:57.9166606Z |■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■        |  90% of 112 MiB
+2026-05-17T05:52:58.0170922Z |■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■| 100% of 112 MiB
+2026-05-17T05:53:00.4429471Z Chrome Headless Shell 147.0.7727.15 (playwright chromium-headless-shell v1217) downloaded to /home/runner/.cache/ms-playwright/chromium_headless_shell-1217
+2026-05-17T05:53:01.3712057Z Command completed after 1 attempt(s).
+2026-05-17T05:53:01.3712852Z ##[endgroup]
+2026-05-17T05:53:01.3804564Z ##[group]Run SLUGS=""
+2026-05-17T05:53:01.3804834Z [36;1mSLUGS=""[0m
+2026-05-17T05:53:01.3805025Z [36;1mFLAGS=""[0m
+2026-05-17T05:53:01.3805547Z [36;1mif [ "false" = "true" ]; then[0m
+2026-05-17T05:53:01.3805890Z [36;1m  FLAGS="--dry-run"[0m
+2026-05-17T05:53:01.3806099Z [36;1mfi[0m
+2026-05-17T05:53:01.3806283Z [36;1mif [ "false" = "true" ]; then[0m
+2026-05-17T05:53:01.3806536Z [36;1m  FLAGS="--dry-run-parse"[0m
+2026-05-17T05:53:01.3806765Z [36;1mfi[0m
+2026-05-17T05:53:01.3807028Z [36;1m# Empty SLUGS means "all companies in sequence" (default).[0m
+2026-05-17T05:53:01.3807360Z [36;1mif [ -z "$SLUGS" ]; then[0m
+2026-05-17T05:53:01.3807654Z [36;1m  pnpm --filter @prodmatch/crawler start -- $FLAGS[0m
+2026-05-17T05:53:01.3807949Z [36;1melse[0m
+2026-05-17T05:53:01.3808236Z [36;1m  pnpm --filter @prodmatch/crawler start -- --slugs="$SLUGS" $FLAGS[0m
+2026-05-17T05:53:01.3808585Z [36;1mfi[0m
+2026-05-17T05:53:01.3841946Z shell: /usr/bin/bash -e {0}
+2026-05-17T05:53:01.3842220Z env:
+2026-05-17T05:53:01.3842409Z   CRAWL_RUN_ID: 25982828171-1
+2026-05-17T05:53:01.3842702Z   PNPM_HOME: /home/runner/setup-pnpm/node_modules/.bin
+2026-05-17T05:53:01.3843185Z   SUPABASE_URL: ***
+2026-05-17T05:53:01.3844630Z   SUPABASE_SERVICE_ROLE_KEY: ***
+2026-05-17T05:53:01.3845755Z   GEMINI_API_KEY: ***
+2026-05-17T05:53:01.3845988Z   CRAWL_ALERT_WEBHOOK_URL: 
+2026-05-17T05:53:01.3846220Z ##[endgroup]
+2026-05-17T05:53:01.8195534Z 
+2026-05-17T05:53:01.8196873Z > @prodmatch/crawler@0.1.0 start /home/runner/work/productcompanies/productcompanies/packages/crawler
+2026-05-17T05:53:01.8197843Z > tsx index.ts "--"
+2026-05-17T05:53:01.8198070Z 
+2026-05-17T05:53:02.6379737Z {"ts":"2026-05-17T05:53:02.637Z","level":"info","runId":"25982828171-1","company":null,"msg":"Starting crawl for: google, microsoft, meta, amazon, apple, atlassian, nvidia, oracle, salesforce, sap-labs, razorpay, phonepe, zerodha, cred, groww, swiggy, zomato, flipkart","event":"crawl_start","data":{"slugs":["google","microsoft","meta","amazon","apple","atlassian","nvidia","oracle","salesforce","sap-labs","razorpay","phonepe","zerodha","cred","groww","swiggy","zomato","flipkart"],"dryRun":false,"dryParse":false,"perCompanyTimeoutMs":2700000}}
+2026-05-17T05:53:02.6384681Z {"ts":"2026-05-17T05:53:02.637Z","level":"info","runId":"25982828171-1","company":null,"msg":"Detected 3 Gemini API key(s) — worker pool will rotate.","event":"keys_loaded","data":{"keyCount":3}}
+2026-05-17T05:53:05.7278429Z {"ts":"2026-05-17T05:53:05.726Z","level":"info","runId":"25982828171-1","company":"google","msg":"Crawling…","event":"company_start"}
+2026-05-17T05:53:05.7280161Z {"ts":"2026-05-17T05:53:05.727Z","level":"info","runId":"25982828171-1","company":"google","msg":"Loading page 1..."}
+2026-05-17T05:53:09.8674912Z {"ts":"2026-05-17T05:53:09.867Z","level":"info","runId":"25982828171-1","company":"google","msg":"Page 1: 20 jobs (total so far: 20)"}
+2026-05-17T05:53:11.3677744Z {"ts":"2026-05-17T05:53:11.367Z","level":"info","runId":"25982828171-1","company":"google","msg":"Loading page 2..."}
+2026-05-17T05:53:14.9141791Z {"ts":"2026-05-17T05:53:14.913Z","level":"info","runId":"25982828171-1","company":"google","msg":"Page 2: 20 jobs (total so far: 40)"}
+2026-05-17T05:53:16.4162912Z {"ts":"2026-05-17T05:53:16.415Z","level":"info","runId":"25982828171-1","company":"google","msg":"Loading page 3..."}
+2026-05-17T05:53:19.6361535Z {"ts":"2026-05-17T05:53:19.635Z","level":"info","runId":"25982828171-1","company":"google","msg":"Page 3: 20 jobs (total so far: 60)"}
+2026-05-17T05:53:21.1382309Z {"ts":"2026-05-17T05:53:21.137Z","level":"info","runId":"25982828171-1","company":"google","msg":"Loading page 4..."}
+2026-05-17T05:53:24.3486091Z {"ts":"2026-05-17T05:53:24.348Z","level":"info","runId":"25982828171-1","company":"google","msg":"Page 4: 20 jobs (total so far: 80)"}
+2026-05-17T05:53:25.8499000Z {"ts":"2026-05-17T05:53:25.849Z","level":"info","runId":"25982828171-1","company":"google","msg":"Loading page 5..."}
+2026-05-17T05:53:29.0416187Z {"ts":"2026-05-17T05:53:29.041Z","level":"info","runId":"25982828171-1","company":"google","msg":"Page 5: 20 jobs (total so far: 100)"}
+2026-05-17T05:53:30.5424089Z {"ts":"2026-05-17T05:53:30.542Z","level":"info","runId":"25982828171-1","company":"google","msg":"Loading page 6..."}
+2026-05-17T05:53:33.7774301Z {"ts":"2026-05-17T05:53:33.777Z","level":"info","runId":"25982828171-1","company":"google","msg":"Page 6: 20 jobs (total so far: 120)"}
+2026-05-17T05:53:35.2789610Z {"ts":"2026-05-17T05:53:35.278Z","level":"info","runId":"25982828171-1","company":"google","msg":"Loading page 7..."}
+2026-05-17T05:53:38.5089621Z {"ts":"2026-05-17T05:53:38.508Z","level":"info","runId":"25982828171-1","company":"google","msg":"Page 7: 20 jobs (total so far: 140)"}
+2026-05-17T05:53:40.0112153Z {"ts":"2026-05-17T05:53:40.010Z","level":"info","runId":"25982828171-1","company":"google","msg":"Loading page 8..."}
+2026-05-17T05:53:43.2456249Z {"ts":"2026-05-17T05:53:43.245Z","level":"info","runId":"25982828171-1","company":"google","msg":"Page 8: 20 jobs (total so far: 160)"}
+2026-05-17T05:53:44.7467417Z {"ts":"2026-05-17T05:53:44.746Z","level":"info","runId":"25982828171-1","company":"google","msg":"Loading page 9..."}
+2026-05-17T05:53:47.9545842Z {"ts":"2026-05-17T05:53:47.954Z","level":"info","runId":"25982828171-1","company":"google","msg":"Page 9: 20 jobs (total so far: 180)"}
+2026-05-17T05:53:49.4560606Z {"ts":"2026-05-17T05:53:49.455Z","level":"info","runId":"25982828171-1","company":"google","msg":"Loading page 10..."}
+2026-05-17T05:53:52.7276452Z {"ts":"2026-05-17T05:53:52.727Z","level":"info","runId":"25982828171-1","company":"google","msg":"Page 10: 20 jobs (total so far: 200)"}
+2026-05-17T05:53:54.2292075Z {"ts":"2026-05-17T05:53:54.228Z","level":"info","runId":"25982828171-1","company":"google","msg":"Loading page 11..."}
+2026-05-17T05:53:57.4666781Z {"ts":"2026-05-17T05:53:57.466Z","level":"info","runId":"25982828171-1","company":"google","msg":"Page 11: 20 jobs (total so far: 220)"}
+2026-05-17T05:53:58.9674844Z {"ts":"2026-05-17T05:53:58.967Z","level":"info","runId":"25982828171-1","company":"google","msg":"Loading page 12..."}
+2026-05-17T05:54:02.1414773Z {"ts":"2026-05-17T05:54:02.141Z","level":"info","runId":"25982828171-1","company":"google","msg":"Page 12: 20 jobs (total so far: 240)"}
+2026-05-17T05:54:03.6431062Z {"ts":"2026-05-17T05:54:03.642Z","level":"info","runId":"25982828171-1","company":"google","msg":"Loading page 13..."}
+2026-05-17T05:54:06.8441018Z {"ts":"2026-05-17T05:54:06.843Z","level":"info","runId":"25982828171-1","company":"google","msg":"Page 13: 20 jobs (total so far: 260)"}
+2026-05-17T05:54:08.3454078Z {"ts":"2026-05-17T05:54:08.345Z","level":"info","runId":"25982828171-1","company":"google","msg":"Loading page 14..."}
+2026-05-17T05:54:12.3820420Z {"ts":"2026-05-17T05:54:12.381Z","level":"info","runId":"25982828171-1","company":"google","msg":"Page 14: 20 jobs (total so far: 280)"}
+2026-05-17T05:54:13.8844130Z {"ts":"2026-05-17T05:54:13.883Z","level":"info","runId":"25982828171-1","company":"google","msg":"Loading page 15..."}
+2026-05-17T05:54:17.1228231Z {"ts":"2026-05-17T05:54:17.122Z","level":"info","runId":"25982828171-1","company":"google","msg":"Page 15: 20 jobs (total so far: 300)"}
+2026-05-17T05:54:18.6251498Z {"ts":"2026-05-17T05:54:18.624Z","level":"info","runId":"25982828171-1","company":"google","msg":"Loading page 16..."}
+2026-05-17T05:54:21.8560322Z {"ts":"2026-05-17T05:54:21.855Z","level":"info","runId":"25982828171-1","company":"google","msg":"Page 16: 20 jobs (total so far: 320)"}
+2026-05-17T05:54:23.3576048Z {"ts":"2026-05-17T05:54:23.357Z","level":"info","runId":"25982828171-1","company":"google","msg":"Loading page 17..."}
+2026-05-17T05:54:26.5970036Z {"ts":"2026-05-17T05:54:26.596Z","level":"info","runId":"25982828171-1","company":"google","msg":"Page 17: 20 jobs (total so far: 340)"}
+2026-05-17T05:54:28.0986906Z {"ts":"2026-05-17T05:54:28.098Z","level":"info","runId":"25982828171-1","company":"google","msg":"Loading page 18..."}
+2026-05-17T05:55:01.2363071Z {"ts":"2026-05-17T05:55:01.235Z","level":"info","runId":"25982828171-1","company":"google","msg":"Page 18: 20 jobs (total so far: 360)"}
+2026-05-17T05:55:02.7362244Z {"ts":"2026-05-17T05:55:02.735Z","level":"info","runId":"25982828171-1","company":"google","msg":"Loading page 19..."}
+2026-05-17T05:55:06.1083657Z {"ts":"2026-05-17T05:55:06.108Z","level":"info","runId":"25982828171-1","company":"google","msg":"Page 19: 7 jobs (total so far: 367)"}
+2026-05-17T05:55:07.6095025Z {"ts":"2026-05-17T05:55:07.609Z","level":"info","runId":"25982828171-1","company":"google","msg":"Loading page 20..."}
+2026-05-17T05:55:10.8216074Z {"ts":"2026-05-17T05:55:10.821Z","level":"info","runId":"25982828171-1","company":"google","msg":"No new jobs on page 20, stopping"}
+2026-05-17T05:55:10.8217123Z {"ts":"2026-05-17T05:55:10.821Z","level":"info","runId":"25982828171-1","company":"google","msg":"Total: 367 India jobs"}
+2026-05-17T05:55:32.1947598Z {"ts":"2026-05-17T05:55:32.194Z","level":"info","runId":"25982828171-1","company":"google","msg":"  enrich progress: 25/367 | ok=25 err=0"}
+2026-05-17T05:55:50.7449023Z {"ts":"2026-05-17T05:55:50.744Z","level":"info","runId":"25982828171-1","company":"google","msg":"  enrich progress: 50/367 | ok=50 err=0"}
+2026-05-17T05:56:08.0328355Z {"ts":"2026-05-17T05:56:08.032Z","level":"info","runId":"25982828171-1","company":"google","msg":"  enrich progress: 75/367 | ok=75 err=0"}
+2026-05-17T05:56:25.4654076Z {"ts":"2026-05-17T05:56:25.465Z","level":"info","runId":"25982828171-1","company":"google","msg":"  enrich progress: 100/367 | ok=100 err=0"}
+2026-05-17T05:56:42.3724646Z {"ts":"2026-05-17T05:56:42.372Z","level":"info","runId":"25982828171-1","company":"google","msg":"  enrich progress: 125/367 | ok=125 err=0"}
+2026-05-17T05:57:00.3477173Z {"ts":"2026-05-17T05:57:00.347Z","level":"info","runId":"25982828171-1","company":"google","msg":"  enrich progress: 150/367 | ok=150 err=0"}
+2026-05-17T05:57:17.3922513Z {"ts":"2026-05-17T05:57:17.391Z","level":"info","runId":"25982828171-1","company":"google","msg":"  enrich progress: 175/367 | ok=175 err=0"}
+2026-05-17T05:57:35.7661425Z {"ts":"2026-05-17T05:57:35.765Z","level":"info","runId":"25982828171-1","company":"google","msg":"  enrich progress: 200/367 | ok=200 err=0"}
+2026-05-17T05:57:52.8806447Z {"ts":"2026-05-17T05:57:52.880Z","level":"info","runId":"25982828171-1","company":"google","msg":"  enrich progress: 225/367 | ok=225 err=0"}
+2026-05-17T05:58:10.8524465Z {"ts":"2026-05-17T05:58:10.852Z","level":"info","runId":"25982828171-1","company":"google","msg":"  enrich progress: 250/367 | ok=250 err=0"}
+2026-05-17T05:58:27.9875145Z {"ts":"2026-05-17T05:58:27.987Z","level":"info","runId":"25982828171-1","company":"google","msg":"  enrich progress: 275/367 | ok=275 err=0"}
+2026-05-17T05:58:46.6089556Z {"ts":"2026-05-17T05:58:46.608Z","level":"info","runId":"25982828171-1","company":"google","msg":"  enrich progress: 300/367 | ok=300 err=0"}
+2026-05-17T05:59:03.5714031Z {"ts":"2026-05-17T05:59:03.571Z","level":"info","runId":"25982828171-1","company":"google","msg":"  enrich progress: 325/367 | ok=325 err=0"}
+2026-05-17T05:59:21.6771515Z {"ts":"2026-05-17T05:59:21.676Z","level":"info","runId":"25982828171-1","company":"google","msg":"  enrich progress: 350/367 | ok=350 err=0"}
+2026-05-17T05:59:33.1566836Z {"ts":"2026-05-17T05:59:33.156Z","level":"info","runId":"25982828171-1","company":"google","msg":"Enriched descriptions: 367/367 | errors=0 | 262s"}
+2026-05-17T05:59:33.1568995Z {"ts":"2026-05-17T05:59:33.156Z","level":"info","runId":"25982828171-1","company":"google","msg":"Scraped 367 raw jobs in 387s","event":"scrape_done","data":{"rawCount":367}}
+2026-05-17T05:59:33.4097403Z {"ts":"2026-05-17T05:59:33.409Z","level":"info","runId":"25982828171-1","company":"google","msg":"366 India jobs after normalization","event":"normalize_done","data":{"kept":366,"dropped":1}}
+2026-05-17T05:59:35.3687939Z {"ts":"2026-05-17T05:59:35.368Z","level":"info","runId":"25982828171-1","company":"google","msg":"Parse decision: 0 to parse, 348 skip (already parsed, unchanged), 18 rejected (non-engineering title)"}
+2026-05-17T05:59:44.9300630Z {"ts":"2026-05-17T05:59:44.929Z","level":"info","runId":"25982828171-1","company":"google","msg":"Inserted: 0, Updated: 348, Stale: 0, Rejected: 18","event":"company_done","data":{"inserted":0,"updated":348,"stale":0,"parseOk":0,"parseErr":0,"skippedBudget":0,"skippedQuota":0,"rejectedNonEng":18,"coverageSkipped":false,"elapsedMs":399203}}
+2026-05-17T05:59:45.3261287Z {"ts":"2026-05-17T05:59:45.325Z","level":"info","runId":"25982828171-1","company":"microsoft","msg":"Crawling…","event":"company_start"}
+2026-05-17T05:59:45.3264424Z {"ts":"2026-05-17T05:59:45.326Z","level":"info","runId":"25982828171-1","company":"microsoft","msg":"Fetching start=0 / ?..."}
+2026-05-17T05:59:46.1581401Z {"ts":"2026-05-17T05:59:46.157Z","level":"info","runId":"25982828171-1","company":"microsoft","msg":"Fetching start=10 / 165..."}
+2026-05-17T05:59:46.8808031Z {"ts":"2026-05-17T05:59:46.880Z","level":"info","runId":"25982828171-1","company":"microsoft","msg":"Fetching start=20 / 165..."}
+2026-05-17T05:59:47.5976000Z {"ts":"2026-05-17T05:59:47.597Z","level":"info","runId":"25982828171-1","company":"microsoft","msg":"Fetching start=30 / 165..."}
+2026-05-17T05:59:48.3449932Z {"ts":"2026-05-17T05:59:48.344Z","level":"info","runId":"25982828171-1","company":"microsoft","msg":"Fetching start=40 / 165..."}
+2026-05-17T05:59:49.0065162Z {"ts":"2026-05-17T05:59:49.006Z","level":"info","runId":"25982828171-1","company":"microsoft","msg":"Fetching start=50 / 165..."}
+2026-05-17T05:59:49.6839164Z {"ts":"2026-05-17T05:59:49.683Z","level":"info","runId":"25982828171-1","company":"microsoft","msg":"Fetching start=60 / 165..."}
+2026-05-17T05:59:50.3965802Z {"ts":"2026-05-17T05:59:50.396Z","level":"info","runId":"25982828171-1","company":"microsoft","msg":"Fetching start=70 / 165..."}
+2026-05-17T05:59:51.1414717Z {"ts":"2026-05-17T05:59:51.141Z","level":"info","runId":"25982828171-1","company":"microsoft","msg":"Fetching start=80 / 165..."}
+2026-05-17T05:59:51.8559646Z {"ts":"2026-05-17T05:59:51.855Z","level":"info","runId":"25982828171-1","company":"microsoft","msg":"Fetching start=90 / 165..."}
+2026-05-17T05:59:52.5730918Z {"ts":"2026-05-17T05:59:52.572Z","level":"info","runId":"25982828171-1","company":"microsoft","msg":"Fetching start=100 / 165..."}
+2026-05-17T05:59:53.6144458Z {"ts":"2026-05-17T05:59:53.614Z","level":"info","runId":"25982828171-1","company":"microsoft","msg":"Fetching start=110 / 165..."}
+2026-05-17T05:59:54.3080192Z {"ts":"2026-05-17T05:59:54.307Z","level":"info","runId":"25982828171-1","company":"microsoft","msg":"Fetching start=120 / 165..."}
+2026-05-17T05:59:55.0056440Z {"ts":"2026-05-17T05:59:55.005Z","level":"info","runId":"25982828171-1","company":"microsoft","msg":"Fetching start=130 / 165..."}
+2026-05-17T05:59:55.7444789Z {"ts":"2026-05-17T05:59:55.744Z","level":"info","runId":"25982828171-1","company":"microsoft","msg":"Fetching start=140 / 165..."}
+2026-05-17T05:59:56.5037930Z {"ts":"2026-05-17T05:59:56.503Z","level":"info","runId":"25982828171-1","company":"microsoft","msg":"Fetching start=150 / 165..."}
+2026-05-17T05:59:57.2703125Z {"ts":"2026-05-17T05:59:57.270Z","level":"info","runId":"25982828171-1","company":"microsoft","msg":"Fetching start=160 / 165..."}
+2026-05-17T05:59:57.4818140Z {"ts":"2026-05-17T05:59:57.481Z","level":"info","runId":"25982828171-1","company":"microsoft","msg":"Total: 165 India jobs"}
+2026-05-17T06:00:34.3139038Z {"ts":"2026-05-17T06:00:34.313Z","level":"info","runId":"25982828171-1","company":"microsoft","msg":"  enrich progress: 25/165 | ok=25 err=0"}
+2026-05-17T06:01:07.5796850Z {"ts":"2026-05-17T06:01:07.579Z","level":"info","runId":"25982828171-1","company":"microsoft","msg":"  enrich progress: 50/165 | ok=50 err=0"}
+2026-05-17T06:01:30.4194632Z {"ts":"2026-05-17T06:01:30.419Z","level":"info","runId":"25982828171-1","company":"microsoft","msg":"  enrich progress: 75/165 | ok=60 err=0"}
+2026-05-17T06:01:44.4669750Z {"ts":"2026-05-17T06:01:44.466Z","level":"info","runId":"25982828171-1","company":"microsoft","msg":"  enrich progress: 100/165 | ok=60 err=0"}
+2026-05-17T06:01:58.4715741Z {"ts":"2026-05-17T06:01:58.471Z","level":"info","runId":"25982828171-1","company":"microsoft","msg":"  enrich progress: 125/165 | ok=60 err=0"}
+2026-05-17T06:02:12.2458788Z {"ts":"2026-05-17T06:02:12.245Z","level":"info","runId":"25982828171-1","company":"microsoft","msg":"  enrich progress: 150/165 | ok=60 err=0"}
+2026-05-17T06:02:21.4241381Z {"ts":"2026-05-17T06:02:21.423Z","level":"info","runId":"25982828171-1","company":"microsoft","msg":"Enriched descriptions: 60/165 | errors=0 | 144s"}
+2026-05-17T06:02:21.4257239Z {"ts":"2026-05-17T06:02:21.424Z","level":"info","runId":"25982828171-1","company":"microsoft","msg":"Scraped 165 raw jobs in 156s","event":"scrape_done","data":{"rawCount":165}}
+2026-05-17T06:02:21.5197707Z {"ts":"2026-05-17T06:02:21.519Z","level":"info","runId":"25982828171-1","company":"microsoft","msg":"165 India jobs after normalization","event":"normalize_done","data":{"kept":165,"dropped":0}}
+2026-05-17T06:02:22.3446707Z {"ts":"2026-05-17T06:02:22.344Z","level":"info","runId":"25982828171-1","company":"microsoft","msg":"Parse decision: 138 to parse, 24 skip (already parsed, unchanged), 3 rejected (non-engineering title)"}
+2026-05-17T06:02:22.3451725Z {"ts":"2026-05-17T06:02:22.344Z","level":"info","runId":"25982828171-1","company":"microsoft","msg":"Parsing 138 JDs with 3 workers across 3 keys (budget=10000/run)…"}
+2026-05-17T06:13:04.2028755Z {"ts":"2026-05-17T06:13:04.202Z","level":"info","runId":"25982828171-1","company":"microsoft","msg":"  parse: 25/138 ok=25 err=0"}
+2026-05-17T06:25:03.7501794Z {"ts":"2026-05-17T06:25:03.749Z","level":"info","runId":"25982828171-1","company":"microsoft","msg":"  parse: 50/138 ok=42 err=8"}
+2026-05-17T06:33:03.9563459Z {"ts":"2026-05-17T06:33:03.956Z","level":"info","runId":"25982828171-1","company":"microsoft","msg":"  parse: 75/138 ok=47 err=28"}
+2026-05-17T06:39:03.9687403Z {"ts":"2026-05-17T06:39:03.968Z","level":"warn","runId":"25982828171-1","company":"microsoft","msg":"Gemini daily quota exhausted after 47 parse(s). 42 job(s) deferred — will be retried next crawl.","event":"midrun_quota_bail","data":{"successes":47,"deferred":42}}
+2026-05-17T06:40:04.0330436Z {"ts":"2026-05-17T06:40:04.032Z","level":"warn","runId":"25982828171-1","company":"microsoft","msg":"  parse err [Consultant - Apps Full Stack Engineer]: quota_disabled"}
+2026-05-17T06:40:04.0331977Z {"ts":"2026-05-17T06:40:04.032Z","level":"warn","runId":"25982828171-1","company":"microsoft","msg":"  parse err [Senior Software Engineer -AI/ML]: quota_disabled"}
+2026-05-17T06:40:04.0333360Z {"ts":"2026-05-17T06:40:04.032Z","level":"info","runId":"25982828171-1","company":"microsoft","msg":"Parse done: ok=47 err=49 quota_skip=42 | 2262s (Microsoft)"}
+2026-05-17T06:40:04.0334660Z {"ts":"2026-05-17T06:40:04.032Z","level":"warn","runId":"25982828171-1","company":"microsoft","msg":"  parse err [Software Engineer II]: quota_disabled"}
+2026-05-17T06:40:04.0336237Z {"ts":"2026-05-17T06:40:04.032Z","level":"warn","runId":"25982828171-1","company":"microsoft","msg":"  parse err [Service Engineering IC3]: quota_disabled"}
+2026-05-17T06:40:04.0338307Z {"ts":"2026-05-17T06:40:04.032Z","level":"warn","runId":"25982828171-1","company":"microsoft","msg":"  parse err [Data Scientist 2]: quota_disabled"}
+2026-05-17T06:40:04.0340450Z {"ts":"2026-05-17T06:40:04.033Z","level":"info","runId":"25982828171-1","company":"microsoft","msg":"Embedding 47 JDs in batches of 100…"}
+2026-05-17T06:40:16.7245967Z {"ts":"2026-05-17T06:40:16.724Z","level":"info","runId":"25982828171-1","company":"microsoft","msg":"  embed: 47/47"}
+2026-05-17T06:40:16.7247062Z {"ts":"2026-05-17T06:40:16.724Z","level":"info","runId":"25982828171-1","company":"microsoft","msg":"Embed done: 47/47 | 13s"}
+2026-05-17T06:40:18.5857898Z {"ts":"2026-05-17T06:40:18.585Z","level":"warn","runId":"25982828171-1","company":null,"msg":"upsert: dropped 1 in-batch signature duplicate(s) (same content, different external_id)","event":"upsert_sig_dup","data":{"dropped":1,"batchSize":50}}
+2026-05-17T06:40:21.9269291Z {"ts":"2026-05-17T06:40:21.926Z","level":"warn","runId":"25982828171-1","company":null,"msg":"Bulk update failed: null value in column \"must_have_skills\" of relation \"jobs\" violates not-null constraint — falling back to per-row","event":"bulk_upsert_error","data":{"kind":"update","batchSize":42,"error":"null value in column \"must_have_skills\" of relation \"jobs\" violates not-null constraint","sigCollision":false}}
+2026-05-17T06:40:36.5736857Z {"ts":"2026-05-17T06:40:36.573Z","level":"info","runId":"25982828171-1","company":null,"msg":"Per-row recovery: 42/42 updates succeeded","event":"bulk_upsert_recovered","data":{"kind":"update","recovered":42,"total":42,"sigSkipped":0}}
+2026-05-17T06:40:37.2072264Z {"ts":"2026-05-17T06:40:37.206Z","level":"warn","runId":"25982828171-1","company":null,"msg":"Bulk insert failed: duplicate key value violates unique constraint \"ux_jobs_company_signature\" — falling back to per-row","event":"bulk_upsert_error","data":{"kind":"insert","batchSize":7,"error":"duplicate key value violates unique constraint \"ux_jobs_company_signature\"","sigCollision":true}}
+2026-05-17T06:40:39.2436348Z {"ts":"2026-05-17T06:40:39.243Z","level":"info","runId":"25982828171-1","company":null,"msg":"Per-row recovery: 2/7 inserts succeeded (skipped 5 signature-collisions)","event":"bulk_upsert_recovered","data":{"kind":"insert","recovered":2,"total":7,"sigSkipped":5}}
+2026-05-17T06:40:40.9478535Z {"ts":"2026-05-17T06:40:40.947Z","level":"warn","runId":"25982828171-1","company":null,"msg":"Bulk update failed: null value in column \"must_have_skills\" of relation \"jobs\" violates not-null constraint — falling back to per-row","event":"bulk_upsert_error","data":{"kind":"update","batchSize":46,"error":"null value in column \"must_have_skills\" of relation \"jobs\" violates not-null constraint","sigCollision":false}}
+2026-05-17T06:40:53.0710607Z {"ts":"2026-05-17T06:40:53.070Z","level":"info","runId":"25982828171-1","company":null,"msg":"Per-row recovery: 45/46 updates succeeded (skipped 1 signature-collisions)","event":"bulk_upsert_recovered","data":{"kind":"update","recovered":45,"total":46,"sigSkipped":1}}
+2026-05-17T06:40:56.9941342Z {"ts":"2026-05-17T06:40:56.993Z","level":"warn","runId":"25982828171-1","company":null,"msg":"Bulk update failed: duplicate key value violates unique constraint \"ux_jobs_company_signature\" — falling back to per-row","event":"bulk_upsert_error","data":{"kind":"update","batchSize":37,"error":"duplicate key value violates unique constraint \"ux_jobs_company_signature\"","sigCollision":true}}
+2026-05-17T06:41:06.5047894Z {"ts":"2026-05-17T06:41:06.504Z","level":"info","runId":"25982828171-1","company":null,"msg":"Per-row recovery: 33/37 updates succeeded (skipped 4 signature-collisions)","event":"bulk_upsert_recovered","data":{"kind":"update","recovered":33,"total":37,"sigSkipped":4}}
+2026-05-17T06:41:06.7689417Z {"ts":"2026-05-17T06:41:06.768Z","level":"warn","runId":"25982828171-1","company":null,"msg":"Bulk insert failed: duplicate key value violates unique constraint \"ux_jobs_company_signature\" — falling back to per-row","event":"bulk_upsert_error","data":{"kind":"insert","batchSize":2,"error":"duplicate key value violates unique constraint \"ux_jobs_company_signature\"","sigCollision":true}}
+2026-05-17T06:41:07.2776789Z {"ts":"2026-05-17T06:41:07.277Z","level":"info","runId":"25982828171-1","company":null,"msg":"Per-row recovery: 1/2 inserts succeeded (skipped 1 signature-collisions)","event":"bulk_upsert_recovered","data":{"kind":"insert","recovered":1,"total":2,"sigSkipped":1}}
+2026-05-17T06:41:08.5992948Z {"ts":"2026-05-17T06:41:08.598Z","level":"warn","runId":"25982828171-1","company":null,"msg":"Bulk update failed: duplicate key value violates unique constraint \"ux_jobs_company_signature\" — falling back to per-row","event":"bulk_upsert_error","data":{"kind":"update","batchSize":10,"error":"duplicate key value violates unique constraint \"ux_jobs_company_signature\"","sigCollision":true}}
+2026-05-17T06:41:11.1891639Z {"ts":"2026-05-17T06:41:11.188Z","level":"info","runId":"25982828171-1","company":null,"msg":"Per-row recovery: 7/10 updates succeeded (skipped 3 signature-collisions)","event":"bulk_upsert_recovered","data":{"kind":"update","recovered":7,"total":10,"sigSkipped":3}}
+2026-05-17T06:41:11.7181162Z {"ts":"2026-05-17T06:41:11.717Z","level":"info","runId":"25982828171-1","company":"microsoft","msg":"Inserted: 5, Updated: 142, Stale: 4, Rejected: 3, deferred: 42","event":"company_done","data":{"inserted":5,"updated":142,"stale":4,"parseOk":47,"parseErr":49,"skippedBudget":0,"skippedQuota":42,"rejectedNonEng":3,"coverageSkipped":false,"elapsedMs":2486392}}
+2026-05-17T06:41:12.1220063Z {"ts":"2026-05-17T06:41:12.121Z","level":"info","runId":"25982828171-1","company":"meta","msg":"Crawling…","event":"company_start"}
+2026-05-17T06:41:12.1232953Z {"ts":"2026-05-17T06:41:12.123Z","level":"info","runId":"25982828171-1","company":"meta","msg":"Loading India jobs page..."}
+2026-05-17T06:41:19.6980810Z {"ts":"2026-05-17T06:41:19.697Z","level":"info","runId":"25982828171-1","company":"meta","msg":"Total: 9 India jobs"}
+2026-05-17T06:41:40.1876975Z {"ts":"2026-05-17T06:41:40.185Z","level":"info","runId":"25982828171-1","company":"meta","msg":"Enriched descriptions: 9/9 | errors=0 | 20s"}
+2026-05-17T06:41:40.1879101Z {"ts":"2026-05-17T06:41:40.185Z","level":"info","runId":"25982828171-1","company":"meta","msg":"Scraped 9 raw jobs in 28s","event":"scrape_done","data":{"rawCount":9}}
+2026-05-17T06:41:40.1977138Z {"ts":"2026-05-17T06:41:40.197Z","level":"info","runId":"25982828171-1","company":"meta","msg":"9 India jobs after normalization","event":"normalize_done","data":{"kept":9,"dropped":0}}
+2026-05-17T06:41:40.4833541Z {"ts":"2026-05-17T06:41:40.483Z","level":"info","runId":"25982828171-1","company":"meta","msg":"Parse decision: 1 to parse, 5 skip (already parsed, unchanged), 3 rejected (non-engineering title)"}
+2026-05-17T06:41:40.4836363Z {"ts":"2026-05-17T06:41:40.483Z","level":"info","runId":"25982828171-1","company":"meta","msg":"Parsing 1 JD with 3 workers across 3 keys (budget=10000/run)…"}
+2026-05-17T06:42:34.6175763Z {"ts":"2026-05-17T06:42:34.617Z","level":"warn","runId":"25982828171-1","company":"meta","msg":"  parse err [Enterprise Technical Sales Specialist, APAC]: quota_disabled"}
+2026-05-17T06:42:34.6177850Z {"ts":"2026-05-17T06:42:34.617Z","level":"info","runId":"25982828171-1","company":"meta","msg":"  parse: 1/1 ok=0 err=1"}
+2026-05-17T06:42:34.6179396Z {"ts":"2026-05-17T06:42:34.617Z","level":"info","runId":"25982828171-1","company":"meta","msg":"Parse done: ok=0 err=1 | 54s (Meta)"}
+2026-05-17T06:42:35.9252151Z {"ts":"2026-05-17T06:42:35.924Z","level":"warn","runId":"25982828171-1","company":null,"msg":"Bulk update failed: duplicate key value violates unique constraint \"ux_jobs_company_signature\" — falling back to per-row","event":"bulk_upsert_error","data":{"kind":"update","batchSize":5,"error":"duplicate key value violates unique constraint \"ux_jobs_company_signature\"","sigCollision":true}}
+2026-05-17T06:42:37.3128117Z {"ts":"2026-05-17T06:42:37.312Z","level":"info","runId":"25982828171-1","company":null,"msg":"Per-row recovery: 4/5 updates succeeded (skipped 1 signature-collisions)","event":"bulk_upsert_recovered","data":{"kind":"update","recovered":4,"total":5,"sigSkipped":1}}
+2026-05-17T06:42:37.8268833Z {"ts":"2026-05-17T06:42:37.826Z","level":"info","runId":"25982828171-1","company":"meta","msg":"Inserted: 0, Updated: 5, Stale: 0, Rejected: 3","event":"company_done","data":{"inserted":0,"updated":5,"stale":0,"parseOk":0,"parseErr":1,"skippedBudget":0,"skippedQuota":0,"rejectedNonEng":3,"coverageSkipped":false,"elapsedMs":85705}}
+2026-05-17T06:42:38.2200475Z {"ts":"2026-05-17T06:42:38.219Z","level":"info","runId":"25982828171-1","company":"amazon","msg":"Crawling…","event":"company_start"}
+2026-05-17T06:42:38.2202702Z {"ts":"2026-05-17T06:42:38.220Z","level":"info","runId":"25982828171-1","company":"amazon","msg":"Fetching offset 0 / ?..."}
+2026-05-17T06:42:40.2903171Z {"ts":"2026-05-17T06:42:40.289Z","level":"info","runId":"25982828171-1","company":"amazon","msg":"Fetching offset 100 / 2830..."}
+2026-05-17T06:42:41.4872039Z {"ts":"2026-05-17T06:42:41.486Z","level":"info","runId":"25982828171-1","company":"amazon","msg":"Fetching offset 200 / 2830..."}
+2026-05-17T06:42:42.7204335Z {"ts":"2026-05-17T06:42:42.720Z","level":"info","runId":"25982828171-1","company":"amazon","msg":"Fetching offset 300 / 2830..."}
+2026-05-17T06:42:43.9312106Z {"ts":"2026-05-17T06:42:43.930Z","level":"info","runId":"25982828171-1","company":"amazon","msg":"Fetching offset 400 / 2830..."}
+2026-05-17T06:42:45.0986040Z {"ts":"2026-05-17T06:42:45.098Z","level":"info","runId":"25982828171-1","company":"amazon","msg":"Fetching offset 500 / 2830..."}
+2026-05-17T06:42:46.2826320Z {"ts":"2026-05-17T06:42:46.282Z","level":"info","runId":"25982828171-1","company":"amazon","msg":"Fetching offset 600 / 2830..."}
+2026-05-17T06:42:47.5279836Z {"ts":"2026-05-17T06:42:47.527Z","level":"info","runId":"25982828171-1","company":"amazon","msg":"Fetching offset 700 / 2830..."}
+2026-05-17T06:42:48.6536507Z {"ts":"2026-05-17T06:42:48.653Z","level":"info","runId":"25982828171-1","company":"amazon","msg":"Fetching offset 800 / 2830..."}
+2026-05-17T06:42:49.7990890Z {"ts":"2026-05-17T06:42:49.798Z","level":"info","runId":"25982828171-1","company":"amazon","msg":"Fetching offset 900 / 2830..."}
+2026-05-17T06:42:51.0343351Z {"ts":"2026-05-17T06:42:51.034Z","level":"info","runId":"25982828171-1","company":"amazon","msg":"Fetching offset 1000 / 2830..."}
+2026-05-17T06:42:52.2822554Z {"ts":"2026-05-17T06:42:52.281Z","level":"info","runId":"25982828171-1","company":"amazon","msg":"Fetching offset 1100 / 2830..."}
+2026-05-17T06:42:53.4824865Z {"ts":"2026-05-17T06:42:53.482Z","level":"info","runId":"25982828171-1","company":"amazon","msg":"Fetching offset 1200 / 2830..."}
+2026-05-17T06:42:54.6398176Z {"ts":"2026-05-17T06:42:54.639Z","level":"info","runId":"25982828171-1","company":"amazon","msg":"Fetching offset 1300 / 2830..."}
+2026-05-17T06:42:55.7809825Z {"ts":"2026-05-17T06:42:55.780Z","level":"info","runId":"25982828171-1","company":"amazon","msg":"Fetching offset 1400 / 2830..."}
+2026-05-17T06:42:57.0122416Z {"ts":"2026-05-17T06:42:57.011Z","level":"info","runId":"25982828171-1","company":"amazon","msg":"Fetching offset 1500 / 2830..."}
+2026-05-17T06:42:58.2172899Z {"ts":"2026-05-17T06:42:58.216Z","level":"info","runId":"25982828171-1","company":"amazon","msg":"Fetching offset 1600 / 2830..."}
+2026-05-17T06:42:59.3826619Z {"ts":"2026-05-17T06:42:59.382Z","level":"info","runId":"25982828171-1","company":"amazon","msg":"Fetching offset 1700 / 2830..."}
+2026-05-17T06:43:00.5471534Z {"ts":"2026-05-17T06:43:00.546Z","level":"info","runId":"25982828171-1","company":"amazon","msg":"Fetching offset 1800 / 2830..."}
+2026-05-17T06:43:01.7809156Z {"ts":"2026-05-17T06:43:01.780Z","level":"info","runId":"25982828171-1","company":"amazon","msg":"Fetching offset 1900 / 2830..."}
+2026-05-17T06:43:03.0478079Z {"ts":"2026-05-17T06:43:03.047Z","level":"info","runId":"25982828171-1","company":"amazon","msg":"Fetching offset 2000 / 2830..."}
+2026-05-17T06:43:04.2384041Z {"ts":"2026-05-17T06:43:04.238Z","level":"info","runId":"25982828171-1","company":"amazon","msg":"Fetching offset 2100 / 2830..."}
+2026-05-17T06:43:05.4494252Z {"ts":"2026-05-17T06:43:05.449Z","level":"info","runId":"25982828171-1","company":"amazon","msg":"Fetching offset 2200 / 2830..."}
+2026-05-17T06:43:06.6475988Z {"ts":"2026-05-17T06:43:06.647Z","level":"info","runId":"25982828171-1","company":"amazon","msg":"Fetching offset 2300 / 2830..."}
+2026-05-17T06:43:07.8753098Z {"ts":"2026-05-17T06:43:07.874Z","level":"info","runId":"25982828171-1","company":"amazon","msg":"Fetching offset 2400 / 2830..."}
+2026-05-17T06:43:09.0343442Z {"ts":"2026-05-17T06:43:09.033Z","level":"info","runId":"25982828171-1","company":"amazon","msg":"Fetching offset 2500 / 2830..."}
+2026-05-17T06:43:10.2001636Z {"ts":"2026-05-17T06:43:10.199Z","level":"info","runId":"25982828171-1","company":"amazon","msg":"Fetching offset 2600 / 2830..."}
+2026-05-17T06:43:11.4500177Z {"ts":"2026-05-17T06:43:11.449Z","level":"info","runId":"25982828171-1","company":"amazon","msg":"Fetching offset 2700 / 2830..."}
+2026-05-17T06:43:12.5872750Z {"ts":"2026-05-17T06:43:12.586Z","level":"info","runId":"25982828171-1","company":"amazon","msg":"Fetching offset 2800 / 2830..."}
+2026-05-17T06:43:12.8904085Z {"ts":"2026-05-17T06:43:12.890Z","level":"info","runId":"25982828171-1","company":"amazon","msg":"Total: 2830 jobs"}
+2026-05-17T06:43:12.8905768Z {"ts":"2026-05-17T06:43:12.890Z","level":"info","runId":"25982828171-1","company":"amazon","msg":"Scraped 2830 raw jobs in 35s","event":"scrape_done","data":{"rawCount":2830}}
+2026-05-17T06:43:13.9814472Z {"ts":"2026-05-17T06:43:13.981Z","level":"info","runId":"25982828171-1","company":"amazon","msg":"2585 India jobs after normalization","event":"normalize_done","data":{"kept":2585,"dropped":245}}
+2026-05-17T06:43:17.9456674Z {"ts":"2026-05-17T06:43:17.945Z","level":"info","runId":"25982828171-1","company":"amazon","msg":"Parse decision: 1633 to parse, 692 skip (already parsed, unchanged), 260 rejected (non-engineering title)"}
+2026-05-17T06:43:17.9458660Z {"ts":"2026-05-17T06:43:17.945Z","level":"info","runId":"25982828171-1","company":"amazon","msg":"Parsing 1633 JDs with 3 workers across 3 keys (budget=10000/run)…"}
+2026-05-17T06:49:04.3350164Z {"ts":"2026-05-17T06:49:04.334Z","level":"warn","runId":"25982828171-1","company":"amazon","msg":"Gemini quota exhausted before this company could start (0 successes in 18 attempts). 1613 job(s) deferred — will be retried next crawl.","event":"cold_quota_bail","data":{"attempts":18,"deferred":1613}}
+2026-05-17T06:50:03.7963364Z {"ts":"2026-05-17T06:50:03.796Z","level":"warn","runId":"25982828171-1","company":"amazon","msg":"  parse err [Account Manager, RBS Flex]: quota_disabled"}
+2026-05-17T06:50:03.7964887Z {"ts":"2026-05-17T06:50:03.796Z","level":"warn","runId":"25982828171-1","company":"amazon","msg":"  parse err [Applied Scientist, Books Reading & Discovery Experiences]: quota_disabled"}
+2026-05-17T06:50:03.7966567Z {"ts":"2026-05-17T06:50:03.796Z","level":"info","runId":"25982828171-1","company":"amazon","msg":"Parse done: ok=0 err=20 quota_skip=1613 | 406s (Amazon)"}
+2026-05-17T06:50:03.7968020Z {"ts":"2026-05-17T06:50:03.796Z","level":"warn","runId":"25982828171-1","company":"amazon","msg":"  parse err [ID-LB Cabling Infrastructure Tech, Data Center Operations]: quota_disabled"}
+2026-05-17T06:50:03.7969519Z {"ts":"2026-05-17T06:50:03.796Z","level":"warn","runId":"25982828171-1","company":"amazon","msg":"  parse err [Software Dev Engineer II, Delivery Experience]: quota_disabled"}
+2026-05-17T06:50:03.7970832Z {"ts":"2026-05-17T06:50:03.796Z","level":"warn","runId":"25982828171-1","company":"amazon","msg":"  parse err [SDE II, Relay Central]: quota_disabled"}
+2026-05-17T06:50:09.0173317Z {"ts":"2026-05-17T06:50:09.016Z","level":"warn","runId":"25982828171-1","company":null,"msg":"Bulk update failed: duplicate key value violates unique constraint \"ux_jobs_company_signature\" — falling back to per-row","event":"bulk_upsert_error","data":{"kind":"update","batchSize":37,"error":"duplicate key value violates unique constraint \"ux_jobs_company_signature\"","sigCollision":true}}
+2026-05-17T06:50:19.2138038Z {"ts":"2026-05-17T06:50:19.213Z","level":"info","runId":"25982828171-1","company":null,"msg":"Per-row recovery: 34/37 updates succeeded (skipped 3 signature-collisions)","event":"bulk_upsert_recovered","data":{"kind":"update","recovered":34,"total":37,"sigSkipped":3}}
+2026-05-17T06:50:22.2170238Z {"ts":"2026-05-17T06:50:22.216Z","level":"warn","runId":"25982828171-1","company":null,"msg":"Bulk update failed: duplicate key value violates unique constraint \"ux_jobs_company_signature\" — falling back to per-row","event":"bulk_upsert_error","data":{"kind":"update","batchSize":43,"error":"duplicate key value violates unique constraint \"ux_jobs_company_signature\"","sigCollision":true}}
+2026-05-17T06:50:33.7581481Z {"ts":"2026-05-17T06:50:33.757Z","level":"info","runId":"25982828171-1","company":null,"msg":"Per-row recovery: 41/43 updates succeeded (skipped 2 signature-collisions)","event":"bulk_upsert_recovered","data":{"kind":"update","recovered":41,"total":43,"sigSkipped":2}}
+2026-05-17T06:50:38.9935393Z {"ts":"2026-05-17T06:50:38.993Z","level":"warn","runId":"25982828171-1","company":null,"msg":"Bulk update failed: duplicate key value violates unique constraint \"ux_jobs_company_signature\" — falling back to per-row","event":"bulk_upsert_error","data":{"kind":"update","batchSize":36,"error":"duplicate key value violates unique constraint \"ux_jobs_company_signature\"","sigCollision":true}}
+2026-05-17T06:50:48.8302068Z {"ts":"2026-05-17T06:50:48.829Z","level":"info","runId":"25982828171-1","company":null,"msg":"Per-row recovery: 35/36 updates succeeded (skipped 1 signature-collisions)","event":"bulk_upsert_recovered","data":{"kind":"update","recovered":35,"total":36,"sigSkipped":1}}
+2026-05-17T06:50:53.4263831Z {"ts":"2026-05-17T06:50:53.425Z","level":"warn","runId":"25982828171-1","company":null,"msg":"Bulk update failed: duplicate key value violates unique constraint \"ux_jobs_company_signature\" — falling back to per-row","event":"bulk_upsert_error","data":{"kind":"update","batchSize":38,"error":"duplicate key value violates unique constraint \"ux_jobs_company_signature\"","sigCollision":true}}
+2026-05-17T06:51:03.5951338Z {"ts":"2026-05-17T06:51:03.594Z","level":"info","runId":"25982828171-1","company":null,"msg":"Per-row recovery: 36/38 updates succeeded (skipped 2 signature-collisions)","event":"bulk_upsert_recovered","data":{"kind":"update","recovered":36,"total":38,"sigSkipped":2}}
+2026-05-17T06:51:08.5941118Z {"ts":"2026-05-17T06:51:08.593Z","level":"warn","runId":"25982828171-1","company":null,"msg":"Bulk update failed: duplicate key value violates unique constraint \"ux_jobs_company_signature\" — falling back to per-row","event":"bulk_upsert_error","data":{"kind":"update","batchSize":35,"error":"duplicate key value violates unique constraint \"ux_jobs_company_signature\"","sigCollision":true}}
+2026-05-17T06:51:18.1828816Z {"ts":"2026-05-17T06:51:18.182Z","level":"info","runId":"25982828171-1","company":null,"msg":"Per-row recovery: 30/35 updates succeeded (skipped 5 signature-collisions)","event":"bulk_upsert_recovered","data":{"kind":"update","recovered":30,"total":35,"sigSkipped":5}}
+2026-05-17T06:51:22.8042049Z {"ts":"2026-05-17T06:51:22.803Z","level":"warn","runId":"25982828171-1","company":null,"msg":"Bulk update failed: duplicate key value violates unique constraint \"ux_jobs_company_signature\" — falling back to per-row","event":"bulk_upsert_error","data":{"kind":"update","batchSize":37,"error":"duplicate key value violates unique constraint \"ux_jobs_company_signature\"","sigCollision":true}}
+2026-05-17T06:51:33.9941015Z {"ts":"2026-05-17T06:51:33.993Z","level":"info","runId":"25982828171-1","company":null,"msg":"Per-row recovery: 33/37 updates succeeded (skipped 4 signature-collisions)","event":"bulk_upsert_recovered","data":{"kind":"update","recovered":33,"total":37,"sigSkipped":4}}
+2026-05-17T06:51:38.7952463Z {"ts":"2026-05-17T06:51:38.794Z","level":"warn","runId":"25982828171-1","company":null,"msg":"Bulk update failed: duplicate key value violates unique constraint \"ux_jobs_company_signature\" — falling back to per-row","event":"bulk_upsert_error","data":{"kind":"update","batchSize":37,"error":"duplicate key value violates unique constraint \"ux_jobs_company_signature\"","sigCollision":true}}
+2026-05-17T06:51:48.7112590Z {"ts":"2026-05-17T06:51:48.710Z","level":"info","runId":"25982828171-1","company":null,"msg":"Per-row recovery: 33/37 updates succeeded (skipped 4 signature-collisions)","event":"bulk_upsert_recovered","data":{"kind":"update","recovered":33,"total":37,"sigSkipped":4}}
+2026-05-17T06:52:03.9863906Z {"ts":"2026-05-17T06:52:03.985Z","level":"warn","runId":"25982828171-1","company":null,"msg":"Bulk update failed: duplicate key value violates unique constraint \"ux_jobs_company_signature\" — falling back to per-row","event":"bulk_upsert_error","data":{"kind":"update","batchSize":34,"error":"duplicate key value violates unique constraint \"ux_jobs_company_signature\"","sigCollision":true}}
+2026-05-17T06:52:12.9959813Z {"ts":"2026-05-17T06:52:12.995Z","level":"info","runId":"25982828171-1","company":null,"msg":"Per-row recovery: 31/34 updates succeeded (skipped 3 signature-collisions)","event":"bulk_upsert_recovered","data":{"kind":"update","recovered":31,"total":34,"sigSkipped":3}}
+2026-05-17T06:52:19.1540481Z {"ts":"2026-05-17T06:52:19.153Z","level":"warn","runId":"25982828171-1","company":null,"msg":"Bulk update failed: duplicate key value violates unique constraint \"ux_jobs_company_signature\" — falling back to per-row","event":"bulk_upsert_error","data":{"kind":"update","batchSize":32,"error":"duplicate key value violates unique constraint \"ux_jobs_company_signature\"","sigCollision":true}}
+2026-05-17T06:52:27.8048339Z {"ts":"2026-05-17T06:52:27.804Z","level":"info","runId":"25982828171-1","company":null,"msg":"Per-row recovery: 29/32 updates succeeded (skipped 3 signature-collisions)","event":"bulk_upsert_recovered","data":{"kind":"update","recovered":29,"total":32,"sigSkipped":3}}
+2026-05-17T06:52:32.7391836Z {"ts":"2026-05-17T06:52:32.738Z","level":"warn","runId":"25982828171-1","company":null,"msg":"Bulk update failed: duplicate key value violates unique constraint \"ux_jobs_company_signature\" — falling back to per-row","event":"bulk_upsert_error","data":{"kind":"update","batchSize":36,"error":"duplicate key value violates unique constraint \"ux_jobs_company_signature\"","sigCollision":true}}
+2026-05-17T06:52:43.8614222Z {"ts":"2026-05-17T06:52:43.860Z","level":"info","runId":"25982828171-1","company":null,"msg":"Per-row recovery: 35/36 updates succeeded (skipped 1 signature-collisions)","event":"bulk_upsert_recovered","data":{"kind":"update","recovered":35,"total":36,"sigSkipped":1}}
+2026-05-17T06:52:50.6246205Z {"ts":"2026-05-17T06:52:50.624Z","level":"warn","runId":"25982828171-1","company":null,"msg":"Bulk update failed: duplicate key value violates unique constraint \"ux_jobs_company_signature\" — falling back to per-row","event":"bulk_upsert_error","data":{"kind":"update","batchSize":28,"error":"duplicate key value violates unique constraint \"ux_jobs_company_signature\"","sigCollision":true}}
+2026-05-17T06:52:58.6441492Z {"ts":"2026-05-17T06:52:58.643Z","level":"info","runId":"25982828171-1","company":null,"msg":"Per-row recovery: 25/28 updates succeeded (skipped 3 signature-collisions)","event":"bulk_upsert_recovered","data":{"kind":"update","recovered":25,"total":28,"sigSkipped":3}}
+2026-05-17T06:53:05.5213714Z {"ts":"2026-05-17T06:53:05.520Z","level":"warn","runId":"25982828171-1","company":null,"msg":"Bulk update failed: duplicate key value violates unique constraint \"ux_jobs_company_signature\" — falling back to per-row","event":"bulk_upsert_error","data":{"kind":"update","batchSize":29,"error":"duplicate key value violates unique constraint \"ux_jobs_company_signature\"","sigCollision":true}}
+2026-05-17T06:53:13.1707269Z {"ts":"2026-05-17T06:53:13.170Z","level":"info","runId":"25982828171-1","company":null,"msg":"Per-row recovery: 28/29 updates succeeded (skipped 1 signature-collisions)","event":"bulk_upsert_recovered","data":{"kind":"update","recovered":28,"total":29,"sigSkipped":1}}
+2026-05-17T06:53:18.2181898Z {"ts":"2026-05-17T06:53:18.217Z","level":"warn","runId":"25982828171-1","company":null,"msg":"Bulk update failed: duplicate key value violates unique constraint \"ux_jobs_company_signature\" — falling back to per-row","event":"bulk_upsert_error","data":{"kind":"update","batchSize":35,"error":"duplicate key value violates unique constraint \"ux_jobs_company_signature\"","sigCollision":true}}
+2026-05-17T06:53:27.5733315Z {"ts":"2026-05-17T06:53:27.572Z","level":"info","runId":"25982828171-1","company":null,"msg":"Per-row recovery: 34/35 updates succeeded (skipped 1 signature-collisions)","event":"bulk_upsert_recovered","data":{"kind":"update","recovered":34,"total":35,"sigSkipped":1}}
+2026-05-17T06:53:32.0759066Z {"ts":"2026-05-17T06:53:32.075Z","level":"warn","runId":"25982828171-1","company":null,"msg":"Bulk update failed: duplicate key value violates unique constraint \"ux_jobs_company_signature\" — falling back to per-row","event":"bulk_upsert_error","data":{"kind":"update","batchSize":37,"error":"duplicate key value violates unique constraint \"ux_jobs_company_signature\"","sigCollision":true}}
+2026-05-17T06:53:41.8298838Z {"ts":"2026-05-17T06:53:41.829Z","level":"info","runId":"25982828171-1","company":null,"msg":"Per-row recovery: 34/37 updates succeeded (skipped 3 signature-collisions)","event":"bulk_upsert_recovered","data":{"kind":"update","recovered":34,"total":37,"sigSkipped":3}}
+2026-05-17T06:53:47.4853834Z {"ts":"2026-05-17T06:53:47.484Z","level":"warn","runId":"25982828171-1","company":null,"msg":"Bulk update failed: duplicate key value violates unique constraint \"ux_jobs_company_signature\" — falling back to per-row","event":"bulk_upsert_error","data":{"kind":"update","batchSize":32,"error":"duplicate key value violates unique constraint \"ux_jobs_company_signature\"","sigCollision":true}}
+2026-05-17T06:53:55.9254996Z {"ts":"2026-05-17T06:53:55.925Z","level":"info","runId":"25982828171-1","company":null,"msg":"Per-row recovery: 30/32 updates succeeded (skipped 2 signature-collisions)","event":"bulk_upsert_recovered","data":{"kind":"update","recovered":30,"total":32,"sigSkipped":2}}
+2026-05-17T06:54:01.3350616Z {"ts":"2026-05-17T06:54:01.334Z","level":"warn","runId":"25982828171-1","company":null,"msg":"Bulk update failed: duplicate key value violates unique constraint \"ux_jobs_company_signature\" — falling back to per-row","event":"bulk_upsert_error","data":{"kind":"update","batchSize":33,"error":"duplicate key value violates unique constraint \"ux_jobs_company_signature\"","sigCollision":true}}
+2026-05-17T06:54:10.0818189Z {"ts":"2026-05-17T06:54:10.081Z","level":"info","runId":"25982828171-1","company":null,"msg":"Per-row recovery: 31/33 updates succeeded (skipped 2 signature-collisions)","event":"bulk_upsert_recovered","data":{"kind":"update","recovered":31,"total":33,"sigSkipped":2}}
+2026-05-17T06:54:15.7582006Z {"ts":"2026-05-17T06:54:15.757Z","level":"warn","runId":"25982828171-1","company":null,"msg":"Bulk update failed: duplicate key value violates unique constraint \"ux_jobs_company_signature\" — falling back to per-row","event":"bulk_upsert_error","data":{"kind":"update","batchSize":32,"error":"duplicate key value violates unique constraint \"ux_jobs_company_signature\"","sigCollision":true}}
+2026-05-17T06:54:24.2962819Z {"ts":"2026-05-17T06:54:24.295Z","level":"info","runId":"25982828171-1","company":null,"msg":"Per-row recovery: 31/32 updates succeeded (skipped 1 signature-collisions)","event":"bulk_upsert_recovered","data":{"kind":"update","recovered":31,"total":32,"sigSkipped":1}}
+2026-05-17T06:54:31.7915818Z {"ts":"2026-05-17T06:54:31.791Z","level":"warn","runId":"25982828171-1","company":null,"msg":"Bulk update failed: duplicate key value violates unique constraint \"ux_jobs_company_signature\" — falling back to per-row","event":"bulk_upsert_error","data":{"kind":"update","batchSize":25,"error":"duplicate key value violates unique constraint \"ux_jobs_company_signature\"","sigCollision":true}}
+2026-05-17T06:54:38.3428222Z {"ts":"2026-05-17T06:54:38.342Z","level":"info","runId":"25982828171-1","company":null,"msg":"Per-row recovery: 21/25 updates succeeded (skipped 4 signature-collisions)","event":"bulk_upsert_recovered","data":{"kind":"update","recovered":21,"total":25,"sigSkipped":4}}
+2026-05-17T06:54:48.2565895Z {"ts":"2026-05-17T06:54:48.256Z","level":"warn","runId":"25982828171-1","company":null,"msg":"Bulk update failed: duplicate key value violates unique constraint \"ux_jobs_company_signature\" — falling back to per-row","event":"bulk_upsert_error","data":{"kind":"update","batchSize":35,"error":"duplicate key value violates unique constraint \"ux_jobs_company_signature\"","sigCollision":true}}
+2026-05-17T06:54:57.4745122Z {"ts":"2026-05-17T06:54:57.474Z","level":"info","runId":"25982828171-1","company":null,"msg":"Per-row recovery: 34/35 updates succeeded (skipped 1 signature-collisions)","event":"bulk_upsert_recovered","data":{"kind":"update","recovered":34,"total":35,"sigSkipped":1}}
+2026-05-17T06:55:02.5978251Z {"ts":"2026-05-17T06:55:02.597Z","level":"warn","runId":"25982828171-1","company":null,"msg":"Bulk update failed: duplicate key value violates unique constraint \"ux_jobs_company_signature\" — falling back to per-row","event":"bulk_upsert_error","data":{"kind":"update","batchSize":34,"error":"duplicate key value violates unique constraint \"ux_jobs_company_signature\"","sigCollision":true}}
+2026-05-17T06:55:11.5259272Z {"ts":"2026-05-17T06:55:11.525Z","level":"info","runId":"25982828171-1","company":null,"msg":"Per-row recovery: 32/34 updates succeeded (skipped 2 signature-collisions)","event":"bulk_upsert_recovered","data":{"kind":"update","recovered":32,"total":34,"sigSkipped":2}}
+2026-05-17T06:55:17.0472754Z {"ts":"2026-05-17T06:55:17.046Z","level":"warn","runId":"25982828171-1","company":null,"msg":"Bulk update failed: duplicate key value violates unique constraint \"ux_jobs_company_signature\" — falling back to per-row","event":"bulk_upsert_error","data":{"kind":"update","batchSize":35,"error":"duplicate key value violates unique constraint \"ux_jobs_company_signature\"","sigCollision":true}}
+2026-05-17T06:55:26.3030954Z {"ts":"2026-05-17T06:55:26.302Z","level":"info","runId":"25982828171-1","company":null,"msg":"Per-row recovery: 32/35 updates succeeded (skipped 3 signature-collisions)","event":"bulk_upsert_recovered","data":{"kind":"update","recovered":32,"total":35,"sigSkipped":3}}
+2026-05-17T06:55:34.0026529Z {"ts":"2026-05-17T06:55:34.001Z","level":"warn","runId":"25982828171-1","company":null,"msg":"Bulk update failed: duplicate key value violates unique constraint \"ux_jobs_company_signature\" — falling back to per-row","event":"bulk_upsert_error","data":{"kind":"update","batchSize":24,"error":"duplicate key value violates unique constraint \"ux_jobs_company_signature\"","sigCollision":true}}
+2026-05-17T06:55:40.3637526Z {"ts":"2026-05-17T06:55:40.363Z","level":"info","runId":"25982828171-1","company":null,"msg":"Per-row recovery: 22/24 updates succeeded (skipped 2 signature-collisions)","event":"bulk_upsert_recovered","data":{"kind":"update","recovered":22,"total":24,"sigSkipped":2}}
+2026-05-17T06:55:44.2743396Z {"ts":"2026-05-17T06:55:44.273Z","level":"warn","runId":"25982828171-1","company":null,"msg":"Bulk update failed: duplicate key value violates unique constraint \"ux_jobs_company_signature\" — falling back to per-row","event":"bulk_upsert_error","data":{"kind":"update","batchSize":39,"error":"duplicate key value violates unique constraint \"ux_jobs_company_signature\"","sigCollision":true}}
+2026-05-17T06:55:54.5391789Z {"ts":"2026-05-17T06:55:54.538Z","level":"info","runId":"25982828171-1","company":null,"msg":"Per-row recovery: 38/39 updates succeeded (skipped 1 signature-collisions)","event":"bulk_upsert_recovered","data":{"kind":"update","recovered":38,"total":39,"sigSkipped":1}}
+2026-05-17T06:55:59.9016148Z {"ts":"2026-05-17T06:55:59.900Z","level":"warn","runId":"25982828171-1","company":null,"msg":"Bulk update failed: duplicate key value violates unique constraint \"ux_jobs_company_signature\" — falling back to per-row","event":"bulk_upsert_error","data":{"kind":"update","batchSize":33,"error":"duplicate key value violates unique constraint \"ux_jobs_company_signature\"","sigCollision":true}}
+2026-05-17T06:56:08.6034245Z {"ts":"2026-05-17T06:56:08.602Z","level":"info","runId":"25982828171-1","company":null,"msg":"Per-row recovery: 31/33 updates succeeded (skipped 2 signature-collisions)","event":"bulk_upsert_recovered","data":{"kind":"update","recovered":31,"total":33,"sigSkipped":2}}
+2026-05-17T06:56:12.5384378Z {"ts":"2026-05-17T06:56:12.537Z","level":"warn","runId":"25982828171-1","company":null,"msg":"Bulk update failed: duplicate key value violates unique constraint \"ux_jobs_company_signature\" — falling back to per-row","event":"bulk_upsert_error","data":{"kind":"update","batchSize":39,"error":"duplicate key value violates unique constraint \"ux_jobs_company_signature\"","sigCollision":true}}
+2026-05-17T06:56:22.8305966Z {"ts":"2026-05-17T06:56:22.830Z","level":"info","runId":"25982828171-1","company":null,"msg":"Per-row recovery: 36/39 updates succeeded (skipped 3 signature-collisions)","event":"bulk_upsert_recovered","data":{"kind":"update","recovered":36,"total":39,"sigSkipped":3}}
+2026-05-17T06:56:27.2306247Z {"ts":"2026-05-17T06:56:27.230Z","level":"warn","runId":"25982828171-1","company":null,"msg":"Bulk update failed: duplicate key value violates unique constraint \"ux_jobs_company_signature\" — falling back to per-row","event":"bulk_upsert_error","data":{"kind":"update","batchSize":37,"error":"duplicate key value violates unique constraint \"ux_jobs_company_signature\"","sigCollision":true}}
+2026-05-17T06:56:36.9769670Z {"ts":"2026-05-17T06:56:36.976Z","level":"info","runId":"25982828171-1","company":null,"msg":"Per-row recovery: 36/37 updates succeeded (skipped 1 signature-collisions)","event":"bulk_upsert_recovered","data":{"kind":"update","recovered":36,"total":37,"sigSkipped":1}}
+2026-05-17T06:56:42.5062274Z {"ts":"2026-05-17T06:56:42.505Z","level":"warn","runId":"25982828171-1","company":null,"msg":"Bulk update failed: duplicate key value violates unique constraint \"ux_jobs_company_signature\" — falling back to per-row","event":"bulk_upsert_error","data":{"kind":"update","batchSize":32,"error":"duplicate key value violates unique constraint \"ux_jobs_company_signature\"","sigCollision":true}}
+2026-05-17T06:56:50.8683479Z {"ts":"2026-05-17T06:56:50.867Z","level":"info","runId":"25982828171-1","company":null,"msg":"Per-row recovery: 30/32 updates succeeded (skipped 2 signature-collisions)","event":"bulk_upsert_recovered","data":{"kind":"update","recovered":30,"total":32,"sigSkipped":2}}
+2026-05-17T06:56:54.3461959Z {"ts":"2026-05-17T06:56:54.345Z","level":"warn","runId":"25982828171-1","company":null,"msg":"Bulk update failed: duplicate key value violates unique constraint \"ux_jobs_company_signature\" — falling back to per-row","event":"bulk_upsert_error","data":{"kind":"update","batchSize":41,"error":"duplicate key value violates unique constraint \"ux_jobs_company_signature\"","sigCollision":true}}
+2026-05-17T06:57:05.0821120Z {"ts":"2026-05-17T06:57:05.081Z","level":"info","runId":"25982828171-1","company":null,"msg":"Per-row recovery: 38/41 updates succeeded (skipped 3 signature-collisions)","event":"bulk_upsert_recovered","data":{"kind":"update","recovered":38,"total":41,"sigSkipped":3}}
+2026-05-17T06:57:11.9355796Z {"ts":"2026-05-17T06:57:11.935Z","level":"warn","runId":"25982828171-1","company":null,"msg":"Bulk update failed: duplicate key value violates unique constraint \"ux_jobs_company_signature\" — falling back to per-row","event":"bulk_upsert_error","data":{"kind":"update","batchSize":27,"error":"duplicate key value violates unique constraint \"ux_jobs_company_signature\"","sigCollision":true}}
+2026-05-17T06:57:19.0166165Z {"ts":"2026-05-17T06:57:19.016Z","level":"info","runId":"25982828171-1","company":null,"msg":"Per-row recovery: 26/27 updates succeeded (skipped 1 signature-collisions)","event":"bulk_upsert_recovered","data":{"kind":"update","recovered":26,"total":27,"sigSkipped":1}}
+2026-05-17T06:57:28.0296087Z {"ts":"2026-05-17T06:57:28.029Z","level":"warn","runId":"25982828171-1","company":null,"msg":"Bulk update failed: duplicate key value violates unique constraint \"ux_jobs_company_signature\" — falling back to per-row","event":"bulk_upsert_error","data":{"kind":"update","batchSize":34,"error":"duplicate key value violates unique constraint \"ux_jobs_company_signature\"","sigCollision":true}}
+2026-05-17T06:57:37.3141035Z {"ts":"2026-05-17T06:57:37.313Z","level":"info","runId":"25982828171-1","company":null,"msg":"Per-row recovery: 31/34 updates succeeded (skipped 3 signature-collisions)","event":"bulk_upsert_recovered","data":{"kind":"update","recovered":31,"total":34,"sigSkipped":3}}
+2026-05-17T06:57:46.5748682Z {"ts":"2026-05-17T06:57:46.574Z","level":"warn","runId":"25982828171-1","company":null,"msg":"Bulk update failed: duplicate key value violates unique constraint \"ux_jobs_company_signature\" — falling back to per-row","event":"bulk_upsert_error","data":{"kind":"update","batchSize":37,"error":"duplicate key value violates unique constraint \"ux_jobs_company_signature\"","sigCollision":true}}
+2026-05-17T06:57:56.5528640Z {"ts":"2026-05-17T06:57:56.552Z","level":"info","runId":"25982828171-1","company":null,"msg":"Per-row recovery: 36/37 updates succeeded (skipped 1 signature-collisions)","event":"bulk_upsert_recovered","data":{"kind":"update","recovered":36,"total":37,"sigSkipped":1}}
+2026-05-17T06:58:01.4957964Z {"ts":"2026-05-17T06:58:01.495Z","level":"warn","runId":"25982828171-1","company":null,"msg":"Bulk update failed: duplicate key value violates unique constraint \"ux_jobs_company_signature\" — falling back to per-row","event":"bulk_upsert_error","data":{"kind":"update","batchSize":35,"error":"duplicate key value violates unique constraint \"ux_jobs_company_signature\"","sigCollision":true}}
+2026-05-17T06:58:11.1250766Z {"ts":"2026-05-17T06:58:11.124Z","level":"info","runId":"25982828171-1","company":null,"msg":"Per-row recovery: 34/35 updates succeeded (skipped 1 signature-collisions)","event":"bulk_upsert_recovered","data":{"kind":"update","recovered":34,"total":35,"sigSkipped":1}}
+2026-05-17T06:58:16.3422721Z {"ts":"2026-05-17T06:58:16.341Z","level":"warn","runId":"25982828171-1","company":null,"msg":"Bulk update failed: duplicate key value violates unique constraint \"ux_jobs_company_signature\" — falling back to per-row","event":"bulk_upsert_error","data":{"kind":"update","batchSize":34,"error":"duplicate key value violates unique constraint \"ux_jobs_company_signature\"","sigCollision":true}}
+2026-05-17T06:58:25.6679662Z {"ts":"2026-05-17T06:58:25.667Z","level":"info","runId":"25982828171-1","company":null,"msg":"Per-row recovery: 31/34 updates succeeded (skipped 3 signature-collisions)","event":"bulk_upsert_recovered","data":{"kind":"update","recovered":31,"total":34,"sigSkipped":3}}
+2026-05-17T06:58:29.8985071Z {"ts":"2026-05-17T06:58:29.897Z","level":"warn","runId":"25982828171-1","company":null,"msg":"Bulk update failed: duplicate key value violates unique constraint \"ux_jobs_company_signature\" — falling back to per-row","event":"bulk_upsert_error","data":{"kind":"update","batchSize":38,"error":"duplicate key value violates unique constraint \"ux_jobs_company_signature\"","sigCollision":true}}
+2026-05-17T06:58:39.9518060Z {"ts":"2026-05-17T06:58:39.951Z","level":"info","runId":"25982828171-1","company":null,"msg":"Per-row recovery: 37/38 updates succeeded (skipped 1 signature-collisions)","event":"bulk_upsert_recovered","data":{"kind":"update","recovered":37,"total":38,"sigSkipped":1}}
+2026-05-17T06:58:46.2594248Z {"ts":"2026-05-17T06:58:46.258Z","level":"warn","runId":"25982828171-1","company":null,"msg":"Bulk update failed: duplicate key value violates unique constraint \"ux_jobs_company_signature\" — falling back to per-row","event":"bulk_upsert_error","data":{"kind":"update","batchSize":36,"error":"duplicate key value violates unique constraint \"ux_jobs_company_signature\"","sigCollision":true}}
+2026-05-17T06:58:55.8409807Z {"ts":"2026-05-17T06:58:55.840Z","level":"info","runId":"25982828171-1","company":null,"msg":"Per-row recovery: 34/36 updates succeeded (skipped 2 signature-collisions)","event":"bulk_upsert_recovered","data":{"kind":"update","recovered":34,"total":36,"sigSkipped":2}}
+2026-05-17T06:59:00.2816528Z {"ts":"2026-05-17T06:59:00.281Z","level":"warn","runId":"25982828171-1","company":null,"msg":"Bulk update failed: duplicate key value violates unique constraint \"ux_jobs_company_signature\" — falling back to per-row","event":"bulk_upsert_error","data":{"kind":"update","batchSize":37,"error":"duplicate key value violates unique constraint \"ux_jobs_company_signature\"","sigCollision":true}}
+2026-05-17T06:59:10.1041481Z {"ts":"2026-05-17T06:59:10.103Z","level":"info","runId":"25982828171-1","company":null,"msg":"Per-row recovery: 34/37 updates succeeded (skipped 3 signature-collisions)","event":"bulk_upsert_recovered","data":{"kind":"update","recovered":34,"total":37,"sigSkipped":3}}
+2026-05-17T06:59:13.5425029Z {"ts":"2026-05-17T06:59:13.541Z","level":"warn","runId":"25982828171-1","company":null,"msg":"Bulk update failed: duplicate key value violates unique constraint \"ux_jobs_company_signature\" — falling back to per-row","event":"bulk_upsert_error","data":{"kind":"update","batchSize":41,"error":"duplicate key value violates unique constraint \"ux_jobs_company_signature\"","sigCollision":true}}
+2026-05-17T06:59:24.3557320Z {"ts":"2026-05-17T06:59:24.355Z","level":"info","runId":"25982828171-1","company":null,"msg":"Per-row recovery: 39/41 updates succeeded (skipped 2 signature-collisions)","event":"bulk_upsert_recovered","data":{"kind":"update","recovered":39,"total":41,"sigSkipped":2}}
+2026-05-17T06:59:31.3869992Z {"ts":"2026-05-17T06:59:31.386Z","level":"warn","runId":"25982828171-1","company":null,"msg":"Bulk update failed: duplicate key value violates unique constraint \"ux_jobs_company_signature\" — falling back to per-row","event":"bulk_upsert_error","data":{"kind":"update","batchSize":39,"error":"duplicate key value violates unique constraint \"ux_jobs_company_signature\"","sigCollision":true}}
+2026-05-17T06:59:41.8461836Z {"ts":"2026-05-17T06:59:41.845Z","level":"info","runId":"25982828171-1","company":null,"msg":"Per-row recovery: 37/39 updates succeeded (skipped 2 signature-collisions)","event":"bulk_upsert_recovered","data":{"kind":"update","recovered":37,"total":39,"sigSkipped":2}}
+2026-05-17T06:59:45.7615570Z {"ts":"2026-05-17T06:59:45.761Z","level":"warn","runId":"25982828171-1","company":null,"msg":"Bulk update failed: duplicate key value violates unique constraint \"ux_jobs_company_signature\" — falling back to per-row","event":"bulk_upsert_error","data":{"kind":"update","batchSize":39,"error":"duplicate key value violates unique constraint \"ux_jobs_company_signature\"","sigCollision":true}}
+2026-05-17T06:59:56.4192331Z {"ts":"2026-05-17T06:59:56.418Z","level":"info","runId":"25982828171-1","company":null,"msg":"Per-row recovery: 38/39 updates succeeded (skipped 1 signature-collisions)","event":"bulk_upsert_recovered","data":{"kind":"update","recovered":38,"total":39,"sigSkipped":1}}
+2026-05-17T06:59:59.5424914Z {"ts":"2026-05-17T06:59:59.541Z","level":"warn","runId":"25982828171-1","company":null,"msg":"Bulk update failed: duplicate key value violates unique constraint \"ux_jobs_company_signature\" — falling back to per-row","event":"bulk_upsert_error","data":{"kind":"update","batchSize":44,"error":"duplicate key value violates unique constraint \"ux_jobs_company_signature\"","sigCollision":true}}
+2026-05-17T07:00:11.4547530Z {"ts":"2026-05-17T07:00:11.454Z","level":"info","runId":"25982828171-1","company":null,"msg":"Per-row recovery: 43/44 updates succeeded (skipped 1 signature-collisions)","event":"bulk_upsert_recovered","data":{"kind":"update","recovered":43,"total":44,"sigSkipped":1}}
+2026-05-17T07:00:14.2817289Z {"ts":"2026-05-17T07:00:14.281Z","level":"warn","runId":"25982828171-1","company":null,"msg":"Bulk update failed: duplicate key value violates unique constraint \"ux_jobs_company_signature\" — falling back to per-row","event":"bulk_upsert_error","data":{"kind":"update","batchSize":20,"error":"duplicate key value violates unique constraint \"ux_jobs_company_signature\"","sigCollision":true}}
+2026-05-17T07:00:19.6661693Z {"ts":"2026-05-17T07:00:19.665Z","level":"info","runId":"25982828171-1","company":null,"msg":"Per-row recovery: 17/20 updates succeeded (skipped 3 signature-collisions)","event":"bulk_upsert_recovered","data":{"kind":"update","recovered":17,"total":20,"sigSkipped":3}}
+2026-05-17T07:00:20.6279385Z {"ts":"2026-05-17T07:00:20.627Z","level":"info","runId":"25982828171-1","company":"amazon","msg":"Inserted: 0, Updated: 2236, Stale: 0, Rejected: 260, deferred: 1613","event":"company_done","data":{"inserted":0,"updated":2236,"stale":0,"parseOk":0,"parseErr":20,"skippedBudget":0,"skippedQuota":1613,"rejectedNonEng":260,"coverageSkipped":false,"elapsedMs":1062408}}
+2026-05-17T07:00:21.1024477Z {"ts":"2026-05-17T07:00:21.102Z","level":"info","runId":"25982828171-1","company":"apple","msg":"Crawling…","event":"company_start"}
+2026-05-17T07:00:21.1026454Z {"ts":"2026-05-17T07:00:21.102Z","level":"info","runId":"25982828171-1","company":"apple","msg":"Loading page 1..."}
+2026-05-17T07:00:24.4175918Z {"ts":"2026-05-17T07:00:24.417Z","level":"info","runId":"25982828171-1","company":"apple","msg":"Page 1: 20 jobs (total so far: 20)"}
+2026-05-17T07:00:25.4179943Z {"ts":"2026-05-17T07:00:25.417Z","level":"info","runId":"25982828171-1","company":"apple","msg":"Loading page 2..."}
+2026-05-17T07:00:27.9087531Z {"ts":"2026-05-17T07:00:27.908Z","level":"info","runId":"25982828171-1","company":"apple","msg":"Page 2: 20 jobs (total so far: 40)"}
+2026-05-17T07:00:28.9100405Z {"ts":"2026-05-17T07:00:28.909Z","level":"info","runId":"25982828171-1","company":"apple","msg":"Loading page 3..."}
+2026-05-17T07:00:31.3920712Z {"ts":"2026-05-17T07:00:31.391Z","level":"info","runId":"25982828171-1","company":"apple","msg":"Page 3: 20 jobs (total so far: 60)"}
+2026-05-17T07:00:32.3934282Z {"ts":"2026-05-17T07:00:32.393Z","level":"info","runId":"25982828171-1","company":"apple","msg":"Loading page 4..."}
+2026-05-17T07:00:34.8631325Z {"ts":"2026-05-17T07:00:34.862Z","level":"info","runId":"25982828171-1","company":"apple","msg":"Page 4: 20 jobs (total so far: 80)"}
+2026-05-17T07:00:35.8647169Z {"ts":"2026-05-17T07:00:35.864Z","level":"info","runId":"25982828171-1","company":"apple","msg":"Loading page 5..."}
+2026-05-17T07:00:38.3383693Z {"ts":"2026-05-17T07:00:38.338Z","level":"info","runId":"25982828171-1","company":"apple","msg":"Page 5: 20 jobs (total so far: 100)"}
+2026-05-17T07:00:39.3396437Z {"ts":"2026-05-17T07:00:39.339Z","level":"info","runId":"25982828171-1","company":"apple","msg":"Loading page 6..."}
+2026-05-17T07:00:41.7900915Z {"ts":"2026-05-17T07:00:41.789Z","level":"info","runId":"25982828171-1","company":"apple","msg":"Page 6: 20 jobs (total so far: 120)"}
+2026-05-17T07:00:42.7912061Z {"ts":"2026-05-17T07:00:42.790Z","level":"info","runId":"25982828171-1","company":"apple","msg":"Loading page 7..."}
+2026-05-17T07:00:45.2791222Z {"ts":"2026-05-17T07:00:45.278Z","level":"info","runId":"25982828171-1","company":"apple","msg":"Page 7: 20 jobs (total so far: 140)"}
+2026-05-17T07:00:46.2805198Z {"ts":"2026-05-17T07:00:46.280Z","level":"info","runId":"25982828171-1","company":"apple","msg":"Loading page 8..."}
+2026-05-17T07:00:48.7783780Z {"ts":"2026-05-17T07:00:48.778Z","level":"info","runId":"25982828171-1","company":"apple","msg":"Page 8: 20 jobs (total so far: 160)"}
+2026-05-17T07:00:49.7798134Z {"ts":"2026-05-17T07:00:49.779Z","level":"info","runId":"25982828171-1","company":"apple","msg":"Loading page 9..."}
+2026-05-17T07:00:52.2681128Z {"ts":"2026-05-17T07:00:52.267Z","level":"info","runId":"25982828171-1","company":"apple","msg":"Page 9: 20 jobs (total so far: 180)"}
+2026-05-17T07:00:53.2694594Z {"ts":"2026-05-17T07:00:53.269Z","level":"info","runId":"25982828171-1","company":"apple","msg":"Loading page 10..."}
+2026-05-17T07:00:55.7160715Z {"ts":"2026-05-17T07:00:55.715Z","level":"info","runId":"25982828171-1","company":"apple","msg":"Page 10: 20 jobs (total so far: 200)"}
+2026-05-17T07:00:56.7175617Z {"ts":"2026-05-17T07:00:56.717Z","level":"info","runId":"25982828171-1","company":"apple","msg":"Loading page 11..."}
+2026-05-17T07:00:59.1837893Z {"ts":"2026-05-17T07:00:59.183Z","level":"info","runId":"25982828171-1","company":"apple","msg":"Page 11: 20 jobs (total so far: 220)"}
+2026-05-17T07:01:00.1854930Z {"ts":"2026-05-17T07:01:00.185Z","level":"info","runId":"25982828171-1","company":"apple","msg":"Loading page 12..."}
+2026-05-17T07:01:02.5619273Z {"ts":"2026-05-17T07:01:02.561Z","level":"info","runId":"25982828171-1","company":"apple","msg":"Page 12: 7 jobs (total so far: 227)"}
+2026-05-17T07:01:03.5624852Z {"ts":"2026-05-17T07:01:03.562Z","level":"info","runId":"25982828171-1","company":"apple","msg":"Loading page 13..."}
+2026-05-17T07:01:05.9490037Z {"ts":"2026-05-17T07:01:05.948Z","level":"info","runId":"25982828171-1","company":"apple","msg":"No new jobs on page 13, stopping"}
+2026-05-17T07:01:05.9490993Z {"ts":"2026-05-17T07:01:05.948Z","level":"info","runId":"25982828171-1","company":"apple","msg":"Total: 227 India jobs"}
+2026-05-17T07:01:29.5079074Z {"ts":"2026-05-17T07:01:29.507Z","level":"info","runId":"25982828171-1","company":"apple","msg":"  enrich progress: 25/227 | ok=25 err=0"}
+2026-05-17T07:01:49.2410519Z {"ts":"2026-05-17T07:01:49.240Z","level":"info","runId":"25982828171-1","company":"apple","msg":"  enrich progress: 50/227 | ok=50 err=0"}
+2026-05-17T07:02:09.9370485Z {"ts":"2026-05-17T07:02:09.936Z","level":"info","runId":"25982828171-1","company":"apple","msg":"  enrich progress: 75/227 | ok=75 err=0"}
+2026-05-17T07:02:29.6888522Z {"ts":"2026-05-17T07:02:29.688Z","level":"info","runId":"25982828171-1","company":"apple","msg":"  enrich progress: 100/227 | ok=100 err=0"}
+2026-05-17T07:02:51.1454039Z {"ts":"2026-05-17T07:02:51.145Z","level":"info","runId":"25982828171-1","company":"apple","msg":"  enrich progress: 125/227 | ok=125 err=0"}
+2026-05-17T07:03:13.2324863Z {"ts":"2026-05-17T07:03:13.232Z","level":"info","runId":"25982828171-1","company":"apple","msg":"  enrich progress: 150/227 | ok=150 err=0"}
+2026-05-17T07:03:36.7646973Z {"ts":"2026-05-17T07:03:36.764Z","level":"info","runId":"25982828171-1","company":"apple","msg":"  enrich progress: 175/227 | ok=175 err=0"}
+2026-05-17T07:03:58.3139837Z {"ts":"2026-05-17T07:03:58.313Z","level":"info","runId":"25982828171-1","company":"apple","msg":"  enrich progress: 200/227 | ok=200 err=0"}
+2026-05-17T07:04:22.9962984Z {"ts":"2026-05-17T07:04:22.996Z","level":"info","runId":"25982828171-1","company":"apple","msg":"  enrich progress: 225/227 | ok=225 err=0"}
+2026-05-17T07:04:25.0840514Z {"ts":"2026-05-17T07:04:25.083Z","level":"info","runId":"25982828171-1","company":"apple","msg":"Enriched descriptions: 227/227 | errors=0 | 199s"}
+2026-05-17T07:04:25.0847118Z {"ts":"2026-05-17T07:04:25.083Z","level":"info","runId":"25982828171-1","company":"apple","msg":"Scraped 227 raw jobs in 244s","event":"scrape_done","data":{"rawCount":227}}
+2026-05-17T07:04:25.2147315Z {"ts":"2026-05-17T07:04:25.214Z","level":"info","runId":"25982828171-1","company":"apple","msg":"223 India jobs after normalization","event":"normalize_done","data":{"kept":223,"dropped":4}}
+2026-05-17T07:04:26.3925148Z {"ts":"2026-05-17T07:04:26.392Z","level":"info","runId":"25982828171-1","company":"apple","msg":"Parse decision: 217 to parse, 0 skip (already parsed, unchanged), 6 rejected (non-engineering title)"}
+2026-05-17T07:04:26.3928708Z {"ts":"2026-05-17T07:04:26.392Z","level":"info","runId":"25982828171-1","company":"apple","msg":"Parsing 217 JDs with 3 workers across 3 keys (budget=10000/run)…"}
+2026-05-17T07:06:06.5409818Z {"ts":"2026-05-17T07:06:06.540Z","level":"info","runId":"25982828171-1","company":"apple","msg":"  parse: 25/217 ok=25 err=0"}
+2026-05-17T07:07:51.8590395Z {"ts":"2026-05-17T07:07:51.858Z","level":"info","runId":"25982828171-1","company":"apple","msg":"  parse: 50/217 ok=50 err=0"}
+2026-05-17T07:09:41.7460023Z {"ts":"2026-05-17T07:09:41.745Z","level":"info","runId":"25982828171-1","company":"apple","msg":"  parse: 75/217 ok=75 err=0"}
+2026-05-17T07:11:34.4637953Z {"ts":"2026-05-17T07:11:34.463Z","level":"info","runId":"25982828171-1","company":"apple","msg":"  parse: 100/217 ok=100 err=0"}
+2026-05-17T07:13:24.1742721Z {"ts":"2026-05-17T07:13:24.173Z","level":"info","runId":"25982828171-1","company":"apple","msg":"  parse: 125/217 ok=125 err=0"}
+2026-05-17T07:15:04.2917112Z {"ts":"2026-05-17T07:15:04.291Z","level":"info","runId":"25982828171-1","company":"apple","msg":"  parse: 150/217 ok=150 err=0"}
+2026-05-17T07:16:49.1471092Z {"ts":"2026-05-17T07:16:49.146Z","level":"info","runId":"25982828171-1","company":"apple","msg":"  parse: 175/217 ok=175 err=0"}
+2026-05-17T07:18:35.1091440Z {"ts":"2026-05-17T07:18:35.108Z","level":"info","runId":"25982828171-1","company":"apple","msg":"  parse: 200/217 ok=200 err=0"}
+2026-05-17T07:19:52.9141451Z {"ts":"2026-05-17T07:19:52.913Z","level":"info","runId":"25982828171-1","company":"apple","msg":"  parse: 217/217 ok=217 err=0"}
+2026-05-17T07:19:52.9143127Z {"ts":"2026-05-17T07:19:52.913Z","level":"info","runId":"25982828171-1","company":"apple","msg":"Parse done: ok=217 err=0 | 927s (Apple)"}
+2026-05-17T07:19:52.9144893Z {"ts":"2026-05-17T07:19:52.914Z","level":"info","runId":"25982828171-1","company":"apple","msg":"Embedding 217 JDs in batches of 100…"}
+2026-05-17T07:20:07.0768754Z {"ts":"2026-05-17T07:20:07.076Z","level":"info","runId":"25982828171-1","company":"apple","msg":"  embed: 100/217"}
+2026-05-17T07:21:03.0222687Z {"ts":"2026-05-17T07:21:03.021Z","level":"info","runId":"25982828171-1","company":"apple","msg":"  embed: 200/217"}
+2026-05-17T07:22:00.8363660Z {"ts":"2026-05-17T07:22:00.836Z","level":"info","runId":"25982828171-1","company":"apple","msg":"  embed: 217/217"}
+2026-05-17T07:22:00.8365412Z {"ts":"2026-05-17T07:22:00.836Z","level":"info","runId":"25982828171-1","company":"apple","msg":"Embed done: 217/217 | 128s"}
+2026-05-17T07:22:09.0554624Z {"ts":"2026-05-17T07:22:09.055Z","level":"info","runId":"25982828171-1","company":"apple","msg":"Inserted: 0, Updated: 217, Stale: 0, Rejected: 6","event":"company_done","data":{"inserted":0,"updated":217,"stale":0,"parseOk":217,"parseErr":0,"skippedBudget":0,"skippedQuota":0,"rejectedNonEng":6,"coverageSkipped":false,"elapsedMs":1307953}}
+2026-05-17T07:22:09.4448896Z {"ts":"2026-05-17T07:22:09.444Z","level":"info","runId":"25982828171-1","company":"atlassian","msg":"Crawling…","event":"company_start"}
+2026-05-17T07:22:19.3785858Z {"ts":"2026-05-17T07:22:19.378Z","level":"info","runId":"25982828171-1","company":"atlassian","msg":"HTML fallback: 0 job link(s) (filtered 0 nav)"}
+2026-05-17T07:22:19.3787317Z {"ts":"2026-05-17T07:22:19.378Z","level":"info","runId":"25982828171-1","company":"atlassian","msg":"Total: 0 jobs"}
+2026-05-17T07:22:19.3788372Z {"ts":"2026-05-17T07:22:19.378Z","level":"info","runId":"25982828171-1","company":"atlassian","msg":"Scraped 0 raw jobs in 10s","event":"scrape_done","data":{"rawCount":0}}
+2026-05-17T07:22:19.3789719Z {"ts":"2026-05-17T07:22:19.378Z","level":"info","runId":"25982828171-1","company":"atlassian","msg":"0 India jobs after normalization","event":"normalize_done","data":{"kept":0,"dropped":0}}
+2026-05-17T07:22:20.2802516Z {"ts":"2026-05-17T07:22:20.279Z","level":"info","runId":"25982828171-1","company":"nvidia","msg":"Crawling…","event":"company_start"}
+2026-05-17T07:22:20.2805719Z {"ts":"2026-05-17T07:22:20.280Z","level":"info","runId":"25982828171-1","company":"nvidia","msg":"Fetching offset 0 / ?..."}
+2026-05-17T07:22:22.1625947Z {"ts":"2026-05-17T07:22:22.162Z","level":"info","runId":"25982828171-1","company":"nvidia","msg":"Fetching offset 20 / 198..."}
+2026-05-17T07:22:23.2276437Z {"ts":"2026-05-17T07:22:23.227Z","level":"info","runId":"25982828171-1","company":"nvidia","msg":"Fetching offset 40 / 198..."}
+2026-05-17T07:22:25.0238448Z {"ts":"2026-05-17T07:22:25.023Z","level":"info","runId":"25982828171-1","company":"nvidia","msg":"Fetching offset 60 / 198..."}
+2026-05-17T07:22:26.0934410Z {"ts":"2026-05-17T07:22:26.093Z","level":"info","runId":"25982828171-1","company":"nvidia","msg":"Fetching offset 80 / 198..."}
+2026-05-17T07:22:27.1501453Z {"ts":"2026-05-17T07:22:27.149Z","level":"info","runId":"25982828171-1","company":"nvidia","msg":"Fetching offset 100 / 198..."}
+2026-05-17T07:22:28.5637140Z {"ts":"2026-05-17T07:22:28.563Z","level":"info","runId":"25982828171-1","company":"nvidia","msg":"Fetching offset 120 / 198..."}
+2026-05-17T07:22:29.6204306Z {"ts":"2026-05-17T07:22:29.620Z","level":"info","runId":"25982828171-1","company":"nvidia","msg":"Fetching offset 140 / 198..."}
+2026-05-17T07:22:30.8920545Z {"ts":"2026-05-17T07:22:30.891Z","level":"info","runId":"25982828171-1","company":"nvidia","msg":"Fetching offset 160 / 198..."}
+2026-05-17T07:22:32.2334174Z {"ts":"2026-05-17T07:22:32.233Z","level":"info","runId":"25982828171-1","company":"nvidia","msg":"Fetching offset 180 / 198..."}
+2026-05-17T07:22:33.0317609Z {"ts":"2026-05-17T07:22:33.031Z","level":"info","runId":"25982828171-1","company":"nvidia","msg":"Total: 198 India jobs"}
+2026-05-17T07:22:54.1109934Z {"ts":"2026-05-17T07:22:54.110Z","level":"info","runId":"25982828171-1","company":"nvidia","msg":"  enrich progress: 25/198 | ok=25 err=0"}
+2026-05-17T07:23:13.6022859Z {"ts":"2026-05-17T07:23:13.602Z","level":"info","runId":"25982828171-1","company":"nvidia","msg":"  enrich progress: 50/198 | ok=50 err=0"}
+2026-05-17T07:23:31.3873531Z {"ts":"2026-05-17T07:23:31.387Z","level":"info","runId":"25982828171-1","company":"nvidia","msg":"  enrich progress: 75/198 | ok=75 err=0"}
+2026-05-17T07:24:05.8482365Z {"ts":"2026-05-17T07:24:05.847Z","level":"warn","runId":"25982828171-1","company":"nvidia","msg":"detail err [Senior Verification Engineer - HSIO Clus]: page.goto: Timeout 35000ms exceeded."}
+2026-05-17T07:24:09.5317541Z {"ts":"2026-05-17T07:24:09.531Z","level":"warn","runId":"25982828171-1","company":"nvidia","msg":"detail err [Senior Verification Engineer - Audio and]: page.goto: Timeout 35000ms exceeded."}
+2026-05-17T07:24:09.5452460Z {"ts":"2026-05-17T07:24:09.544Z","level":"warn","runId":"25982828171-1","company":"nvidia","msg":"detail err [Senior ASIC Design Engineer - NOC IP]: page.goto: Timeout 35000ms exceeded."}
+2026-05-17T07:24:19.9435547Z {"ts":"2026-05-17T07:24:19.943Z","level":"info","runId":"25982828171-1","company":"nvidia","msg":"  enrich progress: 100/198 | ok=96 err=3"}
+2026-05-17T07:24:40.6541752Z {"ts":"2026-05-17T07:24:40.653Z","level":"info","runId":"25982828171-1","company":"nvidia","msg":"  enrich progress: 125/198 | ok=121 err=3"}
+2026-05-17T07:25:10.7888204Z {"ts":"2026-05-17T07:25:10.788Z","level":"info","runId":"25982828171-1","company":"nvidia","msg":"  enrich progress: 150/198 | ok=146 err=3"}
+2026-05-17T07:25:36.3969741Z {"ts":"2026-05-17T07:25:36.396Z","level":"info","runId":"25982828171-1","company":"nvidia","msg":"  enrich progress: 175/198 | ok=169 err=5"}
+2026-05-17T07:25:55.1382384Z {"ts":"2026-05-17T07:25:55.136Z","level":"info","runId":"25982828171-1","company":"nvidia","msg":"Enriched descriptions: 192/198 | errors=5 | 202s"}
+2026-05-17T07:25:55.1384988Z {"ts":"2026-05-17T07:25:55.137Z","level":"info","runId":"25982828171-1","company":"nvidia","msg":"Scraped 198 raw jobs in 215s","event":"scrape_done","data":{"rawCount":198}}
+2026-05-17T07:25:55.2230532Z {"ts":"2026-05-17T07:25:55.222Z","level":"info","runId":"25982828171-1","company":"nvidia","msg":"144 India jobs after normalization","event":"normalize_done","data":{"kept":144,"dropped":54}}
+2026-05-17T07:25:56.6344461Z {"ts":"2026-05-17T07:25:56.634Z","level":"info","runId":"25982828171-1","company":"nvidia","msg":"Parse decision: 144 to parse, 0 skip (already parsed, unchanged)"}
+2026-05-17T07:25:56.6346840Z {"ts":"2026-05-17T07:25:56.634Z","level":"info","runId":"25982828171-1","company":"nvidia","msg":"Parsing 144 JDs with 3 workers across 3 keys (budget=10000/run)…"}
+2026-05-17T07:27:38.1813303Z {"ts":"2026-05-17T07:27:38.181Z","level":"info","runId":"25982828171-1","company":"nvidia","msg":"  parse: 25/144 ok=25 err=0"}
+2026-05-17T07:29:51.7114537Z {"ts":"2026-05-17T07:29:51.711Z","level":"info","runId":"25982828171-1","company":"nvidia","msg":"  parse: 50/144 ok=50 err=0"}
+2026-05-17T07:31:45.0821728Z {"ts":"2026-05-17T07:31:45.081Z","level":"info","runId":"25982828171-1","company":"nvidia","msg":"  parse: 75/144 ok=75 err=0"}
+2026-05-17T07:34:06.4962221Z {"ts":"2026-05-17T07:34:06.495Z","level":"info","runId":"25982828171-1","company":"nvidia","msg":"  parse: 100/144 ok=100 err=0"}
+2026-05-17T07:36:06.6774159Z {"ts":"2026-05-17T07:36:06.677Z","level":"info","runId":"25982828171-1","company":"nvidia","msg":"  parse: 125/144 ok=125 err=0"}
+2026-05-17T07:37:34.4416479Z {"ts":"2026-05-17T07:37:34.441Z","level":"info","runId":"25982828171-1","company":"nvidia","msg":"  parse: 144/144 ok=144 err=0"}
+2026-05-17T07:37:34.4418260Z {"ts":"2026-05-17T07:37:34.441Z","level":"info","runId":"25982828171-1","company":"nvidia","msg":"Parse done: ok=144 err=0 | 698s (NVIDIA)"}
+2026-05-17T07:37:34.4420487Z {"ts":"2026-05-17T07:37:34.441Z","level":"info","runId":"25982828171-1","company":"nvidia","msg":"Embedding 144 JDs in batches of 100…"}
+2026-05-17T07:37:48.3124985Z {"ts":"2026-05-17T07:37:48.312Z","level":"info","runId":"25982828171-1","company":"nvidia","msg":"  embed: 100/144"}
+2026-05-17T07:38:32.3637510Z {"ts":"2026-05-17T07:38:32.363Z","level":"info","runId":"25982828171-1","company":"nvidia","msg":"  embed: 144/144"}
+2026-05-17T07:38:32.3638941Z {"ts":"2026-05-17T07:38:32.363Z","level":"info","runId":"25982828171-1","company":"nvidia","msg":"Embed done: 144/144 | 58s"}
+2026-05-17T07:38:34.7452496Z {"ts":"2026-05-17T07:38:34.744Z","level":"warn","runId":"25982828171-1","company":null,"msg":"upsert: dropped 1 in-batch signature duplicate(s) (same content, different external_id)","event":"upsert_sig_dup","data":{"dropped":1,"batchSize":50}}
+2026-05-17T07:38:37.3879955Z {"ts":"2026-05-17T07:38:37.387Z","level":"warn","runId":"25982828171-1","company":null,"msg":"upsert: dropped 1 in-batch signature duplicate(s) (same content, different external_id)","event":"upsert_sig_dup","data":{"dropped":1,"batchSize":50}}
+2026-05-17T07:38:39.8009107Z {"ts":"2026-05-17T07:38:39.800Z","level":"warn","runId":"25982828171-1","company":null,"msg":"upsert: dropped 3 in-batch signature duplicate(s) (same content, different external_id)","event":"upsert_sig_dup","data":{"dropped":3,"batchSize":44}}
+2026-05-17T07:38:43.8655044Z {"ts":"2026-05-17T07:38:43.865Z","level":"info","runId":"25982828171-1","company":"nvidia","msg":"Inserted: 131, Updated: 8, Stale: 0","event":"company_done","data":{"inserted":131,"updated":8,"stale":0,"parseOk":144,"parseErr":0,"skippedBudget":0,"skippedQuota":0,"rejectedNonEng":0,"coverageSkipped":false,"elapsedMs":983586}}
+2026-05-17T07:38:44.7496330Z {"ts":"2026-05-17T07:38:44.749Z","level":"info","runId":"25982828171-1","company":"oracle","msg":"Crawling…","event":"company_start"}
+2026-05-17T07:38:44.7498020Z {"ts":"2026-05-17T07:38:44.749Z","level":"info","runId":"25982828171-1","company":"oracle","msg":"Fetching offset 0 / ?..."}
+2026-05-17T07:38:46.2501024Z {"ts":"2026-05-17T07:38:46.249Z","level":"info","runId":"25982828171-1","company":"oracle","msg":"Fetching offset 25 / 64..."}
+2026-05-17T07:38:47.3816733Z {"ts":"2026-05-17T07:38:47.381Z","level":"info","runId":"25982828171-1","company":"oracle","msg":"Fetching offset 50 / 64..."}
+2026-05-17T07:38:47.8726086Z {"ts":"2026-05-17T07:38:47.872Z","level":"info","runId":"25982828171-1","company":"oracle","msg":"Total: 63 India jobs"}
+2026-05-17T07:39:22.9240978Z {"ts":"2026-05-17T07:39:22.923Z","level":"warn","runId":"25982828171-1","company":"oracle","msg":"detail err [Lead Specialist - Customer Deal Desk, Gl]: page.goto: Timeout 35000ms exceeded."}
+2026-05-17T07:39:23.1281877Z {"ts":"2026-05-17T07:39:23.127Z","level":"info","runId":"25982828171-1","company":"oracle","msg":"Enriched descriptions: 1/63 | errors=1 | 35s"}
+2026-05-17T07:39:23.1294592Z {"ts":"2026-05-17T07:39:23.127Z","level":"info","runId":"25982828171-1","company":"oracle","msg":"Scraped 63 raw jobs in 38s","event":"scrape_done","data":{"rawCount":63}}
+2026-05-17T07:39:23.1391389Z {"ts":"2026-05-17T07:39:23.136Z","level":"info","runId":"25982828171-1","company":"oracle","msg":"63 India jobs after normalization","event":"normalize_done","data":{"kept":63,"dropped":0}}
+2026-05-17T07:39:23.8947229Z {"ts":"2026-05-17T07:39:23.894Z","level":"info","runId":"25982828171-1","company":"oracle","msg":"Parse decision: 51 to parse, 0 skip (already parsed, unchanged), 12 rejected (non-engineering title)"}
+2026-05-17T07:39:23.8949979Z {"ts":"2026-05-17T07:39:23.894Z","level":"info","runId":"25982828171-1","company":"oracle","msg":"Parsing 51 JDs with 3 workers across 3 keys (budget=10000/run)…"}
+2026-05-17T07:41:23.7990470Z {"ts":"2026-05-17T07:41:23.798Z","level":"info","runId":"25982828171-1","company":"oracle","msg":"  parse: 25/51 ok=25 err=0"}
+2026-05-17T07:43:17.0079674Z {"ts":"2026-05-17T07:43:17.007Z","level":"info","runId":"25982828171-1","company":"oracle","msg":"  parse: 50/51 ok=50 err=0"}
+2026-05-17T07:43:24.7609724Z {"ts":"2026-05-17T07:43:24.760Z","level":"info","runId":"25982828171-1","company":"oracle","msg":"  parse: 51/51 ok=51 err=0"}
+2026-05-17T07:43:24.7610996Z {"ts":"2026-05-17T07:43:24.760Z","level":"info","runId":"25982828171-1","company":"oracle","msg":"Parse done: ok=51 err=0 | 241s (Oracle)"}
+2026-05-17T07:43:24.7612532Z {"ts":"2026-05-17T07:43:24.760Z","level":"info","runId":"25982828171-1","company":"oracle","msg":"Embedding 51 JDs in batches of 100…"}
+2026-05-17T07:43:25.7496536Z {"ts":"2026-05-17T07:43:25.749Z","level":"info","runId":"25982828171-1","company":"oracle","msg":"  embed: 51/51"}
+2026-05-17T07:43:25.7497653Z {"ts":"2026-05-17T07:43:25.749Z","level":"info","runId":"25982828171-1","company":"oracle","msg":"Embed done: 51/51 | 1s"}
+2026-05-17T07:43:27.2326460Z {"ts":"2026-05-17T07:43:27.232Z","level":"warn","runId":"25982828171-1","company":null,"msg":"upsert: dropped 17 in-batch signature duplicate(s) (same content, different external_id)","event":"upsert_sig_dup","data":{"dropped":17,"batchSize":50}}
+2026-05-17T07:43:30.1424265Z {"ts":"2026-05-17T07:43:30.141Z","level":"info","runId":"25982828171-1","company":"oracle","msg":"Inserted: 34, Updated: 0, Stale: 0, Rejected: 12","event":"company_done","data":{"inserted":34,"updated":0,"stale":0,"parseOk":51,"parseErr":0,"skippedBudget":0,"skippedQuota":0,"rejectedNonEng":12,"coverageSkipped":false,"elapsedMs":285392}}
+2026-05-17T07:43:30.5273461Z {"ts":"2026-05-17T07:43:30.526Z","level":"info","runId":"25982828171-1","company":"salesforce","msg":"Crawling…","event":"company_start"}
+2026-05-17T07:43:30.5275095Z {"ts":"2026-05-17T07:43:30.526Z","level":"info","runId":"25982828171-1","company":"salesforce","msg":"Fetching offset 0 / ?..."}
+2026-05-17T07:43:31.4840250Z {"ts":"2026-05-17T07:43:31.483Z","level":"info","runId":"25982828171-1","company":"salesforce","msg":"Fetching offset 20 / 145..."}
+2026-05-17T07:43:32.3787581Z {"ts":"2026-05-17T07:43:32.378Z","level":"info","runId":"25982828171-1","company":"salesforce","msg":"Fetching offset 40 / 145..."}
+2026-05-17T07:43:33.2661544Z {"ts":"2026-05-17T07:43:33.265Z","level":"info","runId":"25982828171-1","company":"salesforce","msg":"Fetching offset 60 / 145..."}
+2026-05-17T07:43:34.1329858Z {"ts":"2026-05-17T07:43:34.132Z","level":"info","runId":"25982828171-1","company":"salesforce","msg":"Fetching offset 80 / 145..."}
+2026-05-17T07:43:34.9926030Z {"ts":"2026-05-17T07:43:34.992Z","level":"info","runId":"25982828171-1","company":"salesforce","msg":"Fetching offset 100 / 145..."}
+2026-05-17T07:43:35.8629812Z {"ts":"2026-05-17T07:43:35.862Z","level":"info","runId":"25982828171-1","company":"salesforce","msg":"Fetching offset 120 / 145..."}
+2026-05-17T07:43:36.7569386Z {"ts":"2026-05-17T07:43:36.756Z","level":"info","runId":"25982828171-1","company":"salesforce","msg":"Fetching offset 140 / 145..."}
+2026-05-17T07:43:37.1171716Z {"ts":"2026-05-17T07:43:37.116Z","level":"info","runId":"25982828171-1","company":"salesforce","msg":"Total: 145 India jobs"}
+2026-05-17T07:43:57.9248177Z {"ts":"2026-05-17T07:43:57.924Z","level":"info","runId":"25982828171-1","company":"salesforce","msg":"  enrich progress: 25/145 | ok=25 err=0"}
+2026-05-17T07:44:15.9603271Z {"ts":"2026-05-17T07:44:15.960Z","level":"info","runId":"25982828171-1","company":"salesforce","msg":"  enrich progress: 50/145 | ok=50 err=0"}
+2026-05-17T07:44:33.5457020Z {"ts":"2026-05-17T07:44:33.545Z","level":"info","runId":"25982828171-1","company":"salesforce","msg":"  enrich progress: 75/145 | ok=74 err=0"}
+2026-05-17T07:44:57.8988187Z {"ts":"2026-05-17T07:44:57.898Z","level":"info","runId":"25982828171-1","company":"salesforce","msg":"  enrich progress: 100/145 | ok=83 err=0"}
+2026-05-17T07:45:08.8220076Z {"ts":"2026-05-17T07:45:08.821Z","level":"warn","runId":"25982828171-1","company":"salesforce","msg":"detail err [Named Account Executive - IT/ITES & Medi]: page.goto: Timeout 35000ms exceeded."}
+2026-05-17T07:45:26.1489970Z {"ts":"2026-05-17T07:45:26.148Z","level":"info","runId":"25982828171-1","company":"salesforce","msg":"  enrich progress: 125/145 | ok=107 err=1"}
+2026-05-17T07:45:27.8020468Z {"ts":"2026-05-17T07:45:27.801Z","level":"warn","runId":"25982828171-1","company":"salesforce","msg":"detail err [SMTS, Zuora Revenue System Engineer]: page.goto: Timeout 35000ms exceeded."}
+2026-05-17T07:46:09.6987725Z {"ts":"2026-05-17T07:46:09.698Z","level":"warn","runId":"25982828171-1","company":"salesforce","msg":"detail err [Success Architect-Sales Cloud]: page.goto: Timeout 35000ms exceeded."}
+2026-05-17T07:46:10.0312028Z {"ts":"2026-05-17T07:46:10.030Z","level":"info","runId":"25982828171-1","company":"salesforce","msg":"Enriched descriptions: 123/145 | errors=4 | 153s"}
+2026-05-17T07:46:10.0314275Z {"ts":"2026-05-17T07:46:10.030Z","level":"info","runId":"25982828171-1","company":"salesforce","msg":"Scraped 145 raw jobs in 160s","event":"scrape_done","data":{"rawCount":145}}
+2026-05-17T07:46:10.1592709Z {"ts":"2026-05-17T07:46:10.158Z","level":"info","runId":"25982828171-1","company":"salesforce","msg":"71 India jobs after normalization","event":"normalize_done","data":{"kept":71,"dropped":74}}
+2026-05-17T07:46:11.4093333Z {"ts":"2026-05-17T07:46:11.408Z","level":"info","runId":"25982828171-1","company":"salesforce","msg":"Parse decision: 43 to parse, 0 skip (already parsed, unchanged), 28 rejected (non-engineering title)"}
+2026-05-17T07:46:11.4095801Z {"ts":"2026-05-17T07:46:11.409Z","level":"info","runId":"25982828171-1","company":"salesforce","msg":"Parsing 43 JDs with 3 workers across 3 keys (budget=10000/run)…"}
+2026-05-17T07:48:21.7194193Z {"ts":"2026-05-17T07:48:21.719Z","level":"info","runId":"25982828171-1","company":"salesforce","msg":"  parse: 25/43 ok=25 err=0"}
+2026-05-17T07:49:57.7538218Z {"ts":"2026-05-17T07:49:57.753Z","level":"info","runId":"25982828171-1","company":"salesforce","msg":"  parse: 43/43 ok=43 err=0"}
+2026-05-17T07:49:57.7540044Z {"ts":"2026-05-17T07:49:57.753Z","level":"info","runId":"25982828171-1","company":"salesforce","msg":"Parse done: ok=43 err=0 | 226s (Salesforce)"}
+2026-05-17T07:49:57.7542373Z {"ts":"2026-05-17T07:49:57.753Z","level":"info","runId":"25982828171-1","company":"salesforce","msg":"Embedding 43 JDs in batches of 100…"}
+2026-05-17T07:50:10.7322937Z {"ts":"2026-05-17T07:50:10.732Z","level":"info","runId":"25982828171-1","company":"salesforce","msg":"  embed: 43/43"}
+2026-05-17T07:50:10.7323865Z {"ts":"2026-05-17T07:50:10.732Z","level":"info","runId":"25982828171-1","company":"salesforce","msg":"Embed done: 43/43 | 13s"}
+2026-05-17T07:50:14.4013271Z {"ts":"2026-05-17T07:50:14.400Z","level":"info","runId":"25982828171-1","company":"salesforce","msg":"Inserted: 43, Updated: 0, Stale: 0, Rejected: 28","event":"company_done","data":{"inserted":43,"updated":0,"stale":0,"parseOk":43,"parseErr":0,"skippedBudget":0,"skippedQuota":0,"rejectedNonEng":28,"coverageSkipped":false,"elapsedMs":403874}}
+2026-05-17T07:50:14.7831915Z {"ts":"2026-05-17T07:50:14.782Z","level":"info","runId":"25982828171-1","company":"sap-labs","msg":"Crawling…","event":"company_start"}
+2026-05-17T07:50:16.0732742Z {"ts":"2026-05-17T07:50:16.072Z","level":"info","runId":"25982828171-1","company":"sap-labs","msg":"Total jobs reported: 141"}
+2026-05-17T07:50:16.0739736Z {"ts":"2026-05-17T07:50:16.073Z","level":"info","runId":"25982828171-1","company":"sap-labs","msg":"Offset 0: 25 jobs (total so far: 25)"}
+2026-05-17T07:50:16.7341996Z {"ts":"2026-05-17T07:50:16.733Z","level":"info","runId":"25982828171-1","company":"sap-labs","msg":"Offset 25: 25 jobs (total so far: 50)"}
+2026-05-17T07:50:17.0947529Z {"ts":"2026-05-17T07:50:17.094Z","level":"info","runId":"25982828171-1","company":"sap-labs","msg":"Offset 50: 25 jobs (total so far: 75)"}
+2026-05-17T07:50:17.4825189Z {"ts":"2026-05-17T07:50:17.482Z","level":"info","runId":"25982828171-1","company":"sap-labs","msg":"Offset 75: 25 jobs (total so far: 100)"}
+2026-05-17T07:50:17.9061442Z {"ts":"2026-05-17T07:50:17.905Z","level":"info","runId":"25982828171-1","company":"sap-labs","msg":"Offset 100: 25 jobs (total so far: 125)"}
+2026-05-17T07:50:18.3037322Z {"ts":"2026-05-17T07:50:18.303Z","level":"info","runId":"25982828171-1","company":"sap-labs","msg":"Offset 125: 16 jobs (total so far: 141)"}
+2026-05-17T07:50:18.3039266Z {"ts":"2026-05-17T07:50:18.303Z","level":"info","runId":"25982828171-1","company":"sap-labs","msg":"Total: 141 India jobs"}
+2026-05-17T07:50:58.3519591Z {"ts":"2026-05-17T07:50:58.351Z","level":"warn","runId":"25982828171-1","company":"sap-labs","msg":"detail err [Senior DevOps Engineer (Jenkins, Concour]: page.goto: Timeout 40000ms exceeded."}
+2026-05-17T07:50:58.3521916Z {"ts":"2026-05-17T07:50:58.351Z","level":"warn","runId":"25982828171-1","company":"sap-labs","msg":"detail err [Business Processes Consultant - SAP GTS]: page.goto: Timeout 40000ms exceeded."}
+2026-05-17T07:50:58.3545097Z {"ts":"2026-05-17T07:50:58.354Z","level":"warn","runId":"25982828171-1","company":"sap-labs","msg":"detail err [DevOps Engineer - 6-9 Years (IT Technolo]: page.goto: Timeout 40000ms exceeded."}
+2026-05-17T07:54:59.5710613Z {"ts":"2026-05-17T07:54:59.570Z","level":"info","runId":"25982828171-1","company":"sap-labs","msg":"  enrich progress: 25/141 | ok=0 err=25"}
+2026-05-17T07:56:20.2028238Z {"ts":"2026-05-17T07:56:20.202Z","level":"info","runId":"25982828171-1","company":"sap-labs","msg":"Enriched descriptions: 0/141 | errors=36 | 362s"}
+2026-05-17T07:56:20.2067162Z {"ts":"2026-05-17T07:56:20.202Z","level":"info","runId":"25982828171-1","company":"sap-labs","msg":"Scraped 141 raw jobs in 365s","event":"scrape_done","data":{"rawCount":141}}
+2026-05-17T07:56:20.2167391Z {"ts":"2026-05-17T07:56:20.216Z","level":"info","runId":"25982828171-1","company":"sap-labs","msg":"136 India jobs after normalization","event":"normalize_done","data":{"kept":136,"dropped":5}}
+2026-05-17T07:56:21.0324683Z {"ts":"2026-05-17T07:56:21.032Z","level":"info","runId":"25982828171-1","company":"sap-labs","msg":"Parse decision: 117 to parse, 0 skip (already parsed, unchanged), 19 rejected (non-engineering title)"}
+2026-05-17T07:56:21.0326944Z {"ts":"2026-05-17T07:56:21.032Z","level":"info","runId":"25982828171-1","company":"sap-labs","msg":"Parsing 117 JDs with 3 workers across 3 keys (budget=10000/run)…"}
+2026-05-17T07:58:24.3640234Z {"ts":"2026-05-17T07:58:24.363Z","level":"info","runId":"25982828171-1","company":"sap-labs","msg":"  parse: 25/117 ok=25 err=0"}
+2026-05-17T08:00:43.4815026Z {"ts":"2026-05-17T08:00:43.481Z","level":"info","runId":"25982828171-1","company":"sap-labs","msg":"  parse: 50/117 ok=50 err=0"}
+2026-05-17T08:02:45.1802368Z {"ts":"2026-05-17T08:02:45.179Z","level":"info","runId":"25982828171-1","company":"sap-labs","msg":"  parse: 75/117 ok=75 err=0"}
+2026-05-17T08:04:54.3282465Z {"ts":"2026-05-17T08:04:54.327Z","level":"info","runId":"25982828171-1","company":"sap-labs","msg":"  parse: 100/117 ok=100 err=0"}
+2026-05-17T08:06:04.6233720Z {"ts":"2026-05-17T08:06:04.623Z","level":"info","runId":"25982828171-1","company":"sap-labs","msg":"  parse: 117/117 ok=117 err=0"}
+2026-05-17T08:06:04.6235738Z {"ts":"2026-05-17T08:06:04.623Z","level":"info","runId":"25982828171-1","company":"sap-labs","msg":"Parse done: ok=117 err=0 | 584s (SAP Labs)"}
+2026-05-17T08:06:04.6237934Z {"ts":"2026-05-17T08:06:04.623Z","level":"info","runId":"25982828171-1","company":"sap-labs","msg":"Embedding 117 JDs in batches of 100…"}
+2026-05-17T08:06:06.0063346Z {"ts":"2026-05-17T08:06:06.006Z","level":"info","runId":"25982828171-1","company":"sap-labs","msg":"  embed: 100/117"}
+2026-05-17T08:06:06.9709623Z {"ts":"2026-05-17T08:06:06.970Z","level":"info","runId":"25982828171-1","company":"sap-labs","msg":"  embed: 117/117"}
+2026-05-17T08:06:06.9711092Z {"ts":"2026-05-17T08:06:06.970Z","level":"info","runId":"25982828171-1","company":"sap-labs","msg":"Embed done: 117/117 | 2s"}
+2026-05-17T08:06:10.2470519Z {"ts":"2026-05-17T08:06:10.246Z","level":"warn","runId":"25982828171-1","company":null,"msg":"upsert: dropped 1 in-batch signature duplicate(s) (same content, different external_id)","event":"upsert_sig_dup","data":{"dropped":1,"batchSize":50}}
+2026-05-17T08:06:14.8719197Z {"ts":"2026-05-17T08:06:14.871Z","level":"info","runId":"25982828171-1","company":"sap-labs","msg":"Inserted: 113, Updated: 3, Stale: 0, Rejected: 19","event":"company_done","data":{"inserted":113,"updated":3,"stale":0,"parseOk":117,"parseErr":0,"skippedBudget":0,"skippedQuota":0,"rejectedNonEng":19,"coverageSkipped":false,"elapsedMs":960089}}
+2026-05-17T08:06:15.2519131Z {"ts":"2026-05-17T08:06:15.251Z","level":"info","runId":"25982828171-1","company":"razorpay","msg":"Crawling…","event":"company_start"}
+2026-05-17T08:06:15.4459772Z {"ts":"2026-05-17T08:06:15.445Z","level":"info","runId":"25982828171-1","company":"razorpay","msg":"Total: 55 jobs"}
+2026-05-17T08:06:15.4461895Z {"ts":"2026-05-17T08:06:15.445Z","level":"info","runId":"25982828171-1","company":"razorpay","msg":"Scraped 55 raw jobs in 0s","event":"scrape_done","data":{"rawCount":55}}
+2026-05-17T08:06:15.5036335Z {"ts":"2026-05-17T08:06:15.503Z","level":"info","runId":"25982828171-1","company":"razorpay","msg":"49 India jobs after normalization","event":"normalize_done","data":{"kept":49,"dropped":6}}
+2026-05-17T08:06:15.7702512Z {"ts":"2026-05-17T08:06:15.769Z","level":"info","runId":"25982828171-1","company":"razorpay","msg":"Parse decision: 47 to parse, 0 skip (already parsed, unchanged), 2 rejected (non-engineering title)"}
+2026-05-17T08:06:15.7704444Z {"ts":"2026-05-17T08:06:15.770Z","level":"info","runId":"25982828171-1","company":"razorpay","msg":"Parsing 47 JDs with 3 workers across 3 keys (budget=10000/run)…"}
+2026-05-17T08:08:05.7590856Z {"ts":"2026-05-17T08:08:05.758Z","level":"info","runId":"25982828171-1","company":"razorpay","msg":"  parse: 25/47 ok=25 err=0"}
+2026-05-17T08:09:53.9347014Z {"ts":"2026-05-17T08:09:53.934Z","level":"info","runId":"25982828171-1","company":"razorpay","msg":"  parse: 47/47 ok=47 err=0"}
+2026-05-17T08:09:53.9349030Z {"ts":"2026-05-17T08:09:53.934Z","level":"info","runId":"25982828171-1","company":"razorpay","msg":"Parse done: ok=47 err=0 | 218s (Razorpay)"}
+2026-05-17T08:09:53.9350899Z {"ts":"2026-05-17T08:09:53.934Z","level":"info","runId":"25982828171-1","company":"razorpay","msg":"Embedding 47 JDs in batches of 100…"}
+2026-05-17T08:10:06.8829545Z {"ts":"2026-05-17T08:10:06.882Z","level":"info","runId":"25982828171-1","company":"razorpay","msg":"  embed: 47/47"}
+2026-05-17T08:10:06.8831027Z {"ts":"2026-05-17T08:10:06.882Z","level":"info","runId":"25982828171-1","company":"razorpay","msg":"Embed done: 47/47 | 13s"}
+2026-05-17T08:10:08.7579273Z {"ts":"2026-05-17T08:10:08.757Z","level":"warn","runId":"25982828171-1","company":null,"msg":"upsert: dropped 8 in-batch signature duplicate(s) (same content, different external_id)","event":"upsert_sig_dup","data":{"dropped":8,"batchSize":47}}
+2026-05-17T08:10:11.1546796Z {"ts":"2026-05-17T08:10:11.154Z","level":"info","runId":"25982828171-1","company":"razorpay","msg":"Inserted: 39, Updated: 0, Stale: 0, Rejected: 2","event":"company_done","data":{"inserted":39,"updated":0,"stale":0,"parseOk":47,"parseErr":0,"skippedBudget":0,"skippedQuota":0,"rejectedNonEng":2,"coverageSkipped":false,"elapsedMs":235903}}
+2026-05-17T08:10:11.5352429Z {"ts":"2026-05-17T08:10:11.534Z","level":"info","runId":"25982828171-1","company":"phonepe","msg":"Crawling…","event":"company_start"}
+2026-05-17T08:10:11.7179204Z {"ts":"2026-05-17T08:10:11.717Z","level":"info","runId":"25982828171-1","company":"phonepe","msg":"Total: 46 jobs"}
+2026-05-17T08:10:11.7181432Z {"ts":"2026-05-17T08:10:11.717Z","level":"info","runId":"25982828171-1","company":"phonepe","msg":"Scraped 46 raw jobs in 0s","event":"scrape_done","data":{"rawCount":46}}
+2026-05-17T08:10:11.7621618Z {"ts":"2026-05-17T08:10:11.761Z","level":"info","runId":"25982828171-1","company":"phonepe","msg":"42 India jobs after normalization","event":"normalize_done","data":{"kept":42,"dropped":4}}
+2026-05-17T08:10:12.0359389Z {"ts":"2026-05-17T08:10:12.035Z","level":"info","runId":"25982828171-1","company":"phonepe","msg":"Parse decision: 37 to parse, 0 skip (already parsed, unchanged), 5 rejected (non-engineering title)"}
+2026-05-17T08:10:12.0361759Z {"ts":"2026-05-17T08:10:12.035Z","level":"info","runId":"25982828171-1","company":"phonepe","msg":"Parsing 37 JDs with 3 workers across 3 keys (budget=10000/run)…"}
+2026-05-17T08:12:08.4440906Z {"ts":"2026-05-17T08:12:08.443Z","level":"info","runId":"25982828171-1","company":"phonepe","msg":"  parse: 25/37 ok=25 err=0"}
+2026-05-17T08:13:17.4490763Z {"ts":"2026-05-17T08:13:17.448Z","level":"info","runId":"25982828171-1","company":"phonepe","msg":"  parse: 37/37 ok=37 err=0"}
+2026-05-17T08:13:17.4492927Z {"ts":"2026-05-17T08:13:17.448Z","level":"info","runId":"25982828171-1","company":"phonepe","msg":"Parse done: ok=37 err=0 | 185s (PhonePe)"}
+2026-05-17T08:13:17.4495173Z {"ts":"2026-05-17T08:13:17.449Z","level":"info","runId":"25982828171-1","company":"phonepe","msg":"Embedding 37 JDs in batches of 100…"}
+2026-05-17T08:13:30.0861353Z {"ts":"2026-05-17T08:13:30.085Z","level":"info","runId":"25982828171-1","company":"phonepe","msg":"  embed: 37/37"}
+2026-05-17T08:13:30.0862246Z {"ts":"2026-05-17T08:13:30.085Z","level":"info","runId":"25982828171-1","company":"phonepe","msg":"Embed done: 37/37 | 13s"}
+2026-05-17T08:13:32.2569523Z {"ts":"2026-05-17T08:13:32.256Z","level":"warn","runId":"25982828171-1","company":null,"msg":"upsert: dropped 1 in-batch signature duplicate(s) (same content, different external_id)","event":"upsert_sig_dup","data":{"dropped":1,"batchSize":37}}
+2026-05-17T08:13:34.5868109Z {"ts":"2026-05-17T08:13:34.586Z","level":"info","runId":"25982828171-1","company":"phonepe","msg":"Inserted: 36, Updated: 0, Stale: 0, Rejected: 5","event":"company_done","data":{"inserted":36,"updated":0,"stale":0,"parseOk":37,"parseErr":0,"skippedBudget":0,"skippedQuota":0,"rejectedNonEng":5,"coverageSkipped":false,"elapsedMs":203052}}
+2026-05-17T08:13:34.9659172Z {"ts":"2026-05-17T08:13:34.965Z","level":"info","runId":"25982828171-1","company":"zerodha","msg":"Crawling…","event":"company_start"}
+2026-05-17T08:13:39.6172898Z {"ts":"2026-05-17T08:13:39.617Z","level":"info","runId":"25982828171-1","company":"zerodha","msg":"Found 0 job links"}
+2026-05-17T08:13:39.6173804Z {"ts":"2026-05-17T08:13:39.617Z","level":"info","runId":"25982828171-1","company":"zerodha","msg":"Total: 0 jobs"}
+2026-05-17T08:13:39.6174776Z {"ts":"2026-05-17T08:13:39.617Z","level":"info","runId":"25982828171-1","company":"zerodha","msg":"Scraped 0 raw jobs in 5s","event":"scrape_done","data":{"rawCount":0}}
+2026-05-17T08:13:39.6176503Z {"ts":"2026-05-17T08:13:39.617Z","level":"info","runId":"25982828171-1","company":"zerodha","msg":"0 India jobs after normalization","event":"normalize_done","data":{"kept":0,"dropped":0}}
+2026-05-17T08:13:40.0060958Z {"ts":"2026-05-17T08:13:40.005Z","level":"info","runId":"25982828171-1","company":"cred","msg":"Crawling…","event":"company_start"}
+2026-05-17T08:13:40.0444016Z {"ts":"2026-05-17T08:13:40.044Z","level":"info","runId":"25982828171-1","company":"cred","msg":"Total: 2 jobs"}
+2026-05-17T08:13:44.5888414Z {"ts":"2026-05-17T08:13:44.588Z","level":"info","runId":"25982828171-1","company":"cred","msg":"Enriched descriptions: 2/2 | errors=0 | 5s"}
+2026-05-17T08:13:44.5896672Z {"ts":"2026-05-17T08:13:44.588Z","level":"info","runId":"25982828171-1","company":"cred","msg":"Scraped 2 raw jobs in 5s","event":"scrape_done","data":{"rawCount":2}}
+2026-05-17T08:13:44.5930379Z {"ts":"2026-05-17T08:13:44.592Z","level":"info","runId":"25982828171-1","company":"cred","msg":"2 India jobs after normalization","event":"normalize_done","data":{"kept":2,"dropped":0}}
+2026-05-17T08:13:44.8867790Z {"ts":"2026-05-17T08:13:44.886Z","level":"info","runId":"25982828171-1","company":"cred","msg":"Parse decision: 2 to parse, 0 skip (already parsed, unchanged)"}
+2026-05-17T08:13:44.8869659Z {"ts":"2026-05-17T08:13:44.886Z","level":"info","runId":"25982828171-1","company":"cred","msg":"Parsing 2 JDs with 3 workers across 3 keys (budget=10000/run)…"}
+2026-05-17T08:14:04.4972014Z {"ts":"2026-05-17T08:14:04.496Z","level":"info","runId":"25982828171-1","company":"cred","msg":"  parse: 2/2 ok=2 err=0"}
+2026-05-17T08:14:04.4973126Z {"ts":"2026-05-17T08:14:04.497Z","level":"info","runId":"25982828171-1","company":"cred","msg":"Parse done: ok=2 err=0 | 20s (CRED)"}
+2026-05-17T08:14:04.4974924Z {"ts":"2026-05-17T08:14:04.497Z","level":"info","runId":"25982828171-1","company":"cred","msg":"Embedding 2 JDs in batches of 100…"}
+2026-05-17T08:14:05.1240748Z {"ts":"2026-05-17T08:14:05.123Z","level":"info","runId":"25982828171-1","company":"cred","msg":"  embed: 2/2"}
+2026-05-17T08:14:05.1241763Z {"ts":"2026-05-17T08:14:05.123Z","level":"info","runId":"25982828171-1","company":"cred","msg":"Embed done: 2/2 | 1s"}
+2026-05-17T08:14:06.5094935Z {"ts":"2026-05-17T08:14:06.508Z","level":"info","runId":"25982828171-1","company":"cred","msg":"Inserted: 2, Updated: 0, Stale: 0","event":"company_done","data":{"inserted":2,"updated":0,"stale":0,"parseOk":2,"parseErr":0,"skippedBudget":0,"skippedQuota":0,"rejectedNonEng":0,"coverageSkipped":false,"elapsedMs":26503}}
+2026-05-17T08:14:06.8813396Z {"ts":"2026-05-17T08:14:06.880Z","level":"info","runId":"25982828171-1","company":"groww","msg":"Crawling…","event":"company_start"}
+2026-05-17T08:14:07.0394669Z {"ts":"2026-05-17T08:14:07.039Z","level":"info","runId":"25982828171-1","company":"groww","msg":"Total: 13 jobs"}
+2026-05-17T08:14:07.0396670Z {"ts":"2026-05-17T08:14:07.039Z","level":"info","runId":"25982828171-1","company":"groww","msg":"Scraped 13 raw jobs in 0s","event":"scrape_done","data":{"rawCount":13}}
+2026-05-17T08:14:07.0486332Z {"ts":"2026-05-17T08:14:07.048Z","level":"info","runId":"25982828171-1","company":"groww","msg":"13 India jobs after normalization","event":"normalize_done","data":{"kept":13,"dropped":0}}
+2026-05-17T08:14:07.3142118Z {"ts":"2026-05-17T08:14:07.313Z","level":"info","runId":"25982828171-1","company":"groww","msg":"Parse decision: 13 to parse, 0 skip (already parsed, unchanged)"}
+2026-05-17T08:14:07.3146170Z {"ts":"2026-05-17T08:14:07.313Z","level":"info","runId":"25982828171-1","company":"groww","msg":"Parsing 13 JDs with 3 workers across 3 keys (budget=10000/run)…"}
+2026-05-17T08:15:12.2486006Z {"ts":"2026-05-17T08:15:12.248Z","level":"info","runId":"25982828171-1","company":"groww","msg":"  parse: 13/13 ok=13 err=0"}
+2026-05-17T08:15:12.2487261Z {"ts":"2026-05-17T08:15:12.248Z","level":"info","runId":"25982828171-1","company":"groww","msg":"Parse done: ok=13 err=0 | 65s (Groww)"}
+2026-05-17T08:15:12.2488671Z {"ts":"2026-05-17T08:15:12.248Z","level":"info","runId":"25982828171-1","company":"groww","msg":"Embedding 13 JDs in batches of 100…"}
+2026-05-17T08:15:12.8998714Z {"ts":"2026-05-17T08:15:12.899Z","level":"info","runId":"25982828171-1","company":"groww","msg":"  embed: 13/13"}
+2026-05-17T08:15:12.9000096Z {"ts":"2026-05-17T08:15:12.899Z","level":"info","runId":"25982828171-1","company":"groww","msg":"Embed done: 13/13 | 1s"}
+2026-05-17T08:15:16.4284982Z {"ts":"2026-05-17T08:15:16.428Z","level":"info","runId":"25982828171-1","company":"groww","msg":"Inserted: 13, Updated: 0, Stale: 0","event":"company_done","data":{"inserted":13,"updated":0,"stale":0,"parseOk":13,"parseErr":0,"skippedBudget":0,"skippedQuota":0,"rejectedNonEng":0,"coverageSkipped":false,"elapsedMs":69548}}
+2026-05-17T08:15:16.7803102Z {"ts":"2026-05-17T08:15:16.779Z","level":"info","runId":"25982828171-1","company":"swiggy","msg":"Crawling…","event":"company_start"}
+2026-05-17T08:15:17.1606651Z {"ts":"2026-05-17T08:15:17.158Z","level":"info","runId":"25982828171-1","company":"swiggy","msg":"Total: 103 jobs"}
+2026-05-17T08:15:17.1626673Z {"ts":"2026-05-17T08:15:17.158Z","level":"info","runId":"25982828171-1","company":"swiggy","msg":"Scraped 103 raw jobs in 0s","event":"scrape_done","data":{"rawCount":103}}
+2026-05-17T08:15:17.2158208Z {"ts":"2026-05-17T08:15:17.215Z","level":"info","runId":"25982828171-1","company":"swiggy","msg":"55 India jobs after normalization","event":"normalize_done","data":{"kept":55,"dropped":48}}
+2026-05-17T08:15:17.4805016Z {"ts":"2026-05-17T08:15:17.480Z","level":"info","runId":"25982828171-1","company":"swiggy","msg":"Parse decision: 37 to parse, 0 skip (already parsed, unchanged), 18 rejected (non-engineering title)"}
+2026-05-17T08:15:17.4808118Z {"ts":"2026-05-17T08:15:17.480Z","level":"info","runId":"25982828171-1","company":"swiggy","msg":"Parsing 37 JDs with 3 workers across 3 keys (budget=10000/run)…"}
+2026-05-17T08:17:08.8186921Z {"ts":"2026-05-17T08:17:08.818Z","level":"info","runId":"25982828171-1","company":"swiggy","msg":"  parse: 25/37 ok=25 err=0"}
+2026-05-17T08:17:57.7638510Z {"ts":"2026-05-17T08:17:57.763Z","level":"info","runId":"25982828171-1","company":"swiggy","msg":"  parse: 37/37 ok=37 err=0"}
+2026-05-17T08:17:57.7640282Z {"ts":"2026-05-17T08:17:57.763Z","level":"info","runId":"25982828171-1","company":"swiggy","msg":"Parse done: ok=37 err=0 | 160s (Swiggy)"}
+2026-05-17T08:17:57.7641982Z {"ts":"2026-05-17T08:17:57.763Z","level":"info","runId":"25982828171-1","company":"swiggy","msg":"Embedding 37 JDs in batches of 100…"}
+2026-05-17T08:18:10.5477756Z {"ts":"2026-05-17T08:18:10.547Z","level":"info","runId":"25982828171-1","company":"swiggy","msg":"  embed: 37/37"}
+2026-05-17T08:18:10.5479158Z {"ts":"2026-05-17T08:18:10.547Z","level":"info","runId":"25982828171-1","company":"swiggy","msg":"Embed done: 37/37 | 13s"}
+2026-05-17T08:18:11.3097807Z {"ts":"2026-05-17T08:18:11.309Z","level":"warn","runId":"25982828171-1","company":null,"msg":"upsert: dropped 1 in-batch signature duplicate(s) (same content, different external_id)","event":"upsert_sig_dup","data":{"dropped":1,"batchSize":37}}
+2026-05-17T08:18:12.9233833Z {"ts":"2026-05-17T08:18:12.922Z","level":"info","runId":"25982828171-1","company":"swiggy","msg":"Inserted: 36, Updated: 0, Stale: 0, Rejected: 18","event":"company_done","data":{"inserted":36,"updated":0,"stale":0,"parseOk":37,"parseErr":0,"skippedBudget":0,"skippedQuota":0,"rejectedNonEng":18,"coverageSkipped":false,"elapsedMs":176143}}
+2026-05-17T08:18:13.2913078Z {"ts":"2026-05-17T08:18:13.290Z","level":"info","runId":"25982828171-1","company":"zomato","msg":"Crawling…","event":"company_start"}
+2026-05-17T08:18:18.3184187Z {"ts":"2026-05-17T08:18:18.318Z","level":"info","runId":"25982828171-1","company":"zomato","msg":"Found 1 listings on Zoho Recruit"}
+2026-05-17T08:18:22.6764287Z {"ts":"2026-05-17T08:18:22.676Z","level":"info","runId":"25982828171-1","company":"zomato","msg":"Enriched descriptions: 1/1 | errors=0 | 4s"}
+2026-05-17T08:18:22.6766752Z {"ts":"2026-05-17T08:18:22.676Z","level":"info","runId":"25982828171-1","company":"zomato","msg":"Total: 1 jobs"}
+2026-05-17T08:18:22.7049238Z {"ts":"2026-05-17T08:18:22.704Z","level":"info","runId":"25982828171-1","company":"zomato","msg":"Scraped 1 raw jobs in 9s","event":"scrape_done","data":{"rawCount":1}}
+2026-05-17T08:18:22.7052252Z {"ts":"2026-05-17T08:18:22.705Z","level":"info","runId":"25982828171-1","company":"zomato","msg":"1 India jobs after normalization","event":"normalize_done","data":{"kept":1,"dropped":0}}
+2026-05-17T08:18:22.9934892Z {"ts":"2026-05-17T08:18:22.993Z","level":"info","runId":"25982828171-1","company":"zomato","msg":"Parse decision: 0 to parse, 0 skip (already parsed, unchanged), 1 rejected (non-engineering title)"}
+2026-05-17T08:18:23.5489644Z {"ts":"2026-05-17T08:18:23.548Z","level":"info","runId":"25982828171-1","company":"zomato","msg":"Inserted: 0, Updated: 0, Stale: 0, Rejected: 1","event":"company_done","data":{"inserted":0,"updated":0,"stale":0,"parseOk":0,"parseErr":0,"skippedBudget":0,"skippedQuota":0,"rejectedNonEng":1,"coverageSkipped":false,"elapsedMs":10258}}
+2026-05-17T08:18:23.9230795Z {"ts":"2026-05-17T08:18:23.922Z","level":"info","runId":"25982828171-1","company":"flipkart","msg":"Crawling…","event":"company_start"}
+2026-05-17T08:18:32.6271421Z {"ts":"2026-05-17T08:18:32.623Z","level":"info","runId":"25982828171-1","company":"flipkart","msg":"Total: 12 jobs"}
+2026-05-17T08:18:32.6297947Z {"ts":"2026-05-17T08:18:32.624Z","level":"info","runId":"25982828171-1","company":"flipkart","msg":"Total: 12 India jobs"}
+2026-05-17T08:19:07.6753117Z {"ts":"2026-05-17T08:19:07.674Z","level":"warn","runId":"25982828171-1","company":"flipkart","msg":"detail err [Director - South]: page.goto: Timeout 35000ms exceeded."}
+2026-05-17T08:19:07.6755204Z {"ts":"2026-05-17T08:19:07.675Z","level":"warn","runId":"25982828171-1","company":"flipkart","msg":"detail err [Facilities & Admin In-charge Nagpur Larg]: page.goto: Timeout 35000ms exceeded."}
+2026-05-17T08:19:07.6838188Z {"ts":"2026-05-17T08:19:07.683Z","level":"warn","runId":"25982828171-1","company":"flipkart","msg":"detail err [Shift incharge]: page.goto: Timeout 35000ms exceeded."}
+2026-05-17T08:20:18.3077632Z {"ts":"2026-05-17T08:20:18.307Z","level":"info","runId":"25982828171-1","company":"flipkart","msg":"Enriched descriptions: 0/12 | errors=12 | 106s"}
+2026-05-17T08:20:18.3136999Z {"ts":"2026-05-17T08:20:18.307Z","level":"info","runId":"25982828171-1","company":"flipkart","msg":"Scraped 12 raw jobs in 114s","event":"scrape_done","data":{"rawCount":12}}
+2026-05-17T08:20:18.3146332Z {"ts":"2026-05-17T08:20:18.308Z","level":"info","runId":"25982828171-1","company":"flipkart","msg":"12 India jobs after normalization","event":"normalize_done","data":{"kept":12,"dropped":0}}
+2026-05-17T08:20:18.7603354Z {"ts":"2026-05-17T08:20:18.760Z","level":"info","runId":"25982828171-1","company":"flipkart","msg":"Parse decision: 12 to parse, 0 skip (already parsed, unchanged)"}
+2026-05-17T08:20:18.7606753Z {"ts":"2026-05-17T08:20:18.760Z","level":"info","runId":"25982828171-1","company":"flipkart","msg":"Parsing 12 JDs with 3 workers across 3 keys (budget=10000/run)…"}
+2026-05-17T08:21:17.8671762Z {"ts":"2026-05-17T08:21:17.866Z","level":"info","runId":"25982828171-1","company":"flipkart","msg":"  parse: 12/12 ok=12 err=0"}
+2026-05-17T08:21:17.8672973Z {"ts":"2026-05-17T08:21:17.866Z","level":"info","runId":"25982828171-1","company":"flipkart","msg":"Parse done: ok=12 err=0 | 59s (Flipkart)"}
+2026-05-17T08:21:17.8674425Z {"ts":"2026-05-17T08:21:17.867Z","level":"info","runId":"25982828171-1","company":"flipkart","msg":"Embedding 12 JDs in batches of 100…"}
+2026-05-17T08:21:18.3915738Z {"ts":"2026-05-17T08:21:18.391Z","level":"info","runId":"25982828171-1","company":"flipkart","msg":"  embed: 12/12"}
+2026-05-17T08:21:18.3916904Z {"ts":"2026-05-17T08:21:18.391Z","level":"info","runId":"25982828171-1","company":"flipkart","msg":"Embed done: 12/12 | 1s"}
+2026-05-17T08:21:21.4521221Z {"ts":"2026-05-17T08:21:21.451Z","level":"info","runId":"25982828171-1","company":"flipkart","msg":"Inserted: 12, Updated: 0, Stale: 0","event":"company_done","data":{"inserted":12,"updated":0,"stale":0,"parseOk":12,"parseErr":0,"skippedBudget":0,"skippedQuota":0,"rejectedNonEng":0,"coverageSkipped":false,"elapsedMs":177529}}
+2026-05-17T08:21:21.7516781Z {"ts":"2026-05-17T08:21:21.751Z","level":"info","runId":"25982828171-1","company":null,"msg":"────────────────────────────────────────────────────────────"}
+2026-05-17T08:21:21.7518596Z {"ts":"2026-05-17T08:21:21.751Z","level":"info","runId":"25982828171-1","company":null,"msg":"Crawl complete:","event":"crawl_complete"}
+2026-05-17T08:21:21.7520313Z {"ts":"2026-05-17T08:21:21.751Z","level":"info","runId":"25982828171-1","company":null,"msg":"  google          +0 new  ~348 updated  -0 stale"}
+2026-05-17T08:21:21.7522391Z {"ts":"2026-05-17T08:21:21.751Z","level":"info","runId":"25982828171-1","company":null,"msg":"  microsoft       +5 new  ~142 updated  -4 stale"}
+2026-05-17T08:21:21.7523634Z {"ts":"2026-05-17T08:21:21.751Z","level":"info","runId":"25982828171-1","company":null,"msg":"  meta            +0 new  ~5 updated  -0 stale"}
+2026-05-17T08:21:21.7524852Z {"ts":"2026-05-17T08:21:21.751Z","level":"info","runId":"25982828171-1","company":null,"msg":"  amazon          +0 new  ~2236 updated  -0 stale"}
+2026-05-17T08:21:21.7526424Z {"ts":"2026-05-17T08:21:21.751Z","level":"info","runId":"25982828171-1","company":null,"msg":"  apple           +0 new  ~217 updated  -0 stale"}
+2026-05-17T08:21:21.7527742Z {"ts":"2026-05-17T08:21:21.751Z","level":"info","runId":"25982828171-1","company":null,"msg":"  atlassian       +0 new  ~0 updated  -0 stale"}
+2026-05-17T08:21:21.7529032Z {"ts":"2026-05-17T08:21:21.751Z","level":"info","runId":"25982828171-1","company":null,"msg":"  nvidia          +131 new  ~8 updated  -0 stale"}
+2026-05-17T08:21:21.7530591Z {"ts":"2026-05-17T08:21:21.751Z","level":"info","runId":"25982828171-1","company":null,"msg":"  oracle          +34 new  ~0 updated  -0 stale"}
+2026-05-17T08:21:21.7531980Z {"ts":"2026-05-17T08:21:21.751Z","level":"info","runId":"25982828171-1","company":null,"msg":"  salesforce      +43 new  ~0 updated  -0 stale"}
+2026-05-17T08:21:21.7533105Z {"ts":"2026-05-17T08:21:21.751Z","level":"info","runId":"25982828171-1","company":null,"msg":"  sap-labs        +113 new  ~3 updated  -0 stale"}
+2026-05-17T08:21:21.7534315Z {"ts":"2026-05-17T08:21:21.751Z","level":"info","runId":"25982828171-1","company":null,"msg":"  razorpay        +39 new  ~0 updated  -0 stale"}
+2026-05-17T08:21:21.7535896Z {"ts":"2026-05-17T08:21:21.751Z","level":"info","runId":"25982828171-1","company":null,"msg":"  phonepe         +36 new  ~0 updated  -0 stale"}
+2026-05-17T08:21:21.7537628Z {"ts":"2026-05-17T08:21:21.751Z","level":"info","runId":"25982828171-1","company":null,"msg":"  zerodha         +0 new  ~0 updated  -0 stale"}
+2026-05-17T08:21:21.7539347Z {"ts":"2026-05-17T08:21:21.751Z","level":"info","runId":"25982828171-1","company":null,"msg":"  cred            +2 new  ~0 updated  -0 stale"}
+2026-05-17T08:21:21.7540340Z {"ts":"2026-05-17T08:21:21.751Z","level":"info","runId":"25982828171-1","company":null,"msg":"  groww           +13 new  ~0 updated  -0 stale"}
+2026-05-17T08:21:21.7541320Z {"ts":"2026-05-17T08:21:21.751Z","level":"info","runId":"25982828171-1","company":null,"msg":"  swiggy          +36 new  ~0 updated  -0 stale"}
+2026-05-17T08:21:21.7542313Z {"ts":"2026-05-17T08:21:21.751Z","level":"info","runId":"25982828171-1","company":null,"msg":"  zomato          +0 new  ~0 updated  -0 stale"}
+2026-05-17T08:21:21.7543440Z {"ts":"2026-05-17T08:21:21.751Z","level":"info","runId":"25982828171-1","company":null,"msg":"  flipkart        +12 new  ~0 updated  -0 stale"}
+2026-05-17T08:21:21.7545190Z {"ts":"2026-05-17T08:21:21.751Z","level":"info","runId":"25982828171-1","company":null,"msg":"Summary: 18 ok, 0 partial, 0 failed | +464 new, ~2959 updated, -4 stale","event":"crawl_summary","data":{"okCount":18,"partialCount":0,"failedCount":0,"totalInserted":464,"totalUpdated":2959,"totalStale":4,"attempted":18}}
+2026-05-17T08:21:21.7841949Z Post job cleanup.
+2026-05-17T08:21:21.9015125Z (node:6919) [DEP0040] DeprecationWarning: The `punycode` module is deprecated. Please use a userland alternative instead.
+2026-05-17T08:21:21.9016505Z (Use `node --trace-deprecation ...` to show where the warning was created)
+2026-05-17T08:21:21.9211833Z [command]/usr/bin/tar --posix -cf cache.tzst --exclude cache.tzst -P -C /home/runner/work/productcompanies/productcompanies --files-from manifest.txt --use-compress-program zstdmt
+2026-05-17T08:21:24.2349950Z (node:6919) [DEP0169] DeprecationWarning: `url.parse()` behavior is not standardized and prone to errors that have security implications. Use the WHATWG URL API instead. CVEs are not issued for `url.parse()` vulnerabilities.
+2026-05-17T08:21:25.2239137Z Sent 0 of 178808209 (0.0%), 0.0 MBs/sec
+2026-05-17T08:21:26.2242114Z Sent 111699345 of 178808209 (62.5%), 53.3 MBs/sec
+2026-05-17T08:21:26.4845948Z Sent 178808209 of 178808209 (100.0%), 75.4 MBs/sec
+2026-05-17T08:21:26.7591867Z Cache saved with the key: node-cache-Linux-x64-pnpm-37b0754a2f740dd6811df4fb53e7ffa4611266ab49d08b59d43293bdcd5c8f9f
+2026-05-17T08:21:26.7756709Z Post job cleanup.
+2026-05-17T08:21:26.9173176Z Pruning is unnecessary.
+2026-05-17T08:21:26.9310031Z Post job cleanup.
+2026-05-17T08:21:27.0233282Z [command]/usr/bin/git version
+2026-05-17T08:21:27.0305147Z git version 2.54.0
+2026-05-17T08:21:27.0345005Z Temporarily overriding HOME='/home/runner/work/_temp/25fdf372-e0e1-492f-b27f-9892905b0f0f' before making global git config changes
+2026-05-17T08:21:27.0346134Z Adding repository directory to the temporary git global config as a safe directory
+2026-05-17T08:21:27.0350999Z [command]/usr/bin/git config --global --add safe.directory /home/runner/work/productcompanies/productcompanies
+2026-05-17T08:21:27.0386972Z [command]/usr/bin/git config --local --name-only --get-regexp core\.sshCommand
+2026-05-17T08:21:27.0421210Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'core\.sshCommand' && git config --local --unset-all 'core.sshCommand' || :"
+2026-05-17T08:21:27.0638746Z [command]/usr/bin/git config --local --name-only --get-regexp http\.https\:\/\/github\.com\/\.extraheader
+2026-05-17T08:21:27.0662560Z http.https://github.com/.extraheader
+2026-05-17T08:21:27.0673051Z [command]/usr/bin/git config --local --unset-all http.https://github.com/.extraheader
+2026-05-17T08:21:27.0703625Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'http\.https\:\/\/github\.com\/\.extraheader' && git config --local --unset-all 'http.https://github.com/.extraheader' || :"
+2026-05-17T08:21:27.0930294Z [command]/usr/bin/git config --local --name-only --get-regexp ^includeIf\.gitdir:
+2026-05-17T08:21:27.0962385Z [command]/usr/bin/git submodule foreach --recursive git config --local --show-origin --name-only --get-regexp remote.origin.url
+2026-05-17T08:21:27.1307055Z Cleaning up orphan processes
+2026-05-17T08:21:27.1623087Z ##[warning]Node.js 20 actions are deprecated. The following actions are running on Node.js 20 and may not work as expected: nick-fields/retry@v3, pnpm/action-setup@v4. Actions will be forced to run with Node.js 24 by default starting June 2nd, 2026. Node.js 20 will be removed from the runner on September 16th, 2026. Please check if updated versions of these actions are available that support Node.js 24. To opt into Node.js 24 now, set the FORCE_JAVASCRIPT_ACTIONS_TO_NODE24=true environment variable on the runner or in your workflow file. Once Node.js 24 becomes the default, you can temporarily opt out by setting ACTIONS_ALLOW_USE_UNSECURE_NODE_VERSION=true. For more information see: https://github.blog/changelog/2025-09-19-deprecation-of-node-20-on-github-actions-runners/

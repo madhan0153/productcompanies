@@ -8,7 +8,9 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import {
   Sparkles, Loader2, AlertCircle, Wand2, ShieldCheck,
+  FileSearch, Brain, Pencil, BarChart2,
 } from "lucide-react";
+import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
 import { autoEnhanceResume, diagnoseEnhancement } from "../enhance-actions";
 
 interface Props {
@@ -19,14 +21,15 @@ interface Props {
 }
 
 const STAGES = [
-  "Reading your resume…",
-  "Diagnosing weak bullets…",
-  "Drafting improvements…",
-  "Scoring the new version…",
+  { label: "Reading your resume…",      icon: FileSearch },
+  { label: "Diagnosing weak bullets…",  icon: Brain },
+  { label: "Drafting improvements…",    icon: Pencil },
+  { label: "Scoring the new version…",  icon: BarChart2 },
 ];
 
 export function EnhanceEntry({ quotaUsed, quotaLimit, quotaExhausted, roleFunction }: Props) {
   const router = useRouter();
+  const reduce = useReducedMotion();
   const [autoPending, startAuto] = useTransition();
   const [reviewPending, startReview] = useTransition();
   const [error, setError] = useState<string | null>(null);
@@ -74,7 +77,12 @@ export function EnhanceEntry({ quotaUsed, quotaLimit, quotaExhausted, roleFuncti
   const pending = autoPending || reviewPending;
 
   return (
-    <div className="space-y-4">
+    <motion.div
+      className="space-y-4"
+      initial={reduce ? {} : { opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }}
+    >
       {/* Primary auto-enhance card */}
       <div className="rounded-xl border-2 border-primary/40 bg-primary-soft p-4 sm:p-5">
         <div className="flex items-center gap-2.5">
@@ -111,29 +119,91 @@ export function EnhanceEntry({ quotaUsed, quotaLimit, quotaExhausted, roleFuncti
           </p>
         </div>
 
-        <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-          <p className="text-[11px] text-muted-foreground">
-            {quotaUsed} / {quotaLimit} runs used this 30-day window.
-          </p>
-          <button
-            type="button"
-            onClick={runAuto}
-            disabled={pending || quotaExhausted}
-            className="press tap-target inline-flex items-center justify-center gap-2 rounded-md bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground transition hover:bg-primary/90 disabled:opacity-50 focus-ring"
-          >
-            {autoPending ? (
-              <>
-                <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
-                {STAGES[stage]}
-              </>
-            ) : (
-              <>
+        {/* Processing state — animated stage indicator */}
+        <AnimatePresence mode="wait">
+          {autoPending ? (
+            <motion.div
+              key="processing"
+              initial={reduce ? {} : { opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: "auto" }}
+              exit={{ opacity: 0, height: 0 }}
+              transition={{ duration: 0.3 }}
+              className="mt-4 overflow-hidden"
+            >
+              <div className="space-y-2 rounded-lg border border-primary/20 bg-background/60 p-3">
+                {STAGES.map((s, i) => {
+                  const Icon = s.icon;
+                  const isDone = i < stage;
+                  const isActive = i === stage;
+                  return (
+                    <motion.div
+                      key={s.label}
+                      className="flex items-center gap-2.5"
+                      initial={reduce ? {} : { opacity: 0, x: -8 }}
+                      animate={{ opacity: isDone || isActive ? 1 : 0.35, x: 0 }}
+                      transition={{ duration: 0.3, delay: i * 0.05 }}
+                    >
+                      <div className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full transition-all ${
+                        isDone   ? "bg-success/15 text-success" :
+                        isActive ? "bg-primary/15 text-primary" :
+                        "bg-secondary text-muted-foreground/40"
+                      }`}>
+                        {isDone ? (
+                          <svg className="h-3.5 w-3.5" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="2 7 6 11 12 3"/></svg>
+                        ) : (
+                          <Icon className={`h-3.5 w-3.5 ${isActive && !reduce ? "animate-pulse" : ""}`} />
+                        )}
+                      </div>
+                      <span className={`text-xs ${isDone ? "line-through text-muted-foreground" : isActive ? "font-medium text-foreground" : "text-muted-foreground/50"}`}>
+                        {s.label}
+                      </span>
+                      {isActive && !reduce && (
+                        <motion.span
+                          className="ml-auto text-[10px] text-primary"
+                          animate={{ opacity: [0.4, 1, 0.4] }}
+                          transition={{ duration: 1.4, repeat: Infinity }}
+                        >
+                          running…
+                        </motion.span>
+                      )}
+                    </motion.div>
+                  );
+                })}
+                {/* Progress bar */}
+                <div className="mt-2 overflow-hidden rounded-full bg-secondary/60">
+                  <motion.div
+                    className="h-1 rounded-full bg-primary"
+                    initial={{ width: "5%" }}
+                    animate={{ width: `${Math.min(((stage + 1) / STAGES.length) * 100, 92)}%` }}
+                    transition={{ duration: 0.6, ease: "easeOut" }}
+                  />
+                </div>
+              </div>
+            </motion.div>
+          ) : (
+            <motion.div
+              key="cta"
+              className="mt-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between"
+              initial={reduce ? {} : { opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.2 }}
+            >
+              <p className="text-[11px] text-muted-foreground">
+                {quotaUsed} / {quotaLimit} runs used this 30-day window.
+              </p>
+              <button
+                type="button"
+                onClick={runAuto}
+                disabled={pending || quotaExhausted}
+                className="press tap-target inline-flex items-center justify-center gap-2 rounded-md bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground transition hover:bg-primary/90 disabled:opacity-50 focus-ring"
+              >
                 <Sparkles className="h-4 w-4" aria-hidden />
                 Auto-enhance my resume
-              </>
-            )}
-          </button>
-        </div>
+              </button>
+            </motion.div>
+          )}
+        </AnimatePresence>
 
         {quotaExhausted && (
           <div className="mt-3 flex items-start gap-2 rounded-md border border-warning/30 bg-warning/5 px-3 py-2 text-xs text-warning">
@@ -142,12 +212,20 @@ export function EnhanceEntry({ quotaUsed, quotaLimit, quotaExhausted, roleFuncti
           </div>
         )}
 
-        {error && (
-          <div className="mt-3 flex items-start gap-2 rounded-md border border-destructive/30 bg-destructive/5 px-3 py-2 text-xs text-destructive">
-            <AlertCircle className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden />
-            <p>{error}</p>
-          </div>
-        )}
+        <AnimatePresence>
+          {error && (
+            <motion.div
+              initial={reduce ? {} : { opacity: 0, y: 4 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.25 }}
+              className="mt-3 flex items-start gap-2 rounded-md border border-destructive/30 bg-destructive/5 px-3 py-2 text-xs text-destructive"
+            >
+              <AlertCircle className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden />
+              <p>{error}</p>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
 
       {/* Secondary: per-bullet review for power users */}
@@ -172,6 +250,6 @@ export function EnhanceEntry({ quotaUsed, quotaLimit, quotaExhausted, roleFuncti
       <p className="text-[11px] leading-relaxed text-muted-foreground">
         Auto-enhance typically takes 25–45 seconds. We extract real bullet content from your PDF, run a diagnosis prompt, generate alternatives, and pick the safest improvement for each.
       </p>
-    </div>
+    </motion.div>
   );
 }

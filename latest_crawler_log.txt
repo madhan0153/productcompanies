@@ -1,0 +1,642 @@
+@prodmatch/crawler@0.1.0 start /home/runner/work/productcompanies/productcompanies/packages/crawler
+> tsx index.ts "--"
+
+{"ts":"2026-05-17T16:51:33.055Z","level":"info","runId":"25996885126-1","company":null,"msg":"Starting crawl for: google, microsoft, meta, amazon, apple, atlassian, nvidia, oracle, salesforce, sap-labs, razorpay, phonepe, zerodha, cred, groww, swiggy, zomato, flipkart","event":"crawl_start","data":{"slugs":["google","microsoft","meta","amazon","apple","atlassian","nvidia","oracle","salesforce","sap-labs","razorpay","phonepe","zerodha","cred","groww","swiggy","zomato","flipkart"],"dryRun":false,"dryParse":false,"perCompanyTimeoutMs":2700000}}
+{"ts":"2026-05-17T16:51:33.055Z","level":"info","runId":"25996885126-1","company":null,"msg":"Detected 12 Gemini API key(s) — worker pool will rotate.","event":"keys_loaded","data":{"keyCount":12}}
+[gemini-key] roster: 12 key(s) configured: #0=…Gid_Ww, #1=…h-0J-A, #2=…qOE4eg, #3=…O38d9w, #4=…uhShWk, #5=…O1E6ZI, #6=…wQC9JU, #7=…UyDY78, #8=…WgoKrs, #9=…tqvLDM, #10=…QKpcCU, #11=…gxvf9g
+{"ts":"2026-05-17T16:51:34.202Z","level":"info","runId":"25996885126-1","company":"google","msg":"Crawling…","event":"company_start"}
+{"ts":"2026-05-17T16:51:34.202Z","level":"info","runId":"25996885126-1","company":"google","msg":"Loading page 1..."}
+{"ts":"2026-05-17T16:51:38.221Z","level":"info","runId":"25996885126-1","company":"google","msg":"Page 1: 20 jobs (total so far: 20)"}
+{"ts":"2026-05-17T16:51:39.723Z","level":"info","runId":"25996885126-1","company":"google","msg":"Loading page 2..."}
+{"ts":"2026-05-17T16:51:43.259Z","level":"info","runId":"25996885126-1","company":"google","msg":"Page 2: 20 jobs (total so far: 40)"}
+{"ts":"2026-05-17T16:51:44.761Z","level":"info","runId":"25996885126-1","company":"google","msg":"Loading page 3..."}
+{"ts":"2026-05-17T16:51:47.900Z","level":"info","runId":"25996885126-1","company":"google","msg":"Page 3: 20 jobs (total so far: 60)"}
+{"ts":"2026-05-17T16:51:49.401Z","level":"info","runId":"25996885126-1","company":"google","msg":"Loading page 4..."}
+{"ts":"2026-05-17T16:51:52.519Z","level":"info","runId":"25996885126-1","company":"google","msg":"Page 4: 20 jobs (total so far: 80)"}
+{"ts":"2026-05-17T16:51:54.020Z","level":"info","runId":"25996885126-1","company":"google","msg":"Loading page 5..."}
+{"ts":"2026-05-17T16:51:57.169Z","level":"info","runId":"25996885126-1","company":"google","msg":"Page 5: 20 jobs (total so far: 100)"}
+{"ts":"2026-05-17T16:51:58.671Z","level":"info","runId":"25996885126-1","company":"google","msg":"Loading page 6..."}
+{"ts":"2026-05-17T16:52:01.776Z","level":"info","runId":"25996885126-1","company":"google","msg":"Page 6: 20 jobs (total so far: 120)"}
+{"ts":"2026-05-17T16:52:03.276Z","level":"info","runId":"25996885126-1","company":"google","msg":"Loading page 7..."}
+{"ts":"2026-05-17T16:52:06.422Z","level":"info","runId":"25996885126-1","company":"google","msg":"Page 7: 20 jobs (total so far: 140)"}
+{"ts":"2026-05-17T16:52:07.924Z","level":"info","runId":"25996885126-1","company":"google","msg":"Loading page 8..."}
+{"ts":"2026-05-17T16:52:11.017Z","level":"info","runId":"25996885126-1","company":"google","msg":"Page 8: 20 jobs (total so far: 160)"}
+{"ts":"2026-05-17T16:52:12.519Z","level":"info","runId":"25996885126-1","company":"google","msg":"Loading page 9..."}
+{"ts":"2026-05-17T16:52:15.654Z","level":"info","runId":"25996885126-1","company":"google","msg":"Page 9: 20 jobs (total so far: 180)"}
+{"ts":"2026-05-17T16:52:17.156Z","level":"info","runId":"25996885126-1","company":"google","msg":"Loading page 10..."}
+{"ts":"2026-05-17T16:52:20.236Z","level":"info","runId":"25996885126-1","company":"google","msg":"Page 10: 20 jobs (total so far: 200)"}
+{"ts":"2026-05-17T16:52:21.737Z","level":"info","runId":"25996885126-1","company":"google","msg":"Loading page 11..."}
+{"ts":"2026-05-17T16:52:24.857Z","level":"info","runId":"25996885126-1","company":"google","msg":"Page 11: 20 jobs (total so far: 220)"}
+{"ts":"2026-05-17T16:52:26.359Z","level":"info","runId":"25996885126-1","company":"google","msg":"Loading page 12..."}
+{"ts":"2026-05-17T16:52:29.470Z","level":"info","runId":"25996885126-1","company":"google","msg":"Page 12: 20 jobs (total so far: 240)"}
+{"ts":"2026-05-17T16:52:30.971Z","level":"info","runId":"25996885126-1","company":"google","msg":"Loading page 13..."}
+{"ts":"2026-05-17T16:52:34.064Z","level":"info","runId":"25996885126-1","company":"google","msg":"Page 13: 20 jobs (total so far: 260)"}
+{"ts":"2026-05-17T16:52:35.566Z","level":"info","runId":"25996885126-1","company":"google","msg":"Loading page 14..."}
+{"ts":"2026-05-17T16:52:38.693Z","level":"info","runId":"25996885126-1","company":"google","msg":"Page 14: 20 jobs (total so far: 280)"}
+{"ts":"2026-05-17T16:52:40.195Z","level":"info","runId":"25996885126-1","company":"google","msg":"Loading page 15..."}
+{"ts":"2026-05-17T16:52:43.306Z","level":"info","runId":"25996885126-1","company":"google","msg":"Page 15: 20 jobs (total so far: 300)"}
+{"ts":"2026-05-17T16:52:44.809Z","level":"info","runId":"25996885126-1","company":"google","msg":"Loading page 16..."}
+{"ts":"2026-05-17T16:52:47.919Z","level":"info","runId":"25996885126-1","company":"google","msg":"Page 16: 20 jobs (total so far: 320)"}
+{"ts":"2026-05-17T16:52:49.421Z","level":"info","runId":"25996885126-1","company":"google","msg":"Loading page 17..."}
+{"ts":"2026-05-17T16:52:52.528Z","level":"info","runId":"25996885126-1","company":"google","msg":"Page 17: 20 jobs (total so far: 340)"}
+{"ts":"2026-05-17T16:52:54.029Z","level":"info","runId":"25996885126-1","company":"google","msg":"Loading page 18..."}
+{"ts":"2026-05-17T16:52:57.153Z","level":"info","runId":"25996885126-1","company":"google","msg":"Page 18: 20 jobs (total so far: 360)"}
+{"ts":"2026-05-17T16:52:58.655Z","level":"info","runId":"25996885126-1","company":"google","msg":"Loading page 19..."}
+{"ts":"2026-05-17T16:53:01.725Z","level":"info","runId":"25996885126-1","company":"google","msg":"Page 19: 7 jobs (total so far: 367)"}
+{"ts":"2026-05-17T16:53:03.225Z","level":"info","runId":"25996885126-1","company":"google","msg":"Loading page 20..."}
+{"ts":"2026-05-17T16:53:06.282Z","level":"info","runId":"25996885126-1","company":"google","msg":"No new jobs on page 20, stopping"}
+{"ts":"2026-05-17T16:53:06.282Z","level":"info","runId":"25996885126-1","company":"google","msg":"Total: 367 India jobs"}
+{"ts":"2026-05-17T16:53:28.583Z","level":"info","runId":"25996885126-1","company":"google","msg":"  enrich progress: 25/367 | ok=25 err=0"}
+{"ts":"2026-05-17T16:53:46.273Z","level":"info","runId":"25996885126-1","company":"google","msg":"  enrich progress: 50/367 | ok=50 err=0"}
+{"ts":"2026-05-17T16:54:03.968Z","level":"info","runId":"25996885126-1","company":"google","msg":"  enrich progress: 75/367 | ok=75 err=0"}
+{"ts":"2026-05-17T16:54:21.872Z","level":"info","runId":"25996885126-1","company":"google","msg":"  enrich progress: 100/367 | ok=100 err=0"}
+{"ts":"2026-05-17T16:54:38.935Z","level":"info","runId":"25996885126-1","company":"google","msg":"  enrich progress: 125/367 | ok=125 err=0"}
+{"ts":"2026-05-17T16:54:57.275Z","level":"info","runId":"25996885126-1","company":"google","msg":"  enrich progress: 150/367 | ok=150 err=0"}
+{"ts":"2026-05-17T16:55:14.062Z","level":"info","runId":"25996885126-1","company":"google","msg":"  enrich progress: 175/367 | ok=175 err=0"}
+{"ts":"2026-05-17T16:55:32.161Z","level":"info","runId":"25996885126-1","company":"google","msg":"  enrich progress: 200/367 | ok=200 err=0"}
+{"ts":"2026-05-17T16:55:48.925Z","level":"info","runId":"25996885126-1","company":"google","msg":"  enrich progress: 225/367 | ok=225 err=0"}
+{"ts":"2026-05-17T16:56:07.185Z","level":"info","runId":"25996885126-1","company":"google","msg":"  enrich progress: 250/367 | ok=250 err=0"}
+{"ts":"2026-05-17T16:56:23.886Z","level":"info","runId":"25996885126-1","company":"google","msg":"  enrich progress: 275/367 | ok=275 err=0"}
+{"ts":"2026-05-17T16:56:41.960Z","level":"info","runId":"25996885126-1","company":"google","msg":"  enrich progress: 300/367 | ok=300 err=0"}
+{"ts":"2026-05-17T16:56:58.767Z","level":"info","runId":"25996885126-1","company":"google","msg":"  enrich progress: 325/367 | ok=325 err=0"}
+{"ts":"2026-05-17T16:57:16.963Z","level":"info","runId":"25996885126-1","company":"google","msg":"  enrich progress: 350/367 | ok=350 err=0"}
+{"ts":"2026-05-17T16:57:28.310Z","level":"info","runId":"25996885126-1","company":"google","msg":"Enriched descriptions: 367/367 | errors=0 | 262s"}
+{"ts":"2026-05-17T16:57:28.311Z","level":"info","runId":"25996885126-1","company":"google","msg":"Scraped 367 raw jobs in 354s","event":"scrape_done","data":{"rawCount":367}}
+{"ts":"2026-05-17T16:57:28.561Z","level":"info","runId":"25996885126-1","company":"google","msg":"366 India jobs after normalization","event":"normalize_done","data":{"kept":366,"dropped":1}}
+{"ts":"2026-05-17T16:57:30.098Z","level":"info","runId":"25996885126-1","company":"google","msg":"Parse decision: 0 to parse, 348 skip (already parsed, unchanged), 18 rejected (non-engineering title)"}
+{"ts":"2026-05-17T16:57:39.959Z","level":"info","runId":"25996885126-1","company":"google","msg":"Inserted: 0, Updated: 348, Stale: 0, Rejected: 18","event":"company_done","data":{"inserted":0,"updated":348,"stale":0,"parseOk":0,"parseErr":0,"skippedBudget":0,"skippedQuota":0,"rejectedNonEng":18,"coverageSkipped":false,"elapsedMs":365757}}
+{"ts":"2026-05-17T16:57:40.394Z","level":"info","runId":"25996885126-1","company":"microsoft","msg":"Crawling…","event":"company_start"}
+{"ts":"2026-05-17T16:57:40.395Z","level":"info","runId":"25996885126-1","company":"microsoft","msg":"Fetching start=0 / ?..."}
+{"ts":"2026-05-17T16:57:41.372Z","level":"info","runId":"25996885126-1","company":"microsoft","msg":"Fetching start=10 / 164..."}
+{"ts":"2026-05-17T16:57:42.031Z","level":"info","runId":"25996885126-1","company":"microsoft","msg":"Fetching start=20 / 164..."}
+{"ts":"2026-05-17T16:57:42.726Z","level":"info","runId":"25996885126-1","company":"microsoft","msg":"Fetching start=30 / 164..."}
+{"ts":"2026-05-17T16:57:43.387Z","level":"info","runId":"25996885126-1","company":"microsoft","msg":"Fetching start=40 / 164..."}
+{"ts":"2026-05-17T16:57:44.045Z","level":"info","runId":"25996885126-1","company":"microsoft","msg":"Fetching start=50 / 164..."}
+{"ts":"2026-05-17T16:57:44.698Z","level":"info","runId":"25996885126-1","company":"microsoft","msg":"Fetching start=60 / 164..."}
+{"ts":"2026-05-17T16:57:45.333Z","level":"info","runId":"25996885126-1","company":"microsoft","msg":"Fetching start=70 / 164..."}
+{"ts":"2026-05-17T16:57:46.107Z","level":"info","runId":"25996885126-1","company":"microsoft","msg":"Fetching start=80 / 164..."}
+{"ts":"2026-05-17T16:57:46.766Z","level":"info","runId":"25996885126-1","company":"microsoft","msg":"Fetching start=90 / 164..."}
+{"ts":"2026-05-17T16:57:47.573Z","level":"info","runId":"25996885126-1","company":"microsoft","msg":"Fetching start=100 / 164..."}
+{"ts":"2026-05-17T16:57:48.304Z","level":"info","runId":"25996885126-1","company":"microsoft","msg":"Fetching start=110 / 164..."}
+{"ts":"2026-05-17T16:57:49.044Z","level":"info","runId":"25996885126-1","company":"microsoft","msg":"Fetching start=120 / 164..."}
+{"ts":"2026-05-17T16:57:49.733Z","level":"info","runId":"25996885126-1","company":"microsoft","msg":"Fetching start=130 / 164..."}
+{"ts":"2026-05-17T16:57:50.476Z","level":"info","runId":"25996885126-1","company":"microsoft","msg":"Fetching start=140 / 164..."}
+{"ts":"2026-05-17T16:57:51.233Z","level":"info","runId":"25996885126-1","company":"microsoft","msg":"Fetching start=150 / 164..."}
+{"ts":"2026-05-17T16:57:51.986Z","level":"info","runId":"25996885126-1","company":"microsoft","msg":"Fetching start=160 / 164..."}
+{"ts":"2026-05-17T16:57:52.239Z","level":"info","runId":"25996885126-1","company":"microsoft","msg":"Total: 164 India jobs"}
+{"ts":"2026-05-17T16:58:33.123Z","level":"info","runId":"25996885126-1","company":"microsoft","msg":"  enrich progress: 25/164 | ok=25 err=0"}
+{"ts":"2026-05-17T16:59:04.065Z","level":"info","runId":"25996885126-1","company":"microsoft","msg":"  enrich progress: 50/164 | ok=50 err=0"}
+{"ts":"2026-05-17T16:59:44.964Z","level":"info","runId":"25996885126-1","company":"microsoft","msg":"  enrich progress: 75/164 | ok=75 err=0"}
+{"ts":"2026-05-17T17:00:17.644Z","level":"info","runId":"25996885126-1","company":"microsoft","msg":"  enrich progress: 100/164 | ok=100 err=0"}
+{"ts":"2026-05-17T17:00:48.929Z","level":"info","runId":"25996885126-1","company":"microsoft","msg":"  enrich progress: 125/164 | ok=125 err=0"}
+{"ts":"2026-05-17T17:01:18.009Z","level":"info","runId":"25996885126-1","company":"microsoft","msg":"  enrich progress: 150/164 | ok=149 err=0"}
+{"ts":"2026-05-17T17:01:39.463Z","level":"info","runId":"25996885126-1","company":"microsoft","msg":"Enriched descriptions: 163/164 | errors=0 | empty=1 | 227s"}
+{"ts":"2026-05-17T17:01:39.462Z","level":"warn","runId":"25996885126-1","company":"microsoft","msg":"enrich: 1 job(s) loaded but extractor returned <60 chars — selector may need updating"}
+{"ts":"2026-05-17T17:01:39.463Z","level":"info","runId":"25996885126-1","company":"microsoft","msg":"Scraped 164 raw jobs in 239s","event":"scrape_done","data":{"rawCount":164}}
+{"ts":"2026-05-17T17:01:39.629Z","level":"info","runId":"25996885126-1","company":"microsoft","msg":"164 India jobs after normalization","event":"normalize_done","data":{"kept":164,"dropped":0}}
+{"ts":"2026-05-17T17:01:40.395Z","level":"info","runId":"25996885126-1","company":"microsoft","msg":"Parse decision: 34 to parse, 127 skip (already parsed, unchanged), 3 rejected (non-engineering title)"}
+{"ts":"2026-05-17T17:01:40.395Z","level":"info","runId":"25996885126-1","company":"microsoft","msg":"Parsing 34 JDs with 12 workers across 12 keys (budget=10000/run)…"}
+[gemini-key] key #3 (…O38d9w) × gemini-flash-lite-latest: marked exhausted (RPD). reason="[GoogleGenerativeAI Error]: Error fetching from https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-lite-latest:generateContent: [429 Too Many Requests] You exceeded your current quota, please check your plan and billing de"
+[gemini-key] key #5 (…O1E6ZI) × gemini-flash-lite-latest: marked exhausted (RPD). reason="[GoogleGenerativeAI Error]: Error fetching from https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-lite-latest:generateContent: [429 Too Many Requests] You exceeded your current quota, please check your plan and billing de"
+[gemini-key] key #4 (…uhShWk) × gemini-flash-lite-latest: marked exhausted (RPD). reason="[GoogleGenerativeAI Error]: Error fetching from https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-lite-latest:generateContent: [429 Too Many Requests] You exceeded your current quota, please check your plan and billing de"
+[gemini-key] key #2 (…qOE4eg) first call ok → model=gemini-flash-lite-latest
+[gemini-key] key #6 (…wQC9JU) first call ok → model=gemini-flash-lite-latest
+[gemini-key] key #10 (…QKpcCU) first call ok → model=gemini-flash-lite-latest
+[gemini-key] key #7 (…UyDY78) first call ok → model=gemini-flash-lite-latest
+[gemini-key] key #0 (…Gid_Ww) first call ok → model=gemini-flash-lite-latest
+[gemini-key] key #9 (…tqvLDM) first call ok → model=gemini-flash-lite-latest
+[gemini-key] key #11 (…gxvf9g) first call ok → model=gemini-flash-lite-latest
+[gemini-key] key #1 (…h-0J-A) first call ok → model=gemini-flash-lite-latest
+[gemini-key] key #8 (…WgoKrs) first call ok → model=gemini-flash-lite-latest
+{"ts":"2026-05-17T17:01:47.165Z","level":"info","runId":"25996885126-1","company":"microsoft","msg":"  parse: 25/34 ok=25 err=0"}
+[gemini-key] key #8 (…WgoKrs) × gemini-flash-latest: marked exhausted (RPD). reason="[GoogleGenerativeAI Error]: Error fetching from https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent: [429 Too Many Requests] You exceeded your current quota, please check your plan and billing details"
+[gemini-key] key #11 (…gxvf9g) × gemini-flash-latest: marked exhausted (RPD). reason="[GoogleGenerativeAI Error]: Error fetching from https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent: [429 Too Many Requests] You exceeded your current quota, please check your plan and billing details"
+[gemini-key] key #10 (…QKpcCU) × gemini-flash-latest: marked exhausted (RPD). reason="[GoogleGenerativeAI Error]: Error fetching from https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent: [429 Too Many Requests] You exceeded your current quota, please check your plan and billing details"
+[gemini-key] key #9 (…tqvLDM) × gemini-flash-latest: marked exhausted (RPD). reason="[GoogleGenerativeAI Error]: Error fetching from https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent: [429 Too Many Requests] You exceeded your current quota, please check your plan and billing details"
+[gemini-key] key #0 (…Gid_Ww) × gemini-flash-latest: marked exhausted (RPD). reason="[GoogleGenerativeAI Error]: Error fetching from https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent: [429 Too Many Requests] You exceeded your current quota, please check your plan and billing details"
+[gemini-key] key #1 (…h-0J-A) × gemini-flash-latest: marked exhausted (RPD). reason="[GoogleGenerativeAI Error]: Error fetching from https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent: [429 Too Many Requests] You exceeded your current quota, please check your plan and billing details"
+[gemini-key] key #2 (…qOE4eg) × gemini-flash-latest: marked exhausted (RPD). reason="[GoogleGenerativeAI Error]: Error fetching from https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent: [429 Too Many Requests] You exceeded your current quota, please check your plan and billing details"
+[gemini-key] key #3 (…O38d9w) × gemini-flash-latest: marked exhausted (RPD). reason="[GoogleGenerativeAI Error]: Error fetching from https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent: [429 Too Many Requests] You exceeded your current quota, please check your plan and billing details"
+[gemini-key] key #4 (…uhShWk) × gemini-flash-latest: marked exhausted (RPD). reason="[GoogleGenerativeAI Error]: Error fetching from https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent: [429 Too Many Requests] You exceeded your current quota, please check your plan and billing details"
+[gemini-key] key #5 (…O1E6ZI) × gemini-flash-latest: marked exhausted (RPD). reason="[GoogleGenerativeAI Error]: Error fetching from https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent: [429 Too Many Requests] You exceeded your current quota, please check your plan and billing details"
+[gemini-key] key #6 (…wQC9JU) × gemini-flash-latest: marked exhausted (RPD). reason="[GoogleGenerativeAI Error]: Error fetching from https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent: [429 Too Many Requests] You exceeded your current quota, please check your plan and billing details"
+[gemini-key] key #7 (…UyDY78) × gemini-flash-latest: marked exhausted (RPD). reason="[GoogleGenerativeAI Error]: Error fetching from https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent: [429 Too Many Requests] You exceeded your current quota, please check your plan and billing details"
+[gemini-key] key #11 (…gxvf9g) × gemini-3-flash-preview: marked exhausted (RPD). reason="[GoogleGenerativeAI Error]: Error fetching from https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent: [429 Too Many Requests] You exceeded your current quota, please check your plan and billing deta"
+[gemini-key] key #0 (…Gid_Ww) × gemini-3-flash-preview: marked exhausted (RPD). reason="[GoogleGenerativeAI Error]: Error fetching from https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent: [429 Too Many Requests] You exceeded your current quota, please check your plan and billing deta"
+[gemini-key] key #8 (…WgoKrs) × gemini-3-flash-preview: marked exhausted (RPD). reason="[GoogleGenerativeAI Error]: Error fetching from https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent: [429 Too Many Requests] You exceeded your current quota, please check your plan and billing deta"
+[gemini-key] key #1 (…h-0J-A) × gemini-3-flash-preview: marked exhausted (RPD). reason="[GoogleGenerativeAI Error]: Error fetching from https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent: [429 Too Many Requests] You exceeded your current quota, please check your plan and billing deta"
+[gemini-key] key #9 (…tqvLDM) × gemini-3-flash-preview: marked exhausted (RPD). reason="[GoogleGenerativeAI Error]: Error fetching from https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent: [429 Too Many Requests] You exceeded your current quota, please check your plan and billing deta"
+[gemini-key] key #2 (…qOE4eg) × gemini-3-flash-preview: marked exhausted (RPD). reason="[GoogleGenerativeAI Error]: Error fetching from https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent: [429 Too Many Requests] You exceeded your current quota, please check your plan and billing deta"
+[gemini-key] key #10 (…QKpcCU) × gemini-3-flash-preview: marked exhausted (RPD). reason="[GoogleGenerativeAI Error]: Error fetching from https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent: [429 Too Many Requests] You exceeded your current quota, please check your plan and billing deta"
+[gemini-key] key #3 (…O38d9w) × gemini-3-flash-preview: marked exhausted (RPD). reason="[GoogleGenerativeAI Error]: Error fetching from https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent: [429 Too Many Requests] You exceeded your current quota, please check your plan and billing deta"
+[gemini-key] key #4 (…uhShWk) × gemini-3-flash-preview: marked exhausted (RPD). reason="[GoogleGenerativeAI Error]: Error fetching from https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent: [429 Too Many Requests] You exceeded your current quota, please check your plan and billing deta"
+[gemini-key] key #5 (…O1E6ZI) × gemini-3-flash-preview: marked exhausted (RPD). reason="[GoogleGenerativeAI Error]: Error fetching from https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent: [429 Too Many Requests] You exceeded your current quota, please check your plan and billing deta"
+[gemini-key] key #6 (…wQC9JU) × gemini-3-flash-preview: marked exhausted (RPD). reason="[GoogleGenerativeAI Error]: Error fetching from https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent: [429 Too Many Requests] You exceeded your current quota, please check your plan and billing deta"
+[gemini-key] key #7 (…UyDY78) × gemini-3-flash-preview: marked exhausted (RPD). reason="[GoogleGenerativeAI Error]: Error fetching from https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent: [429 Too Many Requests] You exceeded your current quota, please check your plan and billing deta"
+[gemini-key] key #11 (…gxvf9g) × gemini-2.5-flash-lite: marked exhausted (RPD). reason="[GoogleGenerativeAI Error]: Error fetching from https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent: [429 Too Many Requests] You exceeded your current quota, please check your plan and billing detai"
+[gemini-key] key #9 (…tqvLDM) × gemini-2.5-flash-lite: marked exhausted (RPD). reason="[GoogleGenerativeAI Error]: Error fetching from https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent: [429 Too Many Requests] You exceeded your current quota, please check your plan and billing detai"
+[gemini-key] key #8 (…WgoKrs) × gemini-2.5-flash-lite: marked exhausted (RPD). reason="[GoogleGenerativeAI Error]: Error fetching from https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent: [429 Too Many Requests] You exceeded your current quota, please check your plan and billing detai"
+[gemini-key] key #10 (…QKpcCU) × gemini-2.5-flash-lite: marked exhausted (RPD). reason="[GoogleGenerativeAI Error]: Error fetching from https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent: [429 Too Many Requests] You exceeded your current quota, please check your plan and billing detai"
+[gemini-key] key #0 (…Gid_Ww) × gemini-2.5-flash-lite: marked exhausted (RPD). reason="[GoogleGenerativeAI Error]: Error fetching from https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent: [429 Too Many Requests] You exceeded your current quota, please check your plan and billing detai"
+[gemini-key] key #1 (…h-0J-A) × gemini-2.5-flash-lite: marked exhausted (RPD). reason="[GoogleGenerativeAI Error]: Error fetching from https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent: [429 Too Many Requests] You exceeded your current quota, please check your plan and billing detai"
+[gemini-key] key #2 (…qOE4eg) × gemini-2.5-flash-lite: marked exhausted (RPD). reason="[GoogleGenerativeAI Error]: Error fetching from https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent: [429 Too Many Requests] You exceeded your current quota, please check your plan and billing detai"
+[gemini-key] key #3 (…O38d9w) × gemini-2.5-flash-lite: marked exhausted (RPD). reason="[GoogleGenerativeAI Error]: Error fetching from https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent: [429 Too Many Requests] You exceeded your current quota, please check your plan and billing detai"
+[gemini-key] key #4 (…uhShWk) × gemini-2.5-flash-lite: marked exhausted (RPD). reason="[GoogleGenerativeAI Error]: Error fetching from https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent: [429 Too Many Requests] You exceeded your current quota, please check your plan and billing detai"
+[gemini-key] key #5 (…O1E6ZI) × gemini-2.5-flash-lite: marked exhausted (RPD). reason="[GoogleGenerativeAI Error]: Error fetching from https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent: [429 Too Many Requests] You exceeded your current quota, please check your plan and billing detai"
+[gemini-key] key #6 (…wQC9JU) × gemini-2.5-flash-lite: marked exhausted (RPD). reason="[GoogleGenerativeAI Error]: Error fetching from https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent: [429 Too Many Requests] You exceeded your current quota, please check your plan and billing detai"
+[gemini-key] key #7 (…UyDY78) × gemini-2.5-flash-lite: marked exhausted (RPD). reason="[GoogleGenerativeAI Error]: Error fetching from https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent: [429 Too Many Requests] You exceeded your current quota, please check your plan and billing detai"
+[gemini-key] key #8 (…WgoKrs) × gemini-2.5-flash: marked exhausted (RPD). reason="[GoogleGenerativeAI Error]: Error fetching from https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent: [429 Too Many Requests] You exceeded your current quota, please check your plan and billing details. F"
+[gemini-key] key #9 (…tqvLDM) × gemini-2.5-flash: marked exhausted (RPD). reason="[GoogleGenerativeAI Error]: Error fetching from https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent: [429 Too Many Requests] You exceeded your current quota, please check your plan and billing details. F"
+[gemini-key] key #11 (…gxvf9g) × gemini-2.5-flash: marked exhausted (RPD). reason="[GoogleGenerativeAI Error]: Error fetching from https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent: [429 Too Many Requests] You exceeded your current quota, please check your plan and billing details. F"
+[gemini-key] key #10 (…QKpcCU) × gemini-2.5-flash: marked exhausted (RPD). reason="[GoogleGenerativeAI Error]: Error fetching from https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent: [429 Too Many Requests] You exceeded your current quota, please check your plan and billing details. F"
+[gemini-key] key #0 (…Gid_Ww) × gemini-2.5-flash: marked exhausted (RPD). reason="[GoogleGenerativeAI Error]: Error fetching from https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent: [429 Too Many Requests] You exceeded your current quota, please check your plan and billing details. F"
+[gemini-key] key #1 (…h-0J-A) × gemini-2.5-flash: marked exhausted (RPD). reason="[GoogleGenerativeAI Error]: Error fetching from https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent: [429 Too Many Requests] You exceeded your current quota, please check your plan and billing details. F"
+[gemini-key] key #3 (…O38d9w) × gemini-2.5-flash: marked exhausted (RPD). reason="[GoogleGenerativeAI Error]: Error fetching from https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent: [429 Too Many Requests] You exceeded your current quota, please check your plan and billing details. F"
+[gemini-key] key #3 (…O38d9w) is fully exhausted across all 5 models in this tier — skipping for the rest of this run
+[gemini-key] key #2 (…qOE4eg) × gemini-2.5-flash: marked exhausted (RPD). reason="[GoogleGenerativeAI Error]: Error fetching from https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent: [429 Too Many Requests] You exceeded your current quota, please check your plan and billing details. F"
+[gemini-key] key #4 (…uhShWk) × gemini-2.5-flash: marked exhausted (RPD). reason="[GoogleGenerativeAI Error]: Error fetching from https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent: [429 Too Many Requests] You exceeded your current quota, please check your plan and billing details. F"
+[gemini-key] key #4 (…uhShWk) is fully exhausted across all 5 models in this tier — skipping for the rest of this run
+[gemini-key] key #5 (…O1E6ZI) × gemini-2.5-flash: marked exhausted (RPD). reason="[GoogleGenerativeAI Error]: Error fetching from https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent: [429 Too Many Requests] You exceeded your current quota, please check your plan and billing details. F"
+[gemini-key] key #5 (…O1E6ZI) is fully exhausted across all 5 models in this tier — skipping for the rest of this run
+[gemini-key] key #6 (…wQC9JU) × gemini-2.5-flash: marked exhausted (RPD). reason="[GoogleGenerativeAI Error]: Error fetching from https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent: [429 Too Many Requests] You exceeded your current quota, please check your plan and billing details. F"
+[gemini-key] key #7 (…UyDY78) × gemini-2.5-flash: marked exhausted (RPD). reason="[GoogleGenerativeAI Error]: Error fetching from https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent: [429 Too Many Requests] You exceeded your current quota, please check your plan and billing details. F"
+{"ts":"2026-05-17T17:02:50.037Z","level":"warn","runId":"25996885126-1","company":"microsoft","msg":"  parse err [Senior Software Engineer]: quota_disabled"}
+{"ts":"2026-05-17T17:02:50.037Z","level":"info","runId":"25996885126-1","company":"microsoft","msg":"  parse: 34/34 ok=31 err=3"}
+{"ts":"2026-05-17T17:02:50.037Z","level":"warn","runId":"25996885126-1","company":"microsoft","msg":"  parse err [Solution Engineering]: quota_disabled"}
+{"ts":"2026-05-17T17:02:50.037Z","level":"info","runId":"25996885126-1","company":"microsoft","msg":"Parse done: ok=31 err=3 | 70s (Microsoft)"}
+{"ts":"2026-05-17T17:02:50.037Z","level":"info","runId":"25996885126-1","company":"microsoft","msg":"Embedding 31 JDs in batches of 100…"}
+{"ts":"2026-05-17T17:02:50.037Z","level":"warn","runId":"25996885126-1","company":"microsoft","msg":"  parse err [Solution Engineering]: quota_disabled"}
+{"ts":"2026-05-17T17:03:49.888Z","level":"info","runId":"25996885126-1","company":"microsoft","msg":"  embed: 31/31"}
+{"ts":"2026-05-17T17:03:49.888Z","level":"info","runId":"25996885126-1","company":"microsoft","msg":"Embed done: 31/31 | 60s"}
+{"ts":"2026-05-17T17:03:51.096Z","level":"info","runId":"25996885126-1","company":null,"msg":"upsert: dropped 2 in-batch duplicate(s) (same content, different external_id)","event":"upsert_sig_dup","data":{"dropped":2,"batchSize":50}}
+{"ts":"2026-05-17T17:03:51.096Z","level":"info","runId":"25996885126-1","company":null,"msg":"upsert: kept 3 update(s) with sig unchanged (target sig owned by another row)","event":"upsert_sig_stripped","data":{"stripped":3,"batchSize":50}}
+{"ts":"2026-05-17T17:03:54.057Z","level":"info","runId":"25996885126-1","company":null,"msg":"upsert: kept 6 update(s) with sig unchanged (target sig owned by another row)","event":"upsert_sig_stripped","data":{"stripped":6,"batchSize":50}}
+{"ts":"2026-05-17T17:03:57.586Z","level":"info","runId":"25996885126-1","company":null,"msg":"upsert: dropped 9 in-batch duplicate(s) (same content, different external_id)","event":"upsert_sig_dup","data":{"dropped":9,"batchSize":50}}
+{"ts":"2026-05-17T17:03:57.586Z","level":"info","runId":"25996885126-1","company":null,"msg":"upsert: kept 4 update(s) with sig unchanged (target sig owned by another row)","event":"upsert_sig_stripped","data":{"stripped":4,"batchSize":50}}
+{"ts":"2026-05-17T17:03:58.820Z","level":"info","runId":"25996885126-1","company":null,"msg":"Bulk update failed: duplicate key value violates unique constraint \"ux_jobs_company_signature\" — falling back to per-row","event":"bulk_upsert_error","data":{"kind":"update","batchSize":33,"error":"duplicate key value violates unique constraint \"ux_jobs_company_signature\"","sigCollision":true}}
+{"ts":"2026-05-17T17:04:08.223Z","level":"info","runId":"25996885126-1","company":null,"msg":"Per-row recovery: 32/33 updates succeeded (skipped 1 signature-collisions)","event":"bulk_upsert_recovered","data":{"kind":"update","recovered":32,"total":33,"sigSkipped":1}}
+{"ts":"2026-05-17T17:04:10.038Z","level":"info","runId":"25996885126-1","company":null,"msg":"upsert: kept 3 update(s) with sig unchanged (target sig owned by another row)","event":"upsert_sig_stripped","data":{"stripped":3,"batchSize":11}}
+{"ts":"2026-05-17T17:04:11.816Z","level":"info","runId":"25996885126-1","company":"microsoft","msg":"Inserted: 0, Updated: 149, Stale: 0, Rejected: 3","event":"company_done","data":{"inserted":0,"updated":149,"stale":0,"parseOk":31,"parseErr":3,"skippedBudget":0,"skippedQuota":0,"rejectedNonEng":3,"coverageSkipped":false,"elapsedMs":391422}}
+{"ts":"2026-05-17T17:04:12.269Z","level":"info","runId":"25996885126-1","company":"meta","msg":"Crawling…","event":"company_start"}
+{"ts":"2026-05-17T17:04:12.270Z","level":"info","runId":"25996885126-1","company":"meta","msg":"Loading India jobs page..."}
+{"ts":"2026-05-17T17:04:19.599Z","level":"info","runId":"25996885126-1","company":"meta","msg":"Total: 9 India jobs"}
+{"ts":"2026-05-17T17:04:34.854Z","level":"info","runId":"25996885126-1","company":"meta","msg":"Enriched descriptions: 9/9 | errors=0 | 15s"}
+{"ts":"2026-05-17T17:04:34.854Z","level":"info","runId":"25996885126-1","company":"meta","msg":"Scraped 9 raw jobs in 23s","event":"scrape_done","data":{"rawCount":9}}
+{"ts":"2026-05-17T17:04:34.870Z","level":"info","runId":"25996885126-1","company":"meta","msg":"9 India jobs after normalization","event":"normalize_done","data":{"kept":9,"dropped":0}}
+{"ts":"2026-05-17T17:04:35.456Z","level":"info","runId":"25996885126-1","company":"meta","msg":"Parse decision: 1 to parse, 5 skip (already parsed, unchanged), 3 rejected (non-engineering title)"}
+{"ts":"2026-05-17T17:04:35.457Z","level":"info","runId":"25996885126-1","company":"meta","msg":"Parsing 1 JD with 12 workers across 12 keys (budget=10000/run)…"}
+{"ts":"2026-05-17T17:04:39.355Z","level":"info","runId":"25996885126-1","company":"meta","msg":"  parse: 1/1 ok=1 err=0"}
+{"ts":"2026-05-17T17:04:39.355Z","level":"info","runId":"25996885126-1","company":"meta","msg":"Parse done: ok=1 err=0 | 4s (Meta)"}
+{"ts":"2026-05-17T17:04:39.355Z","level":"info","runId":"25996885126-1","company":"meta","msg":"Embedding 1 JDs in batches of 100…"}
+{"ts":"2026-05-17T17:04:39.583Z","level":"info","runId":"25996885126-1","company":"meta","msg":"  embed: 1/1"}
+{"ts":"2026-05-17T17:04:39.583Z","level":"info","runId":"25996885126-1","company":"meta","msg":"Embed done: 1/1 | 0s"}
+{"ts":"2026-05-17T17:04:40.970Z","level":"info","runId":"25996885126-1","company":null,"msg":"upsert: dropped 1 in-batch duplicate(s) (same content, different external_id)","event":"upsert_sig_dup","data":{"dropped":1,"batchSize":6}}
+{"ts":"2026-05-17T17:04:42.390Z","level":"info","runId":"25996885126-1","company":"meta","msg":"Inserted: 0, Updated: 5, Stale: 0, Rejected: 3","event":"company_done","data":{"inserted":0,"updated":5,"stale":0,"parseOk":1,"parseErr":0,"skippedBudget":0,"skippedQuota":0,"rejectedNonEng":3,"coverageSkipped":false,"elapsedMs":30121}}
+{"ts":"2026-05-17T17:04:42.807Z","level":"info","runId":"25996885126-1","company":"amazon","msg":"Crawling…","event":"company_start"}
+{"ts":"2026-05-17T17:04:42.807Z","level":"info","runId":"25996885126-1","company":"amazon","msg":"Fetching offset 0 / ?..."}
+{"ts":"2026-05-17T17:04:44.966Z","level":"info","runId":"25996885126-1","company":"amazon","msg":"Fetching offset 100 / 2826..."}
+{"ts":"2026-05-17T17:04:46.100Z","level":"info","runId":"25996885126-1","company":"amazon","msg":"Fetching offset 200 / 2826..."}
+{"ts":"2026-05-17T17:04:47.218Z","level":"info","runId":"25996885126-1","company":"amazon","msg":"Fetching offset 300 / 2826..."}
+{"ts":"2026-05-17T17:04:48.409Z","level":"info","runId":"25996885126-1","company":"amazon","msg":"Fetching offset 400 / 2826..."}
+{"ts":"2026-05-17T17:04:49.640Z","level":"info","runId":"25996885126-1","company":"amazon","msg":"Fetching offset 500 / 2826..."}
+{"ts":"2026-05-17T17:04:50.764Z","level":"info","runId":"25996885126-1","company":"amazon","msg":"Fetching offset 600 / 2826..."}
+{"ts":"2026-05-17T17:04:51.965Z","level":"info","runId":"25996885126-1","company":"amazon","msg":"Fetching offset 700 / 2826..."}
+{"ts":"2026-05-17T17:04:53.206Z","level":"info","runId":"25996885126-1","company":"amazon","msg":"Fetching offset 800 / 2826..."}
+{"ts":"2026-05-17T17:04:54.431Z","level":"info","runId":"25996885126-1","company":"amazon","msg":"Fetching offset 900 / 2826..."}
+{"ts":"2026-05-17T17:04:55.578Z","level":"info","runId":"25996885126-1","company":"amazon","msg":"Fetching offset 1000 / 2826..."}
+{"ts":"2026-05-17T17:04:56.942Z","level":"info","runId":"25996885126-1","company":"amazon","msg":"Fetching offset 1100 / 2826..."}
+{"ts":"2026-05-17T17:04:58.065Z","level":"info","runId":"25996885126-1","company":"amazon","msg":"Fetching offset 1200 / 2826..."}
+{"ts":"2026-05-17T17:04:59.349Z","level":"info","runId":"25996885126-1","company":"amazon","msg":"Fetching offset 1300 / 2826..."}
+{"ts":"2026-05-17T17:05:00.574Z","level":"info","runId":"25996885126-1","company":"amazon","msg":"Fetching offset 1400 / 2826..."}
+{"ts":"2026-05-17T17:05:01.805Z","level":"info","runId":"25996885126-1","company":"amazon","msg":"Fetching offset 1500 / 2826..."}
+{"ts":"2026-05-17T17:05:02.940Z","level":"info","runId":"25996885126-1","company":"amazon","msg":"Fetching offset 1600 / 2826..."}
+{"ts":"2026-05-17T17:05:04.064Z","level":"info","runId":"25996885126-1","company":"amazon","msg":"Fetching offset 1700 / 2826..."}
+{"ts":"2026-05-17T17:05:05.255Z","level":"info","runId":"25996885126-1","company":"amazon","msg":"Fetching offset 1800 / 2826..."}
+{"ts":"2026-05-17T17:05:06.485Z","level":"info","runId":"25996885126-1","company":"amazon","msg":"Fetching offset 1900 / 2826..."}
+{"ts":"2026-05-17T17:05:07.638Z","level":"info","runId":"25996885126-1","company":"amazon","msg":"Fetching offset 2000 / 2826..."}
+{"ts":"2026-05-17T17:05:08.865Z","level":"info","runId":"25996885126-1","company":"amazon","msg":"Fetching offset 2100 / 2826..."}
+{"ts":"2026-05-17T17:05:10.066Z","level":"info","runId":"25996885126-1","company":"amazon","msg":"Fetching offset 2200 / 2826..."}
+{"ts":"2026-05-17T17:05:11.374Z","level":"info","runId":"25996885126-1","company":"amazon","msg":"Fetching offset 2300 / 2826..."}
+{"ts":"2026-05-17T17:05:12.526Z","level":"info","runId":"25996885126-1","company":"amazon","msg":"Fetching offset 2400 / 2826..."}
+{"ts":"2026-05-17T17:05:13.713Z","level":"info","runId":"25996885126-1","company":"amazon","msg":"Fetching offset 2500 / 2826..."}
+{"ts":"2026-05-17T17:05:14.862Z","level":"info","runId":"25996885126-1","company":"amazon","msg":"Fetching offset 2600 / 2826..."}
+{"ts":"2026-05-17T17:05:16.017Z","level":"info","runId":"25996885126-1","company":"amazon","msg":"Fetching offset 2700 / 2826..."}
+{"ts":"2026-05-17T17:05:17.164Z","level":"info","runId":"25996885126-1","company":"amazon","msg":"Fetching offset 2800 / 2826..."}
+{"ts":"2026-05-17T17:05:17.463Z","level":"info","runId":"25996885126-1","company":"amazon","msg":"Total: 2826 jobs"}
+{"ts":"2026-05-17T17:05:17.463Z","level":"info","runId":"25996885126-1","company":"amazon","msg":"Scraped 2826 raw jobs in 35s","event":"scrape_done","data":{"rawCount":2826}}
+{"ts":"2026-05-17T17:05:18.582Z","level":"info","runId":"25996885126-1","company":"amazon","msg":"2582 India jobs after normalization","event":"normalize_done","data":{"kept":2582,"dropped":244}}
+{"ts":"2026-05-17T17:05:22.283Z","level":"info","runId":"25996885126-1","company":"amazon","msg":"Parse decision: 1172 to parse, 1150 skip (already parsed, unchanged), 260 rejected (non-engineering title)"}
+{"ts":"2026-05-17T17:05:22.284Z","level":"info","runId":"25996885126-1","company":"amazon","msg":"Parsing 1172 JDs with 12 workers across 12 keys (budget=10000/run)…"}
+{"ts":"2026-05-17T17:07:06.006Z","level":"info","runId":"25996885126-1","company":"amazon","msg":"  parse: 25/1172 ok=14 err=11"}
+{"ts":"2026-05-17T17:07:52.238Z","level":"info","runId":"25996885126-1","company":"amazon","msg":"  parse: 50/1172 ok=39 err=11"}
+{"ts":"2026-05-17T17:08:11.260Z","level":"info","runId":"25996885126-1","company":"amazon","msg":"  parse: 75/1172 ok=61 err=14"}
+{"ts":"2026-05-17T17:09:23.195Z","level":"info","runId":"25996885126-1","company":"amazon","msg":"  parse: 100/1172 ok=79 err=21"}
+{"ts":"2026-05-17T17:11:38.771Z","level":"info","runId":"25996885126-1","company":"amazon","msg":"  parse: 125/1172 ok=79 err=46"}
+{"ts":"2026-05-17T17:12:32.640Z","level":"info","runId":"25996885126-1","company":"amazon","msg":"  parse: 150/1172 ok=104 err=46"}
+{"ts":"2026-05-17T17:13:51.106Z","level":"info","runId":"25996885126-1","company":"amazon","msg":"  parse: 175/1172 ok=118 err=57"}
+{"ts":"2026-05-17T17:15:54.787Z","level":"info","runId":"25996885126-1","company":"amazon","msg":"  parse: 200/1172 ok=118 err=82"}
+{"ts":"2026-05-17T17:17:05.711Z","level":"info","runId":"25996885126-1","company":"amazon","msg":"  parse: 225/1172 ok=135 err=90"}
+{"ts":"2026-05-17T17:18:00.973Z","level":"info","runId":"25996885126-1","company":"amazon","msg":"  parse: 250/1172 ok=158 err=92"}
+{"ts":"2026-05-17T17:20:04.281Z","level":"info","runId":"25996885126-1","company":"amazon","msg":"  parse: 275/1172 ok=161 err=114"}
+{"ts":"2026-05-17T17:22:05.680Z","level":"info","runId":"25996885126-1","company":"amazon","msg":"  parse: 300/1172 ok=166 err=134"}
+{"ts":"2026-05-17T17:22:29.932Z","level":"info","runId":"25996885126-1","company":"amazon","msg":"  parse: 325/1172 ok=191 err=134"}
+{"ts":"2026-05-17T17:22:53.064Z","level":"info","runId":"25996885126-1","company":"amazon","msg":"  parse: 350/1172 ok=216 err=134"}
+{"ts":"2026-05-17T17:24:52.395Z","level":"info","runId":"25996885126-1","company":"amazon","msg":"  parse: 375/1172 ok=223 err=152"}
+{"ts":"2026-05-17T17:26:54.585Z","level":"info","runId":"25996885126-1","company":"amazon","msg":"  parse: 400/1172 ok=230 err=170"}
+{"ts":"2026-05-17T17:27:20.160Z","level":"info","runId":"25996885126-1","company":"amazon","msg":"  parse: 425/1172 ok=255 err=170"}
+{"ts":"2026-05-17T17:28:34.388Z","level":"info","runId":"25996885126-1","company":"amazon","msg":"  parse: 450/1172 ok=273 err=177"}
+{"ts":"2026-05-17T17:30:48.427Z","level":"info","runId":"25996885126-1","company":"amazon","msg":"  parse: 475/1172 ok=274 err=201"}
+{"ts":"2026-05-17T17:31:57.894Z","level":"info","runId":"25996885126-1","company":"amazon","msg":"  parse: 500/1172 ok=288 err=212"}
+{"ts":"2026-05-17T17:33:15.697Z","level":"info","runId":"25996885126-1","company":"amazon","msg":"  parse: 525/1172 ok=306 err=219"}
+{"ts":"2026-05-17T17:35:32.112Z","level":"info","runId":"25996885126-1","company":"amazon","msg":"  parse: 550/1172 ok=306 err=244"}
+{"ts":"2026-05-17T17:36:56.400Z","level":"info","runId":"25996885126-1","company":"amazon","msg":"  parse: 575/1172 ok=319 err=256"}
+{"ts":"2026-05-17T17:38:07.525Z","level":"info","runId":"25996885126-1","company":"amazon","msg":"  parse: 600/1172 ok=335 err=265"}
+{"ts":"2026-05-17T17:38:55.759Z","level":"info","runId":"25996885126-1","company":"amazon","msg":"  parse: 625/1172 ok=358 err=267"}
+{"ts":"2026-05-17T17:39:24.908Z","level":"info","runId":"25996885126-1","company":"amazon","msg":"  parse: 650/1172 ok=378 err=272"}
+{"ts":"2026-05-17T17:39:48.424Z","level":"info","runId":"25996885126-1","company":"amazon","msg":"  parse: 675/1172 ok=402 err=273"}
+{"ts":"2026-05-17T17:40:30.968Z","level":"info","runId":"25996885126-1","company":"amazon","msg":"  parse: 700/1172 ok=421 err=279"}
+[gemini-key] key #6 (…wQC9JU) × gemini-flash-lite-latest: marked exhausted (RPD). reason="[GoogleGenerativeAI Error]: Error fetching from https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-lite-latest:generateContent: [429 Too Many Requests] You exceeded your current quota, please check your plan and billing de"
+[gemini-key] key #6 (…wQC9JU) is fully exhausted across all 5 models in this tier — skipping for the rest of this run
+{"ts":"2026-05-17T17:42:02.239Z","level":"info","runId":"25996885126-1","company":"amazon","msg":"  parse: 725/1172 ok=433 err=292"}
+{"ts":"2026-05-17T17:42:19.044Z","level":"info","runId":"25996885126-1","company":"amazon","msg":"  parse: 750/1172 ok=458 err=292"}
+{"ts":"2026-05-17T17:43:39.181Z","level":"info","runId":"25996885126-1","company":"amazon","msg":"  parse: 775/1172 ok=477 err=298"}
+{"ts":"2026-05-17T17:44:17.022Z","level":"info","runId":"25996885126-1","company":"amazon","msg":"  parse: 800/1172 ok=499 err=301"}
+[gemini-key] key #7 (…UyDY78) × gemini-flash-lite-latest: marked exhausted (RPD). reason="[GoogleGenerativeAI Error]: Error fetching from https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-lite-latest:generateContent: [429 Too Many Requests] You exceeded your current quota, please check your plan and billing de"
+[gemini-key] key #7 (…UyDY78) is fully exhausted across all 5 models in this tier — skipping for the rest of this run
+{"ts":"2026-05-17T17:44:44.983Z","level":"info","runId":"25996885126-1","company":"amazon","msg":"  parse: 825/1172 ok=523 err=302"}
+{"ts":"2026-05-17T17:45:48.912Z","level":"info","runId":"25996885126-1","company":"amazon","msg":"  parse: 850/1172 ok=545 err=305"}
+{"ts":"2026-05-17T17:46:08.304Z","level":"info","runId":"25996885126-1","company":"amazon","msg":"  parse: 875/1172 ok=569 err=306"}
+{"ts":"2026-05-17T17:47:00.921Z","level":"info","runId":"25996885126-1","company":"amazon","msg":"  parse: 900/1172 ok=592 err=308"}
+[gemini-key] key #8 (…WgoKrs) × gemini-flash-lite-latest: marked exhausted (RPD). reason="[GoogleGenerativeAI Error]: Error fetching from https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-lite-latest:generateContent: [429 Too Many Requests] You exceeded your current quota, please check your plan and billing de"
+[gemini-key] key #8 (…WgoKrs) is fully exhausted across all 5 models in this tier — skipping for the rest of this run
+{"ts":"2026-05-17T17:47:17.738Z","level":"info","runId":"25996885126-1","company":"amazon","msg":"  parse: 925/1172 ok=617 err=308"}
+{"ts":"2026-05-17T17:47:39.480Z","level":"info","runId":"25996885126-1","company":"amazon","msg":"  parse: 950/1172 ok=642 err=308"}
+{"ts":"2026-05-17T17:48:01.522Z","level":"info","runId":"25996885126-1","company":"amazon","msg":"  parse: 975/1172 ok=667 err=308"}
+{"ts":"2026-05-17T17:48:12.482Z","level":"info","runId":"25996885126-1","company":"amazon","msg":"  parse: 1000/1172 ok=691 err=309"}
+{"ts":"2026-05-17T17:48:37.191Z","level":"info","runId":"25996885126-1","company":"amazon","msg":"  parse: 1025/1172 ok=716 err=309"}
+[gemini-key] key #9 (…tqvLDM) × gemini-flash-lite-latest: marked exhausted (RPD). reason="[GoogleGenerativeAI Error]: Error fetching from https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-lite-latest:generateContent: [429 Too Many Requests] You exceeded your current quota, please check your plan and billing de"
+[gemini-key] key #9 (…tqvLDM) is fully exhausted across all 5 models in this tier — skipping for the rest of this run
+{"ts":"2026-05-17T17:49:10.417Z","level":"info","runId":"25996885126-1","company":"amazon","msg":"  parse: 1050/1172 ok=741 err=309"}
+{"ts":"2026-05-17T17:49:49.178Z","level":"info","runId":"25996885126-1","company":"amazon","msg":"  parse: 1075/1172 ok=765 err=310"}
+{"ts":"2026-05-17T17:50:58.402Z","level":"info","runId":"25996885126-1","company":"amazon","msg":"  parse: 1100/1172 ok=780 err=320"}
+[gemini-key] key #10 (…QKpcCU) × gemini-flash-lite-latest: marked exhausted (RPD). reason="[GoogleGenerativeAI Error]: Error fetching from https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-lite-latest:generateContent: [429 Too Many Requests] You exceeded your current quota, please check your plan and billing de"
+[gemini-key] key #10 (…QKpcCU) is fully exhausted across all 5 models in this tier — skipping for the rest of this run
+[gemini-key] key #0 (…Gid_Ww) × gemini-flash-lite-latest: marked exhausted (RPD). reason="[GoogleGenerativeAI Error]: Error fetching from https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-lite-latest:generateContent: [429 Too Many Requests] You exceeded your current quota, please check your plan and billing de"
+[gemini-key] key #0 (…Gid_Ww) is fully exhausted across all 5 models in this tier — skipping for the rest of this run
+{"ts":"2026-05-17T17:51:51.320Z","level":"info","runId":"25996885126-1","company":"amazon","msg":"  parse: 1125/1172 ok=801 err=324"}
+[gemini-key] key #11 (…gxvf9g) × gemini-flash-lite-latest: marked exhausted (RPD). reason="[GoogleGenerativeAI Error]: Error fetching from https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-lite-latest:generateContent: [429 Too Many Requests] You exceeded your current quota, please check your plan and billing de"
+[gemini-key] key #11 (…gxvf9g) is fully exhausted across all 5 models in this tier — skipping for the rest of this run
+{"ts":"2026-05-17T17:52:13.381Z","level":"info","runId":"25996885126-1","company":"amazon","msg":"  parse: 1150/1172 ok=824 err=326"}
+{"ts":"2026-05-17T17:53:08.239Z","level":"info","runId":"25996885126-1","company":"amazon","msg":"  parse: 1172/1172 ok=846 err=326"}
+{"ts":"2026-05-17T17:53:08.240Z","level":"warn","runId":"25996885126-1","company":"amazon","msg":"  parse err [Account Manager, RBS Flex]: rate_limited"}
+{"ts":"2026-05-17T17:53:08.240Z","level":"warn","runId":"25996885126-1","company":"amazon","msg":"  parse err [Applied Scientist, Books Reading & Discovery Experiences]: rate_limited"}
+{"ts":"2026-05-17T17:53:08.240Z","level":"warn","runId":"25996885126-1","company":"amazon","msg":"  parse err [Data Center Technician , Data Center Operations (DCO)]: rate_limited"}
+{"ts":"2026-05-17T17:53:08.240Z","level":"warn","runId":"25996885126-1","company":"amazon","msg":"  parse err [ST Planner, Scheduling , EU ATS Scheduling]: rate_limited"}
+{"ts":"2026-05-17T17:53:08.240Z","level":"warn","runId":"25996885126-1","company":"amazon","msg":"  parse err [ID-LB Cabling Infrastructure Tech, Data Center Operations]: rate_limited"}
+{"ts":"2026-05-17T17:53:08.239Z","level":"info","runId":"25996885126-1","company":"amazon","msg":"Parse done: ok=846 err=326 | 2866s (Amazon)"}
+{"ts":"2026-05-17T17:53:08.240Z","level":"info","runId":"25996885126-1","company":"amazon","msg":"Embedding 846 JDs in batches of 100…"}
+{"ts":"2026-05-17T17:54:09.433Z","level":"info","runId":"25996885126-1","company":"amazon","msg":"  embed: 100/846"}
+{"ts":"2026-05-17T17:55:35.526Z","level":"info","runId":"25996885126-1","company":"amazon","msg":"  embed: 200/846"}
+{"ts":"2026-05-17T17:56:36.648Z","level":"info","runId":"25996885126-1","company":"amazon","msg":"  embed: 300/846"}
+{"ts":"2026-05-17T17:57:38.751Z","level":"info","runId":"25996885126-1","company":"amazon","msg":"  embed: 400/846"}
+{"ts":"2026-05-17T17:58:42.306Z","level":"info","runId":"25996885126-1","company":"amazon","msg":"  embed: 500/846"}
+{"ts":"2026-05-17T17:59:44.125Z","level":"info","runId":"25996885126-1","company":"amazon","msg":"  embed: 600/846"}
+{"ts":"2026-05-17T18:00:45.273Z","level":"info","runId":"25996885126-1","company":"amazon","msg":"  embed: 700/846"}
+{"ts":"2026-05-17T18:01:55.808Z","level":"info","runId":"25996885126-1","company":"amazon","msg":"  embed: 800/846"}
+{"ts":"2026-05-17T18:01:56.550Z","level":"info","runId":"25996885126-1","company":"amazon","msg":"  embed: 846/846"}
+{"ts":"2026-05-17T18:01:56.550Z","level":"info","runId":"25996885126-1","company":"amazon","msg":"Embed done: 846/846 | 528s"}
+{"ts":"2026-05-17T18:01:58.332Z","level":"info","runId":"25996885126-1","company":null,"msg":"upsert: dropped 5 in-batch duplicate(s) (same content, different external_id)","event":"upsert_sig_dup","data":{"dropped":5,"batchSize":50}}
+{"ts":"2026-05-17T18:02:03.060Z","level":"info","runId":"25996885126-1","company":null,"msg":"upsert: dropped 2 in-batch duplicate(s) (same content, different external_id)","event":"upsert_sig_dup","data":{"dropped":2,"batchSize":50}}
+{"ts":"2026-05-17T18:02:06.095Z","level":"info","runId":"25996885126-1","company":null,"msg":"upsert: dropped 5 in-batch duplicate(s) (same content, different external_id)","event":"upsert_sig_dup","data":{"dropped":5,"batchSize":50}}
+{"ts":"2026-05-17T18:02:10.168Z","level":"info","runId":"25996885126-1","company":null,"msg":"upsert: dropped 6 in-batch duplicate(s) (same content, different external_id)","event":"upsert_sig_dup","data":{"dropped":6,"batchSize":50}}
+{"ts":"2026-05-17T18:02:12.882Z","level":"info","runId":"25996885126-1","company":null,"msg":"upsert: dropped 6 in-batch duplicate(s) (same content, different external_id)","event":"upsert_sig_dup","data":{"dropped":6,"batchSize":50}}
+{"ts":"2026-05-17T18:02:16.485Z","level":"info","runId":"25996885126-1","company":null,"msg":"upsert: dropped 6 in-batch duplicate(s) (same content, different external_id)","event":"upsert_sig_dup","data":{"dropped":6,"batchSize":50}}
+{"ts":"2026-05-17T18:02:19.673Z","level":"info","runId":"25996885126-1","company":null,"msg":"upsert: dropped 6 in-batch duplicate(s) (same content, different external_id)","event":"upsert_sig_dup","data":{"dropped":6,"batchSize":50}}
+{"ts":"2026-05-17T18:02:22.590Z","level":"info","runId":"25996885126-1","company":null,"msg":"upsert: dropped 5 in-batch duplicate(s) (same content, different external_id)","event":"upsert_sig_dup","data":{"dropped":5,"batchSize":50}}
+{"ts":"2026-05-17T18:02:30.289Z","level":"info","runId":"25996885126-1","company":null,"msg":"upsert: dropped 11 in-batch duplicate(s) (same content, different external_id)","event":"upsert_sig_dup","data":{"dropped":11,"batchSize":50}}
+{"ts":"2026-05-17T18:02:33.071Z","level":"info","runId":"25996885126-1","company":null,"msg":"upsert: dropped 6 in-batch duplicate(s) (same content, different external_id)","event":"upsert_sig_dup","data":{"dropped":6,"batchSize":50}}
+{"ts":"2026-05-17T18:02:36.917Z","level":"info","runId":"25996885126-1","company":null,"msg":"upsert: dropped 4 in-batch duplicate(s) (same content, different external_id)","event":"upsert_sig_dup","data":{"dropped":4,"batchSize":50}}
+{"ts":"2026-05-17T18:02:40.815Z","level":"info","runId":"25996885126-1","company":null,"msg":"upsert: dropped 12 in-batch duplicate(s) (same content, different external_id)","event":"upsert_sig_dup","data":{"dropped":12,"batchSize":50}}
+{"ts":"2026-05-17T18:02:44.024Z","level":"info","runId":"25996885126-1","company":null,"msg":"upsert: dropped 6 in-batch duplicate(s) (same content, different external_id)","event":"upsert_sig_dup","data":{"dropped":6,"batchSize":50}}
+{"ts":"2026-05-17T18:02:49.050Z","level":"info","runId":"25996885126-1","company":null,"msg":"upsert: dropped 2 in-batch duplicate(s) (same content, different external_id)","event":"upsert_sig_dup","data":{"dropped":2,"batchSize":50}}
+{"ts":"2026-05-17T18:02:53.551Z","level":"info","runId":"25996885126-1","company":null,"msg":"upsert: dropped 6 in-batch duplicate(s) (same content, different external_id)","event":"upsert_sig_dup","data":{"dropped":6,"batchSize":50}}
+{"ts":"2026-05-17T18:02:56.279Z","level":"info","runId":"25996885126-1","company":null,"msg":"upsert: dropped 7 in-batch duplicate(s) (same content, different external_id)","event":"upsert_sig_dup","data":{"dropped":7,"batchSize":50}}
+{"ts":"2026-05-17T18:03:00.046Z","level":"info","runId":"25996885126-1","company":null,"msg":"upsert: dropped 4 in-batch duplicate(s) (same content, different external_id)","event":"upsert_sig_dup","data":{"dropped":4,"batchSize":50}}
+{"ts":"2026-05-17T18:03:04.330Z","level":"info","runId":"25996885126-1","company":null,"msg":"upsert: dropped 10 in-batch duplicate(s) (same content, different external_id)","event":"upsert_sig_dup","data":{"dropped":10,"batchSize":50}}
+{"ts":"2026-05-17T18:03:07.320Z","level":"info","runId":"25996885126-1","company":null,"msg":"upsert: dropped 11 in-batch duplicate(s) (same content, different external_id)","event":"upsert_sig_dup","data":{"dropped":11,"batchSize":50}}
+{"ts":"2026-05-17T18:03:16.754Z","level":"info","runId":"25996885126-1","company":null,"msg":"upsert: dropped 4 in-batch duplicate(s) (same content, different external_id)","event":"upsert_sig_dup","data":{"dropped":4,"batchSize":50}}
+{"ts":"2026-05-17T18:03:20.428Z","level":"info","runId":"25996885126-1","company":null,"msg":"upsert: dropped 5 in-batch duplicate(s) (same content, different external_id)","event":"upsert_sig_dup","data":{"dropped":5,"batchSize":50}}
+{"ts":"2026-05-17T18:03:23.621Z","level":"info","runId":"25996885126-1","company":null,"msg":"upsert: dropped 7 in-batch duplicate(s) (same content, different external_id)","event":"upsert_sig_dup","data":{"dropped":7,"batchSize":50}}
+{"ts":"2026-05-17T18:03:26.865Z","level":"info","runId":"25996885126-1","company":null,"msg":"upsert: dropped 10 in-batch duplicate(s) (same content, different external_id)","event":"upsert_sig_dup","data":{"dropped":10,"batchSize":50}}
+{"ts":"2026-05-17T18:03:31.392Z","level":"info","runId":"25996885126-1","company":null,"msg":"upsert: dropped 2 in-batch duplicate(s) (same content, different external_id)","event":"upsert_sig_dup","data":{"dropped":2,"batchSize":50}}
+{"ts":"2026-05-17T18:03:34.917Z","level":"info","runId":"25996885126-1","company":null,"msg":"upsert: dropped 10 in-batch duplicate(s) (same content, different external_id)","event":"upsert_sig_dup","data":{"dropped":10,"batchSize":50}}
+{"ts":"2026-05-17T18:03:37.476Z","level":"info","runId":"25996885126-1","company":null,"msg":"upsert: dropped 4 in-batch duplicate(s) (same content, different external_id)","event":"upsert_sig_dup","data":{"dropped":4,"batchSize":50}}
+{"ts":"2026-05-17T18:03:40.198Z","level":"info","runId":"25996885126-1","company":null,"msg":"upsert: dropped 4 in-batch duplicate(s) (same content, different external_id)","event":"upsert_sig_dup","data":{"dropped":4,"batchSize":50}}
+{"ts":"2026-05-17T18:03:43.773Z","level":"info","runId":"25996885126-1","company":null,"msg":"upsert: dropped 3 in-batch duplicate(s) (same content, different external_id)","event":"upsert_sig_dup","data":{"dropped":3,"batchSize":50}}
+{"ts":"2026-05-17T18:03:48.586Z","level":"info","runId":"25996885126-1","company":null,"msg":"upsert: dropped 3 in-batch duplicate(s) (same content, different external_id)","event":"upsert_sig_dup","data":{"dropped":3,"batchSize":50}}
+{"ts":"2026-05-17T18:03:51.486Z","level":"info","runId":"25996885126-1","company":null,"msg":"upsert: dropped 17 in-batch duplicate(s) (same content, different external_id)","event":"upsert_sig_dup","data":{"dropped":17,"batchSize":50}}
+{"ts":"2026-05-17T18:03:54.492Z","level":"info","runId":"25996885126-1","company":null,"msg":"upsert: dropped 1 in-batch duplicate(s) (same content, different external_id)","event":"upsert_sig_dup","data":{"dropped":1,"batchSize":50}}
+{"ts":"2026-05-17T18:03:58.284Z","level":"info","runId":"25996885126-1","company":null,"msg":"upsert: dropped 4 in-batch duplicate(s) (same content, different external_id)","event":"upsert_sig_dup","data":{"dropped":4,"batchSize":50}}
+{"ts":"2026-05-17T18:04:02.564Z","level":"info","runId":"25996885126-1","company":null,"msg":"upsert: dropped 1 in-batch duplicate(s) (same content, different external_id)","event":"upsert_sig_dup","data":{"dropped":1,"batchSize":50}}
+{"ts":"2026-05-17T18:04:07.448Z","level":"info","runId":"25996885126-1","company":null,"msg":"upsert: dropped 4 in-batch duplicate(s) (same content, different external_id)","event":"upsert_sig_dup","data":{"dropped":4,"batchSize":50}}
+{"ts":"2026-05-17T18:04:10.822Z","level":"info","runId":"25996885126-1","company":null,"msg":"upsert: dropped 4 in-batch duplicate(s) (same content, different external_id)","event":"upsert_sig_dup","data":{"dropped":4,"batchSize":50}}
+{"ts":"2026-05-17T18:04:14.988Z","level":"info","runId":"25996885126-1","company":null,"msg":"upsert: dropped 7 in-batch duplicate(s) (same content, different external_id)","event":"upsert_sig_dup","data":{"dropped":7,"batchSize":50}}
+{"ts":"2026-05-17T18:04:18.593Z","level":"info","runId":"25996885126-1","company":null,"msg":"upsert: dropped 2 in-batch duplicate(s) (same content, different external_id)","event":"upsert_sig_dup","data":{"dropped":2,"batchSize":50}}
+{"ts":"2026-05-17T18:04:22.956Z","level":"info","runId":"25996885126-1","company":null,"msg":"upsert: dropped 5 in-batch duplicate(s) (same content, different external_id)","event":"upsert_sig_dup","data":{"dropped":5,"batchSize":50}}
+{"ts":"2026-05-17T18:04:26.082Z","level":"info","runId":"25996885126-1","company":null,"msg":"upsert: dropped 8 in-batch duplicate(s) (same content, different external_id)","event":"upsert_sig_dup","data":{"dropped":8,"batchSize":50}}
+{"ts":"2026-05-17T18:04:28.639Z","level":"info","runId":"25996885126-1","company":null,"msg":"upsert: dropped 2 in-batch duplicate(s) (same content, different external_id)","event":"upsert_sig_dup","data":{"dropped":2,"batchSize":50}}
+{"ts":"2026-05-17T18:04:31.429Z","level":"info","runId":"25996885126-1","company":null,"msg":"upsert: dropped 2 in-batch duplicate(s) (same content, different external_id)","event":"upsert_sig_dup","data":{"dropped":2,"batchSize":50}}
+{"ts":"2026-05-17T18:04:33.757Z","level":"info","runId":"25996885126-1","company":null,"msg":"upsert: dropped 3 in-batch duplicate(s) (same content, different external_id)","event":"upsert_sig_dup","data":{"dropped":3,"batchSize":50}}
+{"ts":"2026-05-17T18:04:37.310Z","level":"info","runId":"25996885126-1","company":null,"msg":"upsert: dropped 1 in-batch duplicate(s) (same content, different external_id)","event":"upsert_sig_dup","data":{"dropped":1,"batchSize":50}}
+{"ts":"2026-05-17T18:04:40.859Z","level":"info","runId":"25996885126-1","company":null,"msg":"upsert: dropped 4 in-batch duplicate(s) (same content, different external_id)","event":"upsert_sig_dup","data":{"dropped":4,"batchSize":50}}
+{"ts":"2026-05-17T18:04:42.890Z","level":"info","runId":"25996885126-1","company":null,"msg":"upsert: dropped 2 in-batch duplicate(s) (same content, different external_id)","event":"upsert_sig_dup","data":{"dropped":2,"batchSize":22}}
+{"ts":"2026-05-17T18:04:44.319Z","level":"info","runId":"25996885126-1","company":"amazon","msg":"Inserted: 0, Updated: 2083, Stale: 0, Rejected: 260","event":"company_done","data":{"inserted":0,"updated":2083,"stale":0,"parseOk":846,"parseErr":326,"skippedBudget":0,"skippedQuota":0,"rejectedNonEng":260,"coverageSkipped":false,"elapsedMs":3601512}}
+{"ts":"2026-05-17T18:04:44.701Z","level":"info","runId":"25996885126-1","company":"apple","msg":"Crawling…","event":"company_start"}
+{"ts":"2026-05-17T18:04:44.701Z","level":"info","runId":"25996885126-1","company":"apple","msg":"Loading page 1..."}
+{"ts":"2026-05-17T18:04:48.368Z","level":"info","runId":"25996885126-1","company":"apple","msg":"Page 1: 20 jobs (total so far: 20)"}
+{"ts":"2026-05-17T18:04:49.369Z","level":"info","runId":"25996885126-1","company":"apple","msg":"Loading page 2..."}
+{"ts":"2026-05-17T18:04:52.009Z","level":"info","runId":"25996885126-1","company":"apple","msg":"Page 2: 20 jobs (total so far: 40)"}
+{"ts":"2026-05-17T18:04:53.010Z","level":"info","runId":"25996885126-1","company":"apple","msg":"Loading page 3..."}
+{"ts":"2026-05-17T18:04:55.552Z","level":"info","runId":"25996885126-1","company":"apple","msg":"Page 3: 20 jobs (total so far: 60)"}
+{"ts":"2026-05-17T18:04:56.553Z","level":"info","runId":"25996885126-1","company":"apple","msg":"Loading page 4..."}
+{"ts":"2026-05-17T18:04:59.113Z","level":"info","runId":"25996885126-1","company":"apple","msg":"Page 4: 20 jobs (total so far: 80)"}
+{"ts":"2026-05-17T18:05:00.114Z","level":"info","runId":"25996885126-1","company":"apple","msg":"Loading page 5..."}
+{"ts":"2026-05-17T18:05:02.914Z","level":"info","runId":"25996885126-1","company":"apple","msg":"Page 5: 20 jobs (total so far: 100)"}
+{"ts":"2026-05-17T18:05:03.914Z","level":"info","runId":"25996885126-1","company":"apple","msg":"Loading page 6..."}
+{"ts":"2026-05-17T18:05:06.747Z","level":"info","runId":"25996885126-1","company":"apple","msg":"Page 6: 20 jobs (total so far: 120)"}
+{"ts":"2026-05-17T18:05:07.748Z","level":"info","runId":"25996885126-1","company":"apple","msg":"Loading page 7..."}
+{"ts":"2026-05-17T18:05:10.262Z","level":"info","runId":"25996885126-1","company":"apple","msg":"Page 7: 20 jobs (total so far: 140)"}
+{"ts":"2026-05-17T18:05:11.263Z","level":"info","runId":"25996885126-1","company":"apple","msg":"Loading page 8..."}
+{"ts":"2026-05-17T18:05:13.748Z","level":"info","runId":"25996885126-1","company":"apple","msg":"Page 8: 20 jobs (total so far: 160)"}
+{"ts":"2026-05-17T18:05:14.749Z","level":"info","runId":"25996885126-1","company":"apple","msg":"Loading page 9..."}
+{"ts":"2026-05-17T18:05:17.623Z","level":"info","runId":"25996885126-1","company":"apple","msg":"Page 9: 20 jobs (total so far: 180)"}
+{"ts":"2026-05-17T18:05:18.624Z","level":"info","runId":"25996885126-1","company":"apple","msg":"Loading page 10..."}
+{"ts":"2026-05-17T18:05:21.163Z","level":"info","runId":"25996885126-1","company":"apple","msg":"Page 10: 20 jobs (total so far: 200)"}
+{"ts":"2026-05-17T18:05:22.164Z","level":"info","runId":"25996885126-1","company":"apple","msg":"Loading page 11..."}
+{"ts":"2026-05-17T18:05:24.790Z","level":"info","runId":"25996885126-1","company":"apple","msg":"Page 11: 20 jobs (total so far: 220)"}
+{"ts":"2026-05-17T18:05:25.791Z","level":"info","runId":"25996885126-1","company":"apple","msg":"Loading page 12..."}
+{"ts":"2026-05-17T18:05:28.221Z","level":"info","runId":"25996885126-1","company":"apple","msg":"Page 12: 7 jobs (total so far: 227)"}
+{"ts":"2026-05-17T18:05:29.222Z","level":"info","runId":"25996885126-1","company":"apple","msg":"Loading page 13..."}
+{"ts":"2026-05-17T18:05:31.609Z","level":"info","runId":"25996885126-1","company":"apple","msg":"No new jobs on page 13, stopping"}
+{"ts":"2026-05-17T18:05:31.609Z","level":"info","runId":"25996885126-1","company":"apple","msg":"Total: 227 India jobs"}
+{"ts":"2026-05-17T18:06:03.306Z","level":"info","runId":"25996885126-1","company":"apple","msg":"  enrich progress: 25/227 | ok=25 err=0"}
+{"ts":"2026-05-17T18:06:37.958Z","level":"info","runId":"25996885126-1","company":"apple","msg":"  enrich progress: 50/227 | ok=50 err=0"}
+{"ts":"2026-05-17T18:07:04.472Z","level":"info","runId":"25996885126-1","company":"apple","msg":"  enrich progress: 75/227 | ok=75 err=0"}
+{"ts":"2026-05-17T18:07:32.361Z","level":"info","runId":"25996885126-1","company":"apple","msg":"  enrich progress: 100/227 | ok=100 err=0"}
+{"ts":"2026-05-17T18:08:04.939Z","level":"info","runId":"25996885126-1","company":"apple","msg":"  enrich progress: 125/227 | ok=125 err=0"}
+{"ts":"2026-05-17T18:08:29.451Z","level":"info","runId":"25996885126-1","company":"apple","msg":"  enrich progress: 150/227 | ok=150 err=0"}
+{"ts":"2026-05-17T18:08:51.788Z","level":"info","runId":"25996885126-1","company":"apple","msg":"  enrich progress: 175/227 | ok=175 err=0"}
+{"ts":"2026-05-17T18:09:15.206Z","level":"info","runId":"25996885126-1","company":"apple","msg":"  enrich progress: 200/227 | ok=200 err=0"}
+{"ts":"2026-05-17T18:09:38.697Z","level":"info","runId":"25996885126-1","company":"apple","msg":"  enrich progress: 225/227 | ok=225 err=0"}
+{"ts":"2026-05-17T18:09:41.658Z","level":"info","runId":"25996885126-1","company":"apple","msg":"Enriched descriptions: 227/227 | errors=0 | 250s"}
+{"ts":"2026-05-17T18:09:41.658Z","level":"info","runId":"25996885126-1","company":"apple","msg":"Scraped 227 raw jobs in 297s","event":"scrape_done","data":{"rawCount":227}}
+{"ts":"2026-05-17T18:09:41.787Z","level":"info","runId":"25996885126-1","company":"apple","msg":"223 India jobs after normalization","event":"normalize_done","data":{"kept":223,"dropped":4}}
+{"ts":"2026-05-17T18:09:43.173Z","level":"info","runId":"25996885126-1","company":"apple","msg":"Parse decision: 0 to parse, 217 skip (already parsed, unchanged), 6 rejected (non-engineering title)"}
+{"ts":"2026-05-17T18:09:48.242Z","level":"info","runId":"25996885126-1","company":"apple","msg":"Inserted: 0, Updated: 217, Stale: 0, Rejected: 6","event":"company_done","data":{"inserted":0,"updated":217,"stale":0,"parseOk":0,"parseErr":0,"skippedBudget":0,"skippedQuota":0,"rejectedNonEng":6,"coverageSkipped":false,"elapsedMs":303541}}
+{"ts":"2026-05-17T18:09:48.616Z","level":"info","runId":"25996885126-1","company":"atlassian","msg":"Crawling…","event":"company_start"}
+{"ts":"2026-05-17T18:09:58.679Z","level":"info","runId":"25996885126-1","company":"atlassian","msg":"HTML fallback: 0 job link(s) (filtered 29 nav)"}
+{"ts":"2026-05-17T18:09:58.686Z","level":"warn","runId":"25996885126-1","company":"atlassian","msg":"Atlassian fallback drained: 0 links matched. page.title=\"Atlassian Jobs: View Listings for Open Positions | Atlassian\", anchors=139, sample=[\"https://www.atlassian.com/company/careers/all-jobs?team=&location=India#\",\"https://www.atlassian.com/company/careers/all-jobs?team=&location=India#\",\"https://www.atlassian.com/zh/company/careers/all-jobs\",\"https://www.atlassian.com/de/company/careers/all-jobs\",\"https://www.atlassian.com/company/careers/all-jobs\",\"https://www.atlassian.com/es/company/careers/all-jobs\",\"https://www.atlassian.com/fr/company/careers/all-jobs\",\"https://www.atlassian.com/it/company/careers/all-jobs\",\"https://www.atlassian.com/ko/company/careers/all-jobs\",\"https://www.atlassian.com/nl/company/careers/all-jobs\",\"https://www.atlassian.com/ja/company/careers/all-jobs\",\"https://www.atlassian.com/br/company/careers/all-jobs\"]"}
+{"ts":"2026-05-17T18:09:58.686Z","level":"info","runId":"25996885126-1","company":"atlassian","msg":"Total: 0 jobs"}
+{"ts":"2026-05-17T18:09:58.686Z","level":"info","runId":"25996885126-1","company":"atlassian","msg":"Scraped 0 raw jobs in 10s","event":"scrape_done","data":{"rawCount":0}}
+{"ts":"2026-05-17T18:09:58.686Z","level":"info","runId":"25996885126-1","company":"atlassian","msg":"0 India jobs after normalization","event":"normalize_done","data":{"kept":0,"dropped":0}}
+{"ts":"2026-05-17T18:09:59.067Z","level":"info","runId":"25996885126-1","company":"nvidia","msg":"Crawling…","event":"company_start"}
+{"ts":"2026-05-17T18:09:59.067Z","level":"info","runId":"25996885126-1","company":"nvidia","msg":"Fetching offset 0 / ?..."}
+{"ts":"2026-05-17T18:10:00.350Z","level":"info","runId":"25996885126-1","company":"nvidia","msg":"Fetching offset 20 / 198..."}
+{"ts":"2026-05-17T18:10:01.549Z","level":"info","runId":"25996885126-1","company":"nvidia","msg":"Fetching offset 40 / 198..."}
+{"ts":"2026-05-17T18:10:02.807Z","level":"info","runId":"25996885126-1","company":"nvidia","msg":"Fetching offset 60 / 198..."}
+{"ts":"2026-05-17T18:10:03.966Z","level":"info","runId":"25996885126-1","company":"nvidia","msg":"Fetching offset 80 / 198..."}
+{"ts":"2026-05-17T18:10:05.176Z","level":"info","runId":"25996885126-1","company":"nvidia","msg":"Fetching offset 100 / 198..."}
+{"ts":"2026-05-17T18:10:06.297Z","level":"info","runId":"25996885126-1","company":"nvidia","msg":"Fetching offset 120 / 198..."}
+{"ts":"2026-05-17T18:10:07.660Z","level":"info","runId":"25996885126-1","company":"nvidia","msg":"Fetching offset 140 / 198..."}
+{"ts":"2026-05-17T18:10:09.302Z","level":"info","runId":"25996885126-1","company":"nvidia","msg":"Fetching offset 160 / 198..."}
+{"ts":"2026-05-17T18:10:10.442Z","level":"info","runId":"25996885126-1","company":"nvidia","msg":"Fetching offset 180 / 198..."}
+{"ts":"2026-05-17T18:10:11.264Z","level":"info","runId":"25996885126-1","company":"nvidia","msg":"Total: 198 India jobs"}
+{"ts":"2026-05-17T18:10:32.818Z","level":"info","runId":"25996885126-1","company":"nvidia","msg":"  enrich progress: 25/198 | ok=25 err=0"}
+{"ts":"2026-05-17T18:10:52.544Z","level":"info","runId":"25996885126-1","company":"nvidia","msg":"  enrich progress: 50/198 | ok=50 err=0"}
+{"ts":"2026-05-17T18:11:33.404Z","level":"warn","runId":"25996885126-1","company":"nvidia","msg":"detail err [Senior Safety Architect - DRIVE SW]: page.goto: Timeout 35000ms exceeded."}
+{"ts":"2026-05-17T18:11:33.698Z","level":"warn","runId":"25996885126-1","company":"nvidia","msg":"detail err [Senior Verification Engineer, Memory Sub]: page.goto: Timeout 35000ms exceeded."}
+{"ts":"2026-05-17T18:11:33.734Z","level":"warn","runId":"25996885126-1","company":"nvidia","msg":"detail err [Senior CPU and SOC Verification Engineer]: page.goto: Timeout 35000ms exceeded."}
+{"ts":"2026-05-17T18:11:42.946Z","level":"info","runId":"25996885126-1","company":"nvidia","msg":"  enrich progress: 75/198 | ok=68 err=4"}
+{"ts":"2026-05-17T18:12:02.898Z","level":"info","runId":"25996885126-1","company":"nvidia","msg":"  enrich progress: 100/198 | ok=93 err=4"}
+{"ts":"2026-05-17T18:12:22.654Z","level":"info","runId":"25996885126-1","company":"nvidia","msg":"  enrich progress: 125/198 | ok=118 err=4"}
+{"ts":"2026-05-17T18:12:45.006Z","level":"info","runId":"25996885126-1","company":"nvidia","msg":"  enrich progress: 150/198 | ok=137 err=4"}
+{"ts":"2026-05-17T18:13:12.660Z","level":"info","runId":"25996885126-1","company":"nvidia","msg":"  enrich progress: 175/198 | ok=154 err=5"}
+{"ts":"2026-05-17T18:13:35.410Z","level":"warn","runId":"25996885126-1","company":"nvidia","msg":"enrich: 16 job(s) loaded but extractor returned <60 chars — selector may need updating"}
+{"ts":"2026-05-17T18:13:35.410Z","level":"info","runId":"25996885126-1","company":"nvidia","msg":"Enriched descriptions: 176/198 | errors=6 | empty=16 | 204s"}
+{"ts":"2026-05-17T18:13:35.410Z","level":"info","runId":"25996885126-1","company":"nvidia","msg":"Scraped 198 raw jobs in 216s","event":"scrape_done","data":{"rawCount":198}}
+{"ts":"2026-05-17T18:13:35.490Z","level":"info","runId":"25996885126-1","company":"nvidia","msg":"144 India jobs after normalization","event":"normalize_done","data":{"kept":144,"dropped":54}}
+{"ts":"2026-05-17T18:13:36.583Z","level":"info","runId":"25996885126-1","company":"nvidia","msg":"Parse decision: 29 to parse, 115 skip (already parsed, unchanged)"}
+{"ts":"2026-05-17T18:13:36.583Z","level":"info","runId":"25996885126-1","company":"nvidia","msg":"Parsing 29 JDs with 12 workers across 12 keys (budget=10000/run)…"}
+[gemini-key] key #2 (…qOE4eg) × gemini-flash-lite-latest: marked exhausted (RPD). reason="[GoogleGenerativeAI Error]: Error fetching from https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-lite-latest:generateContent: [429 Too Many Requests] You exceeded your current quota, please check your plan and billing de"
+[gemini-key] key #2 (…qOE4eg) is fully exhausted across all 5 models in this tier — skipping for the rest of this run
+{"ts":"2026-05-17T18:14:00.407Z","level":"info","runId":"25996885126-1","company":"nvidia","msg":"  parse: 25/29 ok=18 err=7"}
+{"ts":"2026-05-17T18:14:00.408Z","level":"warn","runId":"25996885126-1","company":"nvidia","msg":"  parse err [Senior System Software Engineer, Linux Kernel]: rate_limited"}
+{"ts":"2026-05-17T18:14:00.408Z","level":"info","runId":"25996885126-1","company":"nvidia","msg":"  parse: 29/29 ok=18 err=11"}
+{"ts":"2026-05-17T18:14:00.408Z","level":"warn","runId":"25996885126-1","company":"nvidia","msg":"  parse err [Senior Custom SOC IP Verification Engineer]: rate_limited"}
+{"ts":"2026-05-17T18:14:00.408Z","level":"warn","runId":"25996885126-1","company":"nvidia","msg":"  parse err [Senior System Software Engineer]: rate_limited"}
+{"ts":"2026-05-17T18:14:00.408Z","level":"warn","runId":"25996885126-1","company":"nvidia","msg":"  parse err [Senior SRAM Circuit Design Engineer]: rate_limited"}
+{"ts":"2026-05-17T18:14:00.408Z","level":"warn","runId":"25996885126-1","company":"nvidia","msg":"  parse err [Senior Tools Development Engineer]: rate_limited"}
+{"ts":"2026-05-17T18:14:00.408Z","level":"info","runId":"25996885126-1","company":"nvidia","msg":"Parse done: ok=18 err=11 | 24s (NVIDIA)"}
+{"ts":"2026-05-17T18:14:00.408Z","level":"info","runId":"25996885126-1","company":"nvidia","msg":"Embedding 18 JDs in batches of 100…"}
+{"ts":"2026-05-17T18:14:00.958Z","level":"info","runId":"25996885126-1","company":"nvidia","msg":"  embed: 18/18"}
+{"ts":"2026-05-17T18:14:00.958Z","level":"info","runId":"25996885126-1","company":"nvidia","msg":"Embed done: 18/18 | 1s"}
+{"ts":"2026-05-17T18:14:01.513Z","level":"info","runId":"25996885126-1","company":null,"msg":"upsert: dropped 1 in-batch duplicate(s) (same content, different external_id)","event":"upsert_sig_dup","data":{"dropped":1,"batchSize":50}}
+{"ts":"2026-05-17T18:14:05.249Z","level":"info","runId":"25996885126-1","company":null,"msg":"upsert: dropped 4 in-batch duplicate(s) (same content, different external_id)","event":"upsert_sig_dup","data":{"dropped":4,"batchSize":44}}
+{"ts":"2026-05-17T18:14:05.249Z","level":"info","runId":"25996885126-1","company":null,"msg":"upsert: kept 3 update(s) with sig unchanged (target sig owned by another row)","event":"upsert_sig_stripped","data":{"stripped":3,"batchSize":44}}
+{"ts":"2026-05-17T18:14:07.942Z","level":"info","runId":"25996885126-1","company":"nvidia","msg":"Inserted: 0, Updated: 139, Stale: 0","event":"company_done","data":{"inserted":0,"updated":139,"stale":0,"parseOk":18,"parseErr":11,"skippedBudget":0,"skippedQuota":0,"rejectedNonEng":0,"coverageSkipped":false,"elapsedMs":248875}}
+{"ts":"2026-05-17T18:14:08.911Z","level":"info","runId":"25996885126-1","company":"oracle","msg":"Crawling…","event":"company_start"}
+{"ts":"2026-05-17T18:14:08.911Z","level":"info","runId":"25996885126-1","company":"oracle","msg":"Fetching offset 0 / ?..."}
+{"ts":"2026-05-17T18:14:10.466Z","level":"info","runId":"25996885126-1","company":"oracle","msg":"Fetching offset 25 / 60..."}
+{"ts":"2026-05-17T18:14:11.627Z","level":"info","runId":"25996885126-1","company":"oracle","msg":"Fetching offset 50 / 60..."}
+{"ts":"2026-05-17T18:14:12.146Z","level":"info","runId":"25996885126-1","company":"oracle","msg":"Total: 59 India jobs"}
+{"ts":"2026-05-17T18:14:47.190Z","level":"warn","runId":"25996885126-1","company":"oracle","msg":"detail err [Lead Specialist - Customer Deal Desk, Gl]: page.goto: Timeout 35000ms exceeded."}
+{"ts":"2026-05-17T18:14:47.396Z","level":"info","runId":"25996885126-1","company":"oracle","msg":"Enriched descriptions: 1/59 | errors=1 | 35s"}
+{"ts":"2026-05-17T18:14:47.396Z","level":"info","runId":"25996885126-1","company":"oracle","msg":"Scraped 59 raw jobs in 38s","event":"scrape_done","data":{"rawCount":59}}
+{"ts":"2026-05-17T18:14:47.405Z","level":"info","runId":"25996885126-1","company":"oracle","msg":"59 India jobs after normalization","event":"normalize_done","data":{"kept":59,"dropped":0}}
+{"ts":"2026-05-17T18:14:48.134Z","level":"info","runId":"25996885126-1","company":"oracle","msg":"Parse decision: 17 to parse, 30 skip (already parsed, unchanged), 12 rejected (non-engineering title)"}
+{"ts":"2026-05-17T18:14:48.135Z","level":"info","runId":"25996885126-1","company":"oracle","msg":"Parsing 17 JDs with 12 workers across 12 keys (budget=10000/run)…"}
+[gemini-key] key #1 (…h-0J-A) × gemini-flash-lite-latest: marked exhausted (RPD). reason="[GoogleGenerativeAI Error]: Error fetching from https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-lite-latest:generateContent: [429 Too Many Requests] You exceeded your current quota, please check your plan and billing de"
+[gemini-key] key #1 (…h-0J-A) is fully exhausted across all 5 models in this tier — skipping for the rest of this run
+{"ts":"2026-05-17T18:14:50.894Z","level":"warn","runId":"25996885126-1","company":"oracle","msg":"  parse err [Customer Service Analyst (Oracle Hospitality)]: quota_disabled"}
+{"ts":"2026-05-17T18:14:50.894Z","level":"info","runId":"25996885126-1","company":"oracle","msg":"  parse: 17/17 ok=4 err=13"}
+{"ts":"2026-05-17T18:14:50.894Z","level":"info","runId":"25996885126-1","company":"oracle","msg":"Parse done: ok=4 err=13 | 3s (Oracle)"}
+{"ts":"2026-05-17T18:14:50.894Z","level":"warn","runId":"25996885126-1","company":"oracle","msg":"  parse err [Software Developer 3]: unknown"}
+{"ts":"2026-05-17T18:14:50.894Z","level":"warn","runId":"25996885126-1","company":"oracle","msg":"  parse err [Software Developer 3]: unknown"}
+{"ts":"2026-05-17T18:14:50.895Z","level":"warn","runId":"25996885126-1","company":"oracle","msg":"  parse err [Software Developer 3]: unknown"}
+{"ts":"2026-05-17T18:14:50.895Z","level":"warn","runId":"25996885126-1","company":"oracle","msg":"  parse err [Software Developer 4]: unknown"}
+{"ts":"2026-05-17T18:14:50.895Z","level":"info","runId":"25996885126-1","company":"oracle","msg":"Embedding 4 JDs in batches of 100…"}
+{"ts":"2026-05-17T18:14:51.113Z","level":"info","runId":"25996885126-1","company":"oracle","msg":"  embed: 4/4"}
+{"ts":"2026-05-17T18:14:51.114Z","level":"info","runId":"25996885126-1","company":"oracle","msg":"Embed done: 4/4 | 0s"}
+{"ts":"2026-05-17T18:14:51.715Z","level":"info","runId":"25996885126-1","company":null,"msg":"upsert: dropped 16 in-batch duplicate(s) (same content, different external_id)","event":"upsert_sig_dup","data":{"dropped":16,"batchSize":47}}
+{"ts":"2026-05-17T18:14:52.934Z","level":"info","runId":"25996885126-1","company":"oracle","msg":"Inserted: 0, Updated: 31, Stale: 0, Rejected: 12","event":"company_done","data":{"inserted":0,"updated":31,"stale":0,"parseOk":4,"parseErr":13,"skippedBudget":0,"skippedQuota":0,"rejectedNonEng":12,"coverageSkipped":false,"elapsedMs":44023}}
+{"ts":"2026-05-17T18:14:53.352Z","level":"info","runId":"25996885126-1","company":"salesforce","msg":"Crawling…","event":"company_start"}
+{"ts":"2026-05-17T18:14:53.352Z","level":"info","runId":"25996885126-1","company":"salesforce","msg":"Fetching offset 0 / ?..."}
+{"ts":"2026-05-17T18:14:54.424Z","level":"info","runId":"25996885126-1","company":"salesforce","msg":"Fetching offset 20 / 147..."}
+{"ts":"2026-05-17T18:14:55.333Z","level":"info","runId":"25996885126-1","company":"salesforce","msg":"Fetching offset 40 / 147..."}
+{"ts":"2026-05-17T18:14:56.287Z","level":"info","runId":"25996885126-1","company":"salesforce","msg":"Fetching offset 60 / 147..."}
+{"ts":"2026-05-17T18:14:57.227Z","level":"info","runId":"25996885126-1","company":"salesforce","msg":"Fetching offset 80 / 147..."}
+{"ts":"2026-05-17T18:14:58.140Z","level":"info","runId":"25996885126-1","company":"salesforce","msg":"Fetching offset 100 / 147..."}
+{"ts":"2026-05-17T18:14:59.065Z","level":"info","runId":"25996885126-1","company":"salesforce","msg":"Fetching offset 120 / 147..."}
+{"ts":"2026-05-17T18:14:59.979Z","level":"info","runId":"25996885126-1","company":"salesforce","msg":"Fetching offset 140 / 147..."}
+{"ts":"2026-05-17T18:15:00.431Z","level":"info","runId":"25996885126-1","company":"salesforce","msg":"Total: 147 India jobs"}
+{"ts":"2026-05-17T18:15:22.482Z","level":"info","runId":"25996885126-1","company":"salesforce","msg":"  enrich progress: 25/147 | ok=25 err=0"}
+{"ts":"2026-05-17T18:15:42.086Z","level":"info","runId":"25996885126-1","company":"salesforce","msg":"  enrich progress: 50/147 | ok=50 err=0"}
+{"ts":"2026-05-17T18:16:21.417Z","level":"warn","runId":"25996885126-1","company":"salesforce","msg":"detail err [Technical Architect (Informatica MDM)]: page.goto: Timeout 35000ms exceeded."}
+{"ts":"2026-05-17T18:16:22.333Z","level":"warn","runId":"25996885126-1","company":"salesforce","msg":"detail err [Success Guide - Informatica]: page.goto: Timeout 35000ms exceeded."}
+{"ts":"2026-05-17T18:16:22.694Z","level":"warn","runId":"25996885126-1","company":"salesforce","msg":"detail err [COMMISSION - Customer Success Manager, A]: page.goto: Timeout 35000ms exceeded."}
+{"ts":"2026-05-17T18:16:34.538Z","level":"info","runId":"25996885126-1","company":"salesforce","msg":"  enrich progress: 75/147 | ok=71 err=4"}
+{"ts":"2026-05-17T18:16:53.211Z","level":"info","runId":"25996885126-1","company":"salesforce","msg":"  enrich progress: 100/147 | ok=96 err=4"}
+{"ts":"2026-05-17T18:17:12.710Z","level":"info","runId":"25996885126-1","company":"salesforce","msg":"  enrich progress: 125/147 | ok=121 err=4"}
+{"ts":"2026-05-17T18:17:56.980Z","level":"warn","runId":"25996885126-1","company":"salesforce","msg":"enrich: 2 job(s) loaded but extractor returned <60 chars — selector may need updating"}
+{"ts":"2026-05-17T18:17:56.980Z","level":"info","runId":"25996885126-1","company":"salesforce","msg":"Enriched descriptions: 140/147 | errors=5 | empty=2 | 177s"}
+{"ts":"2026-05-17T18:17:56.980Z","level":"info","runId":"25996885126-1","company":"salesforce","msg":"Scraped 147 raw jobs in 184s","event":"scrape_done","data":{"rawCount":147}}
+{"ts":"2026-05-17T18:17:57.124Z","level":"info","runId":"25996885126-1","company":"salesforce","msg":"72 India jobs after normalization","event":"normalize_done","data":{"kept":72,"dropped":75}}
+{"ts":"2026-05-17T18:17:57.929Z","level":"info","runId":"25996885126-1","company":"salesforce","msg":"Parse decision: 7 to parse, 37 skip (already parsed, unchanged), 28 rejected (non-engineering title)"}
+{"ts":"2026-05-17T18:17:57.930Z","level":"info","runId":"25996885126-1","company":"salesforce","msg":"Parsing 7 JDs with 12 workers across 12 keys (budget=10000/run)…"}
+{"ts":"2026-05-17T18:17:57.937Z","level":"warn","runId":"25996885126-1","company":"salesforce","msg":"  parse err [Data Analytics and AI Solutions Lead]: unknown"}
+{"ts":"2026-05-17T18:17:57.937Z","level":"info","runId":"25996885126-1","company":"salesforce","msg":"  parse: 7/7 ok=0 err=7"}
+{"ts":"2026-05-17T18:17:57.937Z","level":"info","runId":"25996885126-1","company":"salesforce","msg":"Parse done: ok=0 err=7 | 0s (Salesforce)"}
+{"ts":"2026-05-17T18:17:57.937Z","level":"warn","runId":"25996885126-1","company":"salesforce","msg":"  parse err [Success Guide - Informatica]: unknown"}
+{"ts":"2026-05-17T18:17:57.938Z","level":"warn","runId":"25996885126-1","company":"salesforce","msg":"  parse err [COMMISSION - Customer Success Manager, Associate-Informatica]: unknown"}
+{"ts":"2026-05-17T18:17:57.938Z","level":"warn","runId":"25996885126-1","company":"salesforce","msg":"  parse err [SMTS, Workday Integration Engineer (Accounting Center)]: unknown"}
+{"ts":"2026-05-17T18:17:57.938Z","level":"warn","runId":"25996885126-1","company":"salesforce","msg":"  parse err [Senior Success Guide - Agentforce]: unknown"}
+{"ts":"2026-05-17T18:17:58.494Z","level":"info","runId":"25996885126-1","company":null,"msg":"upsert: kept 1 update(s) with sig unchanged (target sig owned by another row)","event":"upsert_sig_stripped","data":{"stripped":1,"batchSize":44}}
+{"ts":"2026-05-17T18:17:59.918Z","level":"info","runId":"25996885126-1","company":"salesforce","msg":"Inserted: 0, Updated: 44, Stale: 0, Rejected: 28","event":"company_done","data":{"inserted":0,"updated":44,"stale":0,"parseOk":0,"parseErr":7,"skippedBudget":0,"skippedQuota":0,"rejectedNonEng":28,"coverageSkipped":false,"elapsedMs":186566}}
+{"ts":"2026-05-17T18:18:00.791Z","level":"info","runId":"25996885126-1","company":"sap-labs","msg":"Crawling…","event":"company_start"}
+{"ts":"2026-05-17T18:18:01.861Z","level":"info","runId":"25996885126-1","company":"sap-labs","msg":"Total jobs reported: 142"}
+{"ts":"2026-05-17T18:18:01.862Z","level":"info","runId":"25996885126-1","company":"sap-labs","msg":"Offset 0: 25 jobs (total so far: 25)"}
+{"ts":"2026-05-17T18:18:02.164Z","level":"info","runId":"25996885126-1","company":"sap-labs","msg":"Offset 25: 25 jobs (total so far: 50)"}
+{"ts":"2026-05-17T18:18:02.428Z","level":"info","runId":"25996885126-1","company":"sap-labs","msg":"Offset 50: 25 jobs (total so far: 75)"}
+{"ts":"2026-05-17T18:18:02.722Z","level":"info","runId":"25996885126-1","company":"sap-labs","msg":"Offset 75: 25 jobs (total so far: 100)"}
+{"ts":"2026-05-17T18:18:03.036Z","level":"info","runId":"25996885126-1","company":"sap-labs","msg":"Offset 100: 25 jobs (total so far: 125)"}
+{"ts":"2026-05-17T18:18:03.327Z","level":"info","runId":"25996885126-1","company":"sap-labs","msg":"Offset 125: 17 jobs (total so far: 142)"}
+{"ts":"2026-05-17T18:18:03.327Z","level":"info","runId":"25996885126-1","company":"sap-labs","msg":"Total: 142 India jobs"}
+{"ts":"2026-05-17T18:18:33.668Z","level":"info","runId":"25996885126-1","company":"sap-labs","msg":"  enrich progress: 25/142 | ok=25 err=0"}
+{"ts":"2026-05-17T18:18:58.158Z","level":"info","runId":"25996885126-1","company":"sap-labs","msg":"  enrich progress: 50/142 | ok=50 err=0"}
+{"ts":"2026-05-17T18:19:22.949Z","level":"info","runId":"25996885126-1","company":"sap-labs","msg":"  enrich progress: 75/142 | ok=75 err=0"}
+{"ts":"2026-05-17T18:19:47.589Z","level":"info","runId":"25996885126-1","company":"sap-labs","msg":"  enrich progress: 100/142 | ok=100 err=0"}
+{"ts":"2026-05-17T18:20:15.536Z","level":"info","runId":"25996885126-1","company":"sap-labs","msg":"  enrich progress: 125/142 | ok=125 err=0"}
+{"ts":"2026-05-17T18:20:32.094Z","level":"info","runId":"25996885126-1","company":"sap-labs","msg":"Enriched descriptions: 142/142 | errors=0 | 149s"}
+{"ts":"2026-05-17T18:20:32.095Z","level":"info","runId":"25996885126-1","company":"sap-labs","msg":"Scraped 142 raw jobs in 151s","event":"scrape_done","data":{"rawCount":142}}
+{"ts":"2026-05-17T18:20:32.226Z","level":"info","runId":"25996885126-1","company":"sap-labs","msg":"137 India jobs after normalization","event":"normalize_done","data":{"kept":137,"dropped":5}}
+{"ts":"2026-05-17T18:20:33.388Z","level":"info","runId":"25996885126-1","company":"sap-labs","msg":"Parse decision: 118 to parse, 0 skip (already parsed, unchanged), 19 rejected (non-engineering title)"}
+{"ts":"2026-05-17T18:20:33.388Z","level":"info","runId":"25996885126-1","company":"sap-labs","msg":"Parsing 118 JDs with 12 workers across 12 keys (budget=10000/run)…"}
+{"ts":"2026-05-17T18:20:33.457Z","level":"info","runId":"25996885126-1","company":"sap-labs","msg":"  parse: 25/118 ok=0 err=25"}
+{"ts":"2026-05-17T18:20:33.503Z","level":"info","runId":"25996885126-1","company":"sap-labs","msg":"  parse: 50/118 ok=0 err=50"}
+{"ts":"2026-05-17T18:20:33.556Z","level":"info","runId":"25996885126-1","company":"sap-labs","msg":"  parse: 75/118 ok=0 err=75"}
+{"ts":"2026-05-17T18:20:33.610Z","level":"info","runId":"25996885126-1","company":"sap-labs","msg":"  parse: 100/118 ok=0 err=100"}
+{"ts":"2026-05-17T18:20:33.624Z","level":"warn","runId":"25996885126-1","company":"sap-labs","msg":"  parse err [Senior DevOps Engineer (Jenkins, Concourse, Landscaper with ]: unknown"}
+{"ts":"2026-05-17T18:20:33.624Z","level":"warn","runId":"25996885126-1","company":"sap-labs","msg":"  parse err [Cyber Security Design Sr Specialist]: unknown"}
+{"ts":"2026-05-17T18:20:33.624Z","level":"warn","runId":"25996885126-1","company":"sap-labs","msg":"  parse err [Business Processes Consultant - SAP GTS]: unknown"}
+{"ts":"2026-05-17T18:20:33.624Z","level":"info","runId":"25996885126-1","company":"sap-labs","msg":"  parse: 118/118 ok=0 err=118"}
+{"ts":"2026-05-17T18:20:33.624Z","level":"warn","runId":"25996885126-1","company":"sap-labs","msg":"  parse err [DevOps Engineer - 6-9 Years (IT Technology Services Speciali]: unknown"}
+{"ts":"2026-05-17T18:20:33.624Z","level":"warn","runId":"25996885126-1","company":"sap-labs","msg":"  parse err [DevOps Engineer - ABAP Infrastructure Platforms (US Shift)]: unknown"}
+{"ts":"2026-05-17T18:20:33.624Z","level":"info","runId":"25996885126-1","company":"sap-labs","msg":"Parse done: ok=0 err=118 | 0s (SAP Labs)"}
+{"ts":"2026-05-17T18:20:35.501Z","level":"info","runId":"25996885126-1","company":null,"msg":"upsert: kept 1 update(s) with sig unchanged (target sig owned by another row)","event":"upsert_sig_stripped","data":{"stripped":1,"batchSize":50}}
+{"ts":"2026-05-17T18:20:36.963Z","level":"info","runId":"25996885126-1","company":null,"msg":"upsert: kept 1 update(s) with sig unchanged (target sig owned by another row)","event":"upsert_sig_stripped","data":{"stripped":1,"batchSize":18}}
+{"ts":"2026-05-17T18:20:38.057Z","level":"info","runId":"25996885126-1","company":"sap-labs","msg":"Inserted: 4, Updated: 114, Stale: 0, Rejected: 19","event":"company_done","data":{"inserted":4,"updated":114,"stale":0,"parseOk":0,"parseErr":118,"skippedBudget":0,"skippedQuota":0,"rejectedNonEng":19,"coverageSkipped":false,"elapsedMs":157266}}
+{"ts":"2026-05-17T18:20:38.460Z","level":"info","runId":"25996885126-1","company":"razorpay","msg":"Crawling…","event":"company_start"}
+{"ts":"2026-05-17T18:20:38.573Z","level":"info","runId":"25996885126-1","company":"razorpay","msg":"Total: 55 jobs"}
+{"ts":"2026-05-17T18:20:38.574Z","level":"info","runId":"25996885126-1","company":"razorpay","msg":"Scraped 55 raw jobs in 0s","event":"scrape_done","data":{"rawCount":55}}
+{"ts":"2026-05-17T18:20:38.626Z","level":"info","runId":"25996885126-1","company":"razorpay","msg":"49 India jobs after normalization","event":"normalize_done","data":{"kept":49,"dropped":6}}
+{"ts":"2026-05-17T18:20:38.907Z","level":"info","runId":"25996885126-1","company":"razorpay","msg":"Parse decision: 8 to parse, 39 skip (already parsed, unchanged), 2 rejected (non-engineering title)"}
+{"ts":"2026-05-17T18:20:38.907Z","level":"info","runId":"25996885126-1","company":"razorpay","msg":"Parsing 8 JDs with 12 workers across 12 keys (budget=10000/run)…"}
+{"ts":"2026-05-17T18:20:38.921Z","level":"info","runId":"25996885126-1","company":"razorpay","msg":"  parse: 8/8 ok=0 err=8"}
+{"ts":"2026-05-17T18:20:38.921Z","level":"warn","runId":"25996885126-1","company":"razorpay","msg":"  parse err [Engineering Manager]: unknown"}
+{"ts":"2026-05-17T18:20:38.921Z","level":"warn","runId":"25996885126-1","company":"razorpay","msg":"  parse err [Engineering Manager]: unknown"}
+{"ts":"2026-05-17T18:20:38.921Z","level":"warn","runId":"25996885126-1","company":"razorpay","msg":"  parse err [Lead Software Development Engineer]: unknown"}
+{"ts":"2026-05-17T18:20:38.921Z","level":"warn","runId":"25996885126-1","company":"razorpay","msg":"  parse err [Manager, HRBP]: unknown"}
+{"ts":"2026-05-17T18:20:38.921Z","level":"warn","runId":"25996885126-1","company":"razorpay","msg":"  parse err [Product Designer II]: unknown"}
+{"ts":"2026-05-17T18:20:38.921Z","level":"info","runId":"25996885126-1","company":"razorpay","msg":"Parse done: ok=0 err=8 | 0s (Razorpay)"}
+{"ts":"2026-05-17T18:20:39.840Z","level":"info","runId":"25996885126-1","company":null,"msg":"upsert: dropped 3 in-batch duplicate(s) (same content, different external_id)","event":"upsert_sig_dup","data":{"dropped":3,"batchSize":47}}
+{"ts":"2026-05-17T18:20:41.631Z","level":"info","runId":"25996885126-1","company":null,"msg":"Bulk update failed: duplicate key value violates unique constraint \"ux_jobs_company_signature\" — falling back to per-row","event":"bulk_upsert_error","data":{"kind":"update","batchSize":39,"error":"duplicate key value violates unique constraint \"ux_jobs_company_signature\"","sigCollision":true}}
+{"ts":"2026-05-17T18:20:52.146Z","level":"info","runId":"25996885126-1","company":null,"msg":"Per-row recovery: 34/39 updates succeeded (skipped 5 signature-collisions)","event":"bulk_upsert_recovered","data":{"kind":"update","recovered":34,"total":39,"sigSkipped":5}}
+{"ts":"2026-05-17T18:20:52.634Z","level":"info","runId":"25996885126-1","company":"razorpay","msg":"Inserted: 0, Updated: 39, Stale: 0, Rejected: 2","event":"company_done","data":{"inserted":0,"updated":39,"stale":0,"parseOk":0,"parseErr":8,"skippedBudget":0,"skippedQuota":0,"rejectedNonEng":2,"coverageSkipped":false,"elapsedMs":14174}}
+{"ts":"2026-05-17T18:20:52.985Z","level":"info","runId":"25996885126-1","company":"phonepe","msg":"Crawling…","event":"company_start"}
+{"ts":"2026-05-17T18:20:53.062Z","level":"info","runId":"25996885126-1","company":"phonepe","msg":"Total: 46 jobs"}
+{"ts":"2026-05-17T18:20:53.062Z","level":"info","runId":"25996885126-1","company":"phonepe","msg":"Scraped 46 raw jobs in 0s","event":"scrape_done","data":{"rawCount":46}}
+{"ts":"2026-05-17T18:20:53.103Z","level":"info","runId":"25996885126-1","company":"phonepe","msg":"42 India jobs after normalization","event":"normalize_done","data":{"kept":42,"dropped":4}}
+{"ts":"2026-05-17T18:20:53.378Z","level":"info","runId":"25996885126-1","company":"phonepe","msg":"Parse decision: 1 to parse, 36 skip (already parsed, unchanged), 5 rejected (non-engineering title)"}
+{"ts":"2026-05-17T18:20:53.378Z","level":"info","runId":"25996885126-1","company":"phonepe","msg":"Parsing 1 JD with 12 workers across 12 keys (budget=10000/run)…"}
+{"ts":"2026-05-17T18:20:53.381Z","level":"warn","runId":"25996885126-1","company":"phonepe","msg":"  parse err [Site Reliability Engineer 3]: unknown"}
+{"ts":"2026-05-17T18:20:53.380Z","level":"info","runId":"25996885126-1","company":"phonepe","msg":"  parse: 1/1 ok=0 err=1"}
+{"ts":"2026-05-17T18:20:53.381Z","level":"info","runId":"25996885126-1","company":"phonepe","msg":"Parse done: ok=0 err=1 | 0s (PhonePe)"}
+{"ts":"2026-05-17T18:20:55.651Z","level":"info","runId":"25996885126-1","company":null,"msg":"Bulk update failed: duplicate key value violates unique constraint \"ux_jobs_company_signature\" — falling back to per-row","event":"bulk_upsert_error","data":{"kind":"update","batchSize":36,"error":"duplicate key value violates unique constraint \"ux_jobs_company_signature\"","sigCollision":true}}
+{"ts":"2026-05-17T18:21:05.825Z","level":"info","runId":"25996885126-1","company":null,"msg":"Per-row recovery: 35/36 updates succeeded (skipped 1 signature-collisions)","event":"bulk_upsert_recovered","data":{"kind":"update","recovered":35,"total":36,"sigSkipped":1}}
+{"ts":"2026-05-17T18:21:06.357Z","level":"info","runId":"25996885126-1","company":"phonepe","msg":"Inserted: 0, Updated: 36, Stale: 0, Rejected: 5","event":"company_done","data":{"inserted":0,"updated":36,"stale":0,"parseOk":0,"parseErr":1,"skippedBudget":0,"skippedQuota":0,"rejectedNonEng":5,"coverageSkipped":false,"elapsedMs":13372}}
+{"ts":"2026-05-17T18:21:06.710Z","level":"info","runId":"25996885126-1","company":"zerodha","msg":"Crawling…","event":"company_start"}
+{"ts":"2026-05-17T18:21:11.011Z","level":"info","runId":"25996885126-1","company":"zerodha","msg":"Found 0 job links"}
+{"ts":"2026-05-17T18:21:11.017Z","level":"warn","runId":"25996885126-1","company":"zerodha","msg":"Zerodha: 0 links matched. page.title=\"Careers - Zerodha\", anchors=79, sample=[\"https://careers.zerodha.com/\",\"https://zerodha.com/open-account/\",\"https://zerodha.com/about/\",\"https://zerodha.com/products/\",\"https://zerodha.com/pricing/\",\"https://support.zerodha.com/\",\"https://zerodha.com/open-account/\",\"https://zerodha.com/about/\",\"https://zerodha.com/products/\",\"https://zerodha.com/pricing/\",\"https://support.zerodha.com/\",\"https://kite.zerodha.com/\",\"https://console.zerodha.com/\",\"https://zerodha.com/products/kite-connect/\",\"https://coin.zerodha.com/\",\"https://zerodha.com/varsity/\",\"https://tradingqna.com/\",\"https://zerodha.com/calculators/\",\"https://zerodha.com/brokerage-calculator/\",\"https://zerodha.com/margin-calculator/\"]"}
+{"ts":"2026-05-17T18:21:11.017Z","level":"info","runId":"25996885126-1","company":"zerodha","msg":"Total: 0 jobs"}
+{"ts":"2026-05-17T18:21:11.017Z","level":"info","runId":"25996885126-1","company":"zerodha","msg":"Scraped 0 raw jobs in 4s","event":"scrape_done","data":{"rawCount":0}}
+{"ts":"2026-05-17T18:21:11.017Z","level":"info","runId":"25996885126-1","company":"zerodha","msg":"0 India jobs after normalization","event":"normalize_done","data":{"kept":0,"dropped":0}}
+{"ts":"2026-05-17T18:21:11.389Z","level":"info","runId":"25996885126-1","company":"cred","msg":"Crawling…","event":"company_start"}
+{"ts":"2026-05-17T18:21:12.142Z","level":"info","runId":"25996885126-1","company":"cred","msg":"Total: 2 jobs"}
+{"ts":"2026-05-17T18:21:16.077Z","level":"info","runId":"25996885126-1","company":"cred","msg":"Enriched descriptions: 2/2 | errors=0 | 4s"}
+{"ts":"2026-05-17T18:21:16.077Z","level":"info","runId":"25996885126-1","company":"cred","msg":"Scraped 2 raw jobs in 5s","event":"scrape_done","data":{"rawCount":2}}
+{"ts":"2026-05-17T18:21:16.081Z","level":"info","runId":"25996885126-1","company":"cred","msg":"2 India jobs after normalization","event":"normalize_done","data":{"kept":2,"dropped":0}}
+{"ts":"2026-05-17T18:21:16.937Z","level":"info","runId":"25996885126-1","company":"cred","msg":"Parse decision: 0 to parse, 2 skip (already parsed, unchanged)"}
+{"ts":"2026-05-17T18:21:18.375Z","level":"info","runId":"25996885126-1","company":"cred","msg":"Inserted: 0, Updated: 2, Stale: 0","event":"company_done","data":{"inserted":0,"updated":2,"stale":0,"parseOk":0,"parseErr":0,"skippedBudget":0,"skippedQuota":0,"rejectedNonEng":0,"coverageSkipped":false,"elapsedMs":6986}}
+{"ts":"2026-05-17T18:21:18.748Z","level":"info","runId":"25996885126-1","company":"groww","msg":"Crawling…","event":"company_start"}
+{"ts":"2026-05-17T18:21:18.810Z","level":"info","runId":"25996885126-1","company":"groww","msg":"Total: 13 jobs"}
+{"ts":"2026-05-17T18:21:18.810Z","level":"info","runId":"25996885126-1","company":"groww","msg":"Scraped 13 raw jobs in 0s","event":"scrape_done","data":{"rawCount":13}}
+{"ts":"2026-05-17T18:21:18.816Z","level":"info","runId":"25996885126-1","company":"groww","msg":"13 India jobs after normalization","event":"normalize_done","data":{"kept":13,"dropped":0}}
+{"ts":"2026-05-17T18:21:19.091Z","level":"info","runId":"25996885126-1","company":"groww","msg":"Parse decision: 0 to parse, 13 skip (already parsed, unchanged)"}
+{"ts":"2026-05-17T18:21:20.808Z","level":"info","runId":"25996885126-1","company":"groww","msg":"Inserted: 0, Updated: 13, Stale: 0","event":"company_done","data":{"inserted":0,"updated":13,"stale":0,"parseOk":0,"parseErr":0,"skippedBudget":0,"skippedQuota":0,"rejectedNonEng":0,"coverageSkipped":false,"elapsedMs":2060}}
+{"ts":"2026-05-17T18:21:21.178Z","level":"info","runId":"25996885126-1","company":"swiggy","msg":"Crawling…","event":"company_start"}
+{"ts":"2026-05-17T18:21:21.829Z","level":"info","runId":"25996885126-1","company":"swiggy","msg":"Total: 103 jobs"}
+{"ts":"2026-05-17T18:21:21.829Z","level":"info","runId":"25996885126-1","company":"swiggy","msg":"Scraped 103 raw jobs in 1s","event":"scrape_done","data":{"rawCount":103}}
+{"ts":"2026-05-17T18:21:21.879Z","level":"info","runId":"25996885126-1","company":"swiggy","msg":"55 India jobs after normalization","event":"normalize_done","data":{"kept":55,"dropped":48}}
+{"ts":"2026-05-17T18:21:22.173Z","level":"info","runId":"25996885126-1","company":"swiggy","msg":"Parse decision: 1 to parse, 36 skip (already parsed, unchanged), 18 rejected (non-engineering title)"}
+{"ts":"2026-05-17T18:21:22.173Z","level":"info","runId":"25996885126-1","company":"swiggy","msg":"Parsing 1 JD with 12 workers across 12 keys (budget=10000/run)…"}
+{"ts":"2026-05-17T18:21:22.174Z","level":"warn","runId":"25996885126-1","company":"swiggy","msg":"  parse err [Software Dev Engineer II]: unknown"}
+{"ts":"2026-05-17T18:21:22.174Z","level":"info","runId":"25996885126-1","company":"swiggy","msg":"  parse: 1/1 ok=0 err=1"}
+{"ts":"2026-05-17T18:21:22.174Z","level":"info","runId":"25996885126-1","company":"swiggy","msg":"Parse done: ok=0 err=1 | 0s (Swiggy)"}
+{"ts":"2026-05-17T18:21:23.864Z","level":"info","runId":"25996885126-1","company":null,"msg":"Bulk update failed: duplicate key value violates unique constraint \"ux_jobs_company_signature\" — falling back to per-row","event":"bulk_upsert_error","data":{"kind":"update","batchSize":36,"error":"duplicate key value violates unique constraint \"ux_jobs_company_signature\"","sigCollision":true}}
+{"ts":"2026-05-17T18:21:33.453Z","level":"info","runId":"25996885126-1","company":null,"msg":"Per-row recovery: 35/36 updates succeeded (skipped 1 signature-collisions)","event":"bulk_upsert_recovered","data":{"kind":"update","recovered":35,"total":36,"sigSkipped":1}}
+{"ts":"2026-05-17T18:21:33.974Z","level":"info","runId":"25996885126-1","company":"swiggy","msg":"Inserted: 0, Updated: 36, Stale: 0, Rejected: 18","event":"company_done","data":{"inserted":0,"updated":36,"stale":0,"parseOk":0,"parseErr":1,"skippedBudget":0,"skippedQuota":0,"rejectedNonEng":18,"coverageSkipped":false,"elapsedMs":12796}}
+{"ts":"2026-05-17T18:21:34.342Z","level":"info","runId":"25996885126-1","company":"zomato","msg":"Crawling…","event":"company_start"}
+{"ts":"2026-05-17T18:21:38.753Z","level":"info","runId":"25996885126-1","company":"zomato","msg":"Found 1 listings on Zoho Recruit"}
+{"ts":"2026-05-17T18:21:43.589Z","level":"info","runId":"25996885126-1","company":"zomato","msg":"Enriched descriptions: 1/1 | errors=0 | 5s"}
+{"ts":"2026-05-17T18:21:43.589Z","level":"info","runId":"25996885126-1","company":"zomato","msg":"Total: 1 jobs"}
+{"ts":"2026-05-17T18:21:43.613Z","level":"info","runId":"25996885126-1","company":"zomato","msg":"Scraped 1 raw jobs in 9s","event":"scrape_done","data":{"rawCount":1}}
+{"ts":"2026-05-17T18:21:43.613Z","level":"info","runId":"25996885126-1","company":"zomato","msg":"1 India jobs after normalization","event":"normalize_done","data":{"kept":1,"dropped":0}}
+{"ts":"2026-05-17T18:21:43.885Z","level":"info","runId":"25996885126-1","company":"zomato","msg":"Parse decision: 0 to parse, 0 skip (already parsed, unchanged), 1 rejected (non-engineering title)"}
+{"ts":"2026-05-17T18:21:44.881Z","level":"info","runId":"25996885126-1","company":"zomato","msg":"Inserted: 0, Updated: 0, Stale: 0, Rejected: 1","event":"company_done","data":{"inserted":0,"updated":0,"stale":0,"parseOk":0,"parseErr":0,"skippedBudget":0,"skippedQuota":0,"rejectedNonEng":1,"coverageSkipped":false,"elapsedMs":10539}}
+{"ts":"2026-05-17T18:21:45.228Z","level":"info","runId":"25996885126-1","company":"flipkart","msg":"Crawling…","event":"company_start"}
+{"ts":"2026-05-17T18:21:54.797Z","level":"info","runId":"25996885126-1","company":"flipkart","msg":"Total: 12 jobs"}
+{"ts":"2026-05-17T18:21:54.797Z","level":"info","runId":"25996885126-1","company":"flipkart","msg":"Total: 12 India jobs"}
+{"ts":"2026-05-17T18:22:09.502Z","level":"info","runId":"25996885126-1","company":"flipkart","msg":"Enriched descriptions: 12/12 | errors=0 | 15s"}
+{"ts":"2026-05-17T18:22:09.502Z","level":"info","runId":"25996885126-1","company":"flipkart","msg":"Scraped 12 raw jobs in 24s","event":"scrape_done","data":{"rawCount":12}}
+{"ts":"2026-05-17T18:22:09.508Z","level":"info","runId":"25996885126-1","company":"flipkart","msg":"12 India jobs after normalization","event":"normalize_done","data":{"kept":12,"dropped":0}}
+{"ts":"2026-05-17T18:22:09.817Z","level":"info","runId":"25996885126-1","company":"flipkart","msg":"Parse decision: 12 to parse, 0 skip (already parsed, unchanged)"}
+{"ts":"2026-05-17T18:22:09.817Z","level":"info","runId":"25996885126-1","company":"flipkart","msg":"Parsing 12 JDs with 12 workers across 12 keys (budget=10000/run)…"}
+{"ts":"2026-05-17T18:22:09.829Z","level":"warn","runId":"25996885126-1","company":"flipkart","msg":"  parse err [Director - South]: unknown"}
+{"ts":"2026-05-17T18:22:09.828Z","level":"info","runId":"25996885126-1","company":"flipkart","msg":"  parse: 12/12 ok=0 err=12"}
+{"ts":"2026-05-17T18:22:09.829Z","level":"warn","runId":"25996885126-1","company":"flipkart","msg":"  parse err [Facilities & Admin In-charge Nagpur Large]: unknown"}
+{"ts":"2026-05-17T18:22:09.829Z","level":"warn","runId":"25996885126-1","company":"flipkart","msg":"  parse err [Shift incharge]: unknown"}
+{"ts":"2026-05-17T18:22:09.829Z","level":"warn","runId":"25996885126-1","company":"flipkart","msg":"  parse err [Manager New Hire Orientation]: unknown"}
+{"ts":"2026-05-17T18:22:09.829Z","level":"warn","runId":"25996885126-1","company":"flipkart","msg":"  parse err [Assistant Manager - BD Ops]: unknown"}
+{"ts":"2026-05-17T18:22:09.828Z","level":"info","runId":"25996885126-1","company":"flipkart","msg":"Parse done: ok=0 err=12 | 0s (Flipkart)"}
+{"ts":"2026-05-17T18:22:11.148Z","level":"info","runId":"25996885126-1","company":"flipkart","msg":"Inserted: 0, Updated: 12, Stale: 0","event":"company_done","data":{"inserted":0,"updated":12,"stale":0,"parseOk":0,"parseErr":12,"skippedBudget":0,"skippedQuota":0,"rejectedNonEng":0,"coverageSkipped":false,"elapsedMs":25920}}
+{"ts":"2026-05-17T18:22:11.479Z","level":"info","runId":"25996885126-1","company":null,"msg":"────────────────────────────────────────────────────────────"}
+{"ts":"2026-05-17T18:22:11.479Z","level":"info","runId":"25996885126-1","company":null,"msg":"Crawl complete:","event":"crawl_complete"}
+{"ts":"2026-05-17T18:22:11.479Z","level":"info","runId":"25996885126-1","company":null,"msg":"  google          +0 new  ~348 updated  -0 stale"}
+{"ts":"2026-05-17T18:22:11.479Z","level":"info","runId":"25996885126-1","company":null,"msg":"  microsoft       +0 new  ~149 updated  -0 stale"}
+{"ts":"2026-05-17T18:22:11.479Z","level":"info","runId":"25996885126-1","company":null,"msg":"  meta            +0 new  ~5 updated  -0 stale"}
+{"ts":"2026-05-17T18:22:11.479Z","level":"info","runId":"25996885126-1","company":null,"msg":"  amazon          +0 new  ~2083 updated  -0 stale"}
+{"ts":"2026-05-17T18:22:11.479Z","level":"info","runId":"25996885126-1","company":null,"msg":"  apple           +0 new  ~217 updated  -0 stale"}
+{"ts":"2026-05-17T18:22:11.479Z","level":"info","runId":"25996885126-1","company":null,"msg":"  atlassian       +0 new  ~0 updated  -0 stale"}
+{"ts":"2026-05-17T18:22:11.479Z","level":"info","runId":"25996885126-1","company":null,"msg":"  nvidia          +0 new  ~139 updated  -0 stale"}
+{"ts":"2026-05-17T18:22:11.479Z","level":"info","runId":"25996885126-1","company":null,"msg":"  oracle          +0 new  ~31 updated  -0 stale"}
+{"ts":"2026-05-17T18:22:11.480Z","level":"info","runId":"25996885126-1","company":null,"msg":"  salesforce      +0 new  ~44 updated  -0 stale"}
+{"ts":"2026-05-17T18:22:11.480Z","level":"info","runId":"25996885126-1","company":null,"msg":"  sap-labs        +4 new  ~114 updated  -0 stale"}
+{"ts":"2026-05-17T18:22:11.480Z","level":"info","runId":"25996885126-1","company":null,"msg":"  razorpay        +0 new  ~39 updated  -0 stale"}
+{"ts":"2026-05-17T18:22:11.480Z","level":"info","runId":"25996885126-1","company":null,"msg":"  phonepe         +0 new  ~36 updated  -0 stale"}
+{"ts":"2026-05-17T18:22:11.480Z","level":"info","runId":"25996885126-1","company":null,"msg":"  zerodha         +0 new  ~0 updated  -0 stale"}
+{"ts":"2026-05-17T18:22:11.480Z","level":"info","runId":"25996885126-1","company":null,"msg":"  cred            +0 new  ~2 updated  -0 stale"}
+{"ts":"2026-05-17T18:22:11.480Z","level":"info","runId":"25996885126-1","company":null,"msg":"  groww           +0 new  ~13 updated  -0 stale"}
+{"ts":"2026-05-17T18:22:11.480Z","level":"info","runId":"25996885126-1","company":null,"msg":"  swiggy          +0 new  ~36 updated  -0 stale"}
+{"ts":"2026-05-17T18:22:11.480Z","level":"info","runId":"25996885126-1","company":null,"msg":"  zomato          +0 new  ~0 updated  -0 stale"}
+{"ts":"2026-05-17T18:22:11.480Z","level":"info","runId":"25996885126-1","company":null,"msg":"  flipkart        +0 new  ~12 updated  -0 stale"}
+{"ts":"2026-05-17T18:22:11.480Z","level":"info","runId":"25996885126-1","company":null,"msg":"Summary: 18 ok, 0 partial, 0 failed | +4 new, ~3268 updated, -0 stale","event":"crawl_summary","data":{"okCount":18,"partialCount":0,"failedCount":0,"totalInserted":4,"totalUpdated":3268,"totalStale":0,"attempted":18}}

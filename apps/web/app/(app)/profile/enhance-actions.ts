@@ -707,14 +707,13 @@ export async function autoEnhanceResume(): Promise<AutoEnhanceResult> {
     }
   }
 
-  if (!extracted) {
-    return {
-      ok: false,
-      error: "Couldn't read your resume content. Please re-upload the PDF and try again.",
-    };
-  }
-
-  const resumeTextForDiagnosis = renderExtractedAsText(extracted);
+  // If extraction failed (no storage path, download error, or Gemini error),
+  // fall back to the synthesised text built from the parsed JSON. This still
+  // contains all structured content (roles, skills, companies, projects) and
+  // is sufficient for diagnosis + rewrite — we just won't have raw bullet text.
+  const resumeTextForDiagnosis = extracted
+    ? renderExtractedAsText(extracted)
+    : synthesiseResumeText(profile.resume_parsed!);
 
   // Market keyword pool (same as diagnoseEnhancement).
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -819,20 +818,23 @@ export async function autoEnhanceResume(): Promise<AutoEnhanceResult> {
   // titles. Every generated bullet is marked `scope_inferred` in the
   // changes list so the user sees a risk flag and can verify.
   let gapFill: GapFillResult | null = null;
-  try {
-    gapFill = await generateGapFill({
-      extracted,
-      role_function:    profile.role_function ?? null,
-      market_keywords,
-      years_experience: profile.resume_parsed!.total_years_experience ?? null,
-    });
-    void recordResumeIntelEvent({
-      user_id: user.id, kind: "rewrite_batch", scope: "enhanced",
-      llm_tier: "heavy", ok: true,
-    });
-  } catch (err) {
-    console.warn("[auto-enhance] gap-fill failed (continuing without it):",
-      err instanceof Error ? err.message : String(err));
+  // Gap-fill only possible when we have real extracted bullets from the PDF.
+  if (extracted) {
+    try {
+      gapFill = await generateGapFill({
+        extracted,
+        role_function:    profile.role_function ?? null,
+        market_keywords,
+        years_experience: profile.resume_parsed!.total_years_experience ?? null,
+      });
+      void recordResumeIntelEvent({
+        user_id: user.id, kind: "rewrite_batch", scope: "enhanced",
+        llm_tier: "heavy", ok: true,
+      });
+    } catch (err) {
+      console.warn("[auto-enhance] gap-fill failed (continuing without it):",
+        err instanceof Error ? err.message : String(err));
+    }
   }
 
   // Surface each gap-fill into the changes list with a prominent risk
@@ -841,7 +843,7 @@ export async function autoEnhanceResume(): Promise<AutoEnhanceResult> {
     if (gapFill.summary_needed && gapFill.summary_suggestion) {
       changes.push({
         location: "Summary (new)",
-        original: extracted.summary || "(empty)",
+        original: extracted?.summary || "(empty)",
         rewritten: gapFill.summary_suggestion,
         risk_flag: "scope_inferred",
         why: "Drafted a professional summary — verify it reflects your actual focus.",
@@ -870,18 +872,29 @@ export async function autoEnhanceResume(): Promise<AutoEnhanceResult> {
   }
 
   // ── Step 4: build content + merge gap-fills ──────────────────────────
-  // baseContent starts from extracted bullets. patchContentWithDecisions
-  // applies user's choices to weak-bullet rewrites. Then mergeGapFills
-  // inserts the AI-generated additions into the matching roles/projects.
-  const baseContent = buildContentFromExtracted({
-    extracted,
-    displayName:   profile.display_name ?? profile.resume_parsed!.name,
-    currentRole:   profile.resume_parsed!.current_role,
-    preferredHubs: profile.preferred_hubs ?? [],
-  });
-  const patchedContent = patchContentWithDecisions({
-    base: baseContent, diagnosis, rewrites: rewritesById, decisions,
-  });
+  // When rich PDF extraction succeeded, use extracted bullets as the base.
+  // Otherwise fall back to the lean builder from the parsed JSON (same path
+  // as the per-bullet review flow's back-compat path).
+  const baseContent = extracted
+    ? buildContentFromExtracted({
+        extracted,
+        displayName:   profile.display_name ?? profile.resume_parsed!.name,
+        currentRole:   profile.resume_parsed!.current_role,
+        preferredHubs: profile.preferred_hubs ?? [],
+      })
+    : buildEnhancedContent({
+        resume:      profile.resume_parsed!,
+        diagnosis,
+        rewrites:    rewritesById,
+        decisions,
+        displayName: profile.display_name ?? profile.resume_parsed!.name,
+        preferredHubs: profile.preferred_hubs ?? [],
+      });
+  const patchedContent = extracted
+    ? patchContentWithDecisions({
+        base: baseContent, diagnosis, rewrites: rewritesById, decisions,
+      })
+    : baseContent; // lean path already incorporates decisions
   const enhancedContent = gapFill
     ? mergeGapFillIntoContent(patchedContent, gapFill)
     : patchedContent;

@@ -1,10 +1,12 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 import {
   Sparkles, FileDown, Eye, Loader2, RefreshCw,
   AlertCircle, ShieldCheck,
 } from "lucide-react";
+// Eye is still used in the TailorTab "Review changes" button shown AFTER generation.
 import { toast } from "sonner";
 import {
   generateTailoredResumeAction,
@@ -96,14 +98,32 @@ export function ApplyToolkit({
       </div>
 
       <div className="p-4">
-        {tab === "recruiter" && (
-          <div role="tabpanel">{recruiterView}</div>
-        )}
-        {tab === "tailor" && (
-          <div role="tabpanel">
-            <TailorTab jobId={jobId} initial={initialTailor} />
-          </div>
-        )}
+        <AnimatePresence mode="wait">
+          {tab === "recruiter" && (
+            <motion.div
+              key="recruiter"
+              role="tabpanel"
+              initial={{ opacity: 0, y: 4 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -4 }}
+              transition={{ duration: 0.2, ease: [0.22, 1, 0.36, 1] }}
+            >
+              {recruiterView}
+            </motion.div>
+          )}
+          {tab === "tailor" && (
+            <motion.div
+              key="tailor"
+              role="tabpanel"
+              initial={{ opacity: 0, y: 4 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -4 }}
+              transition={{ duration: 0.2, ease: [0.22, 1, 0.36, 1] }}
+            >
+              <TailorTab jobId={jobId} initial={initialTailor} />
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
     </section>
   );
@@ -194,33 +214,15 @@ function TailorTab({ jobId, initial }: { jobId: string; initial: CachedTailor | 
 
   if (!data) {
     return (
-      <div className="space-y-3">
-        <EmptyStateGenerate
-          title="Tailor your resume for this role"
-          body="One-click: generates a JD-targeted .docx using your resume + the JD's must-haves. Cached per role — re-runs are instant."
-          ctaLabel="Generate tailored resume"
-          ctaIcon={<FileDown className="h-3.5 w-3.5" />}
-          onClick={() => trigger(false)}
-          pending={pending}
-          error={error}
-        />
-        {/* Phase R3 — diff-review flow for users who want to approve each change. */}
-        <a
-          href={`/jobs/${jobId}/tailor`}
-          className="press tap-target group flex items-start gap-3 rounded-xl border border-primary/30 bg-primary-soft/60 p-4 transition hover:border-primary/50 hover:bg-primary-soft focus-ring"
-        >
-          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary text-primary-foreground">
-            <Eye className="h-4 w-4" aria-hidden />
-          </div>
-          <div className="min-w-0 flex-1">
-            <p className="text-sm font-semibold">Review changes before saving</p>
-            <p className="mt-0.5 text-xs leading-relaxed text-muted-foreground">
-              See every proposed rewrite side-by-side with your original. Pick Polish (minimal edits) or Tailor (aggressive JD-alignment).{" "}
-              <strong className="text-foreground/90">No fact gets added that isn&apos;t already in your resume.</strong>
-            </p>
-          </div>
-        </a>
-      </div>
+      <EmptyStateGenerate
+        title="Tailor your resume for this role"
+        body="One-click: generates a JD-targeted .docx using your resume + the JD's must-haves. Cached per role — re-runs are instant."
+        ctaLabel="Generate tailored resume"
+        ctaIcon={<FileDown className="h-3.5 w-3.5" />}
+        onClick={() => trigger(false)}
+        pending={pending}
+        error={error}
+      />
     );
   }
 

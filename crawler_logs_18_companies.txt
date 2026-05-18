@@ -1,0 +1,580 @@
+Run SLUGS=""
+
+> @prodmatch/crawler@0.1.0 start /home/runner/work/productcompanies/productcompanies/packages/crawler
+> tsx index.ts "--"
+
+{"ts":"2026-05-17T10:32:32.299Z","level":"info","runId":"25988392494-1","company":null,"msg":"Starting crawl for: google, microsoft, meta, amazon, apple, atlassian, nvidia, oracle, salesforce, sap-labs, razorpay, phonepe, zerodha, cred, groww, swiggy, zomato, flipkart","event":"crawl_start","data":{"slugs":["google","microsoft","meta","amazon","apple","atlassian","nvidia","oracle","salesforce","sap-labs","razorpay","phonepe","zerodha","cred","groww","swiggy","zomato","flipkart"],"dryRun":false,"dryParse":false,"perCompanyTimeoutMs":2700000}}
+{"ts":"2026-05-17T10:32:32.300Z","level":"info","runId":"25988392494-1","company":null,"msg":"Detected 3 Gemini API key(s) — worker pool will rotate.","event":"keys_loaded","data":{"keyCount":3}}
+{"ts":"2026-05-17T10:32:35.616Z","level":"info","runId":"25988392494-1","company":"google","msg":"Crawling…","event":"company_start"}
+{"ts":"2026-05-17T10:32:35.617Z","level":"info","runId":"25988392494-1","company":"google","msg":"Loading page 1..."}
+{"ts":"2026-05-17T10:32:39.789Z","level":"info","runId":"25988392494-1","company":"google","msg":"Page 1: 20 jobs (total so far: 20)"}
+{"ts":"2026-05-17T10:32:41.290Z","level":"info","runId":"25988392494-1","company":"google","msg":"Loading page 2..."}
+{"ts":"2026-05-17T10:32:45.424Z","level":"info","runId":"25988392494-1","company":"google","msg":"Page 2: 20 jobs (total so far: 40)"}
+{"ts":"2026-05-17T10:32:46.927Z","level":"info","runId":"25988392494-1","company":"google","msg":"Loading page 3..."}
+{"ts":"2026-05-17T10:32:50.384Z","level":"info","runId":"25988392494-1","company":"google","msg":"Page 3: 20 jobs (total so far: 60)"}
+{"ts":"2026-05-17T10:32:51.886Z","level":"info","runId":"25988392494-1","company":"google","msg":"Loading page 4..."}
+{"ts":"2026-05-17T10:32:55.254Z","level":"info","runId":"25988392494-1","company":"google","msg":"Page 4: 20 jobs (total so far: 80)"}
+{"ts":"2026-05-17T10:32:56.756Z","level":"info","runId":"25988392494-1","company":"google","msg":"Loading page 5..."}
+{"ts":"2026-05-17T10:33:00.119Z","level":"info","runId":"25988392494-1","company":"google","msg":"Page 5: 20 jobs (total so far: 100)"}
+{"ts":"2026-05-17T10:33:01.620Z","level":"info","runId":"25988392494-1","company":"google","msg":"Loading page 6..."}
+{"ts":"2026-05-17T10:33:04.867Z","level":"info","runId":"25988392494-1","company":"google","msg":"Page 6: 20 jobs (total so far: 120)"}
+{"ts":"2026-05-17T10:33:06.369Z","level":"info","runId":"25988392494-1","company":"google","msg":"Loading page 7..."}
+{"ts":"2026-05-17T10:33:09.569Z","level":"info","runId":"25988392494-1","company":"google","msg":"Page 7: 20 jobs (total so far: 140)"}
+{"ts":"2026-05-17T10:33:11.070Z","level":"info","runId":"25988392494-1","company":"google","msg":"Loading page 8..."}
+{"ts":"2026-05-17T10:33:14.325Z","level":"info","runId":"25988392494-1","company":"google","msg":"Page 8: 20 jobs (total so far: 160)"}
+{"ts":"2026-05-17T10:33:15.826Z","level":"info","runId":"25988392494-1","company":"google","msg":"Loading page 9..."}
+{"ts":"2026-05-17T10:33:19.020Z","level":"info","runId":"25988392494-1","company":"google","msg":"Page 9: 20 jobs (total so far: 180)"}
+{"ts":"2026-05-17T10:33:20.522Z","level":"info","runId":"25988392494-1","company":"google","msg":"Loading page 10..."}
+{"ts":"2026-05-17T10:33:23.711Z","level":"info","runId":"25988392494-1","company":"google","msg":"Page 10: 20 jobs (total so far: 200)"}
+{"ts":"2026-05-17T10:33:25.212Z","level":"info","runId":"25988392494-1","company":"google","msg":"Loading page 11..."}
+{"ts":"2026-05-17T10:33:28.424Z","level":"info","runId":"25988392494-1","company":"google","msg":"Page 11: 20 jobs (total so far: 220)"}
+{"ts":"2026-05-17T10:33:29.925Z","level":"info","runId":"25988392494-1","company":"google","msg":"Loading page 12..."}
+{"ts":"2026-05-17T10:33:33.109Z","level":"info","runId":"25988392494-1","company":"google","msg":"Page 12: 20 jobs (total so far: 240)"}
+{"ts":"2026-05-17T10:33:34.610Z","level":"info","runId":"25988392494-1","company":"google","msg":"Loading page 13..."}
+{"ts":"2026-05-17T10:33:37.904Z","level":"info","runId":"25988392494-1","company":"google","msg":"Page 13: 20 jobs (total so far: 260)"}
+{"ts":"2026-05-17T10:33:39.406Z","level":"info","runId":"25988392494-1","company":"google","msg":"Loading page 14..."}
+{"ts":"2026-05-17T10:33:42.578Z","level":"info","runId":"25988392494-1","company":"google","msg":"Page 14: 20 jobs (total so far: 280)"}
+{"ts":"2026-05-17T10:33:44.079Z","level":"info","runId":"25988392494-1","company":"google","msg":"Loading page 15..."}
+{"ts":"2026-05-17T10:33:47.284Z","level":"info","runId":"25988392494-1","company":"google","msg":"Page 15: 20 jobs (total so far: 300)"}
+{"ts":"2026-05-17T10:33:48.787Z","level":"info","runId":"25988392494-1","company":"google","msg":"Loading page 16..."}
+{"ts":"2026-05-17T10:33:52.056Z","level":"info","runId":"25988392494-1","company":"google","msg":"Page 16: 20 jobs (total so far: 320)"}
+{"ts":"2026-05-17T10:33:53.557Z","level":"info","runId":"25988392494-1","company":"google","msg":"Loading page 17..."}
+{"ts":"2026-05-17T10:33:56.736Z","level":"info","runId":"25988392494-1","company":"google","msg":"Page 17: 20 jobs (total so far: 340)"}
+{"ts":"2026-05-17T10:33:58.238Z","level":"info","runId":"25988392494-1","company":"google","msg":"Loading page 18..."}
+{"ts":"2026-05-17T10:34:01.439Z","level":"info","runId":"25988392494-1","company":"google","msg":"Page 18: 20 jobs (total so far: 360)"}
+{"ts":"2026-05-17T10:34:02.940Z","level":"info","runId":"25988392494-1","company":"google","msg":"Loading page 19..."}
+{"ts":"2026-05-17T10:34:06.110Z","level":"info","runId":"25988392494-1","company":"google","msg":"Page 19: 7 jobs (total so far: 367)"}
+{"ts":"2026-05-17T10:34:07.611Z","level":"info","runId":"25988392494-1","company":"google","msg":"Loading page 20..."}
+{"ts":"2026-05-17T10:34:10.897Z","level":"info","runId":"25988392494-1","company":"google","msg":"No new jobs on page 20, stopping"}
+{"ts":"2026-05-17T10:34:10.897Z","level":"info","runId":"25988392494-1","company":"google","msg":"Total: 367 India jobs"}
+{"ts":"2026-05-17T10:34:32.854Z","level":"info","runId":"25988392494-1","company":"google","msg":"  enrich progress: 25/367 | ok=25 err=0"}
+{"ts":"2026-05-17T10:34:51.402Z","level":"info","runId":"25988392494-1","company":"google","msg":"  enrich progress: 50/367 | ok=50 err=0"}
+{"ts":"2026-05-17T10:35:09.084Z","level":"info","runId":"25988392494-1","company":"google","msg":"  enrich progress: 75/367 | ok=75 err=0"}
+{"ts":"2026-05-17T10:35:26.513Z","level":"info","runId":"25988392494-1","company":"google","msg":"  enrich progress: 100/367 | ok=100 err=0"}
+{"ts":"2026-05-17T10:35:43.562Z","level":"info","runId":"25988392494-1","company":"google","msg":"  enrich progress: 125/367 | ok=125 err=0"}
+{"ts":"2026-05-17T10:36:01.030Z","level":"info","runId":"25988392494-1","company":"google","msg":"  enrich progress: 150/367 | ok=150 err=0"}
+{"ts":"2026-05-17T10:36:18.557Z","level":"info","runId":"25988392494-1","company":"google","msg":"  enrich progress: 175/367 | ok=175 err=0"}
+{"ts":"2026-05-17T10:36:37.290Z","level":"info","runId":"25988392494-1","company":"google","msg":"  enrich progress: 200/367 | ok=200 err=0"}
+{"ts":"2026-05-17T10:36:55.002Z","level":"info","runId":"25988392494-1","company":"google","msg":"  enrich progress: 225/367 | ok=225 err=0"}
+{"ts":"2026-05-17T10:37:13.194Z","level":"info","runId":"25988392494-1","company":"google","msg":"  enrich progress: 250/367 | ok=250 err=0"}
+{"ts":"2026-05-17T10:37:30.825Z","level":"info","runId":"25988392494-1","company":"google","msg":"  enrich progress: 275/367 | ok=275 err=0"}
+{"ts":"2026-05-17T10:37:48.476Z","level":"info","runId":"25988392494-1","company":"google","msg":"  enrich progress: 300/367 | ok=300 err=0"}
+{"ts":"2026-05-17T10:38:06.286Z","level":"info","runId":"25988392494-1","company":"google","msg":"  enrich progress: 325/367 | ok=325 err=0"}
+{"ts":"2026-05-17T10:38:24.174Z","level":"info","runId":"25988392494-1","company":"google","msg":"  enrich progress: 350/367 | ok=350 err=0"}
+{"ts":"2026-05-17T10:38:36.761Z","level":"info","runId":"25988392494-1","company":"google","msg":"Enriched descriptions: 367/367 | errors=0 | 266s"}
+{"ts":"2026-05-17T10:38:36.762Z","level":"info","runId":"25988392494-1","company":"google","msg":"Scraped 367 raw jobs in 361s","event":"scrape_done","data":{"rawCount":367}}
+{"ts":"2026-05-17T10:38:37.012Z","level":"info","runId":"25988392494-1","company":"google","msg":"366 India jobs after normalization","event":"normalize_done","data":{"kept":366,"dropped":1}}
+{"ts":"2026-05-17T10:38:38.396Z","level":"info","runId":"25988392494-1","company":"google","msg":"Parse decision: 0 to parse, 348 skip (already parsed, unchanged), 18 rejected (non-engineering title)"}
+{"ts":"2026-05-17T10:38:46.158Z","level":"info","runId":"25988392494-1","company":"google","msg":"Inserted: 0, Updated: 348, Stale: 0, Rejected: 18","event":"company_done","data":{"inserted":0,"updated":348,"stale":0,"parseOk":0,"parseErr":0,"skippedBudget":0,"skippedQuota":0,"rejectedNonEng":18,"coverageSkipped":false,"elapsedMs":370542}}
+{"ts":"2026-05-17T10:38:46.545Z","level":"info","runId":"25988392494-1","company":"microsoft","msg":"Crawling…","event":"company_start"}
+{"ts":"2026-05-17T10:38:46.545Z","level":"info","runId":"25988392494-1","company":"microsoft","msg":"Fetching start=0 / ?..."}
+{"ts":"2026-05-17T10:38:47.624Z","level":"info","runId":"25988392494-1","company":"microsoft","msg":"Fetching start=10 / 165..."}
+{"ts":"2026-05-17T10:38:48.301Z","level":"info","runId":"25988392494-1","company":"microsoft","msg":"Fetching start=20 / 165..."}
+{"ts":"2026-05-17T10:38:49.045Z","level":"info","runId":"25988392494-1","company":"microsoft","msg":"Fetching start=30 / 165..."}
+{"ts":"2026-05-17T10:38:49.807Z","level":"info","runId":"25988392494-1","company":"microsoft","msg":"Fetching start=40 / 165..."}
+{"ts":"2026-05-17T10:38:50.559Z","level":"info","runId":"25988392494-1","company":"microsoft","msg":"Fetching start=50 / 165..."}
+{"ts":"2026-05-17T10:38:51.378Z","level":"info","runId":"25988392494-1","company":"microsoft","msg":"Fetching start=60 / 165..."}
+{"ts":"2026-05-17T10:38:52.131Z","level":"info","runId":"25988392494-1","company":"microsoft","msg":"Fetching start=70 / 165..."}
+{"ts":"2026-05-17T10:38:52.919Z","level":"info","runId":"25988392494-1","company":"microsoft","msg":"Fetching start=80 / 165..."}
+{"ts":"2026-05-17T10:38:53.678Z","level":"info","runId":"25988392494-1","company":"microsoft","msg":"Fetching start=90 / 165..."}
+{"ts":"2026-05-17T10:38:54.419Z","level":"info","runId":"25988392494-1","company":"microsoft","msg":"Fetching start=100 / 165..."}
+{"ts":"2026-05-17T10:38:55.192Z","level":"info","runId":"25988392494-1","company":"microsoft","msg":"Fetching start=110 / 165..."}
+{"ts":"2026-05-17T10:38:55.896Z","level":"info","runId":"25988392494-1","company":"microsoft","msg":"Fetching start=120 / 165..."}
+{"ts":"2026-05-17T10:38:56.594Z","level":"info","runId":"25988392494-1","company":"microsoft","msg":"Fetching start=130 / 165..."}
+{"ts":"2026-05-17T10:38:57.385Z","level":"info","runId":"25988392494-1","company":"microsoft","msg":"Fetching start=140 / 165..."}
+{"ts":"2026-05-17T10:38:58.095Z","level":"info","runId":"25988392494-1","company":"microsoft","msg":"Fetching start=150 / 165..."}
+{"ts":"2026-05-17T10:38:58.888Z","level":"info","runId":"25988392494-1","company":"microsoft","msg":"Fetching start=160 / 165..."}
+{"ts":"2026-05-17T10:38:59.170Z","level":"info","runId":"25988392494-1","company":"microsoft","msg":"Total: 165 India jobs"}
+{"ts":"2026-05-17T10:39:34.029Z","level":"info","runId":"25988392494-1","company":"microsoft","msg":"  enrich progress: 25/165 | ok=25 err=0"}
+{"ts":"2026-05-17T10:40:05.148Z","level":"info","runId":"25988392494-1","company":"microsoft","msg":"  enrich progress: 50/165 | ok=50 err=0"}
+{"ts":"2026-05-17T10:40:38.028Z","level":"info","runId":"25988392494-1","company":"microsoft","msg":"  enrich progress: 75/165 | ok=75 err=0"}
+{"ts":"2026-05-17T10:41:07.686Z","level":"info","runId":"25988392494-1","company":"microsoft","msg":"  enrich progress: 100/165 | ok=100 err=0"}
+{"ts":"2026-05-17T10:41:25.718Z","level":"info","runId":"25988392494-1","company":"microsoft","msg":"  enrich progress: 125/165 | ok=107 err=0"}
+{"ts":"2026-05-17T10:41:39.749Z","level":"info","runId":"25988392494-1","company":"microsoft","msg":"  enrich progress: 150/165 | ok=107 err=0"}
+{"ts":"2026-05-17T10:41:49.248Z","level":"info","runId":"25988392494-1","company":"microsoft","msg":"Enriched descriptions: 107/165 | errors=0 | 170s"}
+{"ts":"2026-05-17T10:41:49.249Z","level":"info","runId":"25988392494-1","company":"microsoft","msg":"Scraped 165 raw jobs in 183s","event":"scrape_done","data":{"rawCount":165}}
+{"ts":"2026-05-17T10:41:49.404Z","level":"info","runId":"25988392494-1","company":"microsoft","msg":"165 India jobs after normalization","event":"normalize_done","data":{"kept":165,"dropped":0}}
+{"ts":"2026-05-17T10:41:50.125Z","level":"info","runId":"25988392494-1","company":"microsoft","msg":"Parse decision: 122 to parse, 40 skip (already parsed, unchanged), 3 rejected (non-engineering title)"}
+{"ts":"2026-05-17T10:41:50.125Z","level":"info","runId":"25988392494-1","company":"microsoft","msg":"Parsing 122 JDs with 3 workers across 3 keys (budget=10000/run)…"}
+{"ts":"2026-05-17T10:43:00.868Z","level":"info","runId":"25988392494-1","company":"microsoft","msg":"  parse: 25/122 ok=25 err=0"}
+{"ts":"2026-05-17T10:44:23.871Z","level":"info","runId":"25988392494-1","company":"microsoft","msg":"  parse: 50/122 ok=50 err=0"}
+{"ts":"2026-05-17T10:45:41.119Z","level":"info","runId":"25988392494-1","company":"microsoft","msg":"  parse: 75/122 ok=75 err=0"}
+{"ts":"2026-05-17T10:47:13.923Z","level":"info","runId":"25988392494-1","company":"microsoft","msg":"  parse: 100/122 ok=100 err=0"}
+{"ts":"2026-05-17T10:48:42.803Z","level":"info","runId":"25988392494-1","company":"microsoft","msg":"  parse: 122/122 ok=122 err=0"}
+{"ts":"2026-05-17T10:48:42.803Z","level":"info","runId":"25988392494-1","company":"microsoft","msg":"Parse done: ok=122 err=0 | 413s (Microsoft)"}
+{"ts":"2026-05-17T10:48:42.804Z","level":"info","runId":"25988392494-1","company":"microsoft","msg":"Embedding 122 JDs in batches of 100…"}
+{"ts":"2026-05-17T10:48:56.107Z","level":"info","runId":"25988392494-1","company":"microsoft","msg":"  embed: 100/122"}
+{"ts":"2026-05-17T10:48:56.653Z","level":"info","runId":"25988392494-1","company":"microsoft","msg":"  embed: 122/122"}
+{"ts":"2026-05-17T10:48:56.653Z","level":"info","runId":"25988392494-1","company":"microsoft","msg":"Embed done: 122/122 | 14s"}
+{"ts":"2026-05-17T10:49:00.677Z","level":"warn","runId":"25988392494-1","company":null,"msg":"Bulk insert failed: duplicate key value violates unique constraint \"ux_jobs_company_signature\" — falling back to per-row","event":"bulk_upsert_error","data":{"kind":"insert","batchSize":2,"error":"duplicate key value violates unique constraint \"ux_jobs_company_signature\"","sigCollision":true}}
+{"ts":"2026-05-17T10:49:01.248Z","level":"info","runId":"25988392494-1","company":null,"msg":"Per-row recovery: 0/2 inserts succeeded (skipped 2 signature-collisions)","event":"bulk_upsert_recovered","data":{"kind":"insert","recovered":0,"total":2,"sigSkipped":2}}
+{"ts":"2026-05-17T10:49:01.751Z","level":"warn","runId":"25988392494-1","company":null,"msg":"upsert: dropped 1 in-batch signature duplicate(s) (same content, different external_id)","event":"upsert_sig_dup","data":{"dropped":1,"batchSize":50}}
+{"ts":"2026-05-17T10:49:03.356Z","level":"warn","runId":"25988392494-1","company":null,"msg":"Bulk update failed: duplicate key value violates unique constraint \"ux_jobs_company_signature\" — falling back to per-row","event":"bulk_upsert_error","data":{"kind":"update","batchSize":43,"error":"duplicate key value violates unique constraint \"ux_jobs_company_signature\"","sigCollision":true}}
+{"ts":"2026-05-17T10:49:15.279Z","level":"info","runId":"25988392494-1","company":null,"msg":"Per-row recovery: 39/43 updates succeeded (skipped 4 signature-collisions)","event":"bulk_upsert_recovered","data":{"kind":"update","recovered":39,"total":43,"sigSkipped":4}}
+{"ts":"2026-05-17T10:49:15.635Z","level":"warn","runId":"25988392494-1","company":null,"msg":"Bulk insert failed: duplicate key value violates unique constraint \"ux_jobs_company_signature\" — falling back to per-row","event":"bulk_upsert_error","data":{"kind":"insert","batchSize":3,"error":"duplicate key value violates unique constraint \"ux_jobs_company_signature\"","sigCollision":true}}
+{"ts":"2026-05-17T10:49:16.469Z","level":"info","runId":"25988392494-1","company":null,"msg":"Per-row recovery: 0/3 inserts succeeded (skipped 3 signature-collisions)","event":"bulk_upsert_recovered","data":{"kind":"insert","recovered":0,"total":3,"sigSkipped":3}}
+{"ts":"2026-05-17T10:49:20.001Z","level":"warn","runId":"25988392494-1","company":null,"msg":"Bulk update failed: duplicate key value violates unique constraint \"ux_jobs_company_signature\" — falling back to per-row","event":"bulk_upsert_error","data":{"kind":"update","batchSize":9,"error":"duplicate key value violates unique constraint \"ux_jobs_company_signature\"","sigCollision":true}}
+{"ts":"2026-05-17T10:49:22.372Z","level":"info","runId":"25988392494-1","company":null,"msg":"Per-row recovery: 6/9 updates succeeded (skipped 3 signature-collisions)","event":"bulk_upsert_recovered","data":{"kind":"update","recovered":6,"total":9,"sigSkipped":3}}
+{"ts":"2026-05-17T10:49:22.680Z","level":"warn","runId":"25988392494-1","company":null,"msg":"Bulk update failed: duplicate key value violates unique constraint \"ux_jobs_company_signature\" — falling back to per-row","event":"bulk_upsert_error","data":{"kind":"update","batchSize":31,"error":"duplicate key value violates unique constraint \"ux_jobs_company_signature\"","sigCollision":true}}
+{"ts":"2026-05-17T10:49:30.385Z","level":"info","runId":"25988392494-1","company":null,"msg":"Per-row recovery: 28/31 updates succeeded (skipped 3 signature-collisions)","event":"bulk_upsert_recovered","data":{"kind":"update","recovered":28,"total":31,"sigSkipped":3}}
+{"ts":"2026-05-17T10:49:32.138Z","level":"warn","runId":"25988392494-1","company":null,"msg":"Bulk update failed: duplicate key value violates unique constraint \"ux_jobs_company_signature\" — falling back to per-row","event":"bulk_upsert_error","data":{"kind":"update","batchSize":8,"error":"duplicate key value violates unique constraint \"ux_jobs_company_signature\"","sigCollision":true}}
+{"ts":"2026-05-17T10:49:34.120Z","level":"info","runId":"25988392494-1","company":null,"msg":"Per-row recovery: 7/8 updates succeeded (skipped 1 signature-collisions)","event":"bulk_upsert_recovered","data":{"kind":"update","recovered":7,"total":8,"sigSkipped":1}}
+{"ts":"2026-05-17T10:49:34.634Z","level":"info","runId":"25988392494-1","company":"microsoft","msg":"Inserted: 0, Updated: 145, Stale: 4, Rejected: 3","event":"company_done","data":{"inserted":0,"updated":145,"stale":4,"parseOk":122,"parseErr":0,"skippedBudget":0,"skippedQuota":0,"rejectedNonEng":3,"coverageSkipped":false,"elapsedMs":648090}}
+{"ts":"2026-05-17T10:49:35.058Z","level":"info","runId":"25988392494-1","company":"meta","msg":"Crawling…","event":"company_start"}
+{"ts":"2026-05-17T10:49:35.060Z","level":"info","runId":"25988392494-1","company":"meta","msg":"Loading India jobs page..."}
+{"ts":"2026-05-17T10:49:42.296Z","level":"info","runId":"25988392494-1","company":"meta","msg":"Total: 9 India jobs"}
+{"ts":"2026-05-17T10:49:56.222Z","level":"info","runId":"25988392494-1","company":"meta","msg":"Enriched descriptions: 9/9 | errors=0 | 14s"}
+{"ts":"2026-05-17T10:49:56.223Z","level":"info","runId":"25988392494-1","company":"meta","msg":"Scraped 9 raw jobs in 21s","event":"scrape_done","data":{"rawCount":9}}
+{"ts":"2026-05-17T10:49:56.239Z","level":"info","runId":"25988392494-1","company":"meta","msg":"9 India jobs after normalization","event":"normalize_done","data":{"kept":9,"dropped":0}}
+{"ts":"2026-05-17T10:49:56.541Z","level":"info","runId":"25988392494-1","company":"meta","msg":"Parse decision: 1 to parse, 5 skip (already parsed, unchanged), 3 rejected (non-engineering title)"}
+{"ts":"2026-05-17T10:49:56.541Z","level":"info","runId":"25988392494-1","company":"meta","msg":"Parsing 1 JD with 3 workers across 3 keys (budget=10000/run)…"}
+{"ts":"2026-05-17T10:50:04.462Z","level":"info","runId":"25988392494-1","company":"meta","msg":"  parse: 1/1 ok=1 err=0"}
+{"ts":"2026-05-17T10:50:04.462Z","level":"info","runId":"25988392494-1","company":"meta","msg":"Parse done: ok=1 err=0 | 8s (Meta)"}
+{"ts":"2026-05-17T10:50:04.462Z","level":"info","runId":"25988392494-1","company":"meta","msg":"Embedding 1 JDs in batches of 100…"}
+{"ts":"2026-05-17T10:50:04.728Z","level":"info","runId":"25988392494-1","company":"meta","msg":"  embed: 1/1"}
+{"ts":"2026-05-17T10:50:04.728Z","level":"info","runId":"25988392494-1","company":"meta","msg":"Embed done: 1/1 | 0s"}
+{"ts":"2026-05-17T10:50:06.385Z","level":"warn","runId":"25988392494-1","company":null,"msg":"Bulk update failed: duplicate key value violates unique constraint \"ux_jobs_company_signature\" — falling back to per-row","event":"bulk_upsert_error","data":{"kind":"update","batchSize":5,"error":"duplicate key value violates unique constraint \"ux_jobs_company_signature\"","sigCollision":true}}
+{"ts":"2026-05-17T10:50:07.689Z","level":"info","runId":"25988392494-1","company":null,"msg":"Per-row recovery: 4/5 updates succeeded (skipped 1 signature-collisions)","event":"bulk_upsert_recovered","data":{"kind":"update","recovered":4,"total":5,"sigSkipped":1}}
+{"ts":"2026-05-17T10:50:08.185Z","level":"info","runId":"25988392494-1","company":"meta","msg":"Inserted: 0, Updated: 5, Stale: 0, Rejected: 3","event":"company_done","data":{"inserted":0,"updated":5,"stale":0,"parseOk":1,"parseErr":0,"skippedBudget":0,"skippedQuota":0,"rejectedNonEng":3,"coverageSkipped":false,"elapsedMs":33127}}
+{"ts":"2026-05-17T10:50:08.583Z","level":"info","runId":"25988392494-1","company":"amazon","msg":"Crawling…","event":"company_start"}
+{"ts":"2026-05-17T10:50:08.584Z","level":"info","runId":"25988392494-1","company":"amazon","msg":"Fetching offset 0 / ?..."}
+{"ts":"2026-05-17T10:50:10.435Z","level":"info","runId":"25988392494-1","company":"amazon","msg":"Fetching offset 100 / 2826..."}
+{"ts":"2026-05-17T10:50:11.711Z","level":"info","runId":"25988392494-1","company":"amazon","msg":"Fetching offset 200 / 2826..."}
+{"ts":"2026-05-17T10:50:12.941Z","level":"info","runId":"25988392494-1","company":"amazon","msg":"Fetching offset 300 / 2826..."}
+{"ts":"2026-05-17T10:50:14.207Z","level":"info","runId":"25988392494-1","company":"amazon","msg":"Fetching offset 400 / 2826..."}
+{"ts":"2026-05-17T10:50:15.520Z","level":"info","runId":"25988392494-1","company":"amazon","msg":"Fetching offset 500 / 2826..."}
+{"ts":"2026-05-17T10:50:16.752Z","level":"info","runId":"25988392494-1","company":"amazon","msg":"Fetching offset 600 / 2826..."}
+{"ts":"2026-05-17T10:50:17.984Z","level":"info","runId":"25988392494-1","company":"amazon","msg":"Fetching offset 700 / 2826..."}
+{"ts":"2026-05-17T10:50:19.198Z","level":"info","runId":"25988392494-1","company":"amazon","msg":"Fetching offset 800 / 2826..."}
+{"ts":"2026-05-17T10:50:20.406Z","level":"info","runId":"25988392494-1","company":"amazon","msg":"Fetching offset 900 / 2826..."}
+{"ts":"2026-05-17T10:50:21.611Z","level":"info","runId":"25988392494-1","company":"amazon","msg":"Fetching offset 1000 / 2826..."}
+{"ts":"2026-05-17T10:50:22.877Z","level":"info","runId":"25988392494-1","company":"amazon","msg":"Fetching offset 1100 / 2826..."}
+{"ts":"2026-05-17T10:50:24.074Z","level":"info","runId":"25988392494-1","company":"amazon","msg":"Fetching offset 1200 / 2826..."}
+{"ts":"2026-05-17T10:50:25.600Z","level":"info","runId":"25988392494-1","company":"amazon","msg":"Fetching offset 1300 / 2826..."}
+{"ts":"2026-05-17T10:50:26.884Z","level":"info","runId":"25988392494-1","company":"amazon","msg":"Fetching offset 1400 / 2826..."}
+{"ts":"2026-05-17T10:50:28.126Z","level":"info","runId":"25988392494-1","company":"amazon","msg":"Fetching offset 1500 / 2826..."}
+{"ts":"2026-05-17T10:50:29.337Z","level":"info","runId":"25988392494-1","company":"amazon","msg":"Fetching offset 1600 / 2826..."}
+{"ts":"2026-05-17T10:50:30.600Z","level":"info","runId":"25988392494-1","company":"amazon","msg":"Fetching offset 1700 / 2826..."}
+{"ts":"2026-05-17T10:50:31.933Z","level":"info","runId":"25988392494-1","company":"amazon","msg":"Fetching offset 1800 / 2826..."}
+{"ts":"2026-05-17T10:50:33.162Z","level":"info","runId":"25988392494-1","company":"amazon","msg":"Fetching offset 1900 / 2826..."}
+{"ts":"2026-05-17T10:50:34.439Z","level":"info","runId":"25988392494-1","company":"amazon","msg":"Fetching offset 2000 / 2826..."}
+{"ts":"2026-05-17T10:50:35.670Z","level":"info","runId":"25988392494-1","company":"amazon","msg":"Fetching offset 2100 / 2826..."}
+{"ts":"2026-05-17T10:50:36.869Z","level":"info","runId":"25988392494-1","company":"amazon","msg":"Fetching offset 2200 / 2826..."}
+{"ts":"2026-05-17T10:50:38.095Z","level":"info","runId":"25988392494-1","company":"amazon","msg":"Fetching offset 2300 / 2826..."}
+{"ts":"2026-05-17T10:50:39.321Z","level":"info","runId":"25988392494-1","company":"amazon","msg":"Fetching offset 2400 / 2826..."}
+{"ts":"2026-05-17T10:50:40.532Z","level":"info","runId":"25988392494-1","company":"amazon","msg":"Fetching offset 2500 / 2826..."}
+{"ts":"2026-05-17T10:50:41.759Z","level":"info","runId":"25988392494-1","company":"amazon","msg":"Fetching offset 2600 / 2826..."}
+{"ts":"2026-05-17T10:50:43.084Z","level":"info","runId":"25988392494-1","company":"amazon","msg":"Fetching offset 2700 / 2826..."}
+{"ts":"2026-05-17T10:50:44.313Z","level":"info","runId":"25988392494-1","company":"amazon","msg":"Fetching offset 2800 / 2826..."}
+{"ts":"2026-05-17T10:50:44.689Z","level":"info","runId":"25988392494-1","company":"amazon","msg":"Total: 2826 jobs"}
+{"ts":"2026-05-17T10:50:44.689Z","level":"info","runId":"25988392494-1","company":"amazon","msg":"Scraped 2826 raw jobs in 36s","event":"scrape_done","data":{"rawCount":2826}}
+{"ts":"2026-05-17T10:50:45.784Z","level":"info","runId":"25988392494-1","company":"amazon","msg":"2582 India jobs after normalization","event":"normalize_done","data":{"kept":2582,"dropped":244}}
+{"ts":"2026-05-17T10:50:49.655Z","level":"info","runId":"25988392494-1","company":"amazon","msg":"Parse decision: 1631 to parse, 691 skip (already parsed, unchanged), 260 rejected (non-engineering title)"}
+{"ts":"2026-05-17T10:50:49.655Z","level":"info","runId":"25988392494-1","company":"amazon","msg":"Parsing 1631 JDs with 3 workers across 3 keys (budget=10000/run)…"}
+{"ts":"2026-05-17T10:52:12.962Z","level":"info","runId":"25988392494-1","company":"amazon","msg":"  parse: 25/1631 ok=25 err=0"}
+{"ts":"2026-05-17T10:53:47.970Z","level":"info","runId":"25988392494-1","company":"amazon","msg":"  parse: 50/1631 ok=50 err=0"}
+{"ts":"2026-05-17T10:55:20.864Z","level":"info","runId":"25988392494-1","company":"amazon","msg":"  parse: 75/1631 ok=75 err=0"}
+{"ts":"2026-05-17T10:57:06.241Z","level":"info","runId":"25988392494-1","company":"amazon","msg":"  parse: 100/1631 ok=100 err=0"}
+{"ts":"2026-05-17T10:58:51.522Z","level":"info","runId":"25988392494-1","company":"amazon","msg":"  parse: 125/1631 ok=125 err=0"}
+{"ts":"2026-05-17T11:00:07.367Z","level":"info","runId":"25988392494-1","company":"amazon","msg":"  parse: 150/1631 ok=150 err=0"}
+{"ts":"2026-05-17T11:01:32.986Z","level":"info","runId":"25988392494-1","company":"amazon","msg":"  parse: 175/1631 ok=175 err=0"}
+{"ts":"2026-05-17T11:02:59.856Z","level":"info","runId":"25988392494-1","company":"amazon","msg":"  parse: 200/1631 ok=200 err=0"}
+{"ts":"2026-05-17T11:04:14.121Z","level":"info","runId":"25988392494-1","company":"amazon","msg":"  parse: 225/1631 ok=225 err=0"}
+{"ts":"2026-05-17T11:05:44.707Z","level":"info","runId":"25988392494-1","company":"amazon","msg":"  parse: 250/1631 ok=250 err=0"}
+{"ts":"2026-05-17T11:06:50.021Z","level":"info","runId":"25988392494-1","company":"amazon","msg":"  parse: 275/1631 ok=275 err=0"}
+{"ts":"2026-05-17T11:08:10.836Z","level":"info","runId":"25988392494-1","company":"amazon","msg":"  parse: 300/1631 ok=300 err=0"}
+{"ts":"2026-05-17T11:09:32.369Z","level":"info","runId":"25988392494-1","company":"amazon","msg":"  parse: 325/1631 ok=325 err=0"}
+{"ts":"2026-05-17T11:11:07.924Z","level":"info","runId":"25988392494-1","company":"amazon","msg":"  parse: 350/1631 ok=350 err=0"}
+{"ts":"2026-05-17T11:12:23.982Z","level":"info","runId":"25988392494-1","company":"amazon","msg":"  parse: 375/1631 ok=375 err=0"}
+{"ts":"2026-05-17T11:14:08.535Z","level":"info","runId":"25988392494-1","company":"amazon","msg":"  parse: 400/1631 ok=400 err=0"}
+{"ts":"2026-05-17T11:15:32.795Z","level":"info","runId":"25988392494-1","company":"amazon","msg":"  parse: 425/1631 ok=425 err=0"}
+{"ts":"2026-05-17T11:16:51.544Z","level":"info","runId":"25988392494-1","company":"amazon","msg":"  parse: 450/1631 ok=450 err=0"}
+{"ts":"2026-05-17T11:18:31.799Z","level":"info","runId":"25988392494-1","company":"amazon","msg":"  parse: 475/1631 ok=475 err=0"}
+{"ts":"2026-05-17T11:19:52.231Z","level":"info","runId":"25988392494-1","company":"amazon","msg":"  parse: 500/1631 ok=500 err=0"}
+{"ts":"2026-05-17T11:21:20.640Z","level":"info","runId":"25988392494-1","company":"amazon","msg":"  parse: 525/1631 ok=525 err=0"}
+{"ts":"2026-05-17T11:22:58.781Z","level":"info","runId":"25988392494-1","company":"amazon","msg":"  parse: 550/1631 ok=550 err=0"}
+{"ts":"2026-05-17T11:24:59.236Z","level":"info","runId":"25988392494-1","company":"amazon","msg":"  parse: 575/1631 ok=575 err=0"}
+{"ts":"2026-05-17T11:26:42.336Z","level":"info","runId":"25988392494-1","company":"amazon","msg":"  parse: 600/1631 ok=600 err=0"}
+{"ts":"2026-05-17T11:38:01.111Z","level":"info","runId":"25988392494-1","company":"amazon","msg":"  parse: 625/1631 ok=625 err=0"}
+{"ts":"2026-05-17T11:57:11.984Z","level":"info","runId":"25988392494-1","company":"amazon","msg":"  parse: 650/1631 ok=650 err=0"}
+{"ts":"2026-05-17T12:09:03.524Z","level":"info","runId":"25988392494-1","company":"amazon","msg":"  parse: 675/1631 ok=675 err=0"}
+{"ts":"2026-05-17T12:17:33.199Z","level":"info","runId":"25988392494-1","company":"amazon","msg":"  parse: 700/1631 ok=700 err=0"}
+{"ts":"2026-05-17T12:25:38.412Z","level":"info","runId":"25988392494-1","company":"amazon","msg":"  parse: 725/1631 ok=725 err=0"}
+{"ts":"2026-05-17T12:34:10.936Z","level":"info","runId":"25988392494-1","company":"amazon","msg":"  parse: 750/1631 ok=750 err=0"}
+{"ts":"2026-05-17T12:43:56.728Z","level":"info","runId":"25988392494-1","company":"amazon","msg":"  parse: 775/1631 ok=774 err=1"}
+{"ts":"2026-05-17T12:52:15.925Z","level":"info","runId":"25988392494-1","company":"amazon","msg":"  parse: 800/1631 ok=788 err=12"}
+{"ts":"2026-05-17T13:00:03.773Z","level":"info","runId":"25988392494-1","company":"amazon","msg":"  parse: 825/1631 ok=794 err=31"}
+{"ts":"2026-05-17T13:08:33.844Z","level":"warn","runId":"25988392494-1","company":"amazon","msg":"Gemini daily quota exhausted after 794 parse(s). 779 job(s) deferred — will be retried next crawl.","event":"midrun_quota_bail","data":{"successes":794,"deferred":779}}
+{"ts":"2026-05-17T13:09:03.576Z","level":"warn","runId":"25988392494-1","company":"amazon","msg":"  parse err [Data Center Engineering Operations]: Unexpected end of JSON input"}
+{"ts":"2026-05-17T13:09:03.576Z","level":"info","runId":"25988392494-1","company":"amazon","msg":"Parse done: ok=794 err=58 quota_skip=779 | 8294s (Amazon)"}
+{"ts":"2026-05-17T13:09:03.576Z","level":"warn","runId":"25988392494-1","company":"amazon","msg":"  parse err [Software Development Manager, Amazon Customer Service]: quota_disabled"}
+{"ts":"2026-05-17T13:09:03.576Z","level":"warn","runId":"25988392494-1","company":"amazon","msg":"  parse err [Sr. Strategic Planner, Ads Success Team]: quota_disabled"}
+{"ts":"2026-05-17T13:09:03.576Z","level":"warn","runId":"25988392494-1","company":"amazon","msg":"  parse err [Software Development Manager, FBA Inventory Planning]: quota_disabled"}
+{"ts":"2026-05-17T13:09:03.576Z","level":"warn","runId":"25988392494-1","company":"amazon","msg":"  parse err [Technical Program Manager, Stores Application Security]: quota_disabled"}
+{"ts":"2026-05-17T13:09:03.576Z","level":"info","runId":"25988392494-1","company":"amazon","msg":"Embedding 794 JDs in batches of 100…"}
+{"ts":"2026-05-17T13:09:16.624Z","level":"info","runId":"25988392494-1","company":"amazon","msg":"  embed: 100/794"}
+{"ts":"2026-05-17T13:09:29.462Z","level":"info","runId":"25988392494-1","company":"amazon","msg":"  embed: 200/794"}
+{"ts":"2026-05-17T13:10:02.101Z","level":"info","runId":"25988392494-1","company":"amazon","msg":"  embed: 300/794"}
+{"ts":"2026-05-17T13:10:45.560Z","level":"info","runId":"25988392494-1","company":"amazon","msg":"  embed: 400/794"}
+{"ts":"2026-05-17T13:11:32.093Z","level":"info","runId":"25988392494-1","company":"amazon","msg":"  embed: 500/794"}
+{"ts":"2026-05-17T13:11:45.765Z","level":"info","runId":"25988392494-1","company":"amazon","msg":"  embed: 600/794"}
+{"ts":"2026-05-17T13:11:58.661Z","level":"info","runId":"25988392494-1","company":"amazon","msg":"  embed: 700/794"}
+{"ts":"2026-05-17T13:12:45.314Z","level":"info","runId":"25988392494-1","company":"amazon","msg":"  embed: 794/794"}
+{"ts":"2026-05-17T13:12:45.314Z","level":"info","runId":"25988392494-1","company":"amazon","msg":"Embed done: 794/794 | 222s"}
+{"ts":"2026-05-17T13:12:52.838Z","level":"warn","runId":"25988392494-1","company":null,"msg":"Bulk update failed: duplicate key value violates unique constraint \"ux_jobs_company_signature\" — falling back to per-row","event":"bulk_upsert_error","data":{"kind":"update","batchSize":36,"error":"duplicate key value violates unique constraint \"ux_jobs_company_signature\"","sigCollision":true}}
+{"ts":"2026-05-17T13:13:02.460Z","level":"info","runId":"25988392494-1","company":null,"msg":"Per-row recovery: 33/36 updates succeeded (skipped 3 signature-collisions)","event":"bulk_upsert_recovered","data":{"kind":"update","recovered":33,"total":36,"sigSkipped":3}}
+{"ts":"2026-05-17T13:13:05.810Z","level":"warn","runId":"25988392494-1","company":null,"msg":"Bulk update failed: duplicate key value violates unique constraint \"ux_jobs_company_signature\" — falling back to per-row","event":"bulk_upsert_error","data":{"kind":"update","batchSize":43,"error":"duplicate key value violates unique constraint \"ux_jobs_company_signature\"","sigCollision":true}}
+{"ts":"2026-05-17T13:13:17.041Z","level":"info","runId":"25988392494-1","company":null,"msg":"Per-row recovery: 41/43 updates succeeded (skipped 2 signature-collisions)","event":"bulk_upsert_recovered","data":{"kind":"update","recovered":41,"total":43,"sigSkipped":2}}
+{"ts":"2026-05-17T13:13:21.611Z","level":"warn","runId":"25988392494-1","company":null,"msg":"Bulk update failed: duplicate key value violates unique constraint \"ux_jobs_company_signature\" — falling back to per-row","event":"bulk_upsert_error","data":{"kind":"update","batchSize":37,"error":"duplicate key value violates unique constraint \"ux_jobs_company_signature\"","sigCollision":true}}
+{"ts":"2026-05-17T13:13:31.337Z","level":"info","runId":"25988392494-1","company":null,"msg":"Per-row recovery: 36/37 updates succeeded (skipped 1 signature-collisions)","event":"bulk_upsert_recovered","data":{"kind":"update","recovered":36,"total":37,"sigSkipped":1}}
+{"ts":"2026-05-17T13:13:36.046Z","level":"warn","runId":"25988392494-1","company":null,"msg":"Bulk update failed: duplicate key value violates unique constraint \"ux_jobs_company_signature\" — falling back to per-row","event":"bulk_upsert_error","data":{"kind":"update","batchSize":38,"error":"duplicate key value violates unique constraint \"ux_jobs_company_signature\"","sigCollision":true}}
+{"ts":"2026-05-17T13:13:45.857Z","level":"info","runId":"25988392494-1","company":null,"msg":"Per-row recovery: 36/38 updates succeeded (skipped 2 signature-collisions)","event":"bulk_upsert_recovered","data":{"kind":"update","recovered":36,"total":38,"sigSkipped":2}}
+{"ts":"2026-05-17T13:13:51.457Z","level":"warn","runId":"25988392494-1","company":null,"msg":"Bulk update failed: duplicate key value violates unique constraint \"ux_jobs_company_signature\" — falling back to per-row","event":"bulk_upsert_error","data":{"kind":"update","batchSize":35,"error":"duplicate key value violates unique constraint \"ux_jobs_company_signature\"","sigCollision":true}}
+{"ts":"2026-05-17T13:14:00.578Z","level":"info","runId":"25988392494-1","company":null,"msg":"Per-row recovery: 30/35 updates succeeded (skipped 5 signature-collisions)","event":"bulk_upsert_recovered","data":{"kind":"update","recovered":30,"total":35,"sigSkipped":5}}
+{"ts":"2026-05-17T13:14:05.018Z","level":"warn","runId":"25988392494-1","company":null,"msg":"Bulk update failed: duplicate key value violates unique constraint \"ux_jobs_company_signature\" — falling back to per-row","event":"bulk_upsert_error","data":{"kind":"update","batchSize":37,"error":"duplicate key value violates unique constraint \"ux_jobs_company_signature\"","sigCollision":true}}
+{"ts":"2026-05-17T13:14:14.624Z","level":"info","runId":"25988392494-1","company":null,"msg":"Per-row recovery: 33/37 updates succeeded (skipped 4 signature-collisions)","event":"bulk_upsert_recovered","data":{"kind":"update","recovered":33,"total":37,"sigSkipped":4}}
+{"ts":"2026-05-17T13:14:19.034Z","level":"warn","runId":"25988392494-1","company":null,"msg":"Bulk update failed: duplicate key value violates unique constraint \"ux_jobs_company_signature\" — falling back to per-row","event":"bulk_upsert_error","data":{"kind":"update","batchSize":37,"error":"duplicate key value violates unique constraint \"ux_jobs_company_signature\"","sigCollision":true}}
+{"ts":"2026-05-17T13:14:28.623Z","level":"info","runId":"25988392494-1","company":null,"msg":"Per-row recovery: 33/37 updates succeeded (skipped 4 signature-collisions)","event":"bulk_upsert_recovered","data":{"kind":"update","recovered":33,"total":37,"sigSkipped":4}}
+{"ts":"2026-05-17T13:14:43.700Z","level":"warn","runId":"25988392494-1","company":null,"msg":"Bulk update failed: duplicate key value violates unique constraint \"ux_jobs_company_signature\" — falling back to per-row","event":"bulk_upsert_error","data":{"kind":"update","batchSize":33,"error":"duplicate key value violates unique constraint \"ux_jobs_company_signature\"","sigCollision":true}}
+{"ts":"2026-05-17T13:14:52.112Z","level":"info","runId":"25988392494-1","company":null,"msg":"Per-row recovery: 30/33 updates succeeded (skipped 3 signature-collisions)","event":"bulk_upsert_recovered","data":{"kind":"update","recovered":30,"total":33,"sigSkipped":3}}
+{"ts":"2026-05-17T13:14:57.741Z","level":"warn","runId":"25988392494-1","company":null,"msg":"Bulk update failed: duplicate key value violates unique constraint \"ux_jobs_company_signature\" — falling back to per-row","event":"bulk_upsert_error","data":{"kind":"update","batchSize":32,"error":"duplicate key value violates unique constraint \"ux_jobs_company_signature\"","sigCollision":true}}
+{"ts":"2026-05-17T13:15:05.909Z","level":"info","runId":"25988392494-1","company":null,"msg":"Per-row recovery: 29/32 updates succeeded (skipped 3 signature-collisions)","event":"bulk_upsert_recovered","data":{"kind":"update","recovered":29,"total":32,"sigSkipped":3}}
+{"ts":"2026-05-17T13:15:10.212Z","level":"warn","runId":"25988392494-1","company":null,"msg":"Bulk update failed: duplicate key value violates unique constraint \"ux_jobs_company_signature\" — falling back to per-row","event":"bulk_upsert_error","data":{"kind":"update","batchSize":37,"error":"duplicate key value violates unique constraint \"ux_jobs_company_signature\"","sigCollision":true}}
+{"ts":"2026-05-17T13:15:19.649Z","level":"info","runId":"25988392494-1","company":null,"msg":"Per-row recovery: 36/37 updates succeeded (skipped 1 signature-collisions)","event":"bulk_upsert_recovered","data":{"kind":"update","recovered":36,"total":37,"sigSkipped":1}}
+{"ts":"2026-05-17T13:15:26.557Z","level":"warn","runId":"25988392494-1","company":null,"msg":"Bulk update failed: duplicate key value violates unique constraint \"ux_jobs_company_signature\" — falling back to per-row","event":"bulk_upsert_error","data":{"kind":"update","batchSize":27,"error":"duplicate key value violates unique constraint \"ux_jobs_company_signature\"","sigCollision":true}}
+{"ts":"2026-05-17T13:15:33.490Z","level":"info","runId":"25988392494-1","company":null,"msg":"Per-row recovery: 24/27 updates succeeded (skipped 3 signature-collisions)","event":"bulk_upsert_recovered","data":{"kind":"update","recovered":24,"total":27,"sigSkipped":3}}
+{"ts":"2026-05-17T13:15:39.597Z","level":"warn","runId":"25988392494-1","company":null,"msg":"Bulk update failed: duplicate key value violates unique constraint \"ux_jobs_company_signature\" — falling back to per-row","event":"bulk_upsert_error","data":{"kind":"update","batchSize":30,"error":"duplicate key value violates unique constraint \"ux_jobs_company_signature\"","sigCollision":true}}
+{"ts":"2026-05-17T13:15:47.276Z","level":"info","runId":"25988392494-1","company":null,"msg":"Per-row recovery: 29/30 updates succeeded (skipped 1 signature-collisions)","event":"bulk_upsert_recovered","data":{"kind":"update","recovered":29,"total":30,"sigSkipped":1}}
+{"ts":"2026-05-17T13:15:52.081Z","level":"warn","runId":"25988392494-1","company":null,"msg":"Bulk update failed: duplicate key value violates unique constraint \"ux_jobs_company_signature\" — falling back to per-row","event":"bulk_upsert_error","data":{"kind":"update","batchSize":35,"error":"duplicate key value violates unique constraint \"ux_jobs_company_signature\"","sigCollision":true}}
+{"ts":"2026-05-17T13:16:01.026Z","level":"info","runId":"25988392494-1","company":null,"msg":"Per-row recovery: 34/35 updates succeeded (skipped 1 signature-collisions)","event":"bulk_upsert_recovered","data":{"kind":"update","recovered":34,"total":35,"sigSkipped":1}}
+{"ts":"2026-05-17T13:16:05.914Z","level":"warn","runId":"25988392494-1","company":null,"msg":"Bulk update failed: duplicate key value violates unique constraint \"ux_jobs_company_signature\" — falling back to per-row","event":"bulk_upsert_error","data":{"kind":"update","batchSize":35,"error":"duplicate key value violates unique constraint \"ux_jobs_company_signature\"","sigCollision":true}}
+{"ts":"2026-05-17T13:16:14.839Z","level":"info","runId":"25988392494-1","company":null,"msg":"Per-row recovery: 32/35 updates succeeded (skipped 3 signature-collisions)","event":"bulk_upsert_recovered","data":{"kind":"update","recovered":32,"total":35,"sigSkipped":3}}
+{"ts":"2026-05-17T13:16:20.139Z","level":"warn","runId":"25988392494-1","company":null,"msg":"Bulk update failed: duplicate key value violates unique constraint \"ux_jobs_company_signature\" — falling back to per-row","event":"bulk_upsert_error","data":{"kind":"update","batchSize":13,"error":"duplicate key value violates unique constraint \"ux_jobs_company_signature\"","sigCollision":true}}
+{"ts":"2026-05-17T13:16:23.628Z","level":"info","runId":"25988392494-1","company":null,"msg":"Per-row recovery: 12/13 updates succeeded (skipped 1 signature-collisions)","event":"bulk_upsert_recovered","data":{"kind":"update","recovered":12,"total":13,"sigSkipped":1}}
+{"ts":"2026-05-17T13:16:23.968Z","level":"warn","runId":"25988392494-1","company":null,"msg":"Bulk update failed: duplicate key value violates unique constraint \"ux_jobs_company_signature\" — falling back to per-row","event":"bulk_upsert_error","data":{"kind":"update","batchSize":20,"error":"duplicate key value violates unique constraint \"ux_jobs_company_signature\"","sigCollision":true}}
+{"ts":"2026-05-17T13:16:29.056Z","level":"info","runId":"25988392494-1","company":null,"msg":"Per-row recovery: 19/20 updates succeeded (skipped 1 signature-collisions)","event":"bulk_upsert_recovered","data":{"kind":"update","recovered":19,"total":20,"sigSkipped":1}}
+{"ts":"2026-05-17T13:16:34.529Z","level":"warn","runId":"25988392494-1","company":null,"msg":"Bulk update failed: duplicate key value violates unique constraint \"ux_jobs_company_signature\" — falling back to per-row","event":"bulk_upsert_error","data":{"kind":"update","batchSize":31,"error":"duplicate key value violates unique constraint \"ux_jobs_company_signature\"","sigCollision":true}}
+{"ts":"2026-05-17T13:16:42.798Z","level":"info","runId":"25988392494-1","company":null,"msg":"Per-row recovery: 29/31 updates succeeded (skipped 2 signature-collisions)","event":"bulk_upsert_recovered","data":{"kind":"update","recovered":29,"total":31,"sigSkipped":2}}
+{"ts":"2026-05-17T13:16:43.059Z","level":"warn","runId":"25988392494-1","company":null,"msg":"Bulk update failed: duplicate key value violates unique constraint \"ux_jobs_company_signature\" — falling back to per-row","event":"bulk_upsert_error","data":{"kind":"update","batchSize":2,"error":"duplicate key value violates unique constraint \"ux_jobs_company_signature\"","sigCollision":true}}
+{"ts":"2026-05-17T13:16:43.567Z","level":"info","runId":"25988392494-1","company":null,"msg":"Per-row recovery: 1/2 updates succeeded (skipped 1 signature-collisions)","event":"bulk_upsert_recovered","data":{"kind":"update","recovered":1,"total":2,"sigSkipped":1}}
+{"ts":"2026-05-17T13:16:49.027Z","level":"warn","runId":"25988392494-1","company":null,"msg":"Bulk update failed: duplicate key value violates unique constraint \"ux_jobs_company_signature\" — falling back to per-row","event":"bulk_upsert_error","data":{"kind":"update","batchSize":33,"error":"duplicate key value violates unique constraint \"ux_jobs_company_signature\"","sigCollision":true}}
+{"ts":"2026-05-17T13:16:57.805Z","level":"info","runId":"25988392494-1","company":null,"msg":"Per-row recovery: 32/33 updates succeeded (skipped 1 signature-collisions)","event":"bulk_upsert_recovered","data":{"kind":"update","recovered":32,"total":33,"sigSkipped":1}}
+{"ts":"2026-05-17T13:17:05.578Z","level":"warn","runId":"25988392494-1","company":null,"msg":"Bulk update failed: duplicate key value violates unique constraint \"ux_jobs_company_signature\" — falling back to per-row","event":"bulk_upsert_error","data":{"kind":"update","batchSize":24,"error":"duplicate key value violates unique constraint \"ux_jobs_company_signature\"","sigCollision":true}}
+{"ts":"2026-05-17T13:17:12.052Z","level":"info","runId":"25988392494-1","company":null,"msg":"Per-row recovery: 20/24 updates succeeded (skipped 4 signature-collisions)","event":"bulk_upsert_recovered","data":{"kind":"update","recovered":20,"total":24,"sigSkipped":4}}
+{"ts":"2026-05-17T13:17:21.808Z","level":"warn","runId":"25988392494-1","company":null,"msg":"Bulk update failed: duplicate key value violates unique constraint \"ux_jobs_company_signature\" — falling back to per-row","event":"bulk_upsert_error","data":{"kind":"update","batchSize":35,"error":"duplicate key value violates unique constraint \"ux_jobs_company_signature\"","sigCollision":true}}
+{"ts":"2026-05-17T13:17:31.144Z","level":"info","runId":"25988392494-1","company":null,"msg":"Per-row recovery: 34/35 updates succeeded (skipped 1 signature-collisions)","event":"bulk_upsert_recovered","data":{"kind":"update","recovered":34,"total":35,"sigSkipped":1}}
+{"ts":"2026-05-17T13:17:35.869Z","level":"warn","runId":"25988392494-1","company":null,"msg":"Bulk update failed: duplicate key value violates unique constraint \"ux_jobs_company_signature\" — falling back to per-row","event":"bulk_upsert_error","data":{"kind":"update","batchSize":35,"error":"duplicate key value violates unique constraint \"ux_jobs_company_signature\"","sigCollision":true}}
+{"ts":"2026-05-17T13:17:45.165Z","level":"info","runId":"25988392494-1","company":null,"msg":"Per-row recovery: 32/35 updates succeeded (skipped 3 signature-collisions)","event":"bulk_upsert_recovered","data":{"kind":"update","recovered":32,"total":35,"sigSkipped":3}}
+{"ts":"2026-05-17T13:17:50.542Z","level":"warn","runId":"25988392494-1","company":null,"msg":"Bulk update failed: duplicate key value violates unique constraint \"ux_jobs_company_signature\" — falling back to per-row","event":"bulk_upsert_error","data":{"kind":"update","batchSize":34,"error":"duplicate key value violates unique constraint \"ux_jobs_company_signature\"","sigCollision":true}}
+{"ts":"2026-05-17T13:17:59.539Z","level":"info","runId":"25988392494-1","company":null,"msg":"Per-row recovery: 31/34 updates succeeded (skipped 3 signature-collisions)","event":"bulk_upsert_recovered","data":{"kind":"update","recovered":31,"total":34,"sigSkipped":3}}
+{"ts":"2026-05-17T13:18:06.743Z","level":"warn","runId":"25988392494-1","company":null,"msg":"Bulk update failed: duplicate key value violates unique constraint \"ux_jobs_company_signature\" — falling back to per-row","event":"bulk_upsert_error","data":{"kind":"update","batchSize":26,"error":"duplicate key value violates unique constraint \"ux_jobs_company_signature\"","sigCollision":true}}
+{"ts":"2026-05-17T13:18:13.674Z","level":"info","runId":"25988392494-1","company":null,"msg":"Per-row recovery: 24/26 updates succeeded (skipped 2 signature-collisions)","event":"bulk_upsert_recovered","data":{"kind":"update","recovered":24,"total":26,"sigSkipped":2}}
+{"ts":"2026-05-17T13:18:17.807Z","level":"warn","runId":"25988392494-1","company":null,"msg":"Bulk update failed: duplicate key value violates unique constraint \"ux_jobs_company_signature\" — falling back to per-row","event":"bulk_upsert_error","data":{"kind":"update","batchSize":38,"error":"duplicate key value violates unique constraint \"ux_jobs_company_signature\"","sigCollision":true}}
+{"ts":"2026-05-17T13:18:27.884Z","level":"info","runId":"25988392494-1","company":null,"msg":"Per-row recovery: 37/38 updates succeeded (skipped 1 signature-collisions)","event":"bulk_upsert_recovered","data":{"kind":"update","recovered":37,"total":38,"sigSkipped":1}}
+{"ts":"2026-05-17T13:18:32.929Z","level":"warn","runId":"25988392494-1","company":null,"msg":"Bulk update failed: duplicate key value violates unique constraint \"ux_jobs_company_signature\" — falling back to per-row","event":"bulk_upsert_error","data":{"kind":"update","batchSize":34,"error":"duplicate key value violates unique constraint \"ux_jobs_company_signature\"","sigCollision":true}}
+{"ts":"2026-05-17T13:18:41.982Z","level":"info","runId":"25988392494-1","company":null,"msg":"Per-row recovery: 32/34 updates succeeded (skipped 2 signature-collisions)","event":"bulk_upsert_recovered","data":{"kind":"update","recovered":32,"total":34,"sigSkipped":2}}
+{"ts":"2026-05-17T13:18:45.843Z","level":"warn","runId":"25988392494-1","company":null,"msg":"Bulk update failed: duplicate key value violates unique constraint \"ux_jobs_company_signature\" — falling back to per-row","event":"bulk_upsert_error","data":{"kind":"update","batchSize":38,"error":"duplicate key value violates unique constraint \"ux_jobs_company_signature\"","sigCollision":true}}
+{"ts":"2026-05-17T13:18:55.919Z","level":"info","runId":"25988392494-1","company":null,"msg":"Per-row recovery: 35/38 updates succeeded (skipped 3 signature-collisions)","event":"bulk_upsert_recovered","data":{"kind":"update","recovered":35,"total":38,"sigSkipped":3}}
+{"ts":"2026-05-17T13:18:56.181Z","level":"warn","runId":"25988392494-1","company":null,"msg":"Bulk update failed: duplicate key value violates unique constraint \"ux_jobs_company_signature\" — falling back to per-row","event":"bulk_upsert_error","data":{"kind":"update","batchSize":1,"error":"duplicate key value violates unique constraint \"ux_jobs_company_signature\"","sigCollision":true}}
+{"ts":"2026-05-17T13:18:56.444Z","level":"info","runId":"25988392494-1","company":null,"msg":"Per-row recovery: 0/1 updates succeeded (skipped 1 signature-collisions)","event":"bulk_upsert_recovered","data":{"kind":"update","recovered":0,"total":1,"sigSkipped":1}}
+{"ts":"2026-05-17T13:19:00.759Z","level":"warn","runId":"25988392494-1","company":null,"msg":"Bulk update failed: duplicate key value violates unique constraint \"ux_jobs_company_signature\" — falling back to per-row","event":"bulk_upsert_error","data":{"kind":"update","batchSize":27,"error":"duplicate key value violates unique constraint \"ux_jobs_company_signature\"","sigCollision":true}}
+{"ts":"2026-05-17T13:19:07.982Z","level":"info","runId":"25988392494-1","company":null,"msg":"Per-row recovery: 26/27 updates succeeded (skipped 1 signature-collisions)","event":"bulk_upsert_recovered","data":{"kind":"update","recovered":26,"total":27,"sigSkipped":1}}
+{"ts":"2026-05-17T13:19:14.002Z","level":"warn","runId":"25988392494-1","company":null,"msg":"Bulk update failed: duplicate key value violates unique constraint \"ux_jobs_company_signature\" — falling back to per-row","event":"bulk_upsert_error","data":{"kind":"update","batchSize":30,"error":"duplicate key value violates unique constraint \"ux_jobs_company_signature\"","sigCollision":true}}
+{"ts":"2026-05-17T13:19:21.674Z","level":"info","runId":"25988392494-1","company":null,"msg":"Per-row recovery: 28/30 updates succeeded (skipped 2 signature-collisions)","event":"bulk_upsert_recovered","data":{"kind":"update","recovered":28,"total":30,"sigSkipped":2}}
+{"ts":"2026-05-17T13:19:24.794Z","level":"warn","runId":"25988392494-1","company":null,"msg":"Bulk update failed: duplicate key value violates unique constraint \"ux_jobs_company_signature\" — falling back to per-row","event":"bulk_upsert_error","data":{"kind":"update","batchSize":41,"error":"duplicate key value violates unique constraint \"ux_jobs_company_signature\"","sigCollision":true}}
+{"ts":"2026-05-17T13:19:35.240Z","level":"info","runId":"25988392494-1","company":null,"msg":"Per-row recovery: 38/41 updates succeeded (skipped 3 signature-collisions)","event":"bulk_upsert_recovered","data":{"kind":"update","recovered":38,"total":41,"sigSkipped":3}}
+{"ts":"2026-05-17T13:19:42.184Z","level":"warn","runId":"25988392494-1","company":null,"msg":"Bulk update failed: duplicate key value violates unique constraint \"ux_jobs_company_signature\" — falling back to per-row","event":"bulk_upsert_error","data":{"kind":"update","batchSize":26,"error":"duplicate key value violates unique constraint \"ux_jobs_company_signature\"","sigCollision":true}}
+{"ts":"2026-05-17T13:19:48.823Z","level":"info","runId":"25988392494-1","company":null,"msg":"Per-row recovery: 25/26 updates succeeded (skipped 1 signature-collisions)","event":"bulk_upsert_recovered","data":{"kind":"update","recovered":25,"total":26,"sigSkipped":1}}
+{"ts":"2026-05-17T13:19:57.362Z","level":"warn","runId":"25988392494-1","company":null,"msg":"Bulk update failed: duplicate key value violates unique constraint \"ux_jobs_company_signature\" — falling back to per-row","event":"bulk_upsert_error","data":{"kind":"update","batchSize":34,"error":"duplicate key value violates unique constraint \"ux_jobs_company_signature\"","sigCollision":true}}
+{"ts":"2026-05-17T13:20:06.033Z","level":"info","runId":"25988392494-1","company":null,"msg":"Per-row recovery: 31/34 updates succeeded (skipped 3 signature-collisions)","event":"bulk_upsert_recovered","data":{"kind":"update","recovered":31,"total":34,"sigSkipped":3}}
+{"ts":"2026-05-17T13:20:14.630Z","level":"warn","runId":"25988392494-1","company":null,"msg":"Bulk update failed: duplicate key value violates unique constraint \"ux_jobs_company_signature\" — falling back to per-row","event":"bulk_upsert_error","data":{"kind":"update","batchSize":38,"error":"duplicate key value violates unique constraint \"ux_jobs_company_signature\"","sigCollision":true}}
+{"ts":"2026-05-17T13:20:24.401Z","level":"info","runId":"25988392494-1","company":null,"msg":"Per-row recovery: 37/38 updates succeeded (skipped 1 signature-collisions)","event":"bulk_upsert_recovered","data":{"kind":"update","recovered":37,"total":38,"sigSkipped":1}}
+{"ts":"2026-05-17T13:20:29.193Z","level":"warn","runId":"25988392494-1","company":null,"msg":"Bulk update failed: duplicate key value violates unique constraint \"ux_jobs_company_signature\" — falling back to per-row","event":"bulk_upsert_error","data":{"kind":"update","batchSize":35,"error":"duplicate key value violates unique constraint \"ux_jobs_company_signature\"","sigCollision":true}}
+{"ts":"2026-05-17T13:20:38.264Z","level":"info","runId":"25988392494-1","company":null,"msg":"Per-row recovery: 34/35 updates succeeded (skipped 1 signature-collisions)","event":"bulk_upsert_recovered","data":{"kind":"update","recovered":34,"total":35,"sigSkipped":1}}
+{"ts":"2026-05-17T13:20:43.211Z","level":"warn","runId":"25988392494-1","company":null,"msg":"Bulk update failed: duplicate key value violates unique constraint \"ux_jobs_company_signature\" — falling back to per-row","event":"bulk_upsert_error","data":{"kind":"update","batchSize":34,"error":"duplicate key value violates unique constraint \"ux_jobs_company_signature\"","sigCollision":true}}
+{"ts":"2026-05-17T13:20:51.896Z","level":"info","runId":"25988392494-1","company":null,"msg":"Per-row recovery: 31/34 updates succeeded (skipped 3 signature-collisions)","event":"bulk_upsert_recovered","data":{"kind":"update","recovered":31,"total":34,"sigSkipped":3}}
+{"ts":"2026-05-17T13:20:56.309Z","level":"warn","runId":"25988392494-1","company":null,"msg":"Bulk update failed: duplicate key value violates unique constraint \"ux_jobs_company_signature\" — falling back to per-row","event":"bulk_upsert_error","data":{"kind":"update","batchSize":36,"error":"duplicate key value violates unique constraint \"ux_jobs_company_signature\"","sigCollision":true}}
+{"ts":"2026-05-17T13:21:05.511Z","level":"info","runId":"25988392494-1","company":null,"msg":"Per-row recovery: 35/36 updates succeeded (skipped 1 signature-collisions)","event":"bulk_upsert_recovered","data":{"kind":"update","recovered":35,"total":36,"sigSkipped":1}}
+{"ts":"2026-05-17T13:21:10.693Z","level":"warn","runId":"25988392494-1","company":null,"msg":"Bulk update failed: duplicate key value violates unique constraint \"ux_jobs_company_signature\" — falling back to per-row","event":"bulk_upsert_error","data":{"kind":"update","batchSize":38,"error":"duplicate key value violates unique constraint \"ux_jobs_company_signature\"","sigCollision":true}}
+{"ts":"2026-05-17T13:21:20.536Z","level":"info","runId":"25988392494-1","company":null,"msg":"Per-row recovery: 36/38 updates succeeded (skipped 2 signature-collisions)","event":"bulk_upsert_recovered","data":{"kind":"update","recovered":36,"total":38,"sigSkipped":2}}
+{"ts":"2026-05-17T13:21:25.166Z","level":"warn","runId":"25988392494-1","company":null,"msg":"Bulk update failed: duplicate key value violates unique constraint \"ux_jobs_company_signature\" — falling back to per-row","event":"bulk_upsert_error","data":{"kind":"update","batchSize":36,"error":"duplicate key value violates unique constraint \"ux_jobs_company_signature\"","sigCollision":true}}
+{"ts":"2026-05-17T13:21:34.421Z","level":"info","runId":"25988392494-1","company":null,"msg":"Per-row recovery: 33/36 updates succeeded (skipped 3 signature-collisions)","event":"bulk_upsert_recovered","data":{"kind":"update","recovered":33,"total":36,"sigSkipped":3}}
+{"ts":"2026-05-17T13:21:37.354Z","level":"warn","runId":"25988392494-1","company":null,"msg":"Bulk update failed: duplicate key value violates unique constraint \"ux_jobs_company_signature\" — falling back to per-row","event":"bulk_upsert_error","data":{"kind":"update","batchSize":42,"error":"duplicate key value violates unique constraint \"ux_jobs_company_signature\"","sigCollision":true}}
+{"ts":"2026-05-17T13:21:48.044Z","level":"info","runId":"25988392494-1","company":null,"msg":"Per-row recovery: 40/42 updates succeeded (skipped 2 signature-collisions)","event":"bulk_upsert_recovered","data":{"kind":"update","recovered":40,"total":42,"sigSkipped":2}}
+{"ts":"2026-05-17T13:21:54.663Z","level":"warn","runId":"25988392494-1","company":null,"msg":"Bulk update failed: duplicate key value violates unique constraint \"ux_jobs_company_signature\" — falling back to per-row","event":"bulk_upsert_error","data":{"kind":"update","batchSize":38,"error":"duplicate key value violates unique constraint \"ux_jobs_company_signature\"","sigCollision":true}}
+{"ts":"2026-05-17T13:22:04.378Z","level":"info","runId":"25988392494-1","company":null,"msg":"Per-row recovery: 36/38 updates succeeded (skipped 2 signature-collisions)","event":"bulk_upsert_recovered","data":{"kind":"update","recovered":36,"total":38,"sigSkipped":2}}
+{"ts":"2026-05-17T13:22:07.833Z","level":"warn","runId":"25988392494-1","company":null,"msg":"Bulk update failed: duplicate key value violates unique constraint \"ux_jobs_company_signature\" — falling back to per-row","event":"bulk_upsert_error","data":{"kind":"update","batchSize":40,"error":"duplicate key value violates unique constraint \"ux_jobs_company_signature\"","sigCollision":true}}
+{"ts":"2026-05-17T13:22:18.610Z","level":"info","runId":"25988392494-1","company":null,"msg":"Per-row recovery: 39/40 updates succeeded (skipped 1 signature-collisions)","event":"bulk_upsert_recovered","data":{"kind":"update","recovered":39,"total":40,"sigSkipped":1}}
+{"ts":"2026-05-17T13:22:21.899Z","level":"warn","runId":"25988392494-1","company":null,"msg":"Bulk update failed: duplicate key value violates unique constraint \"ux_jobs_company_signature\" — falling back to per-row","event":"bulk_upsert_error","data":{"kind":"update","batchSize":43,"error":"duplicate key value violates unique constraint \"ux_jobs_company_signature\"","sigCollision":true}}
+{"ts":"2026-05-17T13:22:32.995Z","level":"info","runId":"25988392494-1","company":null,"msg":"Per-row recovery: 41/43 updates succeeded (skipped 2 signature-collisions)","event":"bulk_upsert_recovered","data":{"kind":"update","recovered":41,"total":43,"sigSkipped":2}}
+{"ts":"2026-05-17T13:22:34.850Z","level":"warn","runId":"25988392494-1","company":null,"msg":"Bulk update failed: duplicate key value violates unique constraint \"ux_jobs_company_signature\" — falling back to per-row","event":"bulk_upsert_error","data":{"kind":"update","batchSize":18,"error":"duplicate key value violates unique constraint \"ux_jobs_company_signature\"","sigCollision":true}}
+{"ts":"2026-05-17T13:22:39.508Z","level":"info","runId":"25988392494-1","company":null,"msg":"Per-row recovery: 16/18 updates succeeded (skipped 2 signature-collisions)","event":"bulk_upsert_recovered","data":{"kind":"update","recovered":16,"total":18,"sigSkipped":2}}
+{"ts":"2026-05-17T13:22:40.050Z","level":"info","runId":"25988392494-1","company":"amazon","msg":"Inserted: 2, Updated: 2228, Stale: 4, Rejected: 260, deferred: 779","event":"company_done","data":{"inserted":2,"updated":2228,"stale":4,"parseOk":794,"parseErr":58,"skippedBudget":0,"skippedQuota":779,"rejectedNonEng":260,"coverageSkipped":false,"elapsedMs":9151467}}
+{"ts":"2026-05-17T13:22:40.435Z","level":"info","runId":"25988392494-1","company":"apple","msg":"Crawling…","event":"company_start"}
+{"ts":"2026-05-17T13:22:40.435Z","level":"info","runId":"25988392494-1","company":"apple","msg":"Loading page 1..."}
+{"ts":"2026-05-17T13:22:43.896Z","level":"info","runId":"25988392494-1","company":"apple","msg":"Page 1: 20 jobs (total so far: 20)"}
+{"ts":"2026-05-17T13:22:44.897Z","level":"info","runId":"25988392494-1","company":"apple","msg":"Loading page 2..."}
+{"ts":"2026-05-17T13:22:47.496Z","level":"info","runId":"25988392494-1","company":"apple","msg":"Page 2: 20 jobs (total so far: 40)"}
+{"ts":"2026-05-17T13:22:48.497Z","level":"info","runId":"25988392494-1","company":"apple","msg":"Loading page 3..."}
+{"ts":"2026-05-17T13:22:50.984Z","level":"info","runId":"25988392494-1","company":"apple","msg":"Page 3: 20 jobs (total so far: 60)"}
+{"ts":"2026-05-17T13:22:51.985Z","level":"info","runId":"25988392494-1","company":"apple","msg":"Loading page 4..."}
+{"ts":"2026-05-17T13:22:54.496Z","level":"info","runId":"25988392494-1","company":"apple","msg":"Page 4: 20 jobs (total so far: 80)"}
+{"ts":"2026-05-17T13:22:55.496Z","level":"info","runId":"25988392494-1","company":"apple","msg":"Loading page 5..."}
+{"ts":"2026-05-17T13:22:58.010Z","level":"info","runId":"25988392494-1","company":"apple","msg":"Page 5: 20 jobs (total so far: 100)"}
+{"ts":"2026-05-17T13:22:59.012Z","level":"info","runId":"25988392494-1","company":"apple","msg":"Loading page 6..."}
+{"ts":"2026-05-17T13:23:01.557Z","level":"info","runId":"25988392494-1","company":"apple","msg":"Page 6: 20 jobs (total so far: 120)"}
+{"ts":"2026-05-17T13:23:02.557Z","level":"info","runId":"25988392494-1","company":"apple","msg":"Loading page 7..."}
+{"ts":"2026-05-17T13:23:05.078Z","level":"info","runId":"25988392494-1","company":"apple","msg":"Page 7: 20 jobs (total so far: 140)"}
+{"ts":"2026-05-17T13:23:06.079Z","level":"info","runId":"25988392494-1","company":"apple","msg":"Loading page 8..."}
+{"ts":"2026-05-17T13:23:08.622Z","level":"info","runId":"25988392494-1","company":"apple","msg":"Page 8: 20 jobs (total so far: 160)"}
+{"ts":"2026-05-17T13:23:09.623Z","level":"info","runId":"25988392494-1","company":"apple","msg":"Loading page 9..."}
+{"ts":"2026-05-17T13:23:12.151Z","level":"info","runId":"25988392494-1","company":"apple","msg":"Page 9: 20 jobs (total so far: 180)"}
+{"ts":"2026-05-17T13:23:13.151Z","level":"info","runId":"25988392494-1","company":"apple","msg":"Loading page 10..."}
+{"ts":"2026-05-17T13:23:15.656Z","level":"info","runId":"25988392494-1","company":"apple","msg":"Page 10: 20 jobs (total so far: 200)"}
+{"ts":"2026-05-17T13:23:16.658Z","level":"info","runId":"25988392494-1","company":"apple","msg":"Loading page 11..."}
+{"ts":"2026-05-17T13:23:19.152Z","level":"info","runId":"25988392494-1","company":"apple","msg":"Page 11: 20 jobs (total so far: 220)"}
+{"ts":"2026-05-17T13:23:20.153Z","level":"info","runId":"25988392494-1","company":"apple","msg":"Loading page 12..."}
+{"ts":"2026-05-17T13:23:22.599Z","level":"info","runId":"25988392494-1","company":"apple","msg":"Page 12: 7 jobs (total so far: 227)"}
+{"ts":"2026-05-17T13:23:23.600Z","level":"info","runId":"25988392494-1","company":"apple","msg":"Loading page 13..."}
+{"ts":"2026-05-17T13:23:26.001Z","level":"info","runId":"25988392494-1","company":"apple","msg":"No new jobs on page 13, stopping"}
+{"ts":"2026-05-17T13:23:26.001Z","level":"info","runId":"25988392494-1","company":"apple","msg":"Total: 227 India jobs"}
+{"ts":"2026-05-17T13:23:49.648Z","level":"info","runId":"25988392494-1","company":"apple","msg":"  enrich progress: 25/227 | ok=25 err=0"}
+{"ts":"2026-05-17T13:24:10.194Z","level":"info","runId":"25988392494-1","company":"apple","msg":"  enrich progress: 50/227 | ok=50 err=0"}
+{"ts":"2026-05-17T13:24:30.222Z","level":"info","runId":"25988392494-1","company":"apple","msg":"  enrich progress: 75/227 | ok=75 err=0"}
+{"ts":"2026-05-17T13:24:50.501Z","level":"info","runId":"25988392494-1","company":"apple","msg":"  enrich progress: 100/227 | ok=100 err=0"}
+{"ts":"2026-05-17T13:25:13.772Z","level":"info","runId":"25988392494-1","company":"apple","msg":"  enrich progress: 125/227 | ok=125 err=0"}
+{"ts":"2026-05-17T13:25:35.836Z","level":"info","runId":"25988392494-1","company":"apple","msg":"  enrich progress: 150/227 | ok=150 err=0"}
+{"ts":"2026-05-17T13:25:56.079Z","level":"info","runId":"25988392494-1","company":"apple","msg":"  enrich progress: 175/227 | ok=175 err=0"}
+{"ts":"2026-05-17T13:26:18.258Z","level":"info","runId":"25988392494-1","company":"apple","msg":"  enrich progress: 200/227 | ok=200 err=0"}
+{"ts":"2026-05-17T13:26:39.025Z","level":"info","runId":"25988392494-1","company":"apple","msg":"  enrich progress: 225/227 | ok=225 err=0"}
+{"ts":"2026-05-17T13:26:41.861Z","level":"info","runId":"25988392494-1","company":"apple","msg":"Enriched descriptions: 227/227 | errors=0 | 196s"}
+{"ts":"2026-05-17T13:26:41.861Z","level":"info","runId":"25988392494-1","company":"apple","msg":"Scraped 227 raw jobs in 241s","event":"scrape_done","data":{"rawCount":227}}
+{"ts":"2026-05-17T13:26:41.988Z","level":"info","runId":"25988392494-1","company":"apple","msg":"223 India jobs after normalization","event":"normalize_done","data":{"kept":223,"dropped":4}}
+{"ts":"2026-05-17T13:26:43.197Z","level":"info","runId":"25988392494-1","company":"apple","msg":"Parse decision: 0 to parse, 217 skip (already parsed, unchanged), 6 rejected (non-engineering title)"}
+{"ts":"2026-05-17T13:26:46.971Z","level":"info","runId":"25988392494-1","company":"apple","msg":"Inserted: 0, Updated: 217, Stale: 0, Rejected: 6","event":"company_done","data":{"inserted":0,"updated":217,"stale":0,"parseOk":0,"parseErr":0,"skippedBudget":0,"skippedQuota":0,"rejectedNonEng":6,"coverageSkipped":false,"elapsedMs":246536}}
+{"ts":"2026-05-17T13:26:47.344Z","level":"info","runId":"25988392494-1","company":"atlassian","msg":"Crawling…","event":"company_start"}
+{"ts":"2026-05-17T13:27:00.370Z","level":"info","runId":"25988392494-1","company":"atlassian","msg":"HTML fallback: 0 job link(s) (filtered 0 nav)"}
+{"ts":"2026-05-17T13:27:00.370Z","level":"info","runId":"25988392494-1","company":"atlassian","msg":"Total: 0 jobs"}
+{"ts":"2026-05-17T13:27:00.370Z","level":"info","runId":"25988392494-1","company":"atlassian","msg":"Scraped 0 raw jobs in 13s","event":"scrape_done","data":{"rawCount":0}}
+{"ts":"2026-05-17T13:27:00.370Z","level":"info","runId":"25988392494-1","company":"atlassian","msg":"0 India jobs after normalization","event":"normalize_done","data":{"kept":0,"dropped":0}}
+{"ts":"2026-05-17T13:27:00.871Z","level":"info","runId":"25988392494-1","company":"nvidia","msg":"Crawling…","event":"company_start"}
+{"ts":"2026-05-17T13:27:00.872Z","level":"info","runId":"25988392494-1","company":"nvidia","msg":"Fetching offset 0 / ?..."}
+{"ts":"2026-05-17T13:27:02.208Z","level":"info","runId":"25988392494-1","company":"nvidia","msg":"Fetching offset 20 / 198..."}
+{"ts":"2026-05-17T13:27:03.331Z","level":"info","runId":"25988392494-1","company":"nvidia","msg":"Fetching offset 40 / 198..."}
+{"ts":"2026-05-17T13:27:04.693Z","level":"info","runId":"25988392494-1","company":"nvidia","msg":"Fetching offset 60 / 198..."}
+{"ts":"2026-05-17T13:27:05.856Z","level":"info","runId":"25988392494-1","company":"nvidia","msg":"Fetching offset 80 / 198..."}
+{"ts":"2026-05-17T13:27:06.973Z","level":"info","runId":"25988392494-1","company":"nvidia","msg":"Fetching offset 100 / 198..."}
+{"ts":"2026-05-17T13:27:08.101Z","level":"info","runId":"25988392494-1","company":"nvidia","msg":"Fetching offset 120 / 198..."}
+{"ts":"2026-05-17T13:27:09.241Z","level":"info","runId":"25988392494-1","company":"nvidia","msg":"Fetching offset 140 / 198..."}
+{"ts":"2026-05-17T13:27:10.385Z","level":"info","runId":"25988392494-1","company":"nvidia","msg":"Fetching offset 160 / 198..."}
+{"ts":"2026-05-17T13:27:11.608Z","level":"info","runId":"25988392494-1","company":"nvidia","msg":"Fetching offset 180 / 198..."}
+{"ts":"2026-05-17T13:27:12.241Z","level":"info","runId":"25988392494-1","company":"nvidia","msg":"Total: 198 India jobs"}
+{"ts":"2026-05-17T13:27:33.918Z","level":"info","runId":"25988392494-1","company":"nvidia","msg":"  enrich progress: 25/198 | ok=25 err=0"}
+{"ts":"2026-05-17T13:27:53.083Z","level":"info","runId":"25988392494-1","company":"nvidia","msg":"  enrich progress: 50/198 | ok=50 err=0"}
+{"ts":"2026-05-17T13:28:32.364Z","level":"warn","runId":"25988392494-1","company":"nvidia","msg":"detail err [Senior DFT Verification Engineer]: page.goto: Timeout 35000ms exceeded."}
+{"ts":"2026-05-17T13:28:32.482Z","level":"warn","runId":"25988392494-1","company":"nvidia","msg":"detail err [Senior Compute System Software Engineer]: page.goto: Timeout 35000ms exceeded."}
+{"ts":"2026-05-17T13:28:34.374Z","level":"warn","runId":"25988392494-1","company":"nvidia","msg":"detail err [Senior Safety Architect - DRIVE SW]: page.goto: Timeout 35000ms exceeded."}
+{"ts":"2026-05-17T13:28:46.093Z","level":"info","runId":"25988392494-1","company":"nvidia","msg":"  enrich progress: 75/198 | ok=71 err=4"}
+{"ts":"2026-05-17T13:29:05.680Z","level":"info","runId":"25988392494-1","company":"nvidia","msg":"  enrich progress: 100/198 | ok=96 err=4"}
+{"ts":"2026-05-17T13:29:27.228Z","level":"info","runId":"25988392494-1","company":"nvidia","msg":"  enrich progress: 125/198 | ok=121 err=4"}
+{"ts":"2026-05-17T13:29:48.762Z","level":"info","runId":"25988392494-1","company":"nvidia","msg":"  enrich progress: 150/198 | ok=140 err=4"}
+{"ts":"2026-05-17T13:30:12.888Z","level":"info","runId":"25988392494-1","company":"nvidia","msg":"  enrich progress: 175/198 | ok=155 err=5"}
+{"ts":"2026-05-17T13:30:31.891Z","level":"info","runId":"25988392494-1","company":"nvidia","msg":"Enriched descriptions: 175/198 | errors=5 | 200s"}
+{"ts":"2026-05-17T13:30:31.891Z","level":"info","runId":"25988392494-1","company":"nvidia","msg":"Scraped 198 raw jobs in 211s","event":"scrape_done","data":{"rawCount":198}}
+{"ts":"2026-05-17T13:30:31.975Z","level":"info","runId":"25988392494-1","company":"nvidia","msg":"144 India jobs after normalization","event":"normalize_done","data":{"kept":144,"dropped":54}}
+{"ts":"2026-05-17T13:30:33.418Z","level":"info","runId":"25988392494-1","company":"nvidia","msg":"Parse decision: 30 to parse, 114 skip (already parsed, unchanged)"}
+{"ts":"2026-05-17T13:30:33.418Z","level":"info","runId":"25988392494-1","company":"nvidia","msg":"Parsing 30 JDs with 3 workers across 3 keys (budget=10000/run)…"}
+{"ts":"2026-05-17T13:36:33.827Z","level":"warn","runId":"25988392494-1","company":"nvidia","msg":"Gemini quota exhausted before this company could start (0 successes in 18 attempts). 10 job(s) deferred — will be retried next crawl.","event":"cold_quota_bail","data":{"attempts":18,"deferred":10}}
+{"ts":"2026-05-17T13:37:33.906Z","level":"warn","runId":"25988392494-1","company":"nvidia","msg":"  parse err [Senior Verification Engineer, PCIE]: quota_disabled"}
+{"ts":"2026-05-17T13:37:33.906Z","level":"info","runId":"25988392494-1","company":"nvidia","msg":"Parse done: ok=0 err=20 quota_skip=10 | 420s (NVIDIA)"}
+{"ts":"2026-05-17T13:37:33.906Z","level":"warn","runId":"25988392494-1","company":"nvidia","msg":"  parse err [Senior DFT Engineer - Hardware]: quota_disabled"}
+{"ts":"2026-05-17T13:37:33.906Z","level":"warn","runId":"25988392494-1","company":"nvidia","msg":"  parse err [Senior DFT Verification Engineer]: quota_disabled"}
+{"ts":"2026-05-17T13:37:33.906Z","level":"warn","runId":"25988392494-1","company":"nvidia","msg":"  parse err [Senior Verification Engineer, Memory Subsystem]: quota_disabled"}
+{"ts":"2026-05-17T13:37:33.906Z","level":"warn","runId":"25988392494-1","company":"nvidia","msg":"  parse err [Senior ASIC Design Engineer - NOC IP]: quota_disabled"}
+{"ts":"2026-05-17T13:37:37.293Z","level":"warn","runId":"25988392494-1","company":null,"msg":"Bulk update failed: duplicate key value violates unique constraint \"ux_jobs_company_signature\" — falling back to per-row","event":"bulk_upsert_error","data":{"kind":"update","batchSize":46,"error":"duplicate key value violates unique constraint \"ux_jobs_company_signature\"","sigCollision":true}}
+{"ts":"2026-05-17T13:37:49.273Z","level":"info","runId":"25988392494-1","company":null,"msg":"Per-row recovery: 45/46 updates succeeded (skipped 1 signature-collisions)","event":"bulk_upsert_recovered","data":{"kind":"update","recovered":45,"total":46,"sigSkipped":1}}
+{"ts":"2026-05-17T13:37:54.212Z","level":"warn","runId":"25988392494-1","company":null,"msg":"Bulk update failed: duplicate key value violates unique constraint \"ux_jobs_company_signature\" — falling back to per-row","event":"bulk_upsert_error","data":{"kind":"update","batchSize":35,"error":"duplicate key value violates unique constraint \"ux_jobs_company_signature\"","sigCollision":true}}
+{"ts":"2026-05-17T13:38:03.091Z","level":"info","runId":"25988392494-1","company":null,"msg":"Per-row recovery: 33/35 updates succeeded (skipped 2 signature-collisions)","event":"bulk_upsert_recovered","data":{"kind":"update","recovered":33,"total":35,"sigSkipped":2}}
+{"ts":"2026-05-17T13:38:03.859Z","level":"info","runId":"25988392494-1","company":"nvidia","msg":"Inserted: 4, Updated: 137, Stale: 0, deferred: 10","event":"company_done","data":{"inserted":4,"updated":137,"stale":0,"parseOk":0,"parseErr":20,"skippedBudget":0,"skippedQuota":10,"rejectedNonEng":0,"coverageSkipped":false,"elapsedMs":662988}}
+{"ts":"2026-05-17T13:38:04.227Z","level":"info","runId":"25988392494-1","company":"oracle","msg":"Crawling…","event":"company_start"}
+{"ts":"2026-05-17T13:38:04.227Z","level":"info","runId":"25988392494-1","company":"oracle","msg":"Fetching offset 0 / ?..."}
+{"ts":"2026-05-17T13:38:05.636Z","level":"info","runId":"25988392494-1","company":"oracle","msg":"Fetching offset 25 / 61..."}
+{"ts":"2026-05-17T13:38:06.974Z","level":"info","runId":"25988392494-1","company":"oracle","msg":"Fetching offset 50 / 61..."}
+{"ts":"2026-05-17T13:38:07.434Z","level":"info","runId":"25988392494-1","company":"oracle","msg":"Total: 60 India jobs"}
+{"ts":"2026-05-17T13:38:42.476Z","level":"warn","runId":"25988392494-1","company":"oracle","msg":"detail err [Software Developer 4]: page.goto: Timeout 35000ms exceeded."}
+{"ts":"2026-05-17T13:38:42.680Z","level":"info","runId":"25988392494-1","company":"oracle","msg":"Enriched descriptions: 1/60 | errors=1 | 35s"}
+{"ts":"2026-05-17T13:38:42.680Z","level":"info","runId":"25988392494-1","company":"oracle","msg":"Scraped 60 raw jobs in 38s","event":"scrape_done","data":{"rawCount":60}}
+{"ts":"2026-05-17T13:38:42.690Z","level":"info","runId":"25988392494-1","company":"oracle","msg":"60 India jobs after normalization","event":"normalize_done","data":{"kept":60,"dropped":0}}
+{"ts":"2026-05-17T13:38:43.120Z","level":"info","runId":"25988392494-1","company":"oracle","msg":"Parse decision: 19 to parse, 29 skip (already parsed, unchanged), 12 rejected (non-engineering title)"}
+{"ts":"2026-05-17T13:38:43.120Z","level":"info","runId":"25988392494-1","company":"oracle","msg":"Parsing 19 JDs with 3 workers across 3 keys (budget=10000/run)…"}
+{"ts":"2026-05-17T13:44:33.730Z","level":"warn","runId":"25988392494-1","company":"oracle","msg":"Gemini quota exhausted before this company could start (0 successes in 18 attempts). 0 job(s) deferred — will be retried next crawl.","event":"cold_quota_bail","data":{"attempts":18,"deferred":0}}
+{"ts":"2026-05-17T13:45:34.039Z","level":"info","runId":"25988392494-1","company":"oracle","msg":"  parse: 19/19 ok=0 err=19"}
+{"ts":"2026-05-17T13:45:34.039Z","level":"info","runId":"25988392494-1","company":"oracle","msg":"Parse done: ok=0 err=19 | 411s (Oracle)"}
+{"ts":"2026-05-17T13:45:34.039Z","level":"warn","runId":"25988392494-1","company":"oracle","msg":"  parse err [Customer Service Analyst (Oracle Hospitality)]: quota_disabled"}
+{"ts":"2026-05-17T13:45:34.039Z","level":"warn","runId":"25988392494-1","company":"oracle","msg":"  parse err [Customer Service Analyst (Oracle Hospitality)]: quota_disabled"}
+{"ts":"2026-05-17T13:45:34.039Z","level":"warn","runId":"25988392494-1","company":"oracle","msg":"  parse err [Software Developer 4]: quota_disabled"}
+{"ts":"2026-05-17T13:45:34.039Z","level":"warn","runId":"25988392494-1","company":"oracle","msg":"  parse err [Multi-Cloud Sales Specialist , India West Region]: quota_disabled"}
+{"ts":"2026-05-17T13:45:34.039Z","level":"warn","runId":"25988392494-1","company":"oracle","msg":"  parse err [Customer Service Analyst 1-Support]: quota_disabled"}
+{"ts":"2026-05-17T13:45:40.570Z","level":"warn","runId":"25988392494-1","company":null,"msg":"Bulk update failed: duplicate key value violates unique constraint \"ux_jobs_company_signature\" — falling back to per-row","event":"bulk_upsert_error","data":{"kind":"update","batchSize":31,"error":"duplicate key value violates unique constraint \"ux_jobs_company_signature\"","sigCollision":true}}
+{"ts":"2026-05-17T13:45:48.494Z","level":"info","runId":"25988392494-1","company":null,"msg":"Per-row recovery: 25/31 updates succeeded (skipped 6 signature-collisions)","event":"bulk_upsert_recovered","data":{"kind":"update","recovered":25,"total":31,"sigSkipped":6}}
+{"ts":"2026-05-17T13:45:49.011Z","level":"info","runId":"25988392494-1","company":"oracle","msg":"Inserted: 0, Updated: 42, Stale: 3, Rejected: 12","event":"company_done","data":{"inserted":0,"updated":42,"stale":3,"parseOk":0,"parseErr":19,"skippedBudget":0,"skippedQuota":0,"rejectedNonEng":12,"coverageSkipped":false,"elapsedMs":464784}}
+{"ts":"2026-05-17T13:45:49.876Z","level":"info","runId":"25988392494-1","company":"salesforce","msg":"Crawling…","event":"company_start"}
+{"ts":"2026-05-17T13:45:49.877Z","level":"info","runId":"25988392494-1","company":"salesforce","msg":"Fetching offset 0 / ?..."}
+{"ts":"2026-05-17T13:45:50.842Z","level":"info","runId":"25988392494-1","company":"salesforce","msg":"Fetching offset 20 / 146..."}
+{"ts":"2026-05-17T13:45:51.732Z","level":"info","runId":"25988392494-1","company":"salesforce","msg":"Fetching offset 40 / 146..."}
+{"ts":"2026-05-17T13:45:52.618Z","level":"info","runId":"25988392494-1","company":"salesforce","msg":"Fetching offset 60 / 146..."}
+{"ts":"2026-05-17T13:45:53.518Z","level":"info","runId":"25988392494-1","company":"salesforce","msg":"Fetching offset 80 / 146..."}
+{"ts":"2026-05-17T13:45:54.424Z","level":"info","runId":"25988392494-1","company":"salesforce","msg":"Fetching offset 100 / 146..."}
+{"ts":"2026-05-17T13:45:55.326Z","level":"info","runId":"25988392494-1","company":"salesforce","msg":"Fetching offset 120 / 146..."}
+{"ts":"2026-05-17T13:45:56.219Z","level":"info","runId":"25988392494-1","company":"salesforce","msg":"Fetching offset 140 / 146..."}
+{"ts":"2026-05-17T13:45:56.614Z","level":"info","runId":"25988392494-1","company":"salesforce","msg":"Total: 146 India jobs"}
+{"ts":"2026-05-17T13:46:17.824Z","level":"info","runId":"25988392494-1","company":"salesforce","msg":"  enrich progress: 25/146 | ok=25 err=0"}
+{"ts":"2026-05-17T13:46:36.030Z","level":"info","runId":"25988392494-1","company":"salesforce","msg":"  enrich progress: 50/146 | ok=50 err=0"}
+{"ts":"2026-05-17T13:47:17.476Z","level":"warn","runId":"25988392494-1","company":"salesforce","msg":"detail err [Territory Account Executive]: page.goto: Timeout 35000ms exceeded."}
+{"ts":"2026-05-17T13:47:19.859Z","level":"warn","runId":"25988392494-1","company":"salesforce","msg":"detail err [Salesforce Success Architect - Agentforc]: page.goto: Timeout 35000ms exceeded."}
+{"ts":"2026-05-17T13:47:19.974Z","level":"warn","runId":"25988392494-1","company":"salesforce","msg":"detail err [Territory Account Executive]: page.goto: Timeout 35000ms exceeded."}
+{"ts":"2026-05-17T13:47:25.972Z","level":"info","runId":"25988392494-1","company":"salesforce","msg":"  enrich progress: 75/146 | ok=69 err=4"}
+{"ts":"2026-05-17T13:47:45.260Z","level":"info","runId":"25988392494-1","company":"salesforce","msg":"  enrich progress: 100/146 | ok=94 err=4"}
+{"ts":"2026-05-17T13:48:04.604Z","level":"info","runId":"25988392494-1","company":"salesforce","msg":"  enrich progress: 125/146 | ok=119 err=4"}
+{"ts":"2026-05-17T13:48:47.131Z","level":"info","runId":"25988392494-1","company":"salesforce","msg":"Enriched descriptions: 134/146 | errors=5 | 171s"}
+{"ts":"2026-05-17T13:48:47.131Z","level":"info","runId":"25988392494-1","company":"salesforce","msg":"Scraped 146 raw jobs in 177s","event":"scrape_done","data":{"rawCount":146}}
+{"ts":"2026-05-17T13:48:47.260Z","level":"info","runId":"25988392494-1","company":"salesforce","msg":"72 India jobs after normalization","event":"normalize_done","data":{"kept":72,"dropped":74}}
+{"ts":"2026-05-17T13:48:48.055Z","level":"info","runId":"25988392494-1","company":"salesforce","msg":"Parse decision: 8 to parse, 36 skip (already parsed, unchanged), 28 rejected (non-engineering title)"}
+{"ts":"2026-05-17T13:48:48.055Z","level":"info","runId":"25988392494-1","company":"salesforce","msg":"Parsing 8 JDs with 3 workers across 3 keys (budget=10000/run)…"}
+{"ts":"2026-05-17T13:51:33.914Z","level":"warn","runId":"25988392494-1","company":"salesforce","msg":"  parse err [Software Engineering PMTS]: quota_disabled"}
+{"ts":"2026-05-17T13:51:33.914Z","level":"warn","runId":"25988392494-1","company":"salesforce","msg":"  parse err [Data Analytics and AI Solutions Lead]: quota_disabled"}
+{"ts":"2026-05-17T13:51:33.914Z","level":"info","runId":"25988392494-1","company":"salesforce","msg":"  parse: 8/8 ok=0 err=8"}
+{"ts":"2026-05-17T13:51:33.914Z","level":"warn","runId":"25988392494-1","company":"salesforce","msg":"  parse err [Principal Software Engineer / PMTS - Fullstack]: quota_disabled"}
+{"ts":"2026-05-17T13:51:33.914Z","level":"warn","runId":"25988392494-1","company":"salesforce","msg":"  parse err [Senior Manager, Software Engineering (QTC, R2R, Revenue Reco]: quota_disabled"}
+{"ts":"2026-05-17T13:51:33.914Z","level":"warn","runId":"25988392494-1","company":"salesforce","msg":"  parse err [Solution Architect]: quota_disabled"}
+{"ts":"2026-05-17T13:51:33.914Z","level":"info","runId":"25988392494-1","company":"salesforce","msg":"Parse done: ok=0 err=8 | 166s (Salesforce)"}
+{"ts":"2026-05-17T13:51:35.929Z","level":"warn","runId":"25988392494-1","company":null,"msg":"Bulk update failed: duplicate key value violates unique constraint \"ux_jobs_company_signature\" — falling back to per-row","event":"bulk_upsert_error","data":{"kind":"update","batchSize":43,"error":"duplicate key value violates unique constraint \"ux_jobs_company_signature\"","sigCollision":true}}
+{"ts":"2026-05-17T13:51:47.209Z","level":"info","runId":"25988392494-1","company":null,"msg":"Per-row recovery: 42/43 updates succeeded (skipped 1 signature-collisions)","event":"bulk_upsert_recovered","data":{"kind":"update","recovered":42,"total":43,"sigSkipped":1}}
+{"ts":"2026-05-17T13:51:47.992Z","level":"info","runId":"25988392494-1","company":"salesforce","msg":"Inserted: 1, Updated: 42, Stale: 1, Rejected: 28","event":"company_done","data":{"inserted":1,"updated":42,"stale":1,"parseOk":0,"parseErr":8,"skippedBudget":0,"skippedQuota":0,"rejectedNonEng":28,"coverageSkipped":false,"elapsedMs":358116}}
+{"ts":"2026-05-17T13:51:48.360Z","level":"info","runId":"25988392494-1","company":"sap-labs","msg":"Crawling…","event":"company_start"}
+{"ts":"2026-05-17T13:51:49.502Z","level":"info","runId":"25988392494-1","company":"sap-labs","msg":"Total jobs reported: 142"}
+{"ts":"2026-05-17T13:51:49.502Z","level":"info","runId":"25988392494-1","company":"sap-labs","msg":"Offset 0: 25 jobs (total so far: 25)"}
+{"ts":"2026-05-17T13:51:49.856Z","level":"info","runId":"25988392494-1","company":"sap-labs","msg":"Offset 25: 25 jobs (total so far: 50)"}
+{"ts":"2026-05-17T13:51:50.209Z","level":"info","runId":"25988392494-1","company":"sap-labs","msg":"Offset 50: 25 jobs (total so far: 75)"}
+{"ts":"2026-05-17T13:51:50.634Z","level":"info","runId":"25988392494-1","company":"sap-labs","msg":"Offset 75: 25 jobs (total so far: 100)"}
+{"ts":"2026-05-17T13:51:51.046Z","level":"info","runId":"25988392494-1","company":"sap-labs","msg":"Offset 100: 25 jobs (total so far: 125)"}
+{"ts":"2026-05-17T13:51:51.403Z","level":"info","runId":"25988392494-1","company":"sap-labs","msg":"Offset 125: 17 jobs (total so far: 142)"}
+{"ts":"2026-05-17T13:51:51.404Z","level":"info","runId":"25988392494-1","company":"sap-labs","msg":"Total: 142 India jobs"}
+{"ts":"2026-05-17T13:52:31.454Z","level":"warn","runId":"25988392494-1","company":"sap-labs","msg":"detail err [Senior DevOps Engineer (Jenkins, Concour]: page.goto: Timeout 40000ms exceeded."}
+{"ts":"2026-05-17T13:52:31.456Z","level":"warn","runId":"25988392494-1","company":"sap-labs","msg":"detail err [Cyber Security Design Sr Specialist]: page.goto: Timeout 40000ms exceeded."}
+{"ts":"2026-05-17T13:52:31.456Z","level":"warn","runId":"25988392494-1","company":"sap-labs","msg":"detail err [Business Processes Consultant - SAP GTS]: page.goto: Timeout 40000ms exceeded."}
+{"ts":"2026-05-17T13:56:32.669Z","level":"info","runId":"25988392494-1","company":"sap-labs","msg":"  enrich progress: 25/142 | ok=0 err=25"}
+{"ts":"2026-05-17T13:57:53.296Z","level":"info","runId":"25988392494-1","company":"sap-labs","msg":"Enriched descriptions: 0/142 | errors=36 | 362s"}
+{"ts":"2026-05-17T13:57:53.296Z","level":"info","runId":"25988392494-1","company":"sap-labs","msg":"Scraped 142 raw jobs in 365s","event":"scrape_done","data":{"rawCount":142}}
+{"ts":"2026-05-17T13:57:53.304Z","level":"info","runId":"25988392494-1","company":"sap-labs","msg":"137 India jobs after normalization","event":"normalize_done","data":{"kept":137,"dropped":5}}
+{"ts":"2026-05-17T13:57:54.045Z","level":"info","runId":"25988392494-1","company":"sap-labs","msg":"Parse decision: 5 to parse, 113 skip (already parsed, unchanged), 19 rejected (non-engineering title)"}
+{"ts":"2026-05-17T13:57:54.045Z","level":"info","runId":"25988392494-1","company":"sap-labs","msg":"Parsing 5 JDs with 3 workers across 3 keys (budget=10000/run)…"}
+{"ts":"2026-05-17T13:59:33.759Z","level":"info","runId":"25988392494-1","company":"sap-labs","msg":"  parse: 5/5 ok=0 err=5"}
+{"ts":"2026-05-17T13:59:33.759Z","level":"info","runId":"25988392494-1","company":"sap-labs","msg":"Parse done: ok=0 err=5 | 100s (SAP Labs)"}
+{"ts":"2026-05-17T13:59:33.759Z","level":"warn","runId":"25988392494-1","company":"sap-labs","msg":"  parse err [IT Technology Services Senior Specialist]: quota_disabled"}
+{"ts":"2026-05-17T13:59:33.759Z","level":"warn","runId":"25988392494-1","company":"sap-labs","msg":"  parse err [Cyber Security Design Sr Specialist]: quota_disabled"}
+{"ts":"2026-05-17T13:59:33.759Z","level":"warn","runId":"25988392494-1","company":"sap-labs","msg":"  parse err [IT Business Services Senior Consultant]: quota_disabled"}
+{"ts":"2026-05-17T13:59:33.759Z","level":"warn","runId":"25988392494-1","company":"sap-labs","msg":"  parse err [Technical Product Manager (m/f/d) for API Management @ BTP I]: quota_disabled"}
+{"ts":"2026-05-17T13:59:33.759Z","level":"warn","runId":"25988392494-1","company":"sap-labs","msg":"  parse err [Data and Applied Scientist]: quota_disabled"}
+{"ts":"2026-05-17T13:59:36.878Z","level":"warn","runId":"25988392494-1","company":null,"msg":"Bulk update failed: duplicate key value violates unique constraint \"ux_jobs_company_signature\" — falling back to per-row","event":"bulk_upsert_error","data":{"kind":"update","batchSize":49,"error":"duplicate key value violates unique constraint \"ux_jobs_company_signature\"","sigCollision":true}}
+{"ts":"2026-05-17T13:59:49.213Z","level":"info","runId":"25988392494-1","company":null,"msg":"Per-row recovery: 48/49 updates succeeded (skipped 1 signature-collisions)","event":"bulk_upsert_recovered","data":{"kind":"update","recovered":48,"total":49,"sigSkipped":1}}
+{"ts":"2026-05-17T13:59:51.239Z","level":"info","runId":"25988392494-1","company":"sap-labs","msg":"Inserted: 1, Updated: 116, Stale: 0, Rejected: 19","event":"company_done","data":{"inserted":1,"updated":116,"stale":0,"parseOk":0,"parseErr":5,"skippedBudget":0,"skippedQuota":0,"rejectedNonEng":19,"coverageSkipped":false,"elapsedMs":482879}}
+{"ts":"2026-05-17T13:59:51.641Z","level":"info","runId":"25988392494-1","company":"razorpay","msg":"Crawling…","event":"company_start"}
+{"ts":"2026-05-17T13:59:51.943Z","level":"info","runId":"25988392494-1","company":"razorpay","msg":"Total: 55 jobs"}
+{"ts":"2026-05-17T13:59:51.944Z","level":"info","runId":"25988392494-1","company":"razorpay","msg":"Scraped 55 raw jobs in 0s","event":"scrape_done","data":{"rawCount":55}}
+{"ts":"2026-05-17T13:59:51.999Z","level":"info","runId":"25988392494-1","company":"razorpay","msg":"49 India jobs after normalization","event":"normalize_done","data":{"kept":49,"dropped":6}}
+{"ts":"2026-05-17T13:59:52.256Z","level":"info","runId":"25988392494-1","company":"razorpay","msg":"Parse decision: 8 to parse, 39 skip (already parsed, unchanged), 2 rejected (non-engineering title)"}
+{"ts":"2026-05-17T13:59:52.256Z","level":"info","runId":"25988392494-1","company":"razorpay","msg":"Parsing 8 JDs with 3 workers across 3 keys (budget=10000/run)…"}
+{"ts":"2026-05-17T14:02:34.049Z","level":"info","runId":"25988392494-1","company":"razorpay","msg":"  parse: 8/8 ok=0 err=8"}
+{"ts":"2026-05-17T14:02:34.049Z","level":"warn","runId":"25988392494-1","company":"razorpay","msg":"  parse err [Engineering Manager]: quota_disabled"}
+{"ts":"2026-05-17T14:02:34.049Z","level":"warn","runId":"25988392494-1","company":"razorpay","msg":"  parse err [Engineering Manager]: quota_disabled"}
+{"ts":"2026-05-17T14:02:34.049Z","level":"warn","runId":"25988392494-1","company":"razorpay","msg":"  parse err [Lead Software Development Engineer]: quota_disabled"}
+{"ts":"2026-05-17T14:02:34.049Z","level":"warn","runId":"25988392494-1","company":"razorpay","msg":"  parse err [Product Designer II]: quota_disabled"}
+{"ts":"2026-05-17T14:02:34.049Z","level":"warn","runId":"25988392494-1","company":"razorpay","msg":"  parse err [Manager, HRBP]: quota_disabled"}
+{"ts":"2026-05-17T14:02:34.049Z","level":"info","runId":"25988392494-1","company":"razorpay","msg":"Parse done: ok=0 err=8 | 162s (Razorpay)"}
+{"ts":"2026-05-17T14:02:38.462Z","level":"warn","runId":"25988392494-1","company":null,"msg":"Bulk update failed: duplicate key value violates unique constraint \"ux_jobs_company_signature\" — falling back to per-row","event":"bulk_upsert_error","data":{"kind":"update","batchSize":39,"error":"duplicate key value violates unique constraint \"ux_jobs_company_signature\"","sigCollision":true}}
+{"ts":"2026-05-17T14:02:49.096Z","level":"info","runId":"25988392494-1","company":null,"msg":"Per-row recovery: 34/39 updates succeeded (skipped 5 signature-collisions)","event":"bulk_upsert_recovered","data":{"kind":"update","recovered":34,"total":39,"sigSkipped":5}}
+{"ts":"2026-05-17T14:02:49.598Z","level":"info","runId":"25988392494-1","company":"razorpay","msg":"Inserted: 0, Updated: 42, Stale: 0, Rejected: 2","event":"company_done","data":{"inserted":0,"updated":42,"stale":0,"parseOk":0,"parseErr":8,"skippedBudget":0,"skippedQuota":0,"rejectedNonEng":2,"coverageSkipped":false,"elapsedMs":177957}}
+{"ts":"2026-05-17T14:02:49.956Z","level":"info","runId":"25988392494-1","company":"phonepe","msg":"Crawling…","event":"company_start"}
+{"ts":"2026-05-17T14:02:50.136Z","level":"info","runId":"25988392494-1","company":"phonepe","msg":"Total: 46 jobs"}
+{"ts":"2026-05-17T14:02:50.136Z","level":"info","runId":"25988392494-1","company":"phonepe","msg":"Scraped 46 raw jobs in 0s","event":"scrape_done","data":{"rawCount":46}}
+{"ts":"2026-05-17T14:02:50.178Z","level":"info","runId":"25988392494-1","company":"phonepe","msg":"42 India jobs after normalization","event":"normalize_done","data":{"kept":42,"dropped":4}}
+{"ts":"2026-05-17T14:02:50.444Z","level":"info","runId":"25988392494-1","company":"phonepe","msg":"Parse decision: 1 to parse, 36 skip (already parsed, unchanged), 5 rejected (non-engineering title)"}
+{"ts":"2026-05-17T14:02:50.444Z","level":"info","runId":"25988392494-1","company":"phonepe","msg":"Parsing 1 JD with 3 workers across 3 keys (budget=10000/run)…"}
+{"ts":"2026-05-17T14:03:33.879Z","level":"warn","runId":"25988392494-1","company":"phonepe","msg":"  parse err [Site Reliability Engineer 3]: quota_disabled"}
+{"ts":"2026-05-17T14:03:33.879Z","level":"info","runId":"25988392494-1","company":"phonepe","msg":"  parse: 1/1 ok=0 err=1"}
+{"ts":"2026-05-17T14:03:33.879Z","level":"info","runId":"25988392494-1","company":"phonepe","msg":"Parse done: ok=0 err=1 | 43s (PhonePe)"}
+{"ts":"2026-05-17T14:03:37.219Z","level":"warn","runId":"25988392494-1","company":null,"msg":"Bulk update failed: duplicate key value violates unique constraint \"ux_jobs_company_signature\" — falling back to per-row","event":"bulk_upsert_error","data":{"kind":"update","batchSize":36,"error":"duplicate key value violates unique constraint \"ux_jobs_company_signature\"","sigCollision":true}}
+{"ts":"2026-05-17T14:03:47.176Z","level":"info","runId":"25988392494-1","company":null,"msg":"Per-row recovery: 35/36 updates succeeded (skipped 1 signature-collisions)","event":"bulk_upsert_recovered","data":{"kind":"update","recovered":35,"total":36,"sigSkipped":1}}
+{"ts":"2026-05-17T14:03:47.685Z","level":"info","runId":"25988392494-1","company":"phonepe","msg":"Inserted: 0, Updated: 36, Stale: 0, Rejected: 5","event":"company_done","data":{"inserted":0,"updated":36,"stale":0,"parseOk":0,"parseErr":1,"skippedBudget":0,"skippedQuota":0,"rejectedNonEng":5,"coverageSkipped":false,"elapsedMs":57729}}
+{"ts":"2026-05-17T14:03:48.050Z","level":"info","runId":"25988392494-1","company":"zerodha","msg":"Crawling…","event":"company_start"}
+{"ts":"2026-05-17T14:03:51.840Z","level":"info","runId":"25988392494-1","company":"zerodha","msg":"Found 0 job links"}
+{"ts":"2026-05-17T14:03:51.840Z","level":"info","runId":"25988392494-1","company":"zerodha","msg":"Total: 0 jobs"}
+{"ts":"2026-05-17T14:03:51.840Z","level":"info","runId":"25988392494-1","company":"zerodha","msg":"Scraped 0 raw jobs in 4s","event":"scrape_done","data":{"rawCount":0}}
+{"ts":"2026-05-17T14:03:51.840Z","level":"info","runId":"25988392494-1","company":"zerodha","msg":"0 India jobs after normalization","event":"normalize_done","data":{"kept":0,"dropped":0}}
+{"ts":"2026-05-17T14:03:52.204Z","level":"info","runId":"25988392494-1","company":"cred","msg":"Crawling…","event":"company_start"}
+{"ts":"2026-05-17T14:03:52.982Z","level":"info","runId":"25988392494-1","company":"cred","msg":"Total: 2 jobs"}
+{"ts":"2026-05-17T14:03:56.205Z","level":"info","runId":"25988392494-1","company":"cred","msg":"Enriched descriptions: 2/2 | errors=0 | 3s"}
+{"ts":"2026-05-17T14:03:56.205Z","level":"info","runId":"25988392494-1","company":"cred","msg":"Scraped 2 raw jobs in 4s","event":"scrape_done","data":{"rawCount":2}}
+{"ts":"2026-05-17T14:03:56.210Z","level":"info","runId":"25988392494-1","company":"cred","msg":"2 India jobs after normalization","event":"normalize_done","data":{"kept":2,"dropped":0}}
+{"ts":"2026-05-17T14:03:56.505Z","level":"info","runId":"25988392494-1","company":"cred","msg":"Parse decision: 0 to parse, 2 skip (already parsed, unchanged)"}
+{"ts":"2026-05-17T14:03:58.103Z","level":"info","runId":"25988392494-1","company":"cred","msg":"Inserted: 0, Updated: 2, Stale: 0","event":"company_done","data":{"inserted":0,"updated":2,"stale":0,"parseOk":0,"parseErr":0,"skippedBudget":0,"skippedQuota":0,"rejectedNonEng":0,"coverageSkipped":false,"elapsedMs":5899}}
+{"ts":"2026-05-17T14:03:58.461Z","level":"info","runId":"25988392494-1","company":"groww","msg":"Crawling…","event":"company_start"}
+{"ts":"2026-05-17T14:03:58.630Z","level":"info","runId":"25988392494-1","company":"groww","msg":"Total: 13 jobs"}
+{"ts":"2026-05-17T14:03:58.630Z","level":"info","runId":"25988392494-1","company":"groww","msg":"Scraped 13 raw jobs in 0s","event":"scrape_done","data":{"rawCount":13}}
+{"ts":"2026-05-17T14:03:58.637Z","level":"info","runId":"25988392494-1","company":"groww","msg":"13 India jobs after normalization","event":"normalize_done","data":{"kept":13,"dropped":0}}
+{"ts":"2026-05-17T14:03:58.892Z","level":"info","runId":"25988392494-1","company":"groww","msg":"Parse decision: 0 to parse, 13 skip (already parsed, unchanged)"}
+{"ts":"2026-05-17T14:04:00.240Z","level":"info","runId":"25988392494-1","company":"groww","msg":"Inserted: 0, Updated: 13, Stale: 0","event":"company_done","data":{"inserted":0,"updated":13,"stale":0,"parseOk":0,"parseErr":0,"skippedBudget":0,"skippedQuota":0,"rejectedNonEng":0,"coverageSkipped":false,"elapsedMs":1779}}
+{"ts":"2026-05-17T14:04:00.596Z","level":"info","runId":"25988392494-1","company":"swiggy","msg":"Crawling…","event":"company_start"}
+{"ts":"2026-05-17T14:04:01.007Z","level":"info","runId":"25988392494-1","company":"swiggy","msg":"Total: 103 jobs"}
+{"ts":"2026-05-17T14:04:01.008Z","level":"info","runId":"25988392494-1","company":"swiggy","msg":"Scraped 103 raw jobs in 0s","event":"scrape_done","data":{"rawCount":103}}
+{"ts":"2026-05-17T14:04:01.055Z","level":"info","runId":"25988392494-1","company":"swiggy","msg":"55 India jobs after normalization","event":"normalize_done","data":{"kept":55,"dropped":48}}
+{"ts":"2026-05-17T14:04:01.321Z","level":"info","runId":"25988392494-1","company":"swiggy","msg":"Parse decision: 1 to parse, 36 skip (already parsed, unchanged), 18 rejected (non-engineering title)"}
+{"ts":"2026-05-17T14:04:01.321Z","level":"info","runId":"25988392494-1","company":"swiggy","msg":"Parsing 1 JD with 3 workers across 3 keys (budget=10000/run)…"}
+{"ts":"2026-05-17T14:05:03.851Z","level":"warn","runId":"25988392494-1","company":"swiggy","msg":"  parse err [Software Dev Engineer II]: quota_disabled"}
+{"ts":"2026-05-17T14:05:03.851Z","level":"info","runId":"25988392494-1","company":"swiggy","msg":"  parse: 1/1 ok=0 err=1"}
+{"ts":"2026-05-17T14:05:03.851Z","level":"info","runId":"25988392494-1","company":"swiggy","msg":"Parse done: ok=0 err=1 | 63s (Swiggy)"}
+{"ts":"2026-05-17T14:05:06.005Z","level":"warn","runId":"25988392494-1","company":null,"msg":"Bulk update failed: duplicate key value violates unique constraint \"ux_jobs_company_signature\" — falling back to per-row","event":"bulk_upsert_error","data":{"kind":"update","batchSize":36,"error":"duplicate key value violates unique constraint \"ux_jobs_company_signature\"","sigCollision":true}}
+{"ts":"2026-05-17T14:05:15.341Z","level":"info","runId":"25988392494-1","company":null,"msg":"Per-row recovery: 35/36 updates succeeded (skipped 1 signature-collisions)","event":"bulk_upsert_recovered","data":{"kind":"update","recovered":35,"total":36,"sigSkipped":1}}
+{"ts":"2026-05-17T14:05:15.853Z","level":"info","runId":"25988392494-1","company":"swiggy","msg":"Inserted: 0, Updated: 36, Stale: 0, Rejected: 18","event":"company_done","data":{"inserted":0,"updated":36,"stale":0,"parseOk":0,"parseErr":1,"skippedBudget":0,"skippedQuota":0,"rejectedNonEng":18,"coverageSkipped":false,"elapsedMs":75257}}
+{"ts":"2026-05-17T14:05:16.236Z","level":"info","runId":"25988392494-1","company":"zomato","msg":"Crawling…","event":"company_start"}
+{"ts":"2026-05-17T14:05:23.379Z","level":"info","runId":"25988392494-1","company":"zomato","msg":"Found 1 listings on Zoho Recruit"}
+{"ts":"2026-05-17T14:05:58.441Z","level":"warn","runId":"25988392494-1","company":"zomato","msg":"detail err [Field Recruiter]: page.goto: Timeout 35000ms exceeded."}
+{"ts":"2026-05-17T14:05:58.643Z","level":"info","runId":"25988392494-1","company":"zomato","msg":"Enriched descriptions: 0/1 | errors=1 | 35s"}
+{"ts":"2026-05-17T14:05:58.643Z","level":"info","runId":"25988392494-1","company":"zomato","msg":"Total: 1 jobs"}
+{"ts":"2026-05-17T14:05:58.669Z","level":"info","runId":"25988392494-1","company":"zomato","msg":"Scraped 1 raw jobs in 42s","event":"scrape_done","data":{"rawCount":1}}
+{"ts":"2026-05-17T14:05:58.669Z","level":"info","runId":"25988392494-1","company":"zomato","msg":"1 India jobs after normalization","event":"normalize_done","data":{"kept":1,"dropped":0}}
+{"ts":"2026-05-17T14:05:59.007Z","level":"info","runId":"25988392494-1","company":"zomato","msg":"Parse decision: 0 to parse, 0 skip (already parsed, unchanged), 1 rejected (non-engineering title)"}
+{"ts":"2026-05-17T14:05:59.566Z","level":"info","runId":"25988392494-1","company":"zomato","msg":"Inserted: 0, Updated: 0, Stale: 0, Rejected: 1","event":"company_done","data":{"inserted":0,"updated":0,"stale":0,"parseOk":0,"parseErr":0,"skippedBudget":0,"skippedQuota":0,"rejectedNonEng":1,"coverageSkipped":false,"elapsedMs":43330}}
+{"ts":"2026-05-17T14:05:59.929Z","level":"info","runId":"25988392494-1","company":"flipkart","msg":"Crawling…","event":"company_start"}
+{"ts":"2026-05-17T14:06:08.883Z","level":"info","runId":"25988392494-1","company":"flipkart","msg":"Total: 12 jobs"}
+{"ts":"2026-05-17T14:06:08.883Z","level":"info","runId":"25988392494-1","company":"flipkart","msg":"Total: 12 India jobs"}
+{"ts":"2026-05-17T14:06:43.931Z","level":"warn","runId":"25988392494-1","company":"flipkart","msg":"detail err [Director - South]: page.goto: Timeout 35000ms exceeded."}
+{"ts":"2026-05-17T14:06:43.932Z","level":"warn","runId":"25988392494-1","company":"flipkart","msg":"detail err [Facilities & Admin In-charge Nagpur Larg]: page.goto: Timeout 35000ms exceeded."}
+{"ts":"2026-05-17T14:06:43.938Z","level":"warn","runId":"25988392494-1","company":"flipkart","msg":"detail err [Shift incharge]: page.goto: Timeout 35000ms exceeded."}
+{"ts":"2026-05-17T14:07:54.565Z","level":"info","runId":"25988392494-1","company":"flipkart","msg":"Enriched descriptions: 0/12 | errors=12 | 106s"}
+{"ts":"2026-05-17T14:07:54.565Z","level":"info","runId":"25988392494-1","company":"flipkart","msg":"Scraped 12 raw jobs in 115s","event":"scrape_done","data":{"rawCount":12}}
+{"ts":"2026-05-17T14:07:54.566Z","level":"info","runId":"25988392494-1","company":"flipkart","msg":"12 India jobs after normalization","event":"normalize_done","data":{"kept":12,"dropped":0}}
+{"ts":"2026-05-17T14:07:55.217Z","level":"info","runId":"25988392494-1","company":"flipkart","msg":"Parse decision: 0 to parse, 12 skip (already parsed, unchanged)"}
+{"ts":"2026-05-17T14:07:56.337Z","level":"info","runId":"25988392494-1","company":"flipkart","msg":"Inserted: 0, Updated: 12, Stale: 0","event":"company_done","data":{"inserted":0,"updated":12,"stale":0,"parseOk":0,"parseErr":0,"skippedBudget":0,"skippedQuota":0,"rejectedNonEng":0,"coverageSkipped":false,"elapsedMs":116407}}
+{"ts":"2026-05-17T14:07:56.617Z","level":"info","runId":"25988392494-1","company":null,"msg":"────────────────────────────────────────────────────────────"}
+{"ts":"2026-05-17T14:07:56.617Z","level":"info","runId":"25988392494-1","company":null,"msg":"Crawl complete:","event":"crawl_complete"}
+{"ts":"2026-05-17T14:07:56.617Z","level":"info","runId":"25988392494-1","company":null,"msg":"  google          +0 new  ~348 updated  -0 stale"}
+{"ts":"2026-05-17T14:07:56.617Z","level":"info","runId":"25988392494-1","company":null,"msg":"  microsoft       +0 new  ~145 updated  -4 stale"}
+{"ts":"2026-05-17T14:07:56.617Z","level":"info","runId":"25988392494-1","company":null,"msg":"  meta            +0 new  ~5 updated  -0 stale"}
+{"ts":"2026-05-17T14:07:56.617Z","level":"info","runId":"25988392494-1","company":null,"msg":"  amazon          +2 new  ~2228 updated  -4 stale"}
+{"ts":"2026-05-17T14:07:56.617Z","level":"info","runId":"25988392494-1","company":null,"msg":"  apple           +0 new  ~217 updated  -0 stale"}
+{"ts":"2026-05-17T14:07:56.617Z","level":"info","runId":"25988392494-1","company":null,"msg":"  atlassian       +0 new  ~0 updated  -0 stale"}
+{"ts":"2026-05-17T14:07:56.617Z","level":"info","runId":"25988392494-1","company":null,"msg":"  nvidia          +4 new  ~137 updated  -0 stale"}
+{"ts":"2026-05-17T14:07:56.617Z","level":"info","runId":"25988392494-1","company":null,"msg":"  oracle          +0 new  ~42 updated  -3 stale"}
+{"ts":"2026-05-17T14:07:56.617Z","level":"info","runId":"25988392494-1","company":null,"msg":"  salesforce      +1 new  ~42 updated  -1 stale"}
+{"ts":"2026-05-17T14:07:56.617Z","level":"info","runId":"25988392494-1","company":null,"msg":"  sap-labs        +1 new  ~116 updated  -0 stale"}
+{"ts":"2026-05-17T14:07:56.617Z","level":"info","runId":"25988392494-1","company":null,"msg":"  razorpay        +0 new  ~42 updated  -0 stale"}
+{"ts":"2026-05-17T14:07:56.617Z","level":"info","runId":"25988392494-1","company":null,"msg":"  phonepe         +0 new  ~36 updated  -0 stale"}
+{"ts":"2026-05-17T14:07:56.617Z","level":"info","runId":"25988392494-1","company":null,"msg":"  zerodha         +0 new  ~0 updated  -0 stale"}
+{"ts":"2026-05-17T14:07:56.617Z","level":"info","runId":"25988392494-1","company":null,"msg":"  cred            +0 new  ~2 updated  -0 stale"}
+{"ts":"2026-05-17T14:07:56.617Z","level":"info","runId":"25988392494-1","company":null,"msg":"  groww           +0 new  ~13 updated  -0 stale"}
+{"ts":"2026-05-17T14:07:56.617Z","level":"info","runId":"25988392494-1","company":null,"msg":"  swiggy          +0 new  ~36 updated  -0 stale"}
+{"ts":"2026-05-17T14:07:56.617Z","level":"info","runId":"25988392494-1","company":null,"msg":"  zomato          +0 new  ~0 updated  -0 stale"}
+{"ts":"2026-05-17T14:07:56.617Z","level":"info","runId":"25988392494-1","company":null,"msg":"  flipkart        +0 new  ~12 updated  -0 stale"}
+{"ts":"2026-05-17T14:07:56.617Z","level":"info","runId":"25988392494-1","company":null,"msg":"Summary: 18 ok, 0 partial, 0 failed | +8 new, ~3421 updated, -12 stale","event":"crawl_summary","data":{"okCount":18,"partialCount":0,"failedCount":0,"totalInserted":8,"totalUpdated":3421,"totalStale":12,"attempted":18}}

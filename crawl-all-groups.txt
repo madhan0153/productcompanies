@@ -1,0 +1,419 @@
+Run SLUGS=""
+> @prodmatch/crawler@0.1.0 start /home/runner/work/prodmatchai/prodmatchai/packages/crawler
+> tsx index.ts "--" "--slugs=amazon"
+[2026-05-10T03:49:26.278Z] [INFO] Starting crawl for: amazon
+[2026-05-10T03:49:26.279Z] [INFO] Detected 3 Gemini API keys — worker pool will rotate.
+[2026-05-10T03:49:27.838Z] [INFO] [amazon] Crawling...
+[2026-05-10T03:49:27.838Z] [INFO] [amazon] Fetching offset 0 / ?...
+[2026-05-10T03:49:29.420Z] [INFO] [amazon] Fetching offset 100 / 2809...
+[2026-05-10T03:49:30.570Z] [INFO] [amazon] Fetching offset 200 / 2809...
+[2026-05-10T03:49:31.803Z] [INFO] [amazon] Fetching offset 300 / 2809...
+[2026-05-10T03:49:32.924Z] [INFO] [amazon] Fetching offset 400 / 2809...
+[2026-05-10T03:49:34.095Z] [INFO] [amazon] Fetching offset 500 / 2809...
+[2026-05-10T03:49:35.261Z] [INFO] [amazon] Fetching offset 600 / 2809...
+[2026-05-10T03:49:36.411Z] [INFO] [amazon] Fetching offset 700 / 2809...
+[2026-05-10T03:49:37.600Z] [INFO] [amazon] Fetching offset 800 / 2809...
+[2026-05-10T03:49:38.827Z] [INFO] [amazon] Fetching offset 900 / 2809...
+[2026-05-10T03:49:39.950Z] [INFO] [amazon] Fetching offset 1000 / 2809...
+[2026-05-10T03:49:41.078Z] [INFO] [amazon] Fetching offset 1100 / 2809...
+[2026-05-10T03:49:42.297Z] [INFO] [amazon] Fetching offset 1200 / 2809...
+[2026-05-10T03:49:43.456Z] [INFO] [amazon] Fetching offset 1300 / 2809...
+[2026-05-10T03:49:44.698Z] [INFO] [amazon] Fetching offset 1400 / 2809...
+[2026-05-10T03:49:45.859Z] [INFO] [amazon] Fetching offset 1500 / 2809...
+[2026-05-10T03:49:47.167Z] [INFO] [amazon] Fetching offset 1600 / 2809...
+[2026-05-10T03:49:48.331Z] [INFO] [amazon] Fetching offset 1700 / 2809...
+[2026-05-10T03:49:49.490Z] [INFO] [amazon] Fetching offset 1800 / 2809...
+[2026-05-10T03:49:50.740Z] [INFO] [amazon] Fetching offset 1900 / 2809...
+[2026-05-10T03:49:51.887Z] [INFO] [amazon] Fetching offset 2000 / 2809...
+[2026-05-10T03:49:53.148Z] [INFO] [amazon] Fetching offset 2100 / 2809...
+[2026-05-10T03:49:54.344Z] [INFO] [amazon] Fetching offset 2200 / 2809...
+[2026-05-10T03:49:55.505Z] [INFO] [amazon] Fetching offset 2300 / 2809...
+[2026-05-10T03:49:56.720Z] [INFO] [amazon] Fetching offset 2400 / 2809...
+[2026-05-10T03:49:57.906Z] [INFO] [amazon] Fetching offset 2500 / 2809...
+[2026-05-10T03:49:59.146Z] [INFO] [amazon] Fetching offset 2600 / 2809...
+[2026-05-10T03:50:00.340Z] [INFO] [amazon] Fetching offset 2700 / 2809...
+[2026-05-10T03:50:01.551Z] [INFO] [amazon] Fetching offset 2800 / 2809...
+[2026-05-10T03:50:01.840Z] [INFO] [amazon] Total: 2809 jobs
+[2026-05-10T03:50:01.840Z] [INFO] [amazon] Scraped 2809 raw jobs
+[2026-05-10T03:50:02.965Z] [INFO] [amazon] 2543 India jobs after normalization
+[2026-05-10T03:50:07.055Z] [INFO] [amazon] Parse decision: 2543 to parse, 0 skip (already parsed, unchanged)
+[2026-05-10T03:50:07.056Z] [INFO] [amazon] Parsing 2543 JDs with 6 workers across 3 keys…
+[2026-05-10T03:59:02.490Z] [INFO] [amazon]   parse: 25/2543 ok=25 err=0
+[2026-05-10T04:07:01.618Z] [INFO] [amazon]   parse: 50/2543 ok=32 err=18
+[2026-05-10T04:15:01.613Z] [INFO] [amazon]   parse: 75/2543 ok=32 err=43
+[2026-05-10T04:23:01.653Z] [INFO] [amazon]   parse: 100/2543 ok=32 err=68
+[2026-05-10T04:32:01.595Z] [INFO] [amazon]   parse: 125/2543 ok=32 err=93
+[2026-05-10T04:40:01.575Z] [INFO] [amazon]   parse: 150/2543 ok=32 err=118
+[2026-05-10T04:49:01.534Z] [INFO] [amazon]   parse: 175/2543 ok=32 err=143
+[2026-05-10T04:57:01.583Z] [INFO] [amazon]   parse: 200/2543 ok=32 err=168
+[2026-05-10T05:05:01.601Z] [INFO] [amazon]   parse: 225/2543 ok=32 err=193
+[2026-05-10T05:13:01.644Z] [INFO] [amazon]   parse: 250/2543 ok=32 err=218
+
+
+> @prodmatch/crawler@0.1.0 start /home/runner/work/prodmatchai/prodmatchai/packages/crawler
+> tsx index.ts "--" "--slugs=google,microsoft"
+[2026-05-10T03:49:30.374Z] [INFO] Starting crawl for: google, microsoft
+[2026-05-10T03:49:30.375Z] [INFO] Detected 3 Gemini API keys — worker pool will rotate.
+[2026-05-10T03:49:32.249Z] [INFO] [google] Crawling...
+[2026-05-10T03:49:32.249Z] [INFO] [google] Loading page 1...
+[2026-05-10T03:49:36.428Z] [INFO] [google] Page 1: 20 jobs (total so far: 20)
+[2026-05-10T03:49:37.928Z] [INFO] [google] Loading page 2...
+[2026-05-10T03:49:41.998Z] [INFO] [google] Page 2: 20 jobs (total so far: 40)
+[2026-05-10T03:49:43.500Z] [INFO] [google] Loading page 3...
+[2026-05-10T03:49:46.798Z] [INFO] [google] Page 3: 20 jobs (total so far: 60)
+[2026-05-10T03:49:48.299Z] [INFO] [google] Loading page 4...
+[2026-05-10T03:49:51.539Z] [INFO] [google] Page 4: 20 jobs (total so far: 80)
+[2026-05-10T03:49:53.040Z] [INFO] [google] Loading page 5...
+[2026-05-10T03:49:56.276Z] [INFO] [google] Page 5: 20 jobs (total so far: 100)
+[2026-05-10T03:49:57.777Z] [INFO] [google] Loading page 6...
+[2026-05-10T03:50:00.967Z] [INFO] [google] Page 6: 20 jobs (total so far: 120)
+[2026-05-10T03:50:02.468Z] [INFO] [google] Loading page 7...
+[2026-05-10T03:50:05.686Z] [INFO] [google] Page 7: 20 jobs (total so far: 140)
+[2026-05-10T03:50:07.189Z] [INFO] [google] Loading page 8...
+[2026-05-10T03:50:10.368Z] [INFO] [google] Page 8: 20 jobs (total so far: 160)
+[2026-05-10T03:50:11.870Z] [INFO] [google] Loading page 9...
+[2026-05-10T03:50:15.112Z] [INFO] [google] Page 9: 20 jobs (total so far: 180)
+[2026-05-10T03:50:16.613Z] [INFO] [google] Loading page 10...
+[2026-05-10T03:50:19.834Z] [INFO] [google] Page 10: 20 jobs (total so far: 200)
+[2026-05-10T03:50:21.336Z] [INFO] [google] Loading page 11...
+[2026-05-10T03:50:24.530Z] [INFO] [google] Page 11: 20 jobs (total so far: 220)
+[2026-05-10T03:50:26.031Z] [INFO] [google] Loading page 12...
+[2026-05-10T03:50:29.167Z] [INFO] [google] Page 12: 20 jobs (total so far: 240)
+[2026-05-10T03:50:30.667Z] [INFO] [google] Loading page 13...
+[2026-05-10T03:50:33.876Z] [INFO] [google] Page 13: 20 jobs (total so far: 260)
+[2026-05-10T03:50:35.377Z] [INFO] [google] Loading page 14...
+[2026-05-10T03:50:38.575Z] [INFO] [google] Page 14: 20 jobs (total so far: 280)
+[2026-05-10T03:50:40.078Z] [INFO] [google] Loading page 15...
+[2026-05-10T03:50:43.297Z] [INFO] [google] Page 15: 20 jobs (total so far: 300)
+[2026-05-10T03:50:44.799Z] [INFO] [google] Loading page 16...
+[2026-05-10T03:50:48.015Z] [INFO] [google] Page 16: 20 jobs (total so far: 320)
+[2026-05-10T03:50:49.516Z] [INFO] [google] Loading page 17...
+[2026-05-10T03:50:52.709Z] [INFO] [google] Page 17: 20 jobs (total so far: 340)
+[2026-05-10T03:50:54.210Z] [INFO] [google] Loading page 18...
+[2026-05-10T03:50:57.382Z] [INFO] [google] Page 18: 20 jobs (total so far: 360)
+[2026-05-10T03:50:58.882Z] [INFO] [google] Loading page 19...
+[2026-05-10T03:51:02.204Z] [INFO] [google] Page 19: 11 jobs (total so far: 371)
+[2026-05-10T03:51:03.706Z] [INFO] [google] Loading page 20...
+[2026-05-10T03:51:06.925Z] [INFO] [google] No new jobs on page 20, stopping
+[2026-05-10T03:51:06.925Z] [INFO] [google] Total: 371 India jobs
+[2026-05-10T03:51:30.548Z] [INFO] [google]   enrich progress: 25/371 | ok=25 err=0
+[2026-05-10T03:51:50.486Z] [INFO] [google]   enrich progress: 50/371 | ok=50 err=0
+[2026-05-10T03:52:09.210Z] [INFO] [google]   enrich progress: 75/371 | ok=75 err=0
+[2026-05-10T03:52:27.396Z] [INFO] [google]   enrich progress: 100/371 | ok=100 err=0
+[2026-05-10T03:52:50.586Z] [INFO] [google]   enrich progress: 125/371 | ok=125 err=0
+[2026-05-10T03:53:12.004Z] [INFO] [google]   enrich progress: 150/371 | ok=150 err=0
+[2026-05-10T03:53:33.193Z] [INFO] [google]   enrich progress: 175/371 | ok=175 err=0
+[2026-05-10T03:53:51.474Z] [INFO] [google]   enrich progress: 200/371 | ok=200 err=0
+[2026-05-10T03:54:09.479Z] [INFO] [google]   enrich progress: 225/371 | ok=225 err=0
+[2026-05-10T03:54:27.817Z] [INFO] [google]   enrich progress: 250/371 | ok=250 err=0
+[2026-05-10T03:54:45.343Z] [INFO] [google]   enrich progress: 275/371 | ok=275 err=0
+[2026-05-10T03:55:04.078Z] [INFO] [google]   enrich progress: 300/371 | ok=300 err=0
+[2026-05-10T03:55:22.096Z] [INFO] [google]   enrich progress: 325/371 | ok=325 err=0
+[2026-05-10T03:55:41.650Z] [INFO] [google]   enrich progress: 350/371 | ok=350 err=0
+[2026-05-10T03:55:59.631Z] [INFO] [google] Enriched descriptions: 371/371 | errors=0 | 293s
+[2026-05-10T03:55:59.632Z] [INFO] [google] Scraped 371 raw jobs
+[2026-05-10T03:55:59.899Z] [INFO] [google] 370 India jobs after normalization
+[2026-05-10T03:56:01.755Z] [INFO] [google] Parse decision: 370 to parse, 0 skip (already parsed, unchanged)
+[2026-05-10T03:56:01.755Z] [INFO] [google] Parsing 370 JDs with 6 workers across 3 keys…
+[2026-05-10T04:06:01.716Z] [INFO] [google]   parse: 25/370 ok=10 err=15
+[2026-05-10T04:14:01.718Z] [INFO] [google]   parse: 50/370 ok=10 err=40
+[2026-05-10T04:22:01.683Z] [INFO] [google]   parse: 75/370 ok=10 err=65
+[2026-05-10T04:30:01.701Z] [INFO] [google]   parse: 100/370 ok=10 err=90
+[2026-05-10T05:04:01.728Z] [INFO] [google]   parse: 200/370 ok=10 err=190
+[2026-05-10T05:12:01.696Z] [INFO] [google]   parse: 225/370 ok=10 err=215
+
+
+Run SLUGS=""
+> @prodmatch/crawler@0.1.0 start /home/runner/work/prodmatchai/prodmatchai/packages/crawler
+> tsx index.ts "--" "--slugs=meta,apple,atlassian,salesforce"
+[2026-05-10T03:49:27.664Z] [INFO] Starting crawl for: meta, apple, atlassian, salesforce
+[2026-05-10T03:49:27.664Z] [INFO] Detected 3 Gemini API keys — worker pool will rotate.
+[2026-05-10T03:49:29.776Z] [INFO] [meta] Crawling...
+[2026-05-10T03:49:29.777Z] [INFO] [meta] Loading India jobs page...
+[2026-05-10T03:49:37.940Z] [INFO] [meta] Total: 10 India jobs
+[2026-05-10T03:49:55.768Z] [INFO] [meta] Enriched descriptions: 10/10 | errors=0 | 18s
+[2026-05-10T03:49:55.771Z] [INFO] [meta] Scraped 10 raw jobs
+[2026-05-10T03:49:55.798Z] [INFO] [meta] 10 India jobs after normalization
+[2026-05-10T03:49:56.626Z] [INFO] [meta] Parse decision: 10 to parse, 0 skip (already parsed, unchanged)
+[2026-05-10T03:49:56.627Z] [INFO] [meta] Parsing 10 JDs with 6 workers across 3 keys…
+[2026-05-10T03:54:16.196Z] [INFO] [meta]   parse: 10/10 ok=10 err=0
+[2026-05-10T03:54:16.196Z] [INFO] [meta] Parse done: ok=10 err=0 | 260s (Meta)
+[2026-05-10T03:54:16.196Z] [INFO] [meta] Embedding 10 JDs in batches of 100…
+[2026-05-10T03:54:16.618Z] [INFO] [meta]   embed: 10/10
+[2026-05-10T03:54:16.618Z] [INFO] [meta] Embed done: 10/10 | 0s
+[2026-05-10T03:54:23.724Z] [INFO] [meta] Inserted: 9, Updated: 1, Stale: 0
+[2026-05-10T03:54:24.082Z] [INFO] [apple] Crawling...
+[2026-05-10T03:54:24.083Z] [INFO] [apple] Loading page 1...
+[2026-05-10T03:54:27.618Z] [INFO] [apple] Page 1: 20 jobs (total so far: 20)
+[2026-05-10T03:54:28.618Z] [INFO] [apple] Loading page 2...
+[2026-05-10T03:54:31.216Z] [INFO] [apple] Page 2: 20 jobs (total so far: 40)
+[2026-05-10T03:54:32.217Z] [INFO] [apple] Loading page 3...
+[2026-05-10T03:54:34.754Z] [INFO] [apple] Page 3: 20 jobs (total so far: 60)
+[2026-05-10T03:54:35.755Z] [INFO] [apple] Loading page 4...
+[2026-05-10T03:54:38.357Z] [INFO] [apple] Page 4: 20 jobs (total so far: 80)
+[2026-05-10T03:54:39.358Z] [INFO] [apple] Loading page 5...
+[2026-05-10T03:54:41.995Z] [INFO] [apple] Page 5: 20 jobs (total so far: 100)
+[2026-05-10T03:54:42.996Z] [INFO] [apple] Loading page 6...
+[2026-05-10T03:54:45.523Z] [INFO] [apple] Page 6: 20 jobs (total so far: 120)
+[2026-05-10T03:54:46.524Z] [INFO] [apple] Loading page 7...
+[2026-05-10T03:54:49.071Z] [INFO] [apple] Page 7: 20 jobs (total so far: 140)
+[2026-05-10T03:54:50.072Z] [INFO] [apple] Loading page 8...
+[2026-05-10T03:54:52.622Z] [INFO] [apple] Page 8: 20 jobs (total so far: 160)
+[2026-05-10T03:54:53.624Z] [INFO] [apple] Loading page 9...
+[2026-05-10T03:54:56.179Z] [INFO] [apple] Page 9: 20 jobs (total so far: 180)
+[2026-05-10T03:54:57.181Z] [INFO] [apple] Loading page 10...
+[2026-05-10T03:54:59.700Z] [INFO] [apple] Page 10: 20 jobs (total so far: 200)
+[2026-05-10T03:55:00.702Z] [INFO] [apple] Loading page 11...
+[2026-05-10T03:55:03.266Z] [INFO] [apple] Page 11: 20 jobs (total so far: 220)
+[2026-05-10T03:55:04.267Z] [INFO] [apple] Loading page 12...
+[2026-05-10T03:55:06.756Z] [INFO] [apple] Page 12: 1 jobs (total so far: 221)
+[2026-05-10T03:55:07.757Z] [INFO] [apple] Loading page 13...
+[2026-05-10T03:55:10.167Z] [INFO] [apple] No new jobs on page 13, stopping
+[2026-05-10T03:55:10.167Z] [INFO] [apple] Total: 221 India jobs
+[2026-05-10T03:55:42.629Z] [INFO] [apple]   enrich progress: 25/221 | ok=25 err=0
+[2026-05-10T03:56:14.645Z] [INFO] [apple]   enrich progress: 50/221 | ok=50 err=0
+[2026-05-10T03:56:44.913Z] [INFO] [apple]   enrich progress: 75/221 | ok=75 err=0
+[2026-05-10T03:57:15.376Z] [INFO] [apple]   enrich progress: 100/221 | ok=100 err=0
+[2026-05-10T03:57:45.243Z] [INFO] [apple]   enrich progress: 125/221 | ok=125 err=0
+[2026-05-10T03:58:13.730Z] [INFO] [apple]   enrich progress: 150/221 | ok=150 err=0
+[2026-05-10T03:58:45.674Z] [INFO] [apple]   enrich progress: 175/221 | ok=175 err=0
+[2026-05-10T03:59:20.359Z] [INFO] [apple]   enrich progress: 200/221 | ok=200 err=0
+[2026-05-10T03:59:47.473Z] [INFO] [apple] Enriched descriptions: 221/221 | errors=0 | 277s
+[2026-05-10T03:59:47.473Z] [INFO] [apple] Scraped 221 raw jobs
+[2026-05-10T03:59:47.614Z] [INFO] [apple] 217 India jobs after normalization
+[2026-05-10T03:59:48.670Z] [INFO] [apple] Parse decision: 217 to parse, 0 skip (already parsed, unchanged)
+[2026-05-10T03:59:48.670Z] [INFO] [apple] Parsing 217 JDs with 6 workers across 3 keys…
+[2026-05-10T04:09:31.748Z] [INFO] [apple]   parse: 25/217 ok=4 err=21
+[2026-05-10T04:17:31.749Z] [INFO] [apple]   parse: 50/217 ok=4 err=46
+[2026-05-10T04:25:31.811Z] [INFO] [apple]   parse: 75/217 ok=4 err=71
+[2026-05-10T04:59:31.689Z] [INFO] [apple]   parse: 175/217 ok=4 err=171
+[2026-05-10T05:07:31.847Z] [INFO] [apple]   parse: 200/217 ok=4 err=196
+[2026-05-10T05:13:31.821Z] [INFO] [apple]   parse: 217/217 ok=4 err=213
+[2026-05-10T05:13:31.821Z] [WARN] [apple]   parse err [IN-Technical Specialist]: quota_disabled
+[2026-05-10T05:13:31.821Z] [INFO] [apple] Parse done: ok=4 err=213 | 4423s (Apple)
+[2026-05-10T05:13:31.821Z] [INFO] [apple] Embedding 4 JDs in batches of 100…
+[2026-05-10T05:13:31.821Z] [WARN] [apple]   parse err [IN-Operations Expert]: quota_disabled
+[2026-05-10T05:13:31.821Z] [WARN] [apple]   parse err [Product Safety Engineer]: quota_disabled
+[2026-05-10T05:13:31.821Z] [WARN] [apple]   parse err [IN-Business Expert]: quota_disabled
+[2026-05-10T05:13:31.821Z] [WARN] [apple]   parse err [Enterprise Marketing Manager, India]: quota_disabled
+[2026-05-10T05:13:32.147Z] [INFO] [apple]   embed: 4/4
+[2026-05-10T05:13:32.147Z] [INFO] [apple] Embed done: 4/4 | 0s
+[2026-05-10T05:15:30.795Z] [INFO] [apple] Inserted: 217, Updated: 0, Stale: 0
+[2026-05-10T05:15:31.093Z] [INFO] [atlassian] Crawling...
+[2026-05-10T05:15:41.586Z] [INFO] [atlassian] HTML fallback: 29 links
+[2026-05-10T05:15:41.586Z] [INFO] [atlassian] Total: 29 jobs
+
+
+> @prodmatch/crawler@0.1.0 start /home/runner/work/prodmatchai/prodmatchai/packages/crawler
+> tsx index.ts "--" "--slugs=nvidia,oracle,sap-labs"
+[2026-05-10T03:49:28.658Z] [INFO] Starting crawl for: nvidia, oracle, sap-labs
+[2026-05-10T03:49:28.658Z] [INFO] Detected 3 Gemini API keys — worker pool will rotate.
+[2026-05-10T03:49:31.082Z] [INFO] [nvidia] Crawling...
+[2026-05-10T03:49:31.082Z] [INFO] [nvidia] Fetching offset 0 / ?...
+[2026-05-10T03:49:32.312Z] [INFO] [nvidia] Fetching offset 20 / 192...
+[2026-05-10T03:49:33.396Z] [INFO] [nvidia] Fetching offset 40 / 192...
+[2026-05-10T03:49:34.467Z] [INFO] [nvidia] Fetching offset 60 / 192...
+[2026-05-10T03:49:35.575Z] [INFO] [nvidia] Fetching offset 80 / 192...
+[2026-05-10T03:49:36.659Z] [INFO] [nvidia] Fetching offset 100 / 192...
+[2026-05-10T03:49:37.741Z] [INFO] [nvidia] Fetching offset 120 / 192...
+[2026-05-10T03:49:38.814Z] [INFO] [nvidia] Fetching offset 140 / 192...
+[2026-05-10T03:49:39.895Z] [INFO] [nvidia] Fetching offset 160 / 192...
+[2026-05-10T03:49:40.980Z] [INFO] [nvidia] Fetching offset 180 / 192...
+[2026-05-10T03:49:41.595Z] [INFO] [nvidia] Total: 192 India jobs
+[2026-05-10T03:50:05.657Z] [INFO] [nvidia]   enrich progress: 25/192 | ok=21 err=0
+[2026-05-10T03:50:25.761Z] [INFO] [nvidia]   enrich progress: 50/192 | ok=46 err=0
+[2026-05-10T03:50:46.398Z] [INFO] [nvidia]   enrich progress: 75/192 | ok=69 err=0
+[2026-05-10T03:51:18.904Z] [WARN] [nvidia] detail err [Senior System Software Engineer - GPU Vi]: page.goto: Timeout 35000ms exceeded.
+[2026-05-10T03:51:19.493Z] [WARN] [nvidia] detail err [Senior Software Quality Assurance Engine]: page.goto: Timeout 35000ms exceeded.
+[2026-05-10T03:51:19.596Z] [WARN] [nvidia] detail err [CPU Verification Engineer]: page.goto: Timeout 35000ms exceeded.
+[2026-05-10T03:51:29.633Z] [INFO] [nvidia]   enrich progress: 100/192 | ok=91 err=3
+[2026-05-10T03:51:51.437Z] [INFO] [nvidia]   enrich progress: 125/192 | ok=116 err=3
+[2026-05-10T03:52:11.201Z] [INFO] [nvidia]   enrich progress: 150/192 | ok=137 err=3
+[2026-05-10T03:52:37.417Z] [INFO] [nvidia]   enrich progress: 175/192 | ok=162 err=3
+[2026-05-10T03:52:53.871Z] [INFO] [nvidia] Enriched descriptions: 178/192 | errors=4 | 192s
+[2026-05-10T03:52:53.872Z] [INFO] [nvidia] Scraped 192 raw jobs
+[2026-05-10T03:52:53.975Z] [INFO] [nvidia] 138 India jobs after normalization
+[2026-05-10T03:52:55.183Z] [INFO] [nvidia] Parse decision: 138 to parse, 0 skip (already parsed, unchanged)
+[2026-05-10T03:52:55.183Z] [INFO] [nvidia] Parsing 138 JDs with 6 workers across 3 keys…
+[2026-05-10T04:03:01.884Z] [INFO] [nvidia]   parse: 25/138 ok=17 err=8
+[2026-05-10T04:11:31.855Z] [INFO] [nvidia]   parse: 50/138 ok=17 err=33
+[2026-05-10T04:19:31.997Z] [INFO] [nvidia]   parse: 75/138 ok=18 err=57
+[2026-05-10T04:27:32.052Z] [INFO] [nvidia]   parse: 100/138 ok=18 err=82
+[2026-05-10T04:36:31.992Z] [INFO] [nvidia]   parse: 125/138 ok=18 err=107
+[2026-05-10T04:40:32.101Z] [INFO] [nvidia]   parse: 138/138 ok=18 err=120
+[2026-05-10T04:40:32.101Z] [INFO] [nvidia] Parse done: ok=18 err=120 | 2857s (NVIDIA)
+[2026-05-10T04:40:32.101Z] [WARN] [nvidia]   parse err [Senior Packaging Technical Engineer - Hardware]: quota_disabled
+[2026-05-10T04:40:32.101Z] [WARN] [nvidia]   parse err [System Software Engineer - Data Center Diagnostics]: quota_disabled
+[2026-05-10T04:40:32.101Z] [WARN] [nvidia]   parse err [Senior ASIC Design Engineer - Circuits]: quota_disabled
+[2026-05-10T04:40:32.101Z] [WARN] [nvidia]   parse err [ASIC Design Engineer - Circuits]: quota_disabled
+[2026-05-10T04:40:32.101Z] [WARN] [nvidia]   parse err [GPU Architect]: quota_disabled
+[2026-05-10T04:40:32.101Z] [INFO] [nvidia] Embedding 18 JDs in batches of 100…
+[2026-05-10T04:40:32.772Z] [INFO] [nvidia]   embed: 18/18
+[2026-05-10T04:40:32.772Z] [INFO] [nvidia] Embed done: 18/18 | 1s
+[2026-05-10T04:41:50.622Z] [INFO] [nvidia] Inserted: 126, Updated: 12, Stale: 0
+[2026-05-10T04:41:50.925Z] [INFO] [oracle] Crawling...
+[2026-05-10T04:41:50.925Z] [INFO] [oracle] Fetching offset 0 / ?...
+[2026-05-10T04:41:51.780Z] [INFO] [oracle] Total: 23 India jobs
+[2026-05-10T04:41:59.107Z] [INFO] [oracle] Enriched descriptions: 1/23 | errors=0 | 7s
+[2026-05-10T04:41:59.107Z] [INFO] [oracle] Scraped 23 raw jobs
+[2026-05-10T04:41:59.118Z] [INFO] [oracle] 23 India jobs after normalization
+[2026-05-10T04:41:59.945Z] [INFO] [oracle] Parse decision: 23 to parse, 0 skip (already parsed, unchanged)
+[2026-05-10T04:41:59.946Z] [INFO] [oracle] Parsing 23 JDs with 6 workers across 3 keys…
+[2026-05-10T04:50:01.829Z] [INFO] [oracle]   parse: 23/23 ok=0 err=23
+[2026-05-10T04:50:01.829Z] [WARN] [oracle]   parse err [Software Developer 4]: quota_disabled
+[2026-05-10T04:50:01.829Z] [INFO] [oracle] Parse done: ok=0 err=23 | 482s (Oracle)
+[2026-05-10T04:50:01.829Z] [WARN] [oracle]   parse err [Senior Java Developer with Core Banking]: quota_disabled
+[2026-05-10T04:50:01.829Z] [WARN] [oracle]   parse err [Lead Specialist - Customer Deal Desk, Global SSC]: quota_disabled
+[2026-05-10T04:50:01.829Z] [WARN] [oracle]   parse err [SeniorJava Developer with Core Banking]: quota_disabled
+[2026-05-10T04:50:01.829Z] [WARN] [oracle]   parse err [Spanish - Accounts Payable Accountant]: quota_disabled
+[2026-05-10T04:50:15.557Z] [INFO] [oracle] Inserted: 22, Updated: 1, Stale: 0
+[2026-05-10T04:50:15.856Z] [INFO] [sap-labs] Crawling...
+[2026-05-10T04:50:17.611Z] [INFO] [sap-labs] Total jobs reported: 143
+[2026-05-10T04:50:17.611Z] [INFO] [sap-labs] Offset 0: 25 jobs (total so far: 25)
+[2026-05-10T04:50:19.040Z] [INFO] [sap-labs] Offset 25: 25 jobs (total so far: 50)
+[2026-05-10T04:50:19.594Z] [INFO] [sap-labs] Offset 50: 25 jobs (total so far: 75)
+[2026-05-10T04:50:20.179Z] [INFO] [sap-labs] Offset 75: 25 jobs (total so far: 100)
+[2026-05-10T04:50:20.689Z] [INFO] [sap-labs] Offset 100: 25 jobs (total so far: 125)
+[2026-05-10T04:50:21.232Z] [INFO] [sap-labs] Offset 125: 18 jobs (total so far: 143)
+[2026-05-10T04:50:21.232Z] [INFO] [sap-labs] Total: 143 India jobs
+[2026-05-10T04:51:01.316Z] [WARN] [sap-labs] detail err [IT Technology Services Senior Specialist]: page.goto: Timeout 40000ms exceeded.
+[2026-05-10T04:51:01.348Z] [WARN] [sap-labs] detail err [SAP Concur Consultant/Sr Consultant - Pr]: page.goto: Timeout 40000ms exceeded.
+[2026-05-10T04:51:01.354Z] [WARN] [sap-labs] detail err [IT Technology Services - Service Area Se]: page.goto: Timeout 40000ms exceeded.
+[2026-05-10T04:55:02.521Z] [INFO] [sap-labs]   enrich progress: 25/143 | ok=0 err=25
+[2026-05-10T04:56:23.187Z] [INFO] [sap-labs] Enriched descriptions: 0/143 | errors=36 | 362s
+[2026-05-10T04:56:23.187Z] [INFO] [sap-labs] Scraped 143 raw jobs
+[2026-05-10T04:56:23.201Z] [INFO] [sap-labs] 138 India jobs after normalization
+[2026-05-10T04:56:24.050Z] [INFO] [sap-labs] Parse decision: 138 to parse, 0 skip (already parsed, unchanged)
+[2026-05-10T04:56:24.051Z] [INFO] [sap-labs] Parsing 138 JDs with 6 workers across 3 keys…
+[2026-05-10T05:06:01.689Z] [INFO] [sap-labs]   parse: 25/138 ok=0 err=25
+[2026-05-10T05:14:01.821Z] [INFO] [sap-labs]   parse: 50/138 ok=0 err=50
+
+
+> @prodmatch/crawler@0.1.0 start /home/runner/work/prodmatchai/prodmatchai/packages/crawler
+> tsx index.ts "--" "--slugs=razorpay,phonepe,zerodha,cred,groww,swiggy,zomato,flipkart"
+
+[2026-05-10T03:49:29.934Z] [INFO] Starting crawl for: razorpay, phonepe, zerodha, cred, groww, swiggy, zomato, flipkart
+[2026-05-10T03:49:29.935Z] [INFO] Detected 3 Gemini API keys — worker pool will rotate.
+[2026-05-10T03:49:32.262Z] [INFO] [razorpay] Crawling...
+[2026-05-10T03:49:32.566Z] [INFO] [razorpay] Total: 55 jobs
+[2026-05-10T03:49:32.566Z] [INFO] [razorpay] Scraped 55 raw jobs
+[2026-05-10T03:49:32.627Z] [INFO] [razorpay] 48 India jobs after normalization
+[2026-05-10T03:49:32.877Z] [INFO] [razorpay] Parse decision: 48 to parse, 0 skip (already parsed, unchanged)
+[2026-05-10T03:49:32.877Z] [INFO] [razorpay] Parsing 48 JDs with 6 workers across 3 keys…
+[2026-05-10T03:56:13.875Z] [INFO] [razorpay]   parse: 25/48 ok=25 err=0
+[2026-05-10T04:04:11.590Z] [WARN] [razorpay]   parse err [Senior Associate, New Initiatives]: quota_disabled
+[2026-05-10T04:04:11.590Z] [INFO] [razorpay]   parse: 48/48 ok=40 err=8
+[2026-05-10T04:04:11.590Z] [WARN] [razorpay]   parse err [Senior Associate, Mid Market Sales]: quota_disabled
+[2026-05-10T04:04:11.590Z] [INFO] [razorpay] Parse done: ok=40 err=8 | 879s (Razorpay)
+[2026-05-10T04:04:11.590Z] [WARN] [razorpay]   parse err [Senior Data Engineer]: quota_disabled
+[2026-05-10T04:04:11.590Z] [WARN] [razorpay]   parse err [Senior Engineering Manager]: quota_disabled
+[2026-05-10T04:04:11.590Z] [INFO] [razorpay] Embedding 40 JDs in batches of 100…
+[2026-05-10T04:04:11.590Z] [WARN] [razorpay]   parse err [Senior Manager, Strategic Accounts]: quota_disabled
+[2026-05-10T04:04:24.469Z] [INFO] [razorpay]   embed: 40/40
+[2026-05-10T04:04:24.469Z] [INFO] [razorpay] Embed done: 40/40 | 13s
+[2026-05-10T04:04:52.157Z] [INFO] [razorpay] Inserted: 40, Updated: 8, Stale: 0
+[2026-05-10T04:04:52.453Z] [INFO] [phonepe] Crawling...
+[2026-05-10T04:04:52.720Z] [INFO] [phonepe] Total: 46 jobs
+[2026-05-10T04:04:52.721Z] [INFO] [phonepe] Scraped 46 raw jobs
+[2026-05-10T04:04:52.762Z] [INFO] [phonepe] 42 India jobs after normalization
+[2026-05-10T04:04:53.008Z] [INFO] [phonepe] Parse decision: 42 to parse, 0 skip (already parsed, unchanged)
+[2026-05-10T04:04:53.008Z] [INFO] [phonepe] Parsing 42 JDs with 6 workers across 3 keys…
+[2026-05-10T04:14:32.020Z] [INFO] [phonepe]   parse: 25/42 ok=5 err=20
+[2026-05-10T04:18:46.237Z] [WARN] [phonepe]   parse err [Associate Manager - Lending Operations]: quota_disabled
+[2026-05-10T04:18:46.237Z] [INFO] [phonepe]   parse: 42/42 ok=8 err=34
+[2026-05-10T04:18:46.237Z] [WARN] [phonepe]   parse err [Business Analyst (2 to 5 Years) Lending]: quota_disabled
+[2026-05-10T04:18:46.237Z] [INFO] [phonepe] Parse done: ok=8 err=34 | 833s (PhonePe)
+[2026-05-10T04:18:46.237Z] [WARN] [phonepe]   parse err [Associate Manager, Collections Strategy and Planning]: quota_disabled
+[2026-05-10T04:18:46.237Z] [INFO] [phonepe] Embedding 8 JDs in batches of 100…
+[2026-05-10T04:18:46.237Z] [WARN] [phonepe]   parse err [Advisor, Insurance]: quota_disabled
+[2026-05-10T04:18:46.237Z] [WARN] [phonepe]   parse err [HR Specialist, Premium Accounts - Merchant Business]: quota_disabled
+[2026-05-10T04:18:46.874Z] [INFO] [phonepe]   embed: 8/8
+[2026-05-10T04:18:46.874Z] [INFO] [phonepe] Embed done: 8/8 | 1s
+[2026-05-10T04:19:10.356Z] [INFO] [phonepe] Inserted: 41, Updated: 1, Stale: 0
+[2026-05-10T04:19:10.643Z] [INFO] [zerodha] Crawling...
+[2026-05-10T04:19:15.955Z] [INFO] [zerodha] Found 0 job links
+[2026-05-10T04:19:15.955Z] [INFO] [zerodha] Total: 0 jobs
+[2026-05-10T04:19:15.955Z] [INFO] [zerodha] Scraped 0 raw jobs
+[2026-05-10T04:19:15.955Z] [INFO] [zerodha] 0 India jobs after normalization
+[2026-05-10T04:19:16.311Z] [INFO] [cred] Crawling...
+[2026-05-10T04:19:17.131Z] [INFO] [cred] Total: 2 jobs
+[2026-05-10T04:19:22.717Z] [INFO] [cred] Enriched descriptions: 2/2 | errors=0 | 6s
+[2026-05-10T04:19:22.717Z] [INFO] [cred] Scraped 2 raw jobs
+[2026-05-10T04:19:22.726Z] [INFO] [cred] 2 India jobs after normalization
+[2026-05-10T04:19:23.026Z] [INFO] [cred] Parse decision: 2 to parse, 0 skip (already parsed, unchanged)
+[2026-05-10T04:19:23.026Z] [INFO] [cred] Parsing 2 JDs with 6 workers across 3 keys…
+[2026-05-10T04:21:02.096Z] [INFO] [cred]   parse: 2/2 ok=0 err=2
+[2026-05-10T04:21:02.096Z] [WARN] [cred]   parse err [payout & settlement analyst]: quota_disabled
+[2026-05-10T04:21:02.096Z] [INFO] [cred] Parse done: ok=0 err=2 | 99s (CRED)
+[2026-05-10T04:21:02.096Z] [WARN] [cred]   parse err [area collections manager - hyderabad]: quota_disabled
+[2026-05-10T04:21:04.639Z] [INFO] [cred] Inserted: 2, Updated: 0, Stale: 0
+[2026-05-10T04:21:04.926Z] [INFO] [groww] Crawling...
+[2026-05-10T04:21:05.224Z] [INFO] [groww] Total: 15 jobs
+[2026-05-10T04:21:05.224Z] [INFO] [groww] Scraped 15 raw jobs
+[2026-05-10T04:21:05.233Z] [INFO] [groww] 15 India jobs after normalization
+[2026-05-10T04:21:05.495Z] [INFO] [groww] Parse decision: 15 to parse, 0 skip (already parsed, unchanged)
+[2026-05-10T04:21:05.496Z] [INFO] [groww] Parsing 15 JDs with 6 workers across 3 keys…
+[2026-05-10T04:27:02.104Z] [INFO] [groww]   parse: 15/15 ok=0 err=15
+[2026-05-10T04:27:02.105Z] [INFO] [groww] Parse done: ok=0 err=15 | 357s (Groww)
+[2026-05-10T04:27:02.105Z] [WARN] [groww]   parse err [Content - Intern]: quota_disabled
+[2026-05-10T04:27:02.105Z] [WARN] [groww]   parse err [Assistant Manager - Visual Designer (915)]: quota_disabled
+[2026-05-10T04:27:02.105Z] [WARN] [groww]   parse err [Assistant Manager - Growth(Engagement)]: quota_disabled
+[2026-05-10T04:27:02.105Z] [WARN] [groww]   parse err [AM - ORM (Operational Risk Management)]: quota_disabled
+[2026-05-10T04:27:02.105Z] [WARN] [groww]   parse err [Equity Research Analyst (AMC)]: quota_disabled
+[2026-05-10T04:27:11.112Z] [INFO] [groww] Inserted: 15, Updated: 0, Stale: 0
+[2026-05-10T04:27:11.771Z] [INFO] [swiggy] Crawling...
+[2026-05-10T04:27:12.130Z] [INFO] [swiggy] Total: 97 jobs
+[2026-05-10T04:27:12.130Z] [INFO] [swiggy] Scraped 97 raw jobs
+[2026-05-10T04:27:12.180Z] [INFO] [swiggy] 49 India jobs after normalization
+[2026-05-10T04:27:12.425Z] [INFO] [swiggy] Parse decision: 49 to parse, 0 skip (already parsed, unchanged)
+[2026-05-10T04:27:12.425Z] [INFO] [swiggy] Parsing 49 JDs with 6 workers across 3 keys…
+[2026-05-10T04:37:01.870Z] [INFO] [swiggy]   parse: 25/49 ok=0 err=25
+[2026-05-10T04:45:02.108Z] [INFO] [swiggy]   parse: 49/49 ok=0 err=49
+[2026-05-10T04:45:02.108Z] [WARN] [swiggy]   parse err [Sales Manager II]: quota_disabled
+[2026-05-10T04:45:02.108Z] [INFO] [swiggy] Parse done: ok=0 err=49 | 1070s (Swiggy)
+[2026-05-10T04:45:02.108Z] [WARN] [swiggy]   parse err [Sales Manager I]: quota_disabled
+[2026-05-10T04:45:02.108Z] [WARN] [swiggy]   parse err [Software Dev Engineer III]: quota_disabled
+[2026-05-10T04:45:02.108Z] [WARN] [swiggy]   parse err [Software Dev Engineer IV]: quota_disabled
+[2026-05-10T04:45:02.108Z] [WARN] [swiggy]   parse err [Sales Manager I]: quota_disabled
+[2026-05-10T04:45:28.197Z] [INFO] [swiggy] Inserted: 43, Updated: 6, Stale: 0
+[2026-05-10T04:45:28.478Z] [INFO] [zomato] Crawling...
+[2026-05-10T04:45:33.482Z] [INFO] [zomato] Found 1 listings on Zoho Recruit
+[2026-05-10T04:45:38.055Z] [INFO] [zomato] Enriched descriptions: 1/1 | errors=0 | 5s
+[2026-05-10T04:45:38.055Z] [INFO] [zomato] Total: 1 jobs
+[2026-05-10T04:45:38.103Z] [INFO] [zomato] Scraped 1 raw jobs
+[2026-05-10T04:45:38.104Z] [INFO] [zomato] 1 India jobs after normalization
+[2026-05-10T04:45:38.382Z] [INFO] [zomato] Parse decision: 1 to parse, 0 skip (already parsed, unchanged)
+[2026-05-10T04:45:38.383Z] [INFO] [zomato] Parsing 1 JD with 6 workers across 3 keys…
+[2026-05-10T04:47:32.152Z] [WARN] [zomato]   parse err [Field Recruiter]: quota_disabled
+[2026-05-10T04:47:32.152Z] [INFO] [zomato]   parse: 1/1 ok=0 err=1
+[2026-05-10T04:47:32.152Z] [INFO] [zomato] Parse done: ok=0 err=1 | 114s (Zomato)
+[2026-05-10T04:47:33.620Z] [INFO] [zomato] Inserted: 1, Updated: 0, Stale: 0
+[2026-05-10T04:47:33.908Z] [INFO] [flipkart] Crawling...
+[2026-05-10T04:47:42.912Z] [INFO] [flipkart] Total: 17 jobs
+[2026-05-10T04:47:42.913Z] [INFO] [flipkart] Total: 17 India jobs
+[2026-05-10T04:48:18.002Z] [WARN] [flipkart] detail err [Director - South]: page.goto: Timeout 35000ms exceeded.
+[2026-05-10T04:48:18.019Z] [WARN] [flipkart] detail err [Senior Excutive ]: page.goto: Timeout 35000ms exceeded.
+[2026-05-10T04:48:18.021Z] [WARN] [flipkart] detail err [Assistant Manager Accounts & Finance]: page.goto: Timeout 35000ms exceeded.
+[2026-05-10T04:50:39.014Z] [INFO] [flipkart] Enriched descriptions: 0/17 | errors=17 | 176s
+[2026-05-10T04:50:39.015Z] [INFO] [flipkart] Scraped 17 raw jobs
+[2026-05-10T04:50:39.017Z] [INFO] [flipkart] 17 India jobs after normalization
+[2026-05-10T04:50:39.365Z] [INFO] [flipkart] Parse decision: 17 to parse, 0 skip (already parsed, unchanged)
+[2026-05-10T04:50:39.365Z] [INFO] [flipkart] Parsing 17 JDs with 6 workers across 3 keys…
+[2026-05-10T04:56:32.287Z] [INFO] [flipkart]   parse: 17/17 ok=0 err=17
+[2026-05-10T04:56:32.287Z] [WARN] [flipkart]   parse err [Senior Excutive]: quota_disabled
+[2026-05-10T04:56:32.287Z] [WARN] [flipkart]   parse err [Senior Excutive]: quota_disabled
+[2026-05-10T04:56:32.287Z] [WARN] [flipkart]   parse err [Director - South]: quota_disabled
+[2026-05-10T04:56:32.287Z] [INFO] [flipkart] Parse done: ok=0 err=17 | 353s (Flipkart)
+[2026-05-10T04:56:32.287Z] [WARN] [flipkart]   parse err [senior Excutive]: quota_disabled
+[2026-05-10T04:56:32.287Z] [WARN] [flipkart]   parse err [Assistant Manager Accounts & Finance]: quota_disabled
+[2026-05-10T04:56:41.806Z] [INFO] [flipkart] Inserted: 16, Updated: 1, Stale: 0
+[2026-05-10T04:56:42.086Z] [INFO] ────────────────────────────────────────────────────────────
+[2026-05-10T04:56:42.086Z] [INFO] Crawl complete:
+[2026-05-10T04:56:42.086Z] [INFO]   razorpay        +40 new  ~8 updated  -0 stale
+[2026-05-10T04:56:42.086Z] [INFO]   phonepe         +41 new  ~1 updated  -0 stale
+[2026-05-10T04:56:42.086Z] [INFO]   zerodha         +0 new  ~0 updated  -0 stale
+[2026-05-10T04:56:42.086Z] [INFO]   cred            +2 new  ~0 updated  -0 stale
+[2026-05-10T04:56:42.086Z] [INFO]   groww           +15 new  ~0 updated  -0 stale
+[2026-05-10T04:56:42.086Z] [INFO]   swiggy          +43 new  ~6 updated  -0 stale
+[2026-05-10T04:56:42.086Z] [INFO]   zomato          +1 new  ~0 updated  -0 stale
+[2026-05-10T04:56:42.086Z] [INFO]   flipkart        +16 new  ~1 updated  -0 stale

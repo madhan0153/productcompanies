@@ -1,0 +1,954 @@
+﻿2026-05-16T21:49:47.9181177Z Current runner version: '2.334.0'
+2026-05-16T21:49:47.9205551Z ##[group]Runner Image Provisioner
+2026-05-16T21:49:47.9206403Z Hosted Compute Agent
+2026-05-16T21:49:47.9206950Z Version: 20260213.493
+2026-05-16T21:49:47.9207708Z Commit: 5c115507f6dd24b8de37d8bbe0bb4509d0cc0fa3
+2026-05-16T21:49:47.9208414Z Build Date: 2026-02-13T00:28:41Z
+2026-05-16T21:49:47.9209098Z Worker ID: {abc28078-0040-4213-ba7b-5113075a7ca8}
+2026-05-16T21:49:47.9209781Z Azure Region: westus
+2026-05-16T21:49:47.9210262Z ##[endgroup]
+2026-05-16T21:49:47.9211727Z ##[group]Operating System
+2026-05-16T21:49:47.9212616Z Ubuntu
+2026-05-16T21:49:47.9213091Z 24.04.4
+2026-05-16T21:49:47.9213563Z LTS
+2026-05-16T21:49:47.9214046Z ##[endgroup]
+2026-05-16T21:49:47.9214577Z ##[group]Runner Image
+2026-05-16T21:49:47.9215195Z Image: ubuntu-24.04
+2026-05-16T21:49:47.9215672Z Version: 20260513.135.3
+2026-05-16T21:49:47.9216899Z Included Software: https://github.com/actions/runner-images/blob/ubuntu24/20260513.135/images/ubuntu/Ubuntu2404-Readme.md
+2026-05-16T21:49:47.9218355Z Image Release: https://github.com/actions/runner-images/releases/tag/ubuntu24%2F20260513.135
+2026-05-16T21:49:47.9219240Z ##[endgroup]
+2026-05-16T21:49:47.9220376Z ##[group]GITHUB_TOKEN Permissions
+2026-05-16T21:49:47.9222607Z Contents: read
+2026-05-16T21:49:47.9223242Z Metadata: read
+2026-05-16T21:49:47.9223755Z ##[endgroup]
+2026-05-16T21:49:47.9225881Z Secret source: Actions
+2026-05-16T21:49:47.9226699Z Prepare workflow directory
+2026-05-16T21:49:47.9861531Z Prepare all required actions
+2026-05-16T21:49:47.9898148Z Getting action download info
+2026-05-16T21:49:48.4661125Z Download action repository 'actions/checkout@v5' (SHA:93cb6efe18208431cddfb8368fd83d5badbf9bfd)
+2026-05-16T21:49:48.6514302Z Download action repository 'pnpm/action-setup@v4' (SHA:b906affcce14559ad1aafd4ab0e942779e9f58b1)
+2026-05-16T21:49:49.1593686Z Download action repository 'actions/setup-node@v5' (SHA:a0853c24544627f65ddf259abe73b1d18a591444)
+2026-05-16T21:49:49.2911591Z Download action repository 'nick-fields/retry@v3' (SHA:ce71cc2ab81d554ebbe88c79ab5975992d79ba08)
+2026-05-16T21:49:49.5817837Z Download action repository 'actions/upload-artifact@v5' (SHA:330a01c490aca151604b8cf639adc76d48f6c5d4)
+2026-05-16T21:49:49.8824828Z Complete job name: Crawl all (sequential)
+2026-05-16T21:49:49.9737205Z ##[group]Run actions/checkout@v5
+2026-05-16T21:49:49.9739354Z with:
+2026-05-16T21:49:49.9740762Z   repository: madhan0153/productcompanies
+2026-05-16T21:49:49.9743827Z   token: ***
+2026-05-16T21:49:49.9744867Z   ssh-strict: true
+2026-05-16T21:49:49.9746317Z   ssh-user: git
+2026-05-16T21:49:49.9747753Z   persist-credentials: true
+2026-05-16T21:49:49.9748677Z   clean: true
+2026-05-16T21:49:49.9750170Z   sparse-checkout-cone-mode: true
+2026-05-16T21:49:49.9751819Z   fetch-depth: 1
+2026-05-16T21:49:49.9753099Z   fetch-tags: false
+2026-05-16T21:49:49.9754019Z   show-progress: true
+2026-05-16T21:49:49.9755501Z   lfs: false
+2026-05-16T21:49:49.9756824Z   submodules: false
+2026-05-16T21:49:49.9758157Z   set-safe-directory: true
+2026-05-16T21:49:49.9760091Z env:
+2026-05-16T21:49:49.9760940Z   CRAWL_RUN_ID: 25973834258-1
+2026-05-16T21:49:49.9762802Z ##[endgroup]
+2026-05-16T21:49:50.0772542Z Syncing repository: madhan0153/productcompanies
+2026-05-16T21:49:50.0775576Z ##[group]Getting Git version info
+2026-05-16T21:49:50.0777191Z Working directory is '/home/runner/work/productcompanies/productcompanies'
+2026-05-16T21:49:50.0779330Z [command]/usr/bin/git version
+2026-05-16T21:49:50.0849686Z git version 2.54.0
+2026-05-16T21:49:50.0904890Z ##[endgroup]
+2026-05-16T21:49:50.0921595Z Temporarily overriding HOME='/home/runner/work/_temp/7b11a5cc-75f7-4bd8-8640-6f79adbbf942' before making global git config changes
+2026-05-16T21:49:50.0925440Z Adding repository directory to the temporary git global config as a safe directory
+2026-05-16T21:49:50.0929413Z [command]/usr/bin/git config --global --add safe.directory /home/runner/work/productcompanies/productcompanies
+2026-05-16T21:49:50.0979982Z Deleting the contents of '/home/runner/work/productcompanies/productcompanies'
+2026-05-16T21:49:50.0984162Z ##[group]Initializing the repository
+2026-05-16T21:49:50.0989321Z [command]/usr/bin/git init /home/runner/work/productcompanies/productcompanies
+2026-05-16T21:49:50.1121412Z hint: Using 'master' as the name for the initial branch. This default branch name
+2026-05-16T21:49:50.1123724Z hint: will change to "main" in Git 3.0. To configure the initial branch name
+2026-05-16T21:49:50.1125706Z hint: to use in all of your new repositories, which will suppress this warning,
+2026-05-16T21:49:50.1127873Z hint: call:
+2026-05-16T21:49:50.1129194Z hint:
+2026-05-16T21:49:50.1130931Z hint: 	git config --global init.defaultBranch <name>
+2026-05-16T21:49:50.1133370Z hint:
+2026-05-16T21:49:50.1135351Z hint: Names commonly chosen instead of 'master' are 'main', 'trunk' and
+2026-05-16T21:49:50.1138602Z hint: 'development'. The just-created branch can be renamed via this command:
+2026-05-16T21:49:50.1141264Z hint:
+2026-05-16T21:49:50.1142771Z hint: 	git branch -m <name>
+2026-05-16T21:49:50.1144341Z hint:
+2026-05-16T21:49:50.1146433Z hint: Disable this message with "git config set advice.defaultBranchName false"
+2026-05-16T21:49:50.1148727Z Initialized empty Git repository in /home/runner/work/productcompanies/productcompanies/.git/
+2026-05-16T21:49:50.1153426Z [command]/usr/bin/git remote add origin https://github.com/madhan0153/productcompanies
+2026-05-16T21:49:50.1186830Z ##[endgroup]
+2026-05-16T21:49:50.1189404Z ##[group]Disabling automatic garbage collection
+2026-05-16T21:49:50.1191681Z [command]/usr/bin/git config --local gc.auto 0
+2026-05-16T21:49:50.1220202Z ##[endgroup]
+2026-05-16T21:49:50.1222855Z ##[group]Setting up auth
+2026-05-16T21:49:50.1227454Z [command]/usr/bin/git config --local --name-only --get-regexp core\.sshCommand
+2026-05-16T21:49:50.1264750Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'core\.sshCommand' && git config --local --unset-all 'core.sshCommand' || :"
+2026-05-16T21:49:50.1625259Z [command]/usr/bin/git config --local --name-only --get-regexp http\.https\:\/\/github\.com\/\.extraheader
+2026-05-16T21:49:50.1655087Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'http\.https\:\/\/github\.com\/\.extraheader' && git config --local --unset-all 'http.https://github.com/.extraheader' || :"
+2026-05-16T21:49:50.1868058Z [command]/usr/bin/git config --local --name-only --get-regexp ^includeIf\.gitdir:
+2026-05-16T21:49:50.1898865Z [command]/usr/bin/git submodule foreach --recursive git config --local --show-origin --name-only --get-regexp remote.origin.url
+2026-05-16T21:49:50.2110802Z [command]/usr/bin/git config --local http.https://github.com/.extraheader AUTHORIZATION: basic ***
+2026-05-16T21:49:50.2145330Z ##[endgroup]
+2026-05-16T21:49:50.2146727Z ##[group]Fetching the repository
+2026-05-16T21:49:50.2154549Z [command]/usr/bin/git -c protocol.version=2 fetch --no-tags --prune --no-recurse-submodules --depth=1 origin +9ec5a3b519d9a6a01a47da1c0d1aa7e88baf671d:refs/remotes/origin/main
+2026-05-16T21:49:50.7303848Z From https://github.com/madhan0153/productcompanies
+2026-05-16T21:49:50.7305107Z  * [new ref]         9ec5a3b519d9a6a01a47da1c0d1aa7e88baf671d -> origin/main
+2026-05-16T21:49:50.7346302Z ##[endgroup]
+2026-05-16T21:49:50.7346846Z ##[group]Determining the checkout info
+2026-05-16T21:49:50.7348951Z ##[endgroup]
+2026-05-16T21:49:50.7354400Z [command]/usr/bin/git sparse-checkout disable
+2026-05-16T21:49:50.7400542Z [command]/usr/bin/git config --local --unset-all extensions.worktreeConfig
+2026-05-16T21:49:50.7425981Z ##[group]Checking out the ref
+2026-05-16T21:49:50.7429879Z [command]/usr/bin/git checkout --progress --force -B main refs/remotes/origin/main
+2026-05-16T21:49:50.7613821Z Switched to a new branch 'main'
+2026-05-16T21:49:50.7617108Z branch 'main' set up to track 'origin/main'.
+2026-05-16T21:49:50.7623098Z ##[endgroup]
+2026-05-16T21:49:50.7668129Z [command]/usr/bin/git log -1 --format=%H
+2026-05-16T21:49:50.7690004Z 9ec5a3b519d9a6a01a47da1c0d1aa7e88baf671d
+2026-05-16T21:49:50.7967661Z ##[group]Run pnpm/action-setup@v4
+2026-05-16T21:49:50.7968027Z with:
+2026-05-16T21:49:50.7968267Z   dest: ~/setup-pnpm
+2026-05-16T21:49:50.7968532Z   run_install: null
+2026-05-16T21:49:50.7968769Z   cache: false
+2026-05-16T21:49:50.7969036Z   cache_dependency_path: pnpm-lock.yaml
+2026-05-16T21:49:50.7969369Z   package_json_file: package.json
+2026-05-16T21:49:50.7969668Z   standalone: false
+2026-05-16T21:49:50.7969897Z env:
+2026-05-16T21:49:50.7970117Z   CRAWL_RUN_ID: 25973834258-1
+2026-05-16T21:49:50.7970386Z ##[endgroup]
+2026-05-16T21:49:50.9432873Z ##[group]Running self-installer...
+2026-05-16T21:49:51.4857801Z Progress: resolved 1, reused 0, downloaded 0, added 0
+2026-05-16T21:49:51.5034454Z Packages: +1
+2026-05-16T21:49:51.5036576Z +
+2026-05-16T21:49:51.8775387Z Progress: resolved 1, reused 0, downloaded 1, added 1, done
+2026-05-16T21:49:51.9066004Z 
+2026-05-16T21:49:51.9066778Z dependencies:
+2026-05-16T21:49:51.9067297Z + pnpm 9.12.0 (11.1.2 is available)
+2026-05-16T21:49:51.9067695Z 
+2026-05-16T21:49:51.9100878Z Done in 798ms
+2026-05-16T21:49:51.9315944Z ##[endgroup]
+2026-05-16T21:49:51.9319824Z Installation Completed!
+2026-05-16T21:49:51.9474473Z ##[group]Run actions/setup-node@v5
+2026-05-16T21:49:51.9474758Z with:
+2026-05-16T21:49:51.9474946Z   node-version: 20
+2026-05-16T21:49:51.9475137Z   cache: pnpm
+2026-05-16T21:49:51.9475325Z   always-auth: false
+2026-05-16T21:49:51.9475527Z   check-latest: false
+2026-05-16T21:49:51.9475853Z   token: ***
+2026-05-16T21:49:51.9476072Z   package-manager-cache: true
+2026-05-16T21:49:51.9476306Z env:
+2026-05-16T21:49:51.9476483Z   CRAWL_RUN_ID: 25973834258-1
+2026-05-16T21:49:51.9476767Z   PNPM_HOME: /home/runner/setup-pnpm/node_modules/.bin
+2026-05-16T21:49:51.9477063Z ##[endgroup]
+2026-05-16T21:49:52.1429747Z Found in cache @ /opt/hostedtoolcache/node/20.20.2/x64
+2026-05-16T21:49:52.1435182Z (node:2306) [DEP0040] DeprecationWarning: The `punycode` module is deprecated. Please use a userland alternative instead.
+2026-05-16T21:49:52.1436521Z (Use `node --trace-deprecation ...` to show where the warning was created)
+2026-05-16T21:49:52.1437905Z ##[group]Environment details
+2026-05-16T21:49:54.8258549Z node: v20.20.2
+2026-05-16T21:49:54.8259010Z npm: 10.8.2
+2026-05-16T21:49:54.8259341Z yarn: 1.22.22
+2026-05-16T21:49:54.8260307Z ##[endgroup]
+2026-05-16T21:49:54.8287416Z [command]/home/runner/setup-pnpm/node_modules/.bin/pnpm store path --silent
+2026-05-16T21:49:55.4004928Z /home/runner/setup-pnpm/node_modules/.bin/store/v3
+2026-05-16T21:49:55.6815459Z pnpm cache is not found
+2026-05-16T21:49:55.6937492Z ##[group]Run sudo apt-get update && sudo apt-get install -y jq
+2026-05-16T21:49:55.6938102Z [36;1msudo apt-get update && sudo apt-get install -y jq[0m
+2026-05-16T21:49:55.6983392Z shell: /usr/bin/bash -e {0}
+2026-05-16T21:49:55.6983652Z env:
+2026-05-16T21:49:55.6983834Z   CRAWL_RUN_ID: 25973834258-1
+2026-05-16T21:49:55.6984123Z   PNPM_HOME: /home/runner/setup-pnpm/node_modules/.bin
+2026-05-16T21:49:55.6984418Z ##[endgroup]
+2026-05-16T21:49:55.8307570Z Get:1 file:/etc/apt/apt-mirrors.txt Mirrorlist [144 B]
+2026-05-16T21:49:55.8634505Z Hit:6 https://packages.microsoft.com/repos/azure-cli noble InRelease
+2026-05-16T21:49:55.8636129Z Hit:2 http://azure.archive.ubuntu.com/ubuntu noble InRelease
+2026-05-16T21:49:55.8637354Z Get:7 https://packages.microsoft.com/ubuntu/24.04/prod noble InRelease [3600 B]
+2026-05-16T21:49:55.8695504Z Get:3 http://azure.archive.ubuntu.com/ubuntu noble-updates InRelease [126 kB]
+2026-05-16T21:49:55.8768147Z Get:4 http://azure.archive.ubuntu.com/ubuntu noble-backports InRelease [126 kB]
+2026-05-16T21:49:55.8827846Z Get:5 http://azure.archive.ubuntu.com/ubuntu noble-security InRelease [126 kB]
+2026-05-16T21:49:55.8970418Z Get:8 https://dl.google.com/linux/chrome-stable/deb stable InRelease [1825 B]
+2026-05-16T21:49:56.1037286Z Get:9 https://packages.microsoft.com/ubuntu/24.04/prod noble/main amd64 Packages [147 kB]
+2026-05-16T21:49:56.1210937Z Get:10 https://packages.microsoft.com/ubuntu/24.04/prod noble/main arm64 Packages [120 kB]
+2026-05-16T21:49:56.1466809Z Get:11 http://azure.archive.ubuntu.com/ubuntu noble-updates/main amd64 Packages [2003 kB]
+2026-05-16T21:49:56.1582790Z Get:12 http://azure.archive.ubuntu.com/ubuntu noble-updates/main Translation-en [354 kB]
+2026-05-16T21:49:56.1622022Z Get:13 http://azure.archive.ubuntu.com/ubuntu noble-updates/main amd64 Components [177 kB]
+2026-05-16T21:49:56.1639871Z Get:14 http://azure.archive.ubuntu.com/ubuntu noble-updates/universe amd64 Packages [1689 kB]
+2026-05-16T21:49:56.1749957Z Get:15 http://azure.archive.ubuntu.com/ubuntu noble-updates/universe amd64 Components [386 kB]
+2026-05-16T21:49:56.1773123Z Get:16 http://azure.archive.ubuntu.com/ubuntu noble-updates/restricted amd64 Packages [3187 kB]
+2026-05-16T21:49:56.2006257Z Get:17 http://azure.archive.ubuntu.com/ubuntu noble-updates/restricted Translation-en [738 kB]
+2026-05-16T21:49:56.2064305Z Get:18 http://azure.archive.ubuntu.com/ubuntu noble-updates/multiverse amd64 Components [940 B]
+2026-05-16T21:49:56.2270054Z Get:19 http://azure.archive.ubuntu.com/ubuntu noble-backports/main amd64 Components [5780 B]
+2026-05-16T21:49:56.2292547Z Get:20 http://azure.archive.ubuntu.com/ubuntu noble-backports/universe amd64 Components [10.5 kB]
+2026-05-16T21:49:56.3445123Z Get:21 http://azure.archive.ubuntu.com/ubuntu noble-security/main amd64 Packages [1668 kB]
+2026-05-16T21:49:56.3533764Z Get:22 http://azure.archive.ubuntu.com/ubuntu noble-security/main amd64 Components [21.9 kB]
+2026-05-16T21:49:56.3546962Z Get:23 http://azure.archive.ubuntu.com/ubuntu noble-security/universe amd64 Packages [1187 kB]
+2026-05-16T21:49:56.3616876Z Get:24 http://azure.archive.ubuntu.com/ubuntu noble-security/universe amd64 Components [74.3 kB]
+2026-05-16T21:49:56.4234340Z Get:25 https://dl.google.com/linux/chrome-stable/deb stable/main amd64 Packages [1208 B]
+2026-05-16T21:50:04.1765368Z Fetched 12.2 MB in 2s (8076 kB/s)
+2026-05-16T21:50:04.9187970Z Reading package lists...
+2026-05-16T21:50:04.9505699Z Reading package lists...
+2026-05-16T21:50:05.1099415Z Building dependency tree...
+2026-05-16T21:50:05.1107239Z Reading state information...
+2026-05-16T21:50:05.2815310Z jq is already the newest version (1.7.1-3ubuntu0.24.04.2).
+2026-05-16T21:50:05.2816154Z 0 upgraded, 0 newly installed, 0 to remove and 7 not upgraded.
+2026-05-16T21:50:05.2886027Z ##[group]Run nick-fields/retry@v3
+2026-05-16T21:50:05.2886289Z with:
+2026-05-16T21:50:05.2886466Z   timeout_minutes: 10
+2026-05-16T21:50:05.2886656Z   max_attempts: 3
+2026-05-16T21:50:05.2886843Z   retry_wait_seconds: 30
+2026-05-16T21:50:05.2887076Z   command: pnpm install --frozen-lockfile
+2026-05-16T21:50:05.2887349Z   polling_interval_seconds: 1
+2026-05-16T21:50:05.2887575Z   warning_on_retry: true
+2026-05-16T21:50:05.2887788Z   continue_on_error: false
+2026-05-16T21:50:05.2887988Z env:
+2026-05-16T21:50:05.2888158Z   CRAWL_RUN_ID: 25973834258-1
+2026-05-16T21:50:05.2888432Z   PNPM_HOME: /home/runner/setup-pnpm/node_modules/.bin
+2026-05-16T21:50:05.2888722Z ##[endgroup]
+2026-05-16T21:50:05.3599550Z ##[group]Attempt 1
+2026-05-16T21:50:05.7928193Z Scope: all 4 workspace projects
+2026-05-16T21:50:05.8573388Z Lockfile is up to date, resolution step is skipped
+2026-05-16T21:50:05.9117413Z Progress: resolved 1, reused 0, downloaded 0, added 0
+2026-05-16T21:50:06.0149163Z Packages: +450
+2026-05-16T21:50:06.0149824Z ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+2026-05-16T21:50:06.9158015Z Progress: resolved 450, reused 0, downloaded 74, added 61
+2026-05-16T21:50:07.9140321Z Progress: resolved 450, reused 0, downloaded 130, added 118
+2026-05-16T21:50:08.9141765Z Progress: resolved 450, reused 0, downloaded 385, added 377
+2026-05-16T21:50:09.9143907Z Progress: resolved 450, reused 0, downloaded 449, added 449
+2026-05-16T21:50:10.0276228Z Progress: resolved 450, reused 0, downloaded 450, added 450, done
+2026-05-16T21:50:10.2402429Z .../node_modules/unrs-resolver postinstall$ napi-postinstall unrs-resolver 1.11.1 check
+2026-05-16T21:50:10.2410199Z .../sharp@0.34.5/node_modules/sharp install$ node install/check.js || npm run build
+2026-05-16T21:50:10.2415058Z .../esbuild@0.27.7/node_modules/esbuild postinstall$ node install.js
+2026-05-16T21:50:10.3125816Z .../node_modules/unrs-resolver postinstall: Done
+2026-05-16T21:50:10.3256191Z .../esbuild@0.27.7/node_modules/esbuild postinstall: Done
+2026-05-16T21:50:10.6109551Z .../sharp@0.34.5/node_modules/sharp install: Done
+2026-05-16T21:50:10.7000605Z 
+2026-05-16T21:50:10.7001129Z devDependencies:
+2026-05-16T21:50:10.7001564Z + typescript 5.9.3
+2026-05-16T21:50:10.7001783Z 
+2026-05-16T21:50:10.7227627Z Done in 5.3s
+2026-05-16T21:50:11.3694365Z Command completed after 1 attempt(s).
+2026-05-16T21:50:11.3695438Z ##[endgroup]
+2026-05-16T21:50:11.3780564Z ##[group]Run nick-fields/retry@v3
+2026-05-16T21:50:11.3780818Z with:
+2026-05-16T21:50:11.3780993Z   timeout_minutes: 10
+2026-05-16T21:50:11.3781192Z   max_attempts: 2
+2026-05-16T21:50:11.3781384Z   retry_wait_seconds: 20
+2026-05-16T21:50:11.3781752Z   command: pnpm --filter @prodmatch/crawler exec playwright install --with-deps chromium
+2026-05-16T21:50:11.3782543Z   polling_interval_seconds: 1
+2026-05-16T21:50:11.3782785Z   warning_on_retry: true
+2026-05-16T21:50:11.3782997Z   continue_on_error: false
+2026-05-16T21:50:11.3783200Z env:
+2026-05-16T21:50:11.3783359Z   CRAWL_RUN_ID: 25973834258-1
+2026-05-16T21:50:11.3783630Z   PNPM_HOME: /home/runner/setup-pnpm/node_modules/.bin
+2026-05-16T21:50:11.3783918Z ##[endgroup]
+2026-05-16T21:50:11.4497041Z ##[group]Attempt 1
+2026-05-16T21:50:12.1477820Z Installing dependencies...
+2026-05-16T21:50:12.1551476Z Switching to root user to install dependencies...
+2026-05-16T21:50:12.2214301Z Get:1 file:/etc/apt/apt-mirrors.txt Mirrorlist [144 B]
+2026-05-16T21:50:12.2585358Z Hit:2 http://azure.archive.ubuntu.com/ubuntu noble InRelease
+2026-05-16T21:50:12.2598358Z Hit:3 http://azure.archive.ubuntu.com/ubuntu noble-updates InRelease
+2026-05-16T21:50:12.2605815Z Hit:6 https://packages.microsoft.com/repos/azure-cli noble InRelease
+2026-05-16T21:50:12.2608462Z Hit:4 http://azure.archive.ubuntu.com/ubuntu noble-backports InRelease
+2026-05-16T21:50:12.2611220Z Hit:5 http://azure.archive.ubuntu.com/ubuntu noble-security InRelease
+2026-05-16T21:50:12.2626827Z Hit:7 https://packages.microsoft.com/ubuntu/24.04/prod noble InRelease
+2026-05-16T21:50:12.3033107Z Hit:8 https://dl.google.com/linux/chrome-stable/deb stable InRelease
+2026-05-16T21:50:13.4696663Z Reading package lists...
+2026-05-16T21:50:13.4925546Z Reading package lists...
+2026-05-16T21:50:13.6600129Z Building dependency tree...
+2026-05-16T21:50:13.6607581Z Reading state information...
+2026-05-16T21:50:13.8049000Z libasound2t64 is already the newest version (1.2.11-1ubuntu0.2).
+2026-05-16T21:50:13.8049906Z libasound2t64 set to manually installed.
+2026-05-16T21:50:13.8050645Z libatk-bridge2.0-0t64 is already the newest version (2.52.0-1build1).
+2026-05-16T21:50:13.8051368Z libatk-bridge2.0-0t64 set to manually installed.
+2026-05-16T21:50:13.8052040Z libatk1.0-0t64 is already the newest version (2.52.0-1build1).
+2026-05-16T21:50:13.8053143Z libatk1.0-0t64 set to manually installed.
+2026-05-16T21:50:13.8053894Z libatspi2.0-0t64 is already the newest version (2.52.0-1build1).
+2026-05-16T21:50:13.8054557Z libatspi2.0-0t64 set to manually installed.
+2026-05-16T21:50:13.8055231Z libcairo2 is already the newest version (1.18.0-3build1).
+2026-05-16T21:50:13.8055988Z libcairo2 set to manually installed.
+2026-05-16T21:50:13.8056662Z libcups2t64 is already the newest version (2.4.7-1.2ubuntu7.9).
+2026-05-16T21:50:13.8057350Z libcups2t64 set to manually installed.
+2026-05-16T21:50:13.8058070Z libdbus-1-3 is already the newest version (1.14.10-4ubuntu4.1).
+2026-05-16T21:50:13.8058752Z libdbus-1-3 set to manually installed.
+2026-05-16T21:50:13.8059472Z libdrm2 is already the newest version (2.4.125-1ubuntu0.1~24.04.1).
+2026-05-16T21:50:13.8060149Z libdrm2 set to manually installed.
+2026-05-16T21:50:13.8060815Z libgbm1 is already the newest version (25.2.8-0ubuntu0.24.04.1).
+2026-05-16T21:50:13.8061460Z libgbm1 set to manually installed.
+2026-05-16T21:50:13.8062753Z libglib2.0-0t64 is already the newest version (2.80.0-6ubuntu3.8).
+2026-05-16T21:50:13.8063455Z libglib2.0-0t64 set to manually installed.
+2026-05-16T21:50:13.8064161Z libnspr4 is already the newest version (2:4.35-1.1build1).
+2026-05-16T21:50:13.8064801Z libnspr4 set to manually installed.
+2026-05-16T21:50:13.8065453Z libnss3 is already the newest version (2:3.98-1ubuntu0.1).
+2026-05-16T21:50:13.8066060Z libnss3 set to manually installed.
+2026-05-16T21:50:13.8066737Z libpango-1.0-0 is already the newest version (1.52.1+ds-1build1).
+2026-05-16T21:50:13.8067419Z libpango-1.0-0 set to manually installed.
+2026-05-16T21:50:13.8068348Z libx11-6 is already the newest version (2:1.8.7-1build1).
+2026-05-16T21:50:13.8068986Z libx11-6 set to manually installed.
+2026-05-16T21:50:13.8069606Z libxcb1 is already the newest version (1.15-1ubuntu2).
+2026-05-16T21:50:13.8070200Z libxcb1 set to manually installed.
+2026-05-16T21:50:13.8070888Z libxcomposite1 is already the newest version (1:0.4.5-1build3).
+2026-05-16T21:50:13.8071587Z libxcomposite1 set to manually installed.
+2026-05-16T21:50:13.8072556Z libxdamage1 is already the newest version (1:1.1.6-1build1).
+2026-05-16T21:50:13.8073212Z libxdamage1 set to manually installed.
+2026-05-16T21:50:13.8073853Z libxext6 is already the newest version (2:1.3.4-1build2).
+2026-05-16T21:50:13.8074458Z libxext6 set to manually installed.
+2026-05-16T21:50:13.8075094Z libxfixes3 is already the newest version (1:6.0.0-2build1).
+2026-05-16T21:50:13.8075721Z libxfixes3 set to manually installed.
+2026-05-16T21:50:13.8076380Z libxkbcommon0 is already the newest version (1.6.0-1build1).
+2026-05-16T21:50:13.8077107Z libxkbcommon0 set to manually installed.
+2026-05-16T21:50:13.8077799Z libxrandr2 is already the newest version (2:1.5.2-2build1).
+2026-05-16T21:50:13.8078414Z libxrandr2 set to manually installed.
+2026-05-16T21:50:13.8079045Z xvfb is already the newest version (2:21.1.12-1ubuntu1.5).
+2026-05-16T21:50:13.8079915Z fonts-noto-color-emoji is already the newest version (2.047-0ubuntu0.24.04.1).
+2026-05-16T21:50:13.8080835Z libfontconfig1 is already the newest version (2.15.0-1.1ubuntu2).
+2026-05-16T21:50:13.8081528Z libfontconfig1 set to manually installed.
+2026-05-16T21:50:13.8082472Z libfreetype6 is already the newest version (2.13.2+dfsg-1ubuntu0.1).
+2026-05-16T21:50:13.8083185Z libfreetype6 set to manually installed.
+2026-05-16T21:50:13.8083893Z fonts-liberation is already the newest version (1:2.1.5-3).
+2026-05-16T21:50:13.8084576Z fonts-liberation set to manually installed.
+2026-05-16T21:50:13.8085237Z The following additional packages will be installed:
+2026-05-16T21:50:13.8085814Z   xfonts-encodings xfonts-utils
+2026-05-16T21:50:13.8086259Z Recommended packages:
+2026-05-16T21:50:13.8086686Z   fonts-ipafont-mincho fonts-tlwg-loma
+2026-05-16T21:50:13.8325237Z The following NEW packages will be installed:
+2026-05-16T21:50:13.8326296Z   fonts-freefont-ttf fonts-ipafont-gothic fonts-tlwg-loma-otf fonts-unifont
+2026-05-16T21:50:13.8331877Z   fonts-wqy-zenhei xfonts-cyrillic xfonts-encodings xfonts-scalable
+2026-05-16T21:50:13.8332734Z   xfonts-utils
+2026-05-16T21:50:13.8497341Z 0 upgraded, 9 newly installed, 0 to remove and 7 not upgraded.
+2026-05-16T21:50:13.8498045Z Need to get 21.1 MB of archives.
+2026-05-16T21:50:13.8498751Z After this operation, 79.5 MB of additional disk space will be used.
+2026-05-16T21:50:13.8499342Z Get:1 file:/etc/apt/apt-mirrors.txt Mirrorlist [144 B]
+2026-05-16T21:50:13.9337287Z Get:2 http://azure.archive.ubuntu.com/ubuntu noble/universe amd64 fonts-ipafont-gothic all 00303-21ubuntu1 [3513 kB]
+2026-05-16T21:50:14.0811403Z Get:3 http://azure.archive.ubuntu.com/ubuntu noble/main amd64 fonts-freefont-ttf all 20211204+svn4273-2 [5641 kB]
+2026-05-16T21:50:14.2709181Z Get:4 http://azure.archive.ubuntu.com/ubuntu noble/universe amd64 fonts-tlwg-loma-otf all 1:0.7.3-1 [107 kB]
+2026-05-16T21:50:14.3388472Z Get:5 http://azure.archive.ubuntu.com/ubuntu noble/universe amd64 fonts-unifont all 1:15.1.01-1build1 [2993 kB]
+2026-05-16T21:50:14.4669235Z Get:6 http://azure.archive.ubuntu.com/ubuntu noble/universe amd64 fonts-wqy-zenhei all 0.9.45-8 [7472 kB]
+2026-05-16T21:50:14.6926183Z Get:7 http://azure.archive.ubuntu.com/ubuntu noble/main amd64 xfonts-encodings all 1:1.0.5-0ubuntu2 [578 kB]
+2026-05-16T21:50:14.7693280Z Get:8 http://azure.archive.ubuntu.com/ubuntu noble/main amd64 xfonts-utils amd64 1:7.7+6build3 [94.4 kB]
+2026-05-16T21:50:14.8369457Z Get:9 http://azure.archive.ubuntu.com/ubuntu noble/universe amd64 xfonts-cyrillic all 1:1.0.5+nmu1 [384 kB]
+2026-05-16T21:50:14.9118057Z Get:10 http://azure.archive.ubuntu.com/ubuntu noble/main amd64 xfonts-scalable all 1:1.0.3-1.3 [304 kB]
+2026-05-16T21:50:15.1689681Z Fetched 21.1 MB in 1s (19.6 MB/s)
+2026-05-16T21:50:15.2217902Z Selecting previously unselected package fonts-ipafont-gothic.
+2026-05-16T21:50:15.3233411Z (Reading database ... 
+2026-05-16T21:50:15.3233859Z (Reading database ... 5%
+2026-05-16T21:50:15.3234129Z (Reading database ... 10%
+2026-05-16T21:50:15.3234366Z (Reading database ... 15%
+2026-05-16T21:50:15.3234590Z (Reading database ... 20%
+2026-05-16T21:50:15.3234824Z (Reading database ... 25%
+2026-05-16T21:50:15.3235050Z (Reading database ... 30%
+2026-05-16T21:50:15.3235276Z (Reading database ... 35%
+2026-05-16T21:50:15.3235497Z (Reading database ... 40%
+2026-05-16T21:50:15.3235709Z (Reading database ... 45%
+2026-05-16T21:50:15.3235931Z (Reading database ... 50%
+2026-05-16T21:50:15.3640801Z (Reading database ... 55%
+2026-05-16T21:50:15.7105239Z (Reading database ... 60%
+2026-05-16T21:50:16.0032708Z (Reading database ... 65%
+2026-05-16T21:50:16.2769470Z (Reading database ... 70%
+2026-05-16T21:50:16.5620057Z (Reading database ... 75%
+2026-05-16T21:50:17.0620758Z (Reading database ... 80%
+2026-05-16T21:50:17.8272341Z (Reading database ... 85%
+2026-05-16T21:50:18.9895602Z (Reading database ... 90%
+2026-05-16T21:50:19.6730308Z (Reading database ... 95%
+2026-05-16T21:50:19.6731141Z (Reading database ... 100%
+2026-05-16T21:50:19.6732540Z (Reading database ... 202288 files and directories currently installed.)
+2026-05-16T21:50:19.6774446Z Preparing to unpack .../0-fonts-ipafont-gothic_00303-21ubuntu1_all.deb ...
+2026-05-16T21:50:19.7141306Z Unpacking fonts-ipafont-gothic (00303-21ubuntu1) ...
+2026-05-16T21:50:19.9485645Z Selecting previously unselected package fonts-freefont-ttf.
+2026-05-16T21:50:19.9609666Z Preparing to unpack .../1-fonts-freefont-ttf_20211204+svn4273-2_all.deb ...
+2026-05-16T21:50:19.9617770Z Unpacking fonts-freefont-ttf (20211204+svn4273-2) ...
+2026-05-16T21:50:20.0502092Z Selecting previously unselected package fonts-tlwg-loma-otf.
+2026-05-16T21:50:20.0626197Z Preparing to unpack .../2-fonts-tlwg-loma-otf_1%3a0.7.3-1_all.deb ...
+2026-05-16T21:50:20.0637711Z Unpacking fonts-tlwg-loma-otf (1:0.7.3-1) ...
+2026-05-16T21:50:20.0851918Z Selecting previously unselected package fonts-unifont.
+2026-05-16T21:50:20.0975494Z Preparing to unpack .../3-fonts-unifont_1%3a15.1.01-1build1_all.deb ...
+2026-05-16T21:50:20.0986185Z Unpacking fonts-unifont (1:15.1.01-1build1) ...
+2026-05-16T21:50:20.2078473Z Selecting previously unselected package fonts-wqy-zenhei.
+2026-05-16T21:50:20.2201049Z Preparing to unpack .../4-fonts-wqy-zenhei_0.9.45-8_all.deb ...
+2026-05-16T21:50:20.2339220Z Unpacking fonts-wqy-zenhei (0.9.45-8) ...
+2026-05-16T21:50:20.6939294Z Selecting previously unselected package xfonts-encodings.
+2026-05-16T21:50:20.7063513Z Preparing to unpack .../5-xfonts-encodings_1%3a1.0.5-0ubuntu2_all.deb ...
+2026-05-16T21:50:20.7070713Z Unpacking xfonts-encodings (1:1.0.5-0ubuntu2) ...
+2026-05-16T21:50:20.7399667Z Selecting previously unselected package xfonts-utils.
+2026-05-16T21:50:20.7522488Z Preparing to unpack .../6-xfonts-utils_1%3a7.7+6build3_amd64.deb ...
+2026-05-16T21:50:20.7531141Z Unpacking xfonts-utils (1:7.7+6build3) ...
+2026-05-16T21:50:20.8232018Z Selecting previously unselected package xfonts-cyrillic.
+2026-05-16T21:50:20.8356005Z Preparing to unpack .../7-xfonts-cyrillic_1%3a1.0.5+nmu1_all.deb ...
+2026-05-16T21:50:20.8363598Z Unpacking xfonts-cyrillic (1:1.0.5+nmu1) ...
+2026-05-16T21:50:20.8705104Z Selecting previously unselected package xfonts-scalable.
+2026-05-16T21:50:20.8849528Z Preparing to unpack .../8-xfonts-scalable_1%3a1.0.3-1.3_all.deb ...
+2026-05-16T21:50:20.8857579Z Unpacking xfonts-scalable (1:1.0.3-1.3) ...
+2026-05-16T21:50:20.9252372Z Setting up fonts-wqy-zenhei (0.9.45-8) ...
+2026-05-16T21:50:20.9363791Z Setting up fonts-freefont-ttf (20211204+svn4273-2) ...
+2026-05-16T21:50:20.9384237Z Setting up fonts-tlwg-loma-otf (1:0.7.3-1) ...
+2026-05-16T21:50:20.9404331Z Setting up xfonts-encodings (1:1.0.5-0ubuntu2) ...
+2026-05-16T21:50:20.9424560Z Setting up fonts-ipafont-gothic (00303-21ubuntu1) ...
+2026-05-16T21:50:20.9489281Z update-alternatives: using /usr/share/fonts/opentype/ipafont-gothic/ipag.ttf to provide /usr/share/fonts/truetype/fonts-japanese-gothic.ttf (fonts-japanese-gothic.ttf) in auto mode
+2026-05-16T21:50:20.9505951Z Setting up fonts-unifont (1:15.1.01-1build1) ...
+2026-05-16T21:50:20.9526737Z Setting up xfonts-utils (1:7.7+6build3) ...
+2026-05-16T21:50:20.9568108Z Setting up xfonts-cyrillic (1:1.0.5+nmu1) ...
+2026-05-16T21:50:20.9903353Z Setting up xfonts-scalable (1:1.0.3-1.3) ...
+2026-05-16T21:50:21.0271714Z Processing triggers for man-db (2.12.0-4build2) ...
+2026-05-16T21:50:21.0296941Z Not building database; man-db/auto-update is not 'true'.
+2026-05-16T21:50:21.0309789Z Processing triggers for fontconfig (2.15.0-1.1ubuntu2) ...
+2026-05-16T21:50:22.3619817Z 
+2026-05-16T21:50:22.3620351Z Running kernel seems to be up-to-date.
+2026-05-16T21:50:22.3620703Z 
+2026-05-16T21:50:22.3620959Z No services need to be restarted.
+2026-05-16T21:50:22.3621254Z 
+2026-05-16T21:50:22.3621465Z No containers need to be restarted.
+2026-05-16T21:50:22.3621726Z 
+2026-05-16T21:50:22.3622069Z No user sessions are running outdated binaries.
+2026-05-16T21:50:22.3622622Z 
+2026-05-16T21:50:22.3623118Z No VM guests are running outdated hypervisor (qemu) binaries on this host.
+2026-05-16T21:50:23.1488029Z Downloading Chrome for Testing 147.0.7727.15 (playwright chromium v1217) from https://cdn.playwright.dev/builds/cft/147.0.7727.15/linux64/chrome-linux64.zip
+2026-05-16T21:50:23.9802954Z |                                                                                |   0% of 170.4 MiB
+2026-05-16T21:50:24.1616986Z |■■■■■■■■                                                                        |  10% of 170.4 MiB
+2026-05-16T21:50:24.3372059Z |■■■■■■■■■■■■■■■■                                                                |  20% of 170.4 MiB
+2026-05-16T21:50:24.4542485Z |■■■■■■■■■■■■■■■■■■■■■■■■                                                        |  30% of 170.4 MiB
+2026-05-16T21:50:24.5697247Z |■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■                                                |  40% of 170.4 MiB
+2026-05-16T21:50:24.6884518Z |■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■                                        |  50% of 170.4 MiB
+2026-05-16T21:50:24.8216536Z |■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■                                |  60% of 170.4 MiB
+2026-05-16T21:50:24.9370391Z |■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■                        |  70% of 170.4 MiB
+2026-05-16T21:50:25.0771493Z |■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■                |  80% of 170.4 MiB
+2026-05-16T21:50:25.2095254Z |■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■        |  90% of 170.4 MiB
+2026-05-16T21:50:25.3260535Z |■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■| 100% of 170.4 MiB
+2026-05-16T21:50:28.6820048Z Chrome for Testing 147.0.7727.15 (playwright chromium v1217) downloaded to /home/runner/.cache/ms-playwright/chromium-1217
+2026-05-16T21:50:28.6822833Z Downloading FFmpeg (playwright ffmpeg v1011) from https://cdn.playwright.dev/dbazure/download/playwright/builds/ffmpeg/1011/ffmpeg-linux.zip
+2026-05-16T21:50:29.4441014Z |                                                                                |   0% of 2.3 MiB
+2026-05-16T21:50:29.4486160Z |■■■■■■■■                                                                        |  10% of 2.3 MiB
+2026-05-16T21:50:29.4515248Z |■■■■■■■■■■■■■■■■                                                                |  20% of 2.3 MiB
+2026-05-16T21:50:29.4540291Z |■■■■■■■■■■■■■■■■■■■■■■■■                                                        |  30% of 2.3 MiB
+2026-05-16T21:50:29.4569008Z |■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■                                                |  40% of 2.3 MiB
+2026-05-16T21:50:29.4594054Z |■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■                                        |  50% of 2.3 MiB
+2026-05-16T21:50:29.4618073Z |■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■                                |  60% of 2.3 MiB
+2026-05-16T21:50:29.4647964Z |■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■                        |  70% of 2.3 MiB
+2026-05-16T21:50:29.4671393Z |■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■                |  80% of 2.3 MiB
+2026-05-16T21:50:29.4694164Z |■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■        |  90% of 2.3 MiB
+2026-05-16T21:50:29.4717207Z |■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■| 100% of 2.3 MiB
+2026-05-16T21:50:29.5476561Z FFmpeg (playwright ffmpeg v1011) downloaded to /home/runner/.cache/ms-playwright/ffmpeg-1011
+2026-05-16T21:50:29.5479858Z Downloading Chrome Headless Shell 147.0.7727.15 (playwright chromium-headless-shell v1217) from https://cdn.playwright.dev/builds/cft/147.0.7727.15/linux64/chrome-headless-shell-linux64.zip
+2026-05-16T21:50:30.3656702Z |                                                                                |   0% of 112 MiB
+2026-05-16T21:50:30.5110175Z |■■■■■■■■                                                                        |  10% of 112 MiB
+2026-05-16T21:50:30.6014804Z |■■■■■■■■■■■■■■■■                                                                |  20% of 112 MiB
+2026-05-16T21:50:30.6959315Z |■■■■■■■■■■■■■■■■■■■■■■■■                                                        |  30% of 112 MiB
+2026-05-16T21:50:30.7961979Z |■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■                                                |  40% of 112 MiB
+2026-05-16T21:50:30.8876762Z |■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■                                        |  50% of 112 MiB
+2026-05-16T21:50:30.9794767Z |■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■                                |  60% of 112 MiB
+2026-05-16T21:50:31.0713203Z |■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■                        |  70% of 112 MiB
+2026-05-16T21:50:31.1735544Z |■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■                |  80% of 112 MiB
+2026-05-16T21:50:31.2798208Z |■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■        |  90% of 112 MiB
+2026-05-16T21:50:31.3811776Z |■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■| 100% of 112 MiB
+2026-05-16T21:50:33.8917674Z Chrome Headless Shell 147.0.7727.15 (playwright chromium-headless-shell v1217) downloaded to /home/runner/.cache/ms-playwright/chromium_headless_shell-1217
+2026-05-16T21:50:34.4732182Z Command completed after 1 attempt(s).
+2026-05-16T21:50:34.4734791Z ##[endgroup]
+2026-05-16T21:50:34.4833753Z ##[group]Run SLUGS=""
+2026-05-16T21:50:34.4834158Z [36;1mSLUGS=""[0m
+2026-05-16T21:50:34.4834462Z [36;1mFLAGS=""[0m
+2026-05-16T21:50:34.4834768Z [36;1mif [ "false" = "true" ]; then[0m
+2026-05-16T21:50:34.4835184Z [36;1m  FLAGS="--dry-run"[0m
+2026-05-16T21:50:34.4835530Z [36;1mfi[0m
+2026-05-16T21:50:34.4835823Z [36;1mif [ "false" = "true" ]; then[0m
+2026-05-16T21:50:34.4836228Z [36;1m  FLAGS="--dry-run-parse"[0m
+2026-05-16T21:50:34.4836600Z [36;1mfi[0m
+2026-05-16T21:50:34.4837022Z [36;1m# Empty SLUGS means "all companies in sequence" (default).[0m
+2026-05-16T21:50:34.4837580Z [36;1mif [ -z "$SLUGS" ]; then[0m
+2026-05-16T21:50:34.4838067Z [36;1m  pnpm --filter @prodmatch/crawler start -- $FLAGS[0m
+2026-05-16T21:50:34.4838553Z [36;1melse[0m
+2026-05-16T21:50:34.4839026Z [36;1m  pnpm --filter @prodmatch/crawler start -- --slugs="$SLUGS" $FLAGS[0m
+2026-05-16T21:50:34.4839628Z [36;1mfi[0m
+2026-05-16T21:50:34.4883121Z shell: /usr/bin/bash -e {0}
+2026-05-16T21:50:34.4883529Z env:
+2026-05-16T21:50:34.4883809Z   CRAWL_RUN_ID: 25973834258-1
+2026-05-16T21:50:34.4884259Z   PNPM_HOME: /home/runner/setup-pnpm/node_modules/.bin
+2026-05-16T21:50:34.4884993Z   SUPABASE_URL: ***
+2026-05-16T21:50:34.4887322Z   SUPABASE_SERVICE_ROLE_KEY: ***
+2026-05-16T21:50:34.4888543Z   GEMINI_API_KEY: ***
+2026-05-16T21:50:34.4888873Z   CRAWL_ALERT_WEBHOOK_URL: 
+2026-05-16T21:50:34.4889215Z ##[endgroup]
+2026-05-16T21:50:34.9589283Z 
+2026-05-16T21:50:34.9590158Z > @prodmatch/crawler@0.1.0 start /home/runner/work/productcompanies/productcompanies/packages/crawler
+2026-05-16T21:50:34.9591030Z > tsx index.ts "--"
+2026-05-16T21:50:34.9591237Z 
+2026-05-16T21:50:35.8250919Z {"ts":"2026-05-16T21:50:35.824Z","level":"info","runId":"25973834258-1","company":null,"msg":"Starting crawl for: google, microsoft, meta, amazon, apple, atlassian, nvidia, oracle, salesforce, sap-labs, razorpay, phonepe, zerodha, cred, groww, swiggy, zomato, flipkart","event":"crawl_start","data":{"slugs":["google","microsoft","meta","amazon","apple","atlassian","nvidia","oracle","salesforce","sap-labs","razorpay","phonepe","zerodha","cred","groww","swiggy","zomato","flipkart"],"dryRun":false,"dryParse":false,"perCompanyTimeoutMs":2700000}}
+2026-05-16T21:50:35.8256268Z {"ts":"2026-05-16T21:50:35.824Z","level":"info","runId":"25973834258-1","company":null,"msg":"Detected 3 Gemini API key(s) — worker pool will rotate.","event":"keys_loaded","data":{"keyCount":3}}
+2026-05-16T21:50:38.4440161Z {"ts":"2026-05-16T21:50:38.443Z","level":"info","runId":"25973834258-1","company":"google","msg":"Crawling…","event":"company_start"}
+2026-05-16T21:50:38.4443406Z {"ts":"2026-05-16T21:50:38.444Z","level":"info","runId":"25973834258-1","company":"google","msg":"Loading page 1..."}
+2026-05-16T21:50:42.5611063Z {"ts":"2026-05-16T21:50:42.560Z","level":"info","runId":"25973834258-1","company":"google","msg":"Page 1: 20 jobs (total so far: 20)"}
+2026-05-16T21:50:44.0613492Z {"ts":"2026-05-16T21:50:44.060Z","level":"info","runId":"25973834258-1","company":"google","msg":"Loading page 2..."}
+2026-05-16T21:50:47.6448875Z {"ts":"2026-05-16T21:50:47.644Z","level":"info","runId":"25973834258-1","company":"google","msg":"Page 2: 20 jobs (total so far: 40)"}
+2026-05-16T21:50:49.1469085Z {"ts":"2026-05-16T21:50:49.146Z","level":"info","runId":"25973834258-1","company":"google","msg":"Loading page 3..."}
+2026-05-16T21:50:52.3748101Z {"ts":"2026-05-16T21:50:52.374Z","level":"info","runId":"25973834258-1","company":"google","msg":"Page 3: 20 jobs (total so far: 60)"}
+2026-05-16T21:50:53.8767748Z {"ts":"2026-05-16T21:50:53.876Z","level":"info","runId":"25973834258-1","company":"google","msg":"Loading page 4..."}
+2026-05-16T21:50:57.0619197Z {"ts":"2026-05-16T21:50:57.061Z","level":"info","runId":"25973834258-1","company":"google","msg":"Page 4: 20 jobs (total so far: 80)"}
+2026-05-16T21:50:58.5633756Z {"ts":"2026-05-16T21:50:58.562Z","level":"info","runId":"25973834258-1","company":"google","msg":"Loading page 5..."}
+2026-05-16T21:51:01.7577306Z {"ts":"2026-05-16T21:51:01.757Z","level":"info","runId":"25973834258-1","company":"google","msg":"Page 5: 20 jobs (total so far: 100)"}
+2026-05-16T21:51:03.2594699Z {"ts":"2026-05-16T21:51:03.259Z","level":"info","runId":"25973834258-1","company":"google","msg":"Loading page 6..."}
+2026-05-16T21:51:06.4845676Z {"ts":"2026-05-16T21:51:06.484Z","level":"info","runId":"25973834258-1","company":"google","msg":"Page 6: 20 jobs (total so far: 120)"}
+2026-05-16T21:51:07.9869913Z {"ts":"2026-05-16T21:51:07.986Z","level":"info","runId":"25973834258-1","company":"google","msg":"Loading page 7..."}
+2026-05-16T21:51:11.2568444Z {"ts":"2026-05-16T21:51:11.256Z","level":"info","runId":"25973834258-1","company":"google","msg":"Page 7: 20 jobs (total so far: 140)"}
+2026-05-16T21:51:12.7585684Z {"ts":"2026-05-16T21:51:12.758Z","level":"info","runId":"25973834258-1","company":"google","msg":"Loading page 8..."}
+2026-05-16T21:51:15.9686144Z {"ts":"2026-05-16T21:51:15.968Z","level":"info","runId":"25973834258-1","company":"google","msg":"Page 8: 20 jobs (total so far: 160)"}
+2026-05-16T21:51:17.4703681Z {"ts":"2026-05-16T21:51:17.470Z","level":"info","runId":"25973834258-1","company":"google","msg":"Loading page 9..."}
+2026-05-16T21:51:20.6504597Z {"ts":"2026-05-16T21:51:20.650Z","level":"info","runId":"25973834258-1","company":"google","msg":"Page 9: 20 jobs (total so far: 180)"}
+2026-05-16T21:51:22.1521328Z {"ts":"2026-05-16T21:51:22.151Z","level":"info","runId":"25973834258-1","company":"google","msg":"Loading page 10..."}
+2026-05-16T21:51:25.3181049Z {"ts":"2026-05-16T21:51:25.317Z","level":"info","runId":"25973834258-1","company":"google","msg":"Page 10: 20 jobs (total so far: 200)"}
+2026-05-16T21:51:26.8194570Z {"ts":"2026-05-16T21:51:26.819Z","level":"info","runId":"25973834258-1","company":"google","msg":"Loading page 11..."}
+2026-05-16T21:51:29.9831654Z {"ts":"2026-05-16T21:51:29.982Z","level":"info","runId":"25973834258-1","company":"google","msg":"Page 11: 20 jobs (total so far: 220)"}
+2026-05-16T21:51:31.4847149Z {"ts":"2026-05-16T21:51:31.484Z","level":"info","runId":"25973834258-1","company":"google","msg":"Loading page 12..."}
+2026-05-16T21:51:34.6684183Z {"ts":"2026-05-16T21:51:34.668Z","level":"info","runId":"25973834258-1","company":"google","msg":"Page 12: 20 jobs (total so far: 240)"}
+2026-05-16T21:51:36.1691267Z {"ts":"2026-05-16T21:51:36.168Z","level":"info","runId":"25973834258-1","company":"google","msg":"Loading page 13..."}
+2026-05-16T21:51:39.3553112Z {"ts":"2026-05-16T21:51:39.355Z","level":"info","runId":"25973834258-1","company":"google","msg":"Page 13: 20 jobs (total so far: 260)"}
+2026-05-16T21:51:40.8566210Z {"ts":"2026-05-16T21:51:40.856Z","level":"info","runId":"25973834258-1","company":"google","msg":"Loading page 14..."}
+2026-05-16T21:51:44.0417764Z {"ts":"2026-05-16T21:51:44.041Z","level":"info","runId":"25973834258-1","company":"google","msg":"Page 14: 20 jobs (total so far: 280)"}
+2026-05-16T21:51:45.5436580Z {"ts":"2026-05-16T21:51:45.543Z","level":"info","runId":"25973834258-1","company":"google","msg":"Loading page 15..."}
+2026-05-16T21:51:48.7369460Z {"ts":"2026-05-16T21:51:48.736Z","level":"info","runId":"25973834258-1","company":"google","msg":"Page 15: 20 jobs (total so far: 300)"}
+2026-05-16T21:51:50.2386377Z {"ts":"2026-05-16T21:51:50.238Z","level":"info","runId":"25973834258-1","company":"google","msg":"Loading page 16..."}
+2026-05-16T21:51:53.5217345Z {"ts":"2026-05-16T21:51:53.521Z","level":"info","runId":"25973834258-1","company":"google","msg":"Page 16: 20 jobs (total so far: 320)"}
+2026-05-16T21:51:55.0238351Z {"ts":"2026-05-16T21:51:55.023Z","level":"info","runId":"25973834258-1","company":"google","msg":"Loading page 17..."}
+2026-05-16T21:51:58.1913113Z {"ts":"2026-05-16T21:51:58.191Z","level":"info","runId":"25973834258-1","company":"google","msg":"Page 17: 20 jobs (total so far: 340)"}
+2026-05-16T21:51:59.6922618Z {"ts":"2026-05-16T21:51:59.691Z","level":"info","runId":"25973834258-1","company":"google","msg":"Loading page 18..."}
+2026-05-16T21:52:08.2311928Z {"ts":"2026-05-16T21:52:08.230Z","level":"info","runId":"25973834258-1","company":"google","msg":"Page 18: 20 jobs (total so far: 360)"}
+2026-05-16T21:52:09.7325404Z {"ts":"2026-05-16T21:52:09.732Z","level":"info","runId":"25973834258-1","company":"google","msg":"Loading page 19..."}
+2026-05-16T21:52:12.8558789Z {"ts":"2026-05-16T21:52:12.855Z","level":"info","runId":"25973834258-1","company":"google","msg":"Page 19: 7 jobs (total so far: 367)"}
+2026-05-16T21:52:14.3572359Z {"ts":"2026-05-16T21:52:14.356Z","level":"info","runId":"25973834258-1","company":"google","msg":"Loading page 20..."}
+2026-05-16T21:52:17.4998499Z {"ts":"2026-05-16T21:52:17.499Z","level":"info","runId":"25973834258-1","company":"google","msg":"No new jobs on page 20, stopping"}
+2026-05-16T21:52:17.5000004Z {"ts":"2026-05-16T21:52:17.499Z","level":"info","runId":"25973834258-1","company":"google","msg":"Total: 367 India jobs"}
+2026-05-16T21:52:39.5768125Z {"ts":"2026-05-16T21:52:39.576Z","level":"info","runId":"25973834258-1","company":"google","msg":"  enrich progress: 25/367 | ok=25 err=0"}
+2026-05-16T21:52:56.4833646Z {"ts":"2026-05-16T21:52:56.483Z","level":"info","runId":"25973834258-1","company":"google","msg":"  enrich progress: 50/367 | ok=50 err=0"}
+2026-05-16T21:53:14.3610667Z {"ts":"2026-05-16T21:53:14.360Z","level":"info","runId":"25973834258-1","company":"google","msg":"  enrich progress: 75/367 | ok=75 err=0"}
+2026-05-16T21:53:31.4604347Z {"ts":"2026-05-16T21:53:31.460Z","level":"info","runId":"25973834258-1","company":"google","msg":"  enrich progress: 100/367 | ok=100 err=0"}
+2026-05-16T21:53:49.8753481Z {"ts":"2026-05-16T21:53:49.875Z","level":"info","runId":"25973834258-1","company":"google","msg":"  enrich progress: 125/367 | ok=125 err=0"}
+2026-05-16T21:54:06.9981785Z {"ts":"2026-05-16T21:54:06.997Z","level":"info","runId":"25973834258-1","company":"google","msg":"  enrich progress: 150/367 | ok=150 err=0"}
+2026-05-16T21:54:25.2513533Z {"ts":"2026-05-16T21:54:25.251Z","level":"info","runId":"25973834258-1","company":"google","msg":"  enrich progress: 175/367 | ok=175 err=0"}
+2026-05-16T21:54:42.2327540Z {"ts":"2026-05-16T21:54:42.232Z","level":"info","runId":"25973834258-1","company":"google","msg":"  enrich progress: 200/367 | ok=200 err=0"}
+2026-05-16T21:55:00.4644678Z {"ts":"2026-05-16T21:55:00.464Z","level":"info","runId":"25973834258-1","company":"google","msg":"  enrich progress: 225/367 | ok=225 err=0"}
+2026-05-16T21:55:17.4788825Z {"ts":"2026-05-16T21:55:17.478Z","level":"info","runId":"25973834258-1","company":"google","msg":"  enrich progress: 250/367 | ok=250 err=0"}
+2026-05-16T21:55:35.8984895Z {"ts":"2026-05-16T21:55:35.898Z","level":"info","runId":"25973834258-1","company":"google","msg":"  enrich progress: 275/367 | ok=275 err=0"}
+2026-05-16T21:55:52.9050324Z {"ts":"2026-05-16T21:55:52.904Z","level":"info","runId":"25973834258-1","company":"google","msg":"  enrich progress: 300/367 | ok=300 err=0"}
+2026-05-16T21:56:11.0089189Z {"ts":"2026-05-16T21:56:11.008Z","level":"info","runId":"25973834258-1","company":"google","msg":"  enrich progress: 325/367 | ok=325 err=0"}
+2026-05-16T21:56:28.2128036Z {"ts":"2026-05-16T21:56:28.212Z","level":"info","runId":"25973834258-1","company":"google","msg":"  enrich progress: 350/367 | ok=350 err=0"}
+2026-05-16T21:56:40.9586853Z {"ts":"2026-05-16T21:56:40.958Z","level":"info","runId":"25973834258-1","company":"google","msg":"Enriched descriptions: 367/367 | errors=0 | 263s"}
+2026-05-16T21:56:40.9589407Z {"ts":"2026-05-16T21:56:40.958Z","level":"info","runId":"25973834258-1","company":"google","msg":"Scraped 367 raw jobs in 363s","event":"scrape_done","data":{"rawCount":367}}
+2026-05-16T21:56:41.2051276Z {"ts":"2026-05-16T21:56:41.204Z","level":"info","runId":"25973834258-1","company":"google","msg":"366 India jobs after normalization","event":"normalize_done","data":{"kept":366,"dropped":1}}
+2026-05-16T21:56:43.5537965Z {"ts":"2026-05-16T21:56:43.553Z","level":"info","runId":"25973834258-1","company":"google","msg":"Parse decision: 348 to parse, 0 skip (already parsed, unchanged), 18 rejected (non-engineering title)"}
+2026-05-16T21:56:43.5541375Z {"ts":"2026-05-16T21:56:43.553Z","level":"info","runId":"25973834258-1","company":"google","msg":"Parsing 348 JDs with 3 workers across 3 keys (budget=10000/run)…"}
+2026-05-16T21:58:00.7506019Z {"ts":"2026-05-16T21:58:00.750Z","level":"info","runId":"25973834258-1","company":"google","msg":"  parse: 25/348 ok=25 err=0"}
+2026-05-16T21:59:23.1050389Z {"ts":"2026-05-16T21:59:23.104Z","level":"info","runId":"25973834258-1","company":"google","msg":"  parse: 50/348 ok=50 err=0"}
+2026-05-16T22:01:15.5240599Z {"ts":"2026-05-16T22:01:15.523Z","level":"info","runId":"25973834258-1","company":"google","msg":"  parse: 75/348 ok=75 err=0"}
+2026-05-16T22:03:13.6566512Z {"ts":"2026-05-16T22:03:13.656Z","level":"info","runId":"25973834258-1","company":"google","msg":"  parse: 100/348 ok=100 err=0"}
+2026-05-16T22:05:10.9858234Z {"ts":"2026-05-16T22:05:10.985Z","level":"info","runId":"25973834258-1","company":"google","msg":"  parse: 125/348 ok=125 err=0"}
+2026-05-16T22:06:47.0226459Z {"ts":"2026-05-16T22:06:47.022Z","level":"info","runId":"25973834258-1","company":"google","msg":"  parse: 150/348 ok=150 err=0"}
+2026-05-16T22:09:48.3938888Z {"ts":"2026-05-16T22:09:48.393Z","level":"info","runId":"25973834258-1","company":"google","msg":"  parse: 175/348 ok=175 err=0"}
+2026-05-16T22:12:05.9256331Z {"ts":"2026-05-16T22:12:05.925Z","level":"info","runId":"25973834258-1","company":"google","msg":"  parse: 200/348 ok=200 err=0"}
+2026-05-16T22:14:08.5473140Z {"ts":"2026-05-16T22:14:08.546Z","level":"info","runId":"25973834258-1","company":"google","msg":"  parse: 225/348 ok=225 err=0"}
+2026-05-16T22:15:45.0360019Z {"ts":"2026-05-16T22:15:45.035Z","level":"info","runId":"25973834258-1","company":"google","msg":"  parse: 250/348 ok=250 err=0"}
+2026-05-16T22:17:55.7246426Z {"ts":"2026-05-16T22:17:55.724Z","level":"info","runId":"25973834258-1","company":"google","msg":"  parse: 275/348 ok=275 err=0"}
+2026-05-16T22:20:03.7919155Z {"ts":"2026-05-16T22:20:03.791Z","level":"info","runId":"25973834258-1","company":"google","msg":"  parse: 300/348 ok=300 err=0"}
+2026-05-16T22:22:04.5153950Z {"ts":"2026-05-16T22:22:04.515Z","level":"info","runId":"25973834258-1","company":"google","msg":"  parse: 325/348 ok=325 err=0"}
+2026-05-16T22:26:06.9424757Z {"ts":"2026-05-16T22:26:06.942Z","level":"info","runId":"25973834258-1","company":"google","msg":"  parse: 348/348 ok=348 err=0"}
+2026-05-16T22:26:06.9426426Z {"ts":"2026-05-16T22:26:06.942Z","level":"info","runId":"25973834258-1","company":"google","msg":"Parse done: ok=348 err=0 | 1763s (Google)"}
+2026-05-16T22:26:06.9429168Z {"ts":"2026-05-16T22:26:06.942Z","level":"info","runId":"25973834258-1","company":"google","msg":"Embedding 348 JDs in batches of 100…"}
+2026-05-16T22:26:20.5991915Z {"ts":"2026-05-16T22:26:20.598Z","level":"info","runId":"25973834258-1","company":"google","msg":"  embed: 100/348"}
+2026-05-16T22:26:59.3243041Z {"ts":"2026-05-16T22:26:59.323Z","level":"info","runId":"25973834258-1","company":"google","msg":"  embed: 200/348"}
+2026-05-16T22:27:08.0513183Z {"ts":"2026-05-16T22:27:08.051Z","level":"info","runId":"25973834258-1","company":"google","msg":"  embed: 300/348"}
+2026-05-16T22:27:20.6165406Z {"ts":"2026-05-16T22:27:20.616Z","level":"info","runId":"25973834258-1","company":"google","msg":"  embed: 348/348"}
+2026-05-16T22:27:20.6166508Z {"ts":"2026-05-16T22:27:20.616Z","level":"info","runId":"25973834258-1","company":"google","msg":"Embed done: 348/348 | 74s"}
+2026-05-16T22:27:28.0326565Z {"ts":"2026-05-16T22:27:28.031Z","level":"warn","runId":"25973834258-1","company":null,"msg":"Bulk upsert error: there is no unique or exclusion constraint matching the ON CONFLICT specification — falling back to per-row","event":"bulk_upsert_error","data":{"batchSize":50,"error":"there is no unique or exclusion constraint matching the ON CONFLICT specification"}}
+2026-05-16T22:27:28.3272066Z {"ts":"2026-05-16T22:27:28.326Z","level":"warn","runId":"25973834258-1","company":null,"msg":"Per-row upsert failed for external_id=107743710602502854: there is no unique or exclusion constraint matching the ON CONFLICT specification","event":"row_upsert_error"}
+2026-05-16T22:27:29.0779629Z {"ts":"2026-05-16T22:27:29.077Z","level":"warn","runId":"25973834258-1","company":null,"msg":"Per-row upsert failed for external_id=74939955737961158: there is no unique or exclusion constraint matching the ON CONFLICT specification","event":"row_upsert_error"}
+2026-05-16T22:27:29.3551426Z {"ts":"2026-05-16T22:27:29.354Z","level":"warn","runId":"25973834258-1","company":null,"msg":"Per-row upsert failed for external_id=123340188553224902: there is no unique or exclusion constraint matching the ON CONFLICT specification","event":"row_upsert_error"}
+2026-05-16T22:27:29.6277176Z {"ts":"2026-05-16T22:27:29.627Z","level":"warn","runId":"25973834258-1","company":null,"msg":"Per-row upsert failed for external_id=128096185154970310: there is no unique or exclusion constraint matching the ON CONFLICT specification","event":"row_upsert_error"}
+2026-05-16T22:27:30.3047323Z {"ts":"2026-05-16T22:27:30.304Z","level":"warn","runId":"25973834258-1","company":null,"msg":"Per-row upsert failed for external_id=111740311889158854: there is no unique or exclusion constraint matching the ON CONFLICT specification","event":"row_upsert_error"}
+2026-05-16T22:27:30.5957276Z {"ts":"2026-05-16T22:27:30.595Z","level":"warn","runId":"25973834258-1","company":null,"msg":"Per-row upsert failed for external_id=124189312177578694: there is no unique or exclusion constraint matching the ON CONFLICT specification","event":"row_upsert_error"}
+2026-05-16T22:27:30.8862001Z {"ts":"2026-05-16T22:27:30.885Z","level":"warn","runId":"25973834258-1","company":null,"msg":"Per-row upsert failed for external_id=129752987043013318: there is no unique or exclusion constraint matching the ON CONFLICT specification","event":"row_upsert_error"}
+2026-05-16T22:27:31.1662584Z {"ts":"2026-05-16T22:27:31.165Z","level":"warn","runId":"25973834258-1","company":null,"msg":"Per-row upsert failed for external_id=79450462142505670: there is no unique or exclusion constraint matching the ON CONFLICT specification","event":"row_upsert_error"}
+2026-05-16T22:27:31.4488040Z {"ts":"2026-05-16T22:27:31.448Z","level":"warn","runId":"25973834258-1","company":null,"msg":"Per-row upsert failed for external_id=93040746910622406: there is no unique or exclusion constraint matching the ON CONFLICT specification","event":"row_upsert_error"}
+2026-05-16T22:27:31.7281373Z {"ts":"2026-05-16T22:27:31.727Z","level":"warn","runId":"25973834258-1","company":null,"msg":"Per-row upsert failed for external_id=73916797824180934: there is no unique or exclusion constraint matching the ON CONFLICT specification","event":"row_upsert_error"}
+2026-05-16T22:27:32.0041799Z {"ts":"2026-05-16T22:27:32.003Z","level":"warn","runId":"25973834258-1","company":null,"msg":"Per-row upsert failed for external_id=129964270442947270: there is no unique or exclusion constraint matching the ON CONFLICT specification","event":"row_upsert_error"}
+2026-05-16T22:27:32.2864280Z {"ts":"2026-05-16T22:27:32.286Z","level":"warn","runId":"25973834258-1","company":null,"msg":"Per-row upsert failed for external_id=141132216204698310: there is no unique or exclusion constraint matching the ON CONFLICT specification","event":"row_upsert_error"}
+2026-05-16T22:27:32.5579334Z {"ts":"2026-05-16T22:27:32.557Z","level":"warn","runId":"25973834258-1","company":null,"msg":"Per-row upsert failed for external_id=109053031382688454: there is no unique or exclusion constraint matching the ON CONFLICT specification","event":"row_upsert_error"}
+2026-05-16T22:27:32.8360661Z {"ts":"2026-05-16T22:27:32.835Z","level":"warn","runId":"25973834258-1","company":null,"msg":"Per-row upsert failed for external_id=129036534958432966: there is no unique or exclusion constraint matching the ON CONFLICT specification","event":"row_upsert_error"}
+2026-05-16T22:27:33.1150884Z {"ts":"2026-05-16T22:27:33.114Z","level":"warn","runId":"25973834258-1","company":null,"msg":"Per-row upsert failed for external_id=122538034422784710: there is no unique or exclusion constraint matching the ON CONFLICT specification","event":"row_upsert_error"}
+2026-05-16T22:27:33.3921304Z {"ts":"2026-05-16T22:27:33.391Z","level":"warn","runId":"25973834258-1","company":null,"msg":"Per-row upsert failed for external_id=73636310153077446: there is no unique or exclusion constraint matching the ON CONFLICT specification","event":"row_upsert_error"}
+2026-05-16T22:27:33.6704009Z {"ts":"2026-05-16T22:27:33.670Z","level":"warn","runId":"25973834258-1","company":null,"msg":"Per-row upsert failed for external_id=83501437715129030: there is no unique or exclusion constraint matching the ON CONFLICT specification","event":"row_upsert_error"}
+2026-05-16T22:27:33.9481570Z {"ts":"2026-05-16T22:27:33.947Z","level":"warn","runId":"25973834258-1","company":null,"msg":"Per-row upsert failed for external_id=116239768483701446: there is no unique or exclusion constraint matching the ON CONFLICT specification","event":"row_upsert_error"}
+2026-05-16T22:27:34.2255571Z {"ts":"2026-05-16T22:27:34.225Z","level":"warn","runId":"25973834258-1","company":null,"msg":"Per-row upsert failed for external_id=125088217694118598: there is no unique or exclusion constraint matching the ON CONFLICT specification","event":"row_upsert_error"}
+2026-05-16T22:27:34.5022812Z {"ts":"2026-05-16T22:27:34.501Z","level":"warn","runId":"25973834258-1","company":null,"msg":"Per-row upsert failed for external_id=87758796130001606: there is no unique or exclusion constraint matching the ON CONFLICT specification","event":"row_upsert_error"}
+2026-05-16T22:27:34.7784171Z {"ts":"2026-05-16T22:27:34.778Z","level":"warn","runId":"25973834258-1","company":null,"msg":"Per-row upsert failed for external_id=83825072090817222: there is no unique or exclusion constraint matching the ON CONFLICT specification","event":"row_upsert_error"}
+2026-05-16T22:27:35.0525938Z {"ts":"2026-05-16T22:27:35.052Z","level":"warn","runId":"25973834258-1","company":null,"msg":"Per-row upsert failed for external_id=84604363841905350: there is no unique or exclusion constraint matching the ON CONFLICT specification","event":"row_upsert_error"}
+2026-05-16T22:27:35.3312104Z {"ts":"2026-05-16T22:27:35.330Z","level":"warn","runId":"25973834258-1","company":null,"msg":"Per-row upsert failed for external_id=114601480589058758: there is no unique or exclusion constraint matching the ON CONFLICT specification","event":"row_upsert_error"}
+2026-05-16T22:27:35.6079971Z {"ts":"2026-05-16T22:27:35.607Z","level":"warn","runId":"25973834258-1","company":null,"msg":"Per-row upsert failed for external_id=133873233995670214: there is no unique or exclusion constraint matching the ON CONFLICT specification","event":"row_upsert_error"}
+2026-05-16T22:27:35.8898028Z {"ts":"2026-05-16T22:27:35.889Z","level":"warn","runId":"25973834258-1","company":null,"msg":"Per-row upsert failed for external_id=135515644522046150: there is no unique or exclusion constraint matching the ON CONFLICT specification","event":"row_upsert_error"}
+2026-05-16T22:27:36.1635043Z {"ts":"2026-05-16T22:27:36.163Z","level":"warn","runId":"25973834258-1","company":null,"msg":"Per-row upsert failed for external_id=92228592217268934: there is no unique or exclusion constraint matching the ON CONFLICT specification","event":"row_upsert_error"}
+2026-05-16T22:27:36.4384251Z {"ts":"2026-05-16T22:27:36.438Z","level":"warn","runId":"25973834258-1","company":null,"msg":"Per-row upsert failed for external_id=134217656013071046: there is no unique or exclusion constraint matching the ON CONFLICT specification","event":"row_upsert_error"}
+2026-05-16T22:27:36.7112787Z {"ts":"2026-05-16T22:27:36.710Z","level":"warn","runId":"25973834258-1","company":null,"msg":"Per-row upsert failed for external_id=110516264194974406: there is no unique or exclusion constraint matching the ON CONFLICT specification","event":"row_upsert_error"}
+2026-05-16T22:27:36.9977840Z {"ts":"2026-05-16T22:27:36.997Z","level":"warn","runId":"25973834258-1","company":null,"msg":"Per-row upsert failed for external_id=111132501002330822: there is no unique or exclusion constraint matching the ON CONFLICT specification","event":"row_upsert_error"}
+2026-05-16T22:27:37.2751089Z {"ts":"2026-05-16T22:27:37.274Z","level":"warn","runId":"25973834258-1","company":null,"msg":"Per-row upsert failed for external_id=131311196883034822: there is no unique or exclusion constraint matching the ON CONFLICT specification","event":"row_upsert_error"}
+2026-05-16T22:27:37.5616681Z {"ts":"2026-05-16T22:27:37.561Z","level":"warn","runId":"25973834258-1","company":null,"msg":"Per-row upsert failed for external_id=92845542794502854: there is no unique or exclusion constraint matching the ON CONFLICT specification","event":"row_upsert_error"}
+2026-05-16T22:27:37.8422489Z {"ts":"2026-05-16T22:27:37.841Z","level":"warn","runId":"25973834258-1","company":null,"msg":"Per-row upsert failed for external_id=139042717836419782: there is no unique or exclusion constraint matching the ON CONFLICT specification","event":"row_upsert_error"}
+2026-05-16T22:27:38.1228429Z {"ts":"2026-05-16T22:27:38.122Z","level":"warn","runId":"25973834258-1","company":null,"msg":"Per-row upsert failed for external_id=134112667685003974: there is no unique or exclusion constraint matching the ON CONFLICT specification","event":"row_upsert_error"}
+2026-05-16T22:27:38.3990368Z {"ts":"2026-05-16T22:27:38.398Z","level":"warn","runId":"25973834258-1","company":null,"msg":"Per-row upsert failed for external_id=135446723181847238: there is no unique or exclusion constraint matching the ON CONFLICT specification","event":"row_upsert_error"}
+2026-05-16T22:27:38.6782023Z {"ts":"2026-05-16T22:27:38.677Z","level":"warn","runId":"25973834258-1","company":null,"msg":"Per-row upsert failed for external_id=76451232792617670: there is no unique or exclusion constraint matching the ON CONFLICT specification","event":"row_upsert_error"}
+2026-05-16T22:27:38.9493713Z {"ts":"2026-05-16T22:27:38.949Z","level":"warn","runId":"25973834258-1","company":null,"msg":"Per-row upsert failed for external_id=80316809659458246: there is no unique or exclusion constraint matching the ON CONFLICT specification","event":"row_upsert_error"}
+2026-05-16T22:27:39.2279544Z {"ts":"2026-05-16T22:27:39.227Z","level":"warn","runId":"25973834258-1","company":null,"msg":"Per-row upsert failed for external_id=88457075134210758: there is no unique or exclusion constraint matching the ON CONFLICT specification","event":"row_upsert_error"}
+2026-05-16T22:27:39.4990238Z {"ts":"2026-05-16T22:27:39.498Z","level":"warn","runId":"25973834258-1","company":null,"msg":"Per-row upsert failed for external_id=98983954077360838: there is no unique or exclusion constraint matching the ON CONFLICT specification","event":"row_upsert_error"}
+2026-05-16T22:27:39.7758581Z {"ts":"2026-05-16T22:27:39.775Z","level":"warn","runId":"25973834258-1","company":null,"msg":"Per-row upsert failed for external_id=91065395888169670: there is no unique or exclusion constraint matching the ON CONFLICT specification","event":"row_upsert_error"}
+2026-05-16T22:27:40.0535782Z {"ts":"2026-05-16T22:27:40.053Z","level":"warn","runId":"25973834258-1","company":null,"msg":"Per-row upsert failed for external_id=73825894304490182: there is no unique or exclusion constraint matching the ON CONFLICT specification","event":"row_upsert_error"}
+2026-05-16T22:27:40.3223684Z {"ts":"2026-05-16T22:27:40.321Z","level":"warn","runId":"25973834258-1","company":null,"msg":"Per-row upsert failed for external_id=126485952255140550: there is no unique or exclusion constraint matching the ON CONFLICT specification","event":"row_upsert_error"}
+2026-05-16T22:27:40.5922616Z {"ts":"2026-05-16T22:27:40.591Z","level":"warn","runId":"25973834258-1","company":null,"msg":"Per-row upsert failed for external_id=102375773502874310: there is no unique or exclusion constraint matching the ON CONFLICT specification","event":"row_upsert_error"}
+2026-05-16T22:27:40.8691347Z {"ts":"2026-05-16T22:27:40.868Z","level":"warn","runId":"25973834258-1","company":null,"msg":"Per-row upsert failed for external_id=122380877542892230: there is no unique or exclusion constraint matching the ON CONFLICT specification","event":"row_upsert_error"}
+2026-05-16T22:27:41.1429987Z {"ts":"2026-05-16T22:27:41.142Z","level":"warn","runId":"25973834258-1","company":null,"msg":"Per-row upsert failed for external_id=131695588939834054: there is no unique or exclusion constraint matching the ON CONFLICT specification","event":"row_upsert_error"}
+2026-05-16T22:27:41.4123682Z {"ts":"2026-05-16T22:27:41.411Z","level":"warn","runId":"25973834258-1","company":null,"msg":"Per-row upsert failed for external_id=97493745380795078: there is no unique or exclusion constraint matching the ON CONFLICT specification","event":"row_upsert_error"}
+2026-05-16T22:27:41.6860231Z {"ts":"2026-05-16T22:27:41.685Z","level":"warn","runId":"25973834258-1","company":null,"msg":"Per-row upsert failed for external_id=141544156919931590: there is no unique or exclusion constraint matching the ON CONFLICT specification","event":"row_upsert_error"}
+2026-05-16T22:27:41.9681531Z {"ts":"2026-05-16T22:27:41.967Z","level":"warn","runId":"25973834258-1","company":null,"msg":"Per-row upsert failed for external_id=139285558508561094: there is no unique or exclusion constraint matching the ON CONFLICT specification","event":"row_upsert_error"}
+2026-05-16T22:27:42.2491888Z {"ts":"2026-05-16T22:27:42.248Z","level":"warn","runId":"25973834258-1","company":null,"msg":"Per-row upsert failed for external_id=120825703707878086: there is no unique or exclusion constraint matching the ON CONFLICT specification","event":"row_upsert_error"}
+2026-05-16T22:27:42.5215416Z {"ts":"2026-05-16T22:27:42.521Z","level":"warn","runId":"25973834258-1","company":null,"msg":"Per-row upsert failed for external_id=103768365108994758: there is no unique or exclusion constraint matching the ON CONFLICT specification","event":"row_upsert_error"}
+2026-05-16T22:27:42.7939169Z {"ts":"2026-05-16T22:27:42.793Z","level":"warn","runId":"25973834258-1","company":null,"msg":"Per-row upsert failed for external_id=120685933124035270: there is no unique or exclusion constraint matching the ON CONFLICT specification","event":"row_upsert_error"}
+2026-05-16T22:27:42.7940918Z {"ts":"2026-05-16T22:27:42.793Z","level":"info","runId":"25973834258-1","company":null,"msg":"Per-row recovery: 0/50","event":"bulk_upsert_recovered","data":{"recovered":0,"total":50}}
+2026-05-16T22:27:44.6384273Z {"ts":"2026-05-16T22:27:44.637Z","level":"warn","runId":"25973834258-1","company":null,"msg":"Bulk upsert error: there is no unique or exclusion constraint matching the ON CONFLICT specification — falling back to per-row","event":"bulk_upsert_error","data":{"batchSize":50,"error":"there is no unique or exclusion constraint matching the ON CONFLICT specification"}}
+2026-05-16T22:27:44.9021975Z {"ts":"2026-05-16T22:27:44.901Z","level":"warn","runId":"25973834258-1","company":null,"msg":"Per-row upsert failed for external_id=111803280404685510: there is no unique or exclusion constraint matching the ON CONFLICT specification","event":"row_upsert_error"}
+2026-05-16T22:27:45.1817194Z {"ts":"2026-05-16T22:27:45.181Z","level":"warn","runId":"25973834258-1","company":null,"msg":"Per-row upsert failed for external_id=109418919646634694: there is no unique or exclusion constraint matching the ON CONFLICT specification","event":"row_upsert_error"}
+2026-05-16T22:27:45.4633310Z {"ts":"2026-05-16T22:27:45.462Z","level":"warn","runId":"25973834258-1","company":null,"msg":"Per-row upsert failed for external_id=97617144908260038: there is no unique or exclusion constraint matching the ON CONFLICT specification","event":"row_upsert_error"}
+2026-05-16T22:27:45.7225178Z {"ts":"2026-05-16T22:27:45.722Z","level":"warn","runId":"25973834258-1","company":null,"msg":"Per-row upsert failed for external_id=100875379291366086: there is no unique or exclusion constraint matching the ON CONFLICT specification","event":"row_upsert_error"}
+2026-05-16T22:27:45.9820985Z {"ts":"2026-05-16T22:27:45.981Z","level":"warn","runId":"25973834258-1","company":null,"msg":"Per-row upsert failed for external_id=100602880796304070: there is no unique or exclusion constraint matching the ON CONFLICT specification","event":"row_upsert_error"}
+2026-05-16T22:27:46.2574282Z {"ts":"2026-05-16T22:27:46.257Z","level":"warn","runId":"25973834258-1","company":null,"msg":"Per-row upsert failed for external_id=140836210279883462: there is no unique or exclusion constraint matching the ON CONFLICT specification","event":"row_upsert_error"}
+2026-05-16T22:27:46.5144442Z {"ts":"2026-05-16T22:27:46.514Z","level":"warn","runId":"25973834258-1","company":null,"msg":"Per-row upsert failed for external_id=131365791286076102: there is no unique or exclusion constraint matching the ON CONFLICT specification","event":"row_upsert_error"}
+2026-05-16T22:27:46.7918453Z {"ts":"2026-05-16T22:27:46.791Z","level":"warn","runId":"25973834258-1","company":null,"msg":"Per-row upsert failed for external_id=126590754020565702: there is no unique or exclusion constraint matching the ON CONFLICT specification","event":"row_upsert_error"}
+2026-05-16T22:27:47.0513982Z {"ts":"2026-05-16T22:27:47.051Z","level":"warn","runId":"25973834258-1","company":null,"msg":"Per-row upsert failed for external_id=116844871930520262: there is no unique or exclusion constraint matching the ON CONFLICT specification","event":"row_upsert_error"}
+2026-05-16T22:27:47.3126140Z {"ts":"2026-05-16T22:27:47.312Z","level":"warn","runId":"25973834258-1","company":null,"msg":"Per-row upsert failed for external_id=140230310116631238: there is no unique or exclusion constraint matching the ON CONFLICT specification","event":"row_upsert_error"}
+2026-05-16T22:27:47.5899027Z {"ts":"2026-05-16T22:27:47.589Z","level":"warn","runId":"25973834258-1","company":null,"msg":"Per-row upsert failed for external_id=84657136105071302: there is no unique or exclusion constraint matching the ON CONFLICT specification","event":"row_upsert_error"}
+2026-05-16T22:27:47.8452078Z {"ts":"2026-05-16T22:27:47.844Z","level":"warn","runId":"25973834258-1","company":null,"msg":"Per-row upsert failed for external_id=99017306645897926: there is no unique or exclusion constraint matching the ON CONFLICT specification","event":"row_upsert_error"}
+2026-05-16T22:27:48.1023625Z {"ts":"2026-05-16T22:27:48.101Z","level":"warn","runId":"25973834258-1","company":null,"msg":"Per-row upsert failed for external_id=98628465002980038: there is no unique or exclusion constraint matching the ON CONFLICT specification","event":"row_upsert_error"}
+2026-05-16T22:27:48.3820238Z {"ts":"2026-05-16T22:27:48.381Z","level":"warn","runId":"25973834258-1","company":null,"msg":"Per-row upsert failed for external_id=106105177357853382: there is no unique or exclusion constraint matching the ON CONFLICT specification","event":"row_upsert_error"}
+2026-05-16T22:27:48.6593528Z {"ts":"2026-05-16T22:27:48.659Z","level":"warn","runId":"25973834258-1","company":null,"msg":"Per-row upsert failed for external_id=126425980821480134: there is no unique or exclusion constraint matching the ON CONFLICT specification","event":"row_upsert_error"}
+2026-05-16T22:27:48.9178083Z {"ts":"2026-05-16T22:27:48.917Z","level":"warn","runId":"25973834258-1","company":null,"msg":"Per-row upsert failed for external_id=109638511660802758: there is no unique or exclusion constraint matching the ON CONFLICT specification","event":"row_upsert_error"}
+2026-05-16T22:27:49.1755298Z {"ts":"2026-05-16T22:27:49.175Z","level":"warn","runId":"25973834258-1","company":null,"msg":"Per-row upsert failed for external_id=114883356071469766: there is no unique or exclusion constraint matching the ON CONFLICT specification","event":"row_upsert_error"}
+2026-05-16T22:27:49.4546342Z {"ts":"2026-05-16T22:27:49.454Z","level":"warn","runId":"25973834258-1","company":null,"msg":"Per-row upsert failed for external_id=104714952278713030: there is no unique or exclusion constraint matching the ON CONFLICT specification","event":"row_upsert_error"}
+2026-05-16T22:27:49.7121173Z {"ts":"2026-05-16T22:27:49.711Z","level":"warn","runId":"25973834258-1","company":null,"msg":"Per-row upsert failed for external_id=73091639580467910: there is no unique or exclusion constraint matching the ON CONFLICT specification","event":"row_upsert_error"}
+2026-05-16T22:27:49.9687204Z {"ts":"2026-05-16T22:27:49.968Z","level":"warn","runId":"25973834258-1","company":null,"msg":"Per-row upsert failed for external_id=93918734862688966: there is no unique or exclusion constraint matching the ON CONFLICT specification","event":"row_upsert_error"}
+2026-05-16T22:27:50.2237470Z {"ts":"2026-05-16T22:27:50.223Z","level":"warn","runId":"25973834258-1","company":null,"msg":"Per-row upsert failed for external_id=133982807201325766: there is no unique or exclusion constraint matching the ON CONFLICT specification","event":"row_upsert_error"}
+2026-05-16T22:27:50.5016873Z {"ts":"2026-05-16T22:27:50.501Z","level":"warn","runId":"25973834258-1","company":null,"msg":"Per-row upsert failed for external_id=79639155088204486: there is no unique or exclusion constraint matching the ON CONFLICT specification","event":"row_upsert_error"}
+2026-05-16T22:27:50.7573963Z {"ts":"2026-05-16T22:27:50.757Z","level":"warn","runId":"25973834258-1","company":null,"msg":"Per-row upsert failed for external_id=111332713050317510: there is no unique or exclusion constraint matching the ON CONFLICT specification","event":"row_upsert_error"}
+2026-05-16T22:27:51.0356572Z {"ts":"2026-05-16T22:27:51.035Z","level":"warn","runId":"25973834258-1","company":null,"msg":"Per-row upsert failed for external_id=99089892666942150: there is no unique or exclusion constraint matching the ON CONFLICT specification","event":"row_upsert_error"}
+2026-05-16T22:27:51.3113412Z {"ts":"2026-05-16T22:27:51.311Z","level":"warn","runId":"25973834258-1","company":null,"msg":"Per-row upsert failed for external_id=132385826691523270: there is no unique or exclusion constraint matching the ON CONFLICT specification","event":"row_upsert_error"}
+2026-05-16T22:27:51.5892063Z {"ts":"2026-05-16T22:27:51.588Z","level":"warn","runId":"25973834258-1","company":null,"msg":"Per-row upsert failed for external_id=115878662128968390: there is no unique or exclusion constraint matching the ON CONFLICT specification","event":"row_upsert_error"}
+2026-05-16T22:27:51.8695689Z {"ts":"2026-05-16T22:27:51.869Z","level":"warn","runId":"25973834258-1","company":null,"msg":"Per-row upsert failed for external_id=140926786845188806: there is no unique or exclusion constraint matching the ON CONFLICT specification","event":"row_upsert_error"}
+2026-05-16T22:27:52.1255325Z {"ts":"2026-05-16T22:27:52.125Z","level":"warn","runId":"25973834258-1","company":null,"msg":"Per-row upsert failed for external_id=112288773844148934: there is no unique or exclusion constraint matching the ON CONFLICT specification","event":"row_upsert_error"}
+2026-05-16T22:27:52.4067626Z {"ts":"2026-05-16T22:27:52.406Z","level":"warn","runId":"25973834258-1","company":null,"msg":"Per-row upsert failed for external_id=138231329794728646: there is no unique or exclusion constraint matching the ON CONFLICT specification","event":"row_upsert_error"}
+2026-05-16T22:27:52.6843424Z {"ts":"2026-05-16T22:27:52.683Z","level":"warn","runId":"25973834258-1","company":null,"msg":"Per-row upsert failed for external_id=90335639068648134: there is no unique or exclusion constraint matching the ON CONFLICT specification","event":"row_upsert_error"}
+2026-05-16T22:27:52.9795132Z {"ts":"2026-05-16T22:27:52.973Z","level":"warn","runId":"25973834258-1","company":null,"msg":"Per-row upsert failed for external_id=94343143666655942: there is no unique or exclusion constraint matching the ON CONFLICT specification","event":"row_upsert_error"}
+2026-05-16T22:27:53.2312751Z {"ts":"2026-05-16T22:27:53.230Z","level":"warn","runId":"25973834258-1","company":null,"msg":"Per-row upsert failed for external_id=138854453313708742: there is no unique or exclusion constraint matching the ON CONFLICT specification","event":"row_upsert_error"}
+2026-05-16T22:27:53.5085496Z {"ts":"2026-05-16T22:27:53.508Z","level":"warn","runId":"25973834258-1","company":null,"msg":"Per-row upsert failed for external_id=103064737796760262: there is no unique or exclusion constraint matching the ON CONFLICT specification","event":"row_upsert_error"}
+2026-05-16T22:27:53.7698649Z {"ts":"2026-05-16T22:27:53.769Z","level":"warn","runId":"25973834258-1","company":null,"msg":"Per-row upsert failed for external_id=108403426169103046: there is no unique or exclusion constraint matching the ON CONFLICT specification","event":"row_upsert_error"}
+2026-05-16T22:27:54.0489528Z {"ts":"2026-05-16T22:27:54.048Z","level":"warn","runId":"25973834258-1","company":null,"msg":"Per-row upsert failed for external_id=77471854461100742: there is no unique or exclusion constraint matching the ON CONFLICT specification","event":"row_upsert_error"}
+2026-05-16T22:27:54.3244404Z {"ts":"2026-05-16T22:27:54.324Z","level":"warn","runId":"25973834258-1","company":null,"msg":"Per-row upsert failed for external_id=84115124117217990: there is no unique or exclusion constraint matching the ON CONFLICT specification","event":"row_upsert_error"}
+2026-05-16T22:27:54.6003350Z {"ts":"2026-05-16T22:27:54.599Z","level":"warn","runId":"25973834258-1","company":null,"msg":"Per-row upsert failed for external_id=132530161214988998: there is no unique or exclusion constraint matching the ON CONFLICT specification","event":"row_upsert_error"}
+2026-05-16T22:27:54.8554778Z {"ts":"2026-05-16T22:27:54.855Z","level":"warn","runId":"25973834258-1","company":null,"msg":"Per-row upsert failed for external_id=142897571243664070: there is no unique or exclusion constraint matching the ON CONFLICT specification","event":"row_upsert_error"}
+2026-05-16T22:27:55.1100699Z {"ts":"2026-05-16T22:27:55.109Z","level":"warn","runId":"25973834258-1","company":null,"msg":"Per-row upsert failed for external_id=113889257973523142: there is no unique or exclusion constraint matching the ON CONFLICT specification","event":"row_upsert_error"}
+2026-05-16T22:27:55.3672108Z {"ts":"2026-05-16T22:27:55.366Z","level":"warn","runId":"25973834258-1","company":null,"msg":"Per-row upsert failed for external_id=111447671071220422: there is no unique or exclusion constraint matching the ON CONFLICT specification","event":"row_upsert_error"}
+2026-05-16T22:27:55.6451361Z {"ts":"2026-05-16T22:27:55.644Z","level":"warn","runId":"25973834258-1","company":null,"msg":"Per-row upsert failed for external_id=95785531123606214: there is no unique or exclusion constraint matching the ON CONFLICT specification","event":"row_upsert_error"}
+2026-05-16T22:27:55.9042501Z {"ts":"2026-05-16T22:27:55.903Z","level":"warn","runId":"25973834258-1","company":null,"msg":"Per-row upsert failed for external_id=100880060805718726: there is no unique or exclusion constraint matching the ON CONFLICT specification","event":"row_upsert_error"}
+2026-05-16T22:27:56.1605935Z {"ts":"2026-05-16T22:27:56.160Z","level":"warn","runId":"25973834258-1","company":null,"msg":"Per-row upsert failed for external_id=139653933558571718: there is no unique or exclusion constraint matching the ON CONFLICT specification","event":"row_upsert_error"}
+2026-05-16T22:27:56.4395194Z {"ts":"2026-05-16T22:27:56.439Z","level":"warn","runId":"25973834258-1","company":null,"msg":"Per-row upsert failed for external_id=120565424931644102: there is no unique or exclusion constraint matching the ON CONFLICT specification","event":"row_upsert_error"}
+2026-05-16T22:27:56.6978533Z {"ts":"2026-05-16T22:27:56.697Z","level":"warn","runId":"25973834258-1","company":null,"msg":"Per-row upsert failed for external_id=140433475491504838: there is no unique or exclusion constraint matching the ON CONFLICT specification","event":"row_upsert_error"}
+2026-05-16T22:27:56.9529444Z {"ts":"2026-05-16T22:27:56.952Z","level":"warn","runId":"25973834258-1","company":null,"msg":"Per-row upsert failed for external_id=123696710567240390: there is no unique or exclusion constraint matching the ON CONFLICT specification","event":"row_upsert_error"}
+2026-05-16T22:27:57.2110777Z {"ts":"2026-05-16T22:27:57.210Z","level":"warn","runId":"25973834258-1","company":null,"msg":"Per-row upsert failed for external_id=143275825792197318: there is no unique or exclusion constraint matching the ON CONFLICT specification","event":"row_upsert_error"}
+2026-05-16T22:27:57.4718954Z {"ts":"2026-05-16T22:27:57.471Z","level":"warn","runId":"25973834258-1","company":null,"msg":"Per-row upsert failed for external_id=136332878014227142: there is no unique or exclusion constraint matching the ON CONFLICT specification","event":"row_upsert_error"}
+2026-05-16T22:27:57.7506020Z {"ts":"2026-05-16T22:27:57.750Z","level":"warn","runId":"25973834258-1","company":null,"msg":"Per-row upsert failed for external_id=91102051286557382: there is no unique or exclusion constraint matching the ON CONFLICT specification","event":"row_upsert_error"}
+2026-05-16T22:27:58.0089466Z {"ts":"2026-05-16T22:27:58.008Z","level":"warn","runId":"25973834258-1","company":null,"msg":"Per-row upsert failed for external_id=85276539108631238: there is no unique or exclusion constraint matching the ON CONFLICT specification","event":"row_upsert_error"}
+2026-05-16T22:27:58.0091958Z {"ts":"2026-05-16T22:27:58.008Z","level":"info","runId":"25973834258-1","company":null,"msg":"Per-row recovery: 0/50","event":"bulk_upsert_recovered","data":{"recovered":0,"total":50}}
+2026-05-16T22:27:59.6081795Z {"ts":"2026-05-16T22:27:59.607Z","level":"warn","runId":"25973834258-1","company":null,"msg":"Bulk upsert error: there is no unique or exclusion constraint matching the ON CONFLICT specification — falling back to per-row","event":"bulk_upsert_error","data":{"batchSize":50,"error":"there is no unique or exclusion constraint matching the ON CONFLICT specification"}}
+2026-05-16T22:27:59.8855818Z {"ts":"2026-05-16T22:27:59.885Z","level":"warn","runId":"25973834258-1","company":null,"msg":"Per-row upsert failed for external_id=137349216526574278: there is no unique or exclusion constraint matching the ON CONFLICT specification","event":"row_upsert_error"}
+2026-05-16T22:28:00.1407477Z {"ts":"2026-05-16T22:28:00.140Z","level":"warn","runId":"25973834258-1","company":null,"msg":"Per-row upsert failed for external_id=124119575867335366: there is no unique or exclusion constraint matching the ON CONFLICT specification","event":"row_upsert_error"}
+2026-05-16T22:28:00.4172419Z {"ts":"2026-05-16T22:28:00.416Z","level":"warn","runId":"25973834258-1","company":null,"msg":"Per-row upsert failed for external_id=85486620991464134: there is no unique or exclusion constraint matching the ON CONFLICT specification","event":"row_upsert_error"}
+2026-05-16T22:28:00.6934743Z {"ts":"2026-05-16T22:28:00.693Z","level":"warn","runId":"25973834258-1","company":null,"msg":"Per-row upsert failed for external_id=127461458781840070: there is no unique or exclusion constraint matching the ON CONFLICT specification","event":"row_upsert_error"}
+2026-05-16T22:28:00.9701960Z {"ts":"2026-05-16T22:28:00.969Z","level":"warn","runId":"25973834258-1","company":null,"msg":"Per-row upsert failed for external_id=137641679908676294: there is no unique or exclusion constraint matching the ON CONFLICT specification","event":"row_upsert_error"}
+2026-05-16T22:28:01.2493634Z {"ts":"2026-05-16T22:28:01.248Z","level":"warn","runId":"25973834258-1","company":null,"msg":"Per-row upsert failed for external_id=83644100422574790: there is no unique or exclusion constraint matching the ON CONFLICT specification","event":"row_upsert_error"}
+2026-05-16T22:28:01.5251867Z {"ts":"2026-05-16T22:28:01.524Z","level":"warn","runId":"25973834258-1","company":null,"msg":"Per-row upsert failed for external_id=115084274641576646: there is no unique or exclusion constraint matching the ON CONFLICT specification","event":"row_upsert_error"}
+2026-05-16T22:28:01.7781967Z {"ts":"2026-05-16T22:28:01.777Z","level":"warn","runId":"25973834258-1","company":null,"msg":"Per-row upsert failed for external_id=133340673083351750: there is no unique or exclusion constraint matching the ON CONFLICT specification","event":"row_upsert_error"}
+2026-05-16T22:28:02.0592731Z {"ts":"2026-05-16T22:28:02.058Z","level":"warn","runId":"25973834258-1","company":null,"msg":"Per-row upsert failed for external_id=126478435257066182: there is no unique or exclusion constraint matching the ON CONFLICT specification","event":"row_upsert_error"}
+2026-05-16T22:28:02.3372418Z {"ts":"2026-05-16T22:28:02.336Z","level":"warn","runId":"25973834258-1","company":null,"msg":"Per-row upsert failed for external_id=140785195732083398: there is no unique or exclusion constraint matching the ON CONFLICT specification","event":"row_upsert_error"}
+2026-05-16T22:28:02.6179819Z {"ts":"2026-05-16T22:28:02.617Z","level":"warn","runId":"25973834258-1","company":null,"msg":"Per-row upsert failed for external_id=88756162698060486: there is no unique or exclusion constraint matching the ON CONFLICT specification","event":"row_upsert_error"}
+2026-05-16T22:28:02.8949236Z {"ts":"2026-05-16T22:28:02.894Z","level":"warn","runId":"25973834258-1","company":null,"msg":"Per-row upsert failed for external_id=124532618577224390: there is no unique or exclusion constraint matching the ON CONFLICT specification","event":"row_upsert_error"}
+2026-05-16T22:28:03.1499397Z {"ts":"2026-05-16T22:28:03.149Z","level":"warn","runId":"25973834258-1","company":null,"msg":"Per-row upsert failed for external_id=99894580559651526: there is no unique or exclusion constraint matching the ON CONFLICT specification","event":"row_upsert_error"}
+2026-05-16T22:28:03.4054117Z {"ts":"2026-05-16T22:28:03.404Z","level":"warn","runId":"25973834258-1","company":null,"msg":"Per-row upsert failed for external_id=83316237651583686: there is no unique or exclusion constraint matching the ON CONFLICT specification","event":"row_upsert_error"}
+2026-05-16T22:28:03.6847132Z {"ts":"2026-05-16T22:28:03.684Z","level":"warn","runId":"25973834258-1","company":null,"msg":"Per-row upsert failed for external_id=122231185047724742: there is no unique or exclusion constraint matching the ON CONFLICT specification","event":"row_upsert_error"}
+2026-05-16T22:28:03.9419431Z {"ts":"2026-05-16T22:28:03.941Z","level":"warn","runId":"25973834258-1","company":null,"msg":"Per-row upsert failed for external_id=110743018335544006: there is no unique or exclusion constraint matching the ON CONFLICT specification","event":"row_upsert_error"}
+2026-05-16T22:28:04.1964021Z {"ts":"2026-05-16T22:28:04.196Z","level":"warn","runId":"25973834258-1","company":null,"msg":"Per-row upsert failed for external_id=120747566978474694: there is no unique or exclusion constraint matching the ON CONFLICT specification","event":"row_upsert_error"}
+2026-05-16T22:28:04.4502851Z {"ts":"2026-05-16T22:28:04.449Z","level":"warn","runId":"25973834258-1","company":null,"msg":"Per-row upsert failed for external_id=86371969443734214: there is no unique or exclusion constraint matching the ON CONFLICT specification","event":"row_upsert_error"}
+2026-05-16T22:28:04.7038567Z {"ts":"2026-05-16T22:28:04.703Z","level":"warn","runId":"25973834258-1","company":null,"msg":"Per-row upsert failed for external_id=87319980395111110: there is no unique or exclusion constraint matching the ON CONFLICT specification","event":"row_upsert_error"}
+2026-05-16T22:28:04.9607051Z {"ts":"2026-05-16T22:28:04.960Z","level":"warn","runId":"25973834258-1","company":null,"msg":"Per-row upsert failed for external_id=118377178822779590: there is no unique or exclusion constraint matching the ON CONFLICT specification","event":"row_upsert_error"}
+2026-05-16T22:28:05.2360731Z {"ts":"2026-05-16T22:28:05.235Z","level":"warn","runId":"25973834258-1","company":null,"msg":"Per-row upsert failed for external_id=86654932626612934: there is no unique or exclusion constraint matching the ON CONFLICT specification","event":"row_upsert_error"}
+2026-05-16T22:28:05.4900069Z {"ts":"2026-05-16T22:28:05.489Z","level":"warn","runId":"25973834258-1","company":null,"msg":"Per-row upsert failed for external_id=90622509598024390: there is no unique or exclusion constraint matching the ON CONFLICT specification","event":"row_upsert_error"}
+2026-05-16T22:28:05.7673450Z {"ts":"2026-05-16T22:28:05.766Z","level":"warn","runId":"25973834258-1","company":null,"msg":"Per-row upsert failed for external_id=116575037388923590: there is no unique or exclusion constraint matching the ON CONFLICT specification","event":"row_upsert_error"}
+2026-05-16T22:28:06.0449174Z {"ts":"2026-05-16T22:28:06.044Z","level":"warn","runId":"25973834258-1","company":null,"msg":"Per-row upsert failed for external_id=95749480778736326: there is no unique or exclusion constraint matching the ON CONFLICT specification","event":"row_upsert_error"}
+2026-05-16T22:28:06.3234321Z {"ts":"2026-05-16T22:28:06.323Z","level":"warn","runId":"25973834258-1","company":null,"msg":"Per-row upsert failed for external_id=87529356829565638: there is no unique or exclusion constraint matching the ON CONFLICT specification","event":"row_upsert_error"}
+2026-05-16T22:28:06.5998852Z {"ts":"2026-05-16T22:28:06.599Z","level":"warn","runId":"25973834258-1","company":null,"msg":"Per-row upsert failed for external_id=101499692516287174: there is no unique or exclusion constraint matching the ON CONFLICT specification","event":"row_upsert_error"}
+2026-05-16T22:28:06.8545273Z {"ts":"2026-05-16T22:28:06.854Z","level":"warn","runId":"25973834258-1","company":null,"msg":"Per-row upsert failed for external_id=85719059252814534: there is no unique or exclusion constraint matching the ON CONFLICT specification","event":"row_upsert_error"}
+2026-05-16T22:28:07.1303342Z {"ts":"2026-05-16T22:28:07.130Z","level":"warn","runId":"25973834258-1","company":null,"msg":"Per-row upsert failed for external_id=119533953102029510: there is no unique or exclusion constraint matching the ON CONFLICT specification","event":"row_upsert_error"}
+2026-05-16T22:28:07.3855717Z {"ts":"2026-05-16T22:28:07.385Z","level":"warn","runId":"25973834258-1","company":null,"msg":"Per-row upsert failed for external_id=73988275206791878: there is no unique or exclusion constraint matching the ON CONFLICT specification","event":"row_upsert_error"}
+2026-05-16T22:28:07.6693999Z {"ts":"2026-05-16T22:28:07.669Z","level":"warn","runId":"25973834258-1","company":null,"msg":"Per-row upsert failed for external_id=113397081564947142: there is no unique or exclusion constraint matching the ON CONFLICT specification","event":"row_upsert_error"}
+2026-05-16T22:28:07.9473287Z {"ts":"2026-05-16T22:28:07.946Z","level":"warn","runId":"25973834258-1","company":null,"msg":"Per-row upsert failed for external_id=142969546305610438: there is no unique or exclusion constraint matching the ON CONFLICT specification","event":"row_upsert_error"}
+2026-05-16T22:28:08.2233188Z {"ts":"2026-05-16T22:28:08.222Z","level":"warn","runId":"25973834258-1","company":null,"msg":"Per-row upsert failed for external_id=143277554516533958: there is no unique or exclusion constraint matching the ON CONFLICT specification","event":"row_upsert_error"}
+2026-05-16T22:28:08.5020904Z {"ts":"2026-05-16T22:28:08.501Z","level":"warn","runId":"25973834258-1","company":null,"msg":"Per-row upsert failed for external_id=110587240945459910: there is no unique or exclusion constraint matching the ON CONFLICT specification","event":"row_upsert_error"}
+2026-05-16T22:28:08.7787978Z {"ts":"2026-05-16T22:28:08.778Z","level":"warn","runId":"25973834258-1","company":null,"msg":"Per-row upsert failed for external_id=118230226516746950: there is no unique or exclusion constraint matching the ON CONFLICT specification","event":"row_upsert_error"}
+2026-05-16T22:28:09.0715562Z {"ts":"2026-05-16T22:28:09.071Z","level":"warn","runId":"25973834258-1","company":null,"msg":"Per-row upsert failed for external_id=115019230583104198: there is no unique or exclusion constraint matching the ON CONFLICT specification","event":"row_upsert_error"}
+2026-05-16T22:28:09.3494901Z {"ts":"2026-05-16T22:28:09.349Z","level":"warn","runId":"25973834258-1","company":null,"msg":"Per-row upsert failed for external_id=116415738125656774: there is no unique or exclusion constraint matching the ON CONFLICT specification","event":"row_upsert_error"}
+2026-05-16T22:28:09.6018832Z {"ts":"2026-05-16T22:28:09.601Z","level":"warn","runId":"25973834258-1","company":null,"msg":"Per-row upsert failed for external_id=137289443466715846: there is no unique or exclusion constraint matching the ON CONFLICT specification","event":"row_upsert_error"}
+2026-05-16T22:28:09.8583977Z {"ts":"2026-05-16T22:28:09.857Z","level":"warn","runId":"25973834258-1","company":null,"msg":"Per-row upsert failed for external_id=84499012589101766: there is no unique or exclusion constraint matching the ON CONFLICT specification","event":"row_upsert_error"}
+2026-05-16T22:28:10.1118637Z {"ts":"2026-05-16T22:28:10.111Z","level":"warn","runId":"25973834258-1","company":null,"msg":"Per-row upsert failed for external_id=110447973409661638: there is no unique or exclusion constraint matching the ON CONFLICT specification","event":"row_upsert_error"}
+2026-05-16T22:28:10.3884810Z {"ts":"2026-05-16T22:28:10.388Z","level":"warn","runId":"25973834258-1","company":null,"msg":"Per-row upsert failed for external_id=135436754562753222: there is no unique or exclusion constraint matching the ON CONFLICT specification","event":"row_upsert_error"}
+2026-05-16T22:28:10.6433496Z {"ts":"2026-05-16T22:28:10.643Z","level":"warn","runId":"25973834258-1","company":null,"msg":"Per-row upsert failed for external_id=123925755804426950: there is no unique or exclusion constraint matching the ON CONFLICT specification","event":"row_upsert_error"}
+2026-05-16T22:28:10.9221636Z {"ts":"2026-05-16T22:28:10.921Z","level":"warn","runId":"25973834258-1","company":null,"msg":"Per-row upsert failed for external_id=113256919602209478: there is no unique or exclusion constraint matching the ON CONFLICT specification","event":"row_upsert_error"}
+2026-05-16T22:28:11.1775460Z {"ts":"2026-05-16T22:28:11.177Z","level":"warn","runId":"25973834258-1","company":null,"msg":"Per-row upsert failed for external_id=141483683042206406: there is no unique or exclusion constraint matching the ON CONFLICT specification","event":"row_upsert_error"}
+2026-05-16T22:28:11.4545903Z {"ts":"2026-05-16T22:28:11.454Z","level":"warn","runId":"25973834258-1","company":null,"msg":"Per-row upsert failed for external_id=120052757234098886: there is no unique or exclusion constraint matching the ON CONFLICT specification","event":"row_upsert_error"}
+2026-05-16T22:28:11.7318639Z {"ts":"2026-05-16T22:28:11.731Z","level":"warn","runId":"25973834258-1","company":null,"msg":"Per-row upsert failed for external_id=94872104859509446: there is no unique or exclusion constraint matching the ON CONFLICT specification","event":"row_upsert_error"}
+2026-05-16T22:28:12.0087449Z {"ts":"2026-05-16T22:28:12.008Z","level":"warn","runId":"25973834258-1","company":null,"msg":"Per-row upsert failed for external_id=116642437236957894: there is no unique or exclusion constraint matching the ON CONFLICT specification","event":"row_upsert_error"}
+2026-05-16T22:28:12.2632553Z {"ts":"2026-05-16T22:28:12.262Z","level":"warn","runId":"25973834258-1","company":null,"msg":"Per-row upsert failed for external_id=108281679147082438: there is no unique or exclusion constraint matching the ON CONFLICT specification","event":"row_upsert_error"}
+2026-05-16T22:28:12.5389701Z {"ts":"2026-05-16T22:28:12.538Z","level":"warn","runId":"25973834258-1","company":null,"msg":"Per-row upsert failed for external_id=95751003344642758: there is no unique or exclusion constraint matching the ON CONFLICT specification","event":"row_upsert_error"}
+2026-05-16T22:28:12.7955283Z {"ts":"2026-05-16T22:28:12.795Z","level":"warn","runId":"25973834258-1","company":null,"msg":"Per-row upsert failed for external_id=79358427435803334: there is no unique or exclusion constraint matching the ON CONFLICT specification","event":"row_upsert_error"}
+2026-05-16T22:28:13.0745410Z {"ts":"2026-05-16T22:28:13.074Z","level":"warn","runId":"25973834258-1","company":null,"msg":"Per-row upsert failed for external_id=131646238691861190: there is no unique or exclusion constraint matching the ON CONFLICT specification","event":"row_upsert_error"}
+2026-05-16T22:28:13.0748544Z {"ts":"2026-05-16T22:28:13.074Z","level":"info","runId":"25973834258-1","company":null,"msg":"Per-row recovery: 0/50","event":"bulk_upsert_recovered","data":{"recovered":0,"total":50}}
+2026-05-16T22:28:14.0448241Z {"ts":"2026-05-16T22:28:14.044Z","level":"warn","runId":"25973834258-1","company":null,"msg":"Bulk upsert error: there is no unique or exclusion constraint matching the ON CONFLICT specification — falling back to per-row","event":"bulk_upsert_error","data":{"batchSize":50,"error":"there is no unique or exclusion constraint matching the ON CONFLICT specification"}}
+2026-05-16T22:28:14.3230245Z {"ts":"2026-05-16T22:28:14.322Z","level":"warn","runId":"25973834258-1","company":null,"msg":"Per-row upsert failed for external_id=120925487877759686: there is no unique or exclusion constraint matching the ON CONFLICT specification","event":"row_upsert_error"}
+2026-05-16T22:28:14.6033963Z {"ts":"2026-05-16T22:28:14.603Z","level":"warn","runId":"25973834258-1","company":null,"msg":"Per-row upsert failed for external_id=114067719233381062: there is no unique or exclusion constraint matching the ON CONFLICT specification","event":"row_upsert_error"}
+2026-05-16T22:28:14.8611826Z {"ts":"2026-05-16T22:28:14.860Z","level":"warn","runId":"25973834258-1","company":null,"msg":"Per-row upsert failed for external_id=91056783404999366: there is no unique or exclusion constraint matching the ON CONFLICT specification","event":"row_upsert_error"}
+2026-05-16T22:28:15.1543638Z {"ts":"2026-05-16T22:28:15.153Z","level":"warn","runId":"25973834258-1","company":null,"msg":"Per-row upsert failed for external_id=84969823682863814: there is no unique or exclusion constraint matching the ON CONFLICT specification","event":"row_upsert_error"}
+2026-05-16T22:28:15.4389533Z {"ts":"2026-05-16T22:28:15.438Z","level":"warn","runId":"25973834258-1","company":null,"msg":"Per-row upsert failed for external_id=132649196233597638: there is no unique or exclusion constraint matching the ON CONFLICT specification","event":"row_upsert_error"}
+2026-05-16T22:28:15.6915396Z {"ts":"2026-05-16T22:28:15.691Z","level":"warn","runId":"25973834258-1","company":null,"msg":"Per-row upsert failed for external_id=130559643104486086: there is no unique or exclusion constraint matching the ON CONFLICT specification","event":"row_upsert_error"}
+2026-05-16T22:28:15.9445466Z {"ts":"2026-05-16T22:28:15.944Z","level":"warn","runId":"25973834258-1","company":null,"msg":"Per-row upsert failed for external_id=87596882305393350: there is no unique or exclusion constraint matching the ON CONFLICT specification","event":"row_upsert_error"}
+2026-05-16T22:28:16.1994045Z {"ts":"2026-05-16T22:28:16.199Z","level":"warn","runId":"25973834258-1","company":null,"msg":"Per-row upsert failed for external_id=125929930352403142: there is no unique or exclusion constraint matching the ON CONFLICT specification","event":"row_upsert_error"}
+2026-05-16T22:28:16.4747544Z {"ts":"2026-05-16T22:28:16.474Z","level":"warn","runId":"25973834258-1","company":null,"msg":"Per-row upsert failed for external_id=143610328582628038: there is no unique or exclusion constraint matching the ON CONFLICT specification","event":"row_upsert_error"}
+2026-05-16T22:28:16.7383089Z {"ts":"2026-05-16T22:28:16.737Z","level":"warn","runId":"25973834258-1","company":null,"msg":"Per-row upsert failed for external_id=120557564067750598: there is no unique or exclusion constraint matching the ON CONFLICT specification","event":"row_upsert_error"}
+2026-05-16T22:28:16.9966030Z {"ts":"2026-05-16T22:28:16.996Z","level":"warn","runId":"25973834258-1","company":null,"msg":"Per-row upsert failed for external_id=133946290315633350: there is no unique or exclusion constraint matching the ON CONFLICT specification","event":"row_upsert_error"}
+2026-05-16T22:28:17.2536694Z {"ts":"2026-05-16T22:28:17.253Z","level":"warn","runId":"25973834258-1","company":null,"msg":"Per-row upsert failed for external_id=97935016763237062: there is no unique or exclusion constraint matching the ON CONFLICT specification","event":"row_upsert_error"}
+2026-05-16T22:28:17.5314788Z {"ts":"2026-05-16T22:28:17.531Z","level":"warn","runId":"25973834258-1","company":null,"msg":"Per-row upsert failed for external_id=116153793438982854: there is no unique or exclusion constraint matching the ON CONFLICT specification","event":"row_upsert_error"}
+2026-05-16T22:28:17.8088478Z {"ts":"2026-05-16T22:28:17.808Z","level":"warn","runId":"25973834258-1","company":null,"msg":"Per-row upsert failed for external_id=91984526405706438: there is no unique or exclusion constraint matching the ON CONFLICT specification","event":"row_upsert_error"}
+2026-05-16T22:28:18.0919987Z {"ts":"2026-05-16T22:28:18.091Z","level":"warn","runId":"25973834258-1","company":null,"msg":"Per-row upsert failed for external_id=84375632137331398: there is no unique or exclusion constraint matching the ON CONFLICT specification","event":"row_upsert_error"}
+2026-05-16T22:28:18.3706838Z {"ts":"2026-05-16T22:28:18.370Z","level":"warn","runId":"25973834258-1","company":null,"msg":"Per-row upsert failed for external_id=86528002384372422: there is no unique or exclusion constraint matching the ON CONFLICT specification","event":"row_upsert_error"}
+2026-05-16T22:28:18.6557396Z {"ts":"2026-05-16T22:28:18.655Z","level":"warn","runId":"25973834258-1","company":null,"msg":"Per-row upsert failed for external_id=91620334653842118: there is no unique or exclusion constraint matching the ON CONFLICT specification","event":"row_upsert_error"}
+2026-05-16T22:28:18.9336011Z {"ts":"2026-05-16T22:28:18.933Z","level":"warn","runId":"25973834258-1","company":null,"msg":"Per-row upsert failed for external_id=102483871387263686: there is no unique or exclusion constraint matching the ON CONFLICT specification","event":"row_upsert_error"}
+2026-05-16T22:28:19.1882012Z {"ts":"2026-05-16T22:28:19.187Z","level":"warn","runId":"25973834258-1","company":null,"msg":"Per-row upsert failed for external_id=143883292007899846: there is no unique or exclusion constraint matching the ON CONFLICT specification","event":"row_upsert_error"}
+2026-05-16T22:28:19.4658995Z {"ts":"2026-05-16T22:28:19.465Z","level":"warn","runId":"25973834258-1","company":null,"msg":"Per-row upsert failed for external_id=86182202756211398: there is no unique or exclusion constraint matching the ON CONFLICT specification","event":"row_upsert_error"}
+2026-05-16T22:28:19.7225300Z {"ts":"2026-05-16T22:28:19.722Z","level":"warn","runId":"25973834258-1","company":null,"msg":"Per-row upsert failed for external_id=96009420789424838: there is no unique or exclusion constraint matching the ON CONFLICT specification","event":"row_upsert_error"}
+2026-05-16T22:28:20.0045887Z {"ts":"2026-05-16T22:28:20.004Z","level":"warn","runId":"25973834258-1","company":null,"msg":"Per-row upsert failed for external_id=128476349890208454: there is no unique or exclusion constraint matching the ON CONFLICT specification","event":"row_upsert_error"}
+2026-05-16T22:28:20.2600235Z {"ts":"2026-05-16T22:28:20.259Z","level":"warn","runId":"25973834258-1","company":null,"msg":"Per-row upsert failed for external_id=140325060853277382: there is no unique or exclusion constraint matching the ON CONFLICT specification","event":"row_upsert_error"}
+2026-05-16T22:28:20.5174795Z {"ts":"2026-05-16T22:28:20.517Z","level":"warn","runId":"25973834258-1","company":null,"msg":"Per-row upsert failed for external_id=127319258857120454: there is no unique or exclusion constraint matching the ON CONFLICT specification","event":"row_upsert_error"}
+2026-05-16T22:28:20.7933859Z {"ts":"2026-05-16T22:28:20.793Z","level":"warn","runId":"25973834258-1","company":null,"msg":"Per-row upsert failed for external_id=103160213309137606: there is no unique or exclusion constraint matching the ON CONFLICT specification","event":"row_upsert_error"}
+2026-05-16T22:28:21.0478982Z {"ts":"2026-05-16T22:28:21.047Z","level":"warn","runId":"25973834258-1","company":null,"msg":"Per-row upsert failed for external_id=110779708093670086: there is no unique or exclusion constraint matching the ON CONFLICT specification","event":"row_upsert_error"}
+2026-05-16T22:28:21.3017245Z {"ts":"2026-05-16T22:28:21.301Z","level":"warn","runId":"25973834258-1","company":null,"msg":"Per-row upsert failed for external_id=90818420236264134: there is no unique or exclusion constraint matching the ON CONFLICT specification","event":"row_upsert_error"}
+2026-05-16T22:28:21.5790831Z {"ts":"2026-05-16T22:28:21.578Z","level":"warn","runId":"25973834258-1","company":null,"msg":"Per-row upsert failed for external_id=124554872950268614: there is no unique or exclusion constraint matching the ON CONFLICT specification","event":"row_upsert_error"}
+2026-05-16T22:28:21.8545083Z {"ts":"2026-05-16T22:28:21.854Z","level":"warn","runId":"25973834258-1","company":null,"msg":"Per-row upsert failed for external_id=138698860607218374: there is no unique or exclusion constraint matching the ON CONFLICT specification","event":"row_upsert_error"}
+2026-05-16T22:28:22.1311892Z {"ts":"2026-05-16T22:28:22.130Z","level":"warn","runId":"25973834258-1","company":null,"msg":"Per-row upsert failed for external_id=127926740105208518: there is no unique or exclusion constraint matching the ON CONFLICT specification","event":"row_upsert_error"}
+2026-05-16T22:28:22.3845319Z {"ts":"2026-05-16T22:28:22.384Z","level":"warn","runId":"25973834258-1","company":null,"msg":"Per-row upsert failed for external_id=80984128391914182: there is no unique or exclusion constraint matching the ON CONFLICT specification","event":"row_upsert_error"}
+2026-05-16T22:28:22.6390888Z {"ts":"2026-05-16T22:28:22.638Z","level":"warn","runId":"25973834258-1","company":null,"msg":"Per-row upsert failed for external_id=76232453601010374: there is no unique or exclusion constraint matching the ON CONFLICT specification","event":"row_upsert_error"}
+2026-05-16T22:28:22.8955031Z {"ts":"2026-05-16T22:28:22.894Z","level":"warn","runId":"25973834258-1","company":null,"msg":"Per-row upsert failed for external_id=76249663534965446: there is no unique or exclusion constraint matching the ON CONFLICT specification","event":"row_upsert_error"}
+2026-05-16T22:28:23.1567427Z {"ts":"2026-05-16T22:28:23.156Z","level":"warn","runId":"25973834258-1","company":null,"msg":"Per-row upsert failed for external_id=139789329181352646: there is no unique or exclusion constraint matching the ON CONFLICT specification","event":"row_upsert_error"}
+2026-05-16T22:28:23.4345698Z {"ts":"2026-05-16T22:28:23.434Z","level":"warn","runId":"25973834258-1","company":null,"msg":"Per-row upsert failed for external_id=106016111547294406: there is no unique or exclusion constraint matching the ON CONFLICT specification","event":"row_upsert_error"}
+2026-05-16T22:28:23.6902795Z {"ts":"2026-05-16T22:28:23.689Z","level":"warn","runId":"25973834258-1","company":null,"msg":"Per-row upsert failed for external_id=110142054700327622: there is no unique or exclusion constraint matching the ON CONFLICT specification","event":"row_upsert_error"}
+2026-05-16T22:28:23.9694439Z {"ts":"2026-05-16T22:28:23.968Z","level":"warn","runId":"25973834258-1","company":null,"msg":"Per-row upsert failed for external_id=76386299329553094: there is no unique or exclusion constraint matching the ON CONFLICT specification","event":"row_upsert_error"}
+2026-05-16T22:28:24.2234376Z {"ts":"2026-05-16T22:28:24.222Z","level":"warn","runId":"25973834258-1","company":null,"msg":"Per-row upsert failed for external_id=88229751105168070: there is no unique or exclusion constraint matching the ON CONFLICT specification","event":"row_upsert_error"}
+2026-05-16T22:28:24.5032839Z {"ts":"2026-05-16T22:28:24.502Z","level":"warn","runId":"25973834258-1","company":null,"msg":"Per-row upsert failed for external_id=130599060166845126: there is no unique or exclusion constraint matching the ON CONFLICT specification","event":"row_upsert_error"}
+2026-05-16T22:28:24.7594912Z {"ts":"2026-05-16T22:28:24.759Z","level":"warn","runId":"25973834258-1","company":null,"msg":"Per-row upsert failed for external_id=128553900893446854: there is no unique or exclusion constraint matching the ON CONFLICT specification","event":"row_upsert_error"}
+2026-05-16T22:28:25.0350648Z {"ts":"2026-05-16T22:28:25.034Z","level":"warn","runId":"25973834258-1","company":null,"msg":"Per-row upsert failed for external_id=91078773637554886: there is no unique or exclusion constraint matching the ON CONFLICT specification","event":"row_upsert_error"}
+2026-05-16T22:28:25.3118849Z {"ts":"2026-05-16T22:28:25.311Z","level":"warn","runId":"25973834258-1","company":null,"msg":"Per-row upsert failed for external_id=78671702967362246: there is no unique or exclusion constraint matching the ON CONFLICT specification","event":"row_upsert_error"}
+2026-05-16T22:28:25.5667918Z {"ts":"2026-05-16T22:28:25.566Z","level":"warn","runId":"25973834258-1","company":null,"msg":"Per-row upsert failed for external_id=74907312308789958: there is no unique or exclusion constraint matching the ON CONFLICT specification","event":"row_upsert_error"}
+2026-05-16T22:28:25.8424433Z {"ts":"2026-05-16T22:28:25.842Z","level":"warn","runId":"25973834258-1","company":null,"msg":"Per-row upsert failed for external_id=99550705076839110: there is no unique or exclusion constraint matching the ON CONFLICT specification","event":"row_upsert_error"}
+2026-05-16T22:28:26.0961672Z {"ts":"2026-05-16T22:28:26.095Z","level":"warn","runId":"25973834258-1","company":null,"msg":"Per-row upsert failed for external_id=82136760175207110: there is no unique or exclusion constraint matching the ON CONFLICT specification","event":"row_upsert_error"}
+2026-05-16T22:28:26.3714121Z {"ts":"2026-05-16T22:28:26.370Z","level":"warn","runId":"25973834258-1","company":null,"msg":"Per-row upsert failed for external_id=132483191452639942: there is no unique or exclusion constraint matching the ON CONFLICT specification","event":"row_upsert_error"}
+2026-05-16T22:28:26.6480841Z {"ts":"2026-05-16T22:28:26.647Z","level":"warn","runId":"25973834258-1","company":null,"msg":"Per-row upsert failed for external_id=95937883814142662: there is no unique or exclusion constraint matching the ON CONFLICT specification","event":"row_upsert_error"}
+2026-05-16T22:28:26.9302833Z {"ts":"2026-05-16T22:28:26.929Z","level":"warn","runId":"25973834258-1","company":null,"msg":"Per-row upsert failed for external_id=132921759153169094: there is no unique or exclusion constraint matching the ON CONFLICT specification","event":"row_upsert_error"}
+2026-05-16T22:28:27.2100503Z {"ts":"2026-05-16T22:28:27.209Z","level":"warn","runId":"25973834258-1","company":null,"msg":"Per-row upsert failed for external_id=78013697871487686: there is no unique or exclusion constraint matching the ON CONFLICT specification","event":"row_upsert_error"}
+2026-05-16T22:28:27.4901444Z {"ts":"2026-05-16T22:28:27.489Z","level":"warn","runId":"25973834258-1","company":null,"msg":"Per-row upsert failed for external_id=90518520923595462: there is no unique or exclusion constraint matching the ON CONFLICT specification","event":"row_upsert_error"}
+2026-05-16T22:28:27.4904995Z {"ts":"2026-05-16T22:28:27.489Z","level":"info","runId":"25973834258-1","company":null,"msg":"Per-row recovery: 0/50","event":"bulk_upsert_recovered","data":{"recovered":0,"total":50}}
+2026-05-16T22:28:28.4321533Z {"ts":"2026-05-16T22:28:28.431Z","level":"warn","runId":"25973834258-1","company":null,"msg":"Bulk upsert error: there is no unique or exclusion constraint matching the ON CONFLICT specification — falling back to per-row","event":"bulk_upsert_error","data":{"batchSize":50,"error":"there is no unique or exclusion constraint matching the ON CONFLICT specification"}}
+2026-05-16T22:28:28.7105634Z {"ts":"2026-05-16T22:28:28.710Z","level":"warn","runId":"25973834258-1","company":null,"msg":"Per-row upsert failed for external_id=78461191587799750: there is no unique or exclusion constraint matching the ON CONFLICT specification","event":"row_upsert_error"}
+2026-05-16T22:28:28.9890608Z {"ts":"2026-05-16T22:28:28.988Z","level":"warn","runId":"25973834258-1","company":null,"msg":"Per-row upsert failed for external_id=76447234178065094: there is no unique or exclusion constraint matching the ON CONFLICT specification","event":"row_upsert_error"}
+2026-05-16T22:28:29.2425817Z {"ts":"2026-05-16T22:28:29.242Z","level":"warn","runId":"25973834258-1","company":null,"msg":"Per-row upsert failed for external_id=126617412882571974: there is no unique or exclusion constraint matching the ON CONFLICT specification","event":"row_upsert_error"}
+2026-05-16T22:28:29.4978000Z {"ts":"2026-05-16T22:28:29.497Z","level":"warn","runId":"25973834258-1","company":null,"msg":"Per-row upsert failed for external_id=137463192073708230: there is no unique or exclusion constraint matching the ON CONFLICT specification","event":"row_upsert_error"}
+2026-05-16T22:28:29.7755476Z {"ts":"2026-05-16T22:28:29.775Z","level":"warn","runId":"25973834258-1","company":null,"msg":"Per-row upsert failed for external_id=141496697866855110: there is no unique or exclusion constraint matching the ON CONFLICT specification","event":"row_upsert_error"}
+2026-05-16T22:28:30.0508300Z {"ts":"2026-05-16T22:28:30.050Z","level":"warn","runId":"25973834258-1","company":null,"msg":"Per-row upsert failed for external_id=134340398662197958: there is no unique or exclusion constraint matching the ON CONFLICT specification","event":"row_upsert_error"}
+2026-05-16T22:28:30.3280311Z {"ts":"2026-05-16T22:28:30.327Z","level":"warn","runId":"25973834258-1","company":null,"msg":"Per-row upsert failed for external_id=94006274886116038: there is no unique or exclusion constraint matching the ON CONFLICT specification","event":"row_upsert_error"}
+2026-05-16T22:28:30.5821258Z {"ts":"2026-05-16T22:28:30.581Z","level":"warn","runId":"25973834258-1","company":null,"msg":"Per-row upsert failed for external_id=78684609344086726: there is no unique or exclusion constraint matching the ON CONFLICT specification","event":"row_upsert_error"}
+2026-05-16T22:28:30.8567550Z {"ts":"2026-05-16T22:28:30.856Z","level":"warn","runId":"25973834258-1","company":null,"msg":"Per-row upsert failed for external_id=85165677412786886: there is no unique or exclusion constraint matching the ON CONFLICT specification","event":"row_upsert_error"}
+2026-05-16T22:28:31.1112001Z {"ts":"2026-05-16T22:28:31.110Z","level":"warn","runId":"25973834258-1","company":null,"msg":"Per-row upsert failed for external_id=123922192055313094: there is no unique or exclusion constraint matching the ON CONFLICT specification","event":"row_upsert_error"}
+2026-05-16T22:28:31.3649809Z {"ts":"2026-05-16T22:28:31.364Z","level":"warn","runId":"25973834258-1","company":null,"msg":"Per-row upsert failed for external_id=126552040259101382: there is no unique or exclusion constraint matching the ON CONFLICT specification","event":"row_upsert_error"}
+2026-05-16T22:28:31.6192966Z {"ts":"2026-05-16T22:28:31.618Z","level":"warn","runId":"25973834258-1","company":null,"msg":"Per-row upsert failed for external_id=114509513528091334: there is no unique or exclusion constraint matching the ON CONFLICT specification","event":"row_upsert_error"}
+2026-05-16T22:28:31.8745382Z {"ts":"2026-05-16T22:28:31.874Z","level":"warn","runId":"25973834258-1","company":null,"msg":"Per-row upsert failed for external_id=99866475367408326: there is no unique or exclusion constraint matching the ON CONFLICT specification","event":"row_upsert_error"}
+2026-05-16T22:28:32.1511928Z {"ts":"2026-05-16T22:28:32.150Z","level":"warn","runId":"25973834258-1","company":null,"msg":"Per-row upsert failed for external_id=93475594095731398: there is no unique or exclusion constraint matching the ON CONFLICT specification","event":"row_upsert_error"}
+2026-05-16T22:28:32.4283575Z {"ts":"2026-05-16T22:28:32.427Z","level":"warn","runId":"25973834258-1","company":null,"msg":"Per-row upsert failed for external_id=123028373927535302: there is no unique or exclusion constraint matching the ON CONFLICT specification","event":"row_upsert_error"}
+2026-05-16T22:28:32.6846501Z {"ts":"2026-05-16T22:28:32.684Z","level":"warn","runId":"25973834258-1","company":null,"msg":"Per-row upsert failed for external_id=110677959244686022: there is no unique or exclusion constraint matching the ON CONFLICT specification","event":"row_upsert_error"}
+2026-05-16T22:28:32.9633095Z {"ts":"2026-05-16T22:28:32.962Z","level":"warn","runId":"25973834258-1","company":null,"msg":"Per-row upsert failed for external_id=131263279006655174: there is no unique or exclusion constraint matching the ON CONFLICT specification","event":"row_upsert_error"}
+2026-05-16T22:28:33.2420861Z {"ts":"2026-05-16T22:28:33.241Z","level":"warn","runId":"25973834258-1","company":null,"msg":"Per-row upsert failed for external_id=95687917791257286: there is no unique or exclusion constraint matching the ON CONFLICT specification","event":"row_upsert_error"}
+2026-05-16T22:28:33.5064443Z {"ts":"2026-05-16T22:28:33.506Z","level":"warn","runId":"25973834258-1","company":null,"msg":"Per-row upsert failed for external_id=96981905538196166: there is no unique or exclusion constraint matching the ON CONFLICT specification","event":"row_upsert_error"}
+2026-05-16T22:28:33.7631938Z {"ts":"2026-05-16T22:28:33.762Z","level":"warn","runId":"25973834258-1","company":null,"msg":"Per-row upsert failed for external_id=85595423250490054: there is no unique or exclusion constraint matching the ON CONFLICT specification","event":"row_upsert_error"}
+2026-05-16T22:28:34.0178424Z {"ts":"2026-05-16T22:28:34.017Z","level":"warn","runId":"25973834258-1","company":null,"msg":"Per-row upsert failed for external_id=107573664257319622: there is no unique or exclusion constraint matching the ON CONFLICT specification","event":"row_upsert_error"}
+2026-05-16T22:28:34.3021203Z {"ts":"2026-05-16T22:28:34.301Z","level":"warn","runId":"25973834258-1","company":null,"msg":"Per-row upsert failed for external_id=104004450871321286: there is no unique or exclusion constraint matching the ON CONFLICT specification","event":"row_upsert_error"}
+2026-05-16T22:28:34.5565692Z {"ts":"2026-05-16T22:28:34.556Z","level":"warn","runId":"25973834258-1","company":null,"msg":"Per-row upsert failed for external_id=83255147110507206: there is no unique or exclusion constraint matching the ON CONFLICT specification","event":"row_upsert_error"}
+2026-05-16T22:28:34.8121314Z {"ts":"2026-05-16T22:28:34.811Z","level":"warn","runId":"25973834258-1","company":null,"msg":"Per-row upsert failed for external_id=138111483027301062: there is no unique or exclusion constraint matching the ON CONFLICT specification","event":"row_upsert_error"}
+2026-05-16T22:28:35.0883620Z {"ts":"2026-05-16T22:28:35.087Z","level":"warn","runId":"25973834258-1","company":null,"msg":"Per-row upsert failed for external_id=127757644021539526: there is no unique or exclusion constraint matching the ON CONFLICT specification","event":"row_upsert_error"}
+2026-05-16T22:28:35.3447254Z {"ts":"2026-05-16T22:28:35.344Z","level":"warn","runId":"25973834258-1","company":null,"msg":"Per-row upsert failed for external_id=93855731987423942: there is no unique or exclusion constraint matching the ON CONFLICT specification","event":"row_upsert_error"}
+2026-05-16T22:28:35.5984248Z {"ts":"2026-05-16T22:28:35.598Z","level":"warn","runId":"25973834258-1","company":null,"msg":"Per-row upsert failed for external_id=113485029610267334: there is no unique or exclusion constraint matching the ON CONFLICT specification","event":"row_upsert_error"}
+2026-05-16T22:28:35.8517066Z {"ts":"2026-05-16T22:28:35.851Z","level":"warn","runId":"25973834258-1","company":null,"msg":"Per-row upsert failed for external_id=139109108367139526: there is no unique or exclusion constraint matching the ON CONFLICT specification","event":"row_upsert_error"}
+2026-05-16T22:28:36.1036389Z {"ts":"2026-05-16T22:28:36.103Z","level":"warn","runId":"25973834258-1","company":null,"msg":"Per-row upsert failed for external_id=98625996470526662: there is no unique or exclusion constraint matching the ON CONFLICT specification","event":"row_upsert_error"}
+2026-05-16T22:28:36.3563591Z {"ts":"2026-05-16T22:28:36.355Z","level":"warn","runId":"25973834258-1","company":null,"msg":"Per-row upsert failed for external_id=100892263881548486: there is no unique or exclusion constraint matching the ON CONFLICT specification","event":"row_upsert_error"}
+2026-05-16T22:28:36.6100883Z {"ts":"2026-05-16T22:28:36.609Z","level":"warn","runId":"25973834258-1","company":null,"msg":"Per-row upsert failed for external_id=118078743020217030: there is no unique or exclusion constraint matching the ON CONFLICT specification","event":"row_upsert_error"}
+2026-05-16T22:28:36.8891437Z {"ts":"2026-05-16T22:28:36.888Z","level":"warn","runId":"25973834258-1","company":null,"msg":"Per-row upsert failed for external_id=72426264320713414: there is no unique or exclusion constraint matching the ON CONFLICT specification","event":"row_upsert_error"}
+2026-05-16T22:28:37.1647238Z {"ts":"2026-05-16T22:28:37.164Z","level":"warn","runId":"25973834258-1","company":null,"msg":"Per-row upsert failed for external_id=108575375654560454: there is no unique or exclusion constraint matching the ON CONFLICT specification","event":"row_upsert_error"}
+2026-05-16T22:28:37.4169199Z {"ts":"2026-05-16T22:28:37.416Z","level":"warn","runId":"25973834258-1","company":null,"msg":"Per-row upsert failed for external_id=137863361692869318: there is no unique or exclusion constraint matching the ON CONFLICT specification","event":"row_upsert_error"}
+2026-05-16T22:28:37.6926133Z {"ts":"2026-05-16T22:28:37.692Z","level":"warn","runId":"25973834258-1","company":null,"msg":"Per-row upsert failed for external_id=141782040461615814: there is no unique or exclusion constraint matching the ON CONFLICT specification","event":"row_upsert_error"}
+2026-05-16T22:28:37.9697507Z {"ts":"2026-05-16T22:28:37.969Z","level":"warn","runId":"25973834258-1","company":null,"msg":"Per-row upsert failed for external_id=111431911762469574: there is no unique or exclusion constraint matching the ON CONFLICT specification","event":"row_upsert_error"}
+2026-05-16T22:28:38.2472568Z {"ts":"2026-05-16T22:28:38.246Z","level":"warn","runId":"25973834258-1","company":null,"msg":"Per-row upsert failed for external_id=72683699291726534: there is no unique or exclusion constraint matching the ON CONFLICT specification","event":"row_upsert_error"}
+2026-05-16T22:28:38.5339364Z {"ts":"2026-05-16T22:28:38.533Z","level":"warn","runId":"25973834258-1","company":null,"msg":"Per-row upsert failed for external_id=97305819086758598: there is no unique or exclusion constraint matching the ON CONFLICT specification","event":"row_upsert_error"}
+2026-05-16T22:28:38.7874722Z {"ts":"2026-05-16T22:28:38.787Z","level":"warn","runId":"25973834258-1","company":null,"msg":"Per-row upsert failed for external_id=115489528428274374: there is no unique or exclusion constraint matching the ON CONFLICT specification","event":"row_upsert_error"}
+2026-05-16T22:28:39.0670218Z {"ts":"2026-05-16T22:28:39.066Z","level":"warn","runId":"25973834258-1","company":null,"msg":"Per-row upsert failed for external_id=107815707139285702: there is no unique or exclusion constraint matching the ON CONFLICT specification","event":"row_upsert_error"}
+2026-05-16T22:28:39.3457321Z {"ts":"2026-05-16T22:28:39.345Z","level":"warn","runId":"25973834258-1","company":null,"msg":"Per-row upsert failed for external_id=92227644103238342: there is no unique or exclusion constraint matching the ON CONFLICT specification","event":"row_upsert_error"}
+2026-05-16T22:28:39.6235417Z {"ts":"2026-05-16T22:28:39.623Z","level":"warn","runId":"25973834258-1","company":null,"msg":"Per-row upsert failed for external_id=90016615340352198: there is no unique or exclusion constraint matching the ON CONFLICT specification","event":"row_upsert_error"}
+2026-05-16T22:28:39.9093357Z {"ts":"2026-05-16T22:28:39.908Z","level":"warn","runId":"25973834258-1","company":null,"msg":"Per-row upsert failed for external_id=90505776681886406: there is no unique or exclusion constraint matching the ON CONFLICT specification","event":"row_upsert_error"}
+2026-05-16T22:28:40.1867312Z {"ts":"2026-05-16T22:28:40.186Z","level":"warn","runId":"25973834258-1","company":null,"msg":"Per-row upsert failed for external_id=102475123075752646: there is no unique or exclusion constraint matching the ON CONFLICT specification","event":"row_upsert_error"}
+2026-05-16T22:28:40.4427792Z {"ts":"2026-05-16T22:28:40.442Z","level":"warn","runId":"25973834258-1","company":null,"msg":"Per-row upsert failed for external_id=116804613054571206: there is no unique or exclusion constraint matching the ON CONFLICT specification","event":"row_upsert_error"}
+2026-05-16T22:28:40.7215639Z {"ts":"2026-05-16T22:28:40.721Z","level":"warn","runId":"25973834258-1","company":null,"msg":"Per-row upsert failed for external_id=74539998115701446: there is no unique or exclusion constraint matching the ON CONFLICT specification","event":"row_upsert_error"}
+2026-05-16T22:28:41.0005923Z {"ts":"2026-05-16T22:28:41.000Z","level":"warn","runId":"25973834258-1","company":null,"msg":"Per-row upsert failed for external_id=95148736186852038: there is no unique or exclusion constraint matching the ON CONFLICT specification","event":"row_upsert_error"}
+2026-05-16T22:28:41.2757048Z {"ts":"2026-05-16T22:28:41.275Z","level":"warn","runId":"25973834258-1","company":null,"msg":"Per-row upsert failed for external_id=129770587818992326: there is no unique or exclusion constraint matching the ON CONFLICT specification","event":"row_upsert_error"}
+2026-05-16T22:28:41.5530691Z {"ts":"2026-05-16T22:28:41.552Z","level":"warn","runId":"25973834258-1","company":null,"msg":"Per-row upsert failed for external_id=94692350814495430: there is no unique or exclusion constraint matching the ON CONFLICT specification","event":"row_upsert_error"}
+2026-05-16T22:28:41.8329328Z {"ts":"2026-05-16T22:28:41.832Z","level":"warn","runId":"25973834258-1","company":null,"msg":"Per-row upsert failed for external_id=73379279982731974: there is no unique or exclusion constraint matching the ON CONFLICT specification","event":"row_upsert_error"}
+2026-05-16T22:28:41.8331326Z {"ts":"2026-05-16T22:28:41.832Z","level":"info","runId":"25973834258-1","company":null,"msg":"Per-row recovery: 0/50","event":"bulk_upsert_recovered","data":{"recovered":0,"total":50}}
+2026-05-16T22:28:43.0627531Z {"ts":"2026-05-16T22:28:43.062Z","level":"warn","runId":"25973834258-1","company":null,"msg":"Bulk upsert error: there is no unique or exclusion constraint matching the ON CONFLICT specification — falling back to per-row","event":"bulk_upsert_error","data":{"batchSize":50,"error":"there is no unique or exclusion constraint matching the ON CONFLICT specification"}}
+2026-05-16T22:28:43.3207395Z {"ts":"2026-05-16T22:28:43.320Z","level":"warn","runId":"25973834258-1","company":null,"msg":"Per-row upsert failed for external_id=142644250851320518: there is no unique or exclusion constraint matching the ON CONFLICT specification","event":"row_upsert_error"}
+2026-05-16T22:28:43.6083806Z {"ts":"2026-05-16T22:28:43.608Z","level":"warn","runId":"25973834258-1","company":null,"msg":"Per-row upsert failed for external_id=78161529572074182: there is no unique or exclusion constraint matching the ON CONFLICT specification","event":"row_upsert_error"}
+2026-05-16T22:28:43.8834889Z {"ts":"2026-05-16T22:28:43.883Z","level":"warn","runId":"25973834258-1","company":null,"msg":"Per-row upsert failed for external_id=116642863512462022: there is no unique or exclusion constraint matching the ON CONFLICT specification","event":"row_upsert_error"}
+2026-05-16T22:28:44.1377183Z {"ts":"2026-05-16T22:28:44.137Z","level":"warn","runId":"25973834258-1","company":null,"msg":"Per-row upsert failed for external_id=89101779790111430: there is no unique or exclusion constraint matching the ON CONFLICT specification","event":"row_upsert_error"}
+2026-05-16T22:28:44.3921626Z {"ts":"2026-05-16T22:28:44.391Z","level":"warn","runId":"25973834258-1","company":null,"msg":"Per-row upsert failed for external_id=106381368451048134: there is no unique or exclusion constraint matching the ON CONFLICT specification","event":"row_upsert_error"}
+2026-05-16T22:28:44.6684612Z {"ts":"2026-05-16T22:28:44.668Z","level":"warn","runId":"25973834258-1","company":null,"msg":"Per-row upsert failed for external_id=78420643875300038: there is no unique or exclusion constraint matching the ON CONFLICT specification","event":"row_upsert_error"}
+2026-05-16T22:28:44.9441438Z {"ts":"2026-05-16T22:28:44.943Z","level":"warn","runId":"25973834258-1","company":null,"msg":"Per-row upsert failed for external_id=107592245359583942: there is no unique or exclusion constraint matching the ON CONFLICT specification","event":"row_upsert_error"}
+2026-05-16T22:28:45.2193974Z {"ts":"2026-05-16T22:28:45.218Z","level":"warn","runId":"25973834258-1","company":null,"msg":"Per-row upsert failed for external_id=135098089949012678: there is no unique or exclusion constraint matching the ON CONFLICT specification","event":"row_upsert_error"}
+2026-05-16T22:28:45.4735679Z {"ts":"2026-05-16T22:28:45.473Z","level":"warn","runId":"25973834258-1","company":null,"msg":"Per-row upsert failed for external_id=84387034201760454: there is no unique or exclusion constraint matching the ON CONFLICT specification","event":"row_upsert_error"}
+2026-05-16T22:28:45.7494253Z {"ts":"2026-05-16T22:28:45.749Z","level":"warn","runId":"25973834258-1","company":null,"msg":"Per-row upsert failed for external_id=101682152390697670: there is no unique or exclusion constraint matching the ON CONFLICT specification","event":"row_upsert_error"}
+2026-05-16T22:28:46.0018775Z {"ts":"2026-05-16T22:28:46.001Z","level":"warn","runId":"25973834258-1","company":null,"msg":"Per-row upsert failed for external_id=119698164734141126: there is no unique or exclusion constraint matching the ON CONFLICT specification","event":"row_upsert_error"}
+2026-05-16T22:28:46.2759809Z {"ts":"2026-05-16T22:28:46.275Z","level":"warn","runId":"25973834258-1","company":null,"msg":"Per-row upsert failed for external_id=118990808316551878: there is no unique or exclusion constraint matching the ON CONFLICT specification","event":"row_upsert_error"}
+2026-05-16T22:28:46.5532125Z {"ts":"2026-05-16T22:28:46.552Z","level":"warn","runId":"25973834258-1","company":null,"msg":"Per-row upsert failed for external_id=143963237455405766: there is no unique or exclusion constraint matching the ON CONFLICT specification","event":"row_upsert_error"}
+2026-05-16T22:28:46.8326365Z {"ts":"2026-05-16T22:28:46.832Z","level":"warn","runId":"25973834258-1","company":null,"msg":"Per-row upsert failed for external_id=81168838829187782: there is no unique or exclusion constraint matching the ON CONFLICT specification","event":"row_upsert_error"}
+2026-05-16T22:28:47.1069536Z {"ts":"2026-05-16T22:28:47.106Z","level":"warn","runId":"25973834258-1","company":null,"msg":"Per-row upsert failed for external_id=86831495510926022: there is no unique or exclusion constraint matching the ON CONFLICT specification","event":"row_upsert_error"}
+2026-05-16T22:28:47.3818667Z {"ts":"2026-05-16T22:28:47.381Z","level":"warn","runId":"25973834258-1","company":null,"msg":"Per-row upsert failed for external_id=111711283144729286: there is no unique or exclusion constraint matching the ON CONFLICT specification","event":"row_upsert_error"}
+2026-05-16T22:28:47.6364258Z {"ts":"2026-05-16T22:28:47.636Z","level":"warn","runId":"25973834258-1","company":null,"msg":"Per-row upsert failed for external_id=75349784134591174: there is no unique or exclusion constraint matching the ON CONFLICT specification","event":"row_upsert_error"}
+2026-05-16T22:28:47.8902486Z {"ts":"2026-05-16T22:28:47.889Z","level":"warn","runId":"25973834258-1","company":null,"msg":"Per-row upsert failed for external_id=133080624624739014: there is no unique or exclusion constraint matching the ON CONFLICT specification","event":"row_upsert_error"}
+2026-05-16T22:28:48.1644716Z {"ts":"2026-05-16T22:28:48.164Z","level":"warn","runId":"25973834258-1","company":null,"msg":"Per-row upsert failed for external_id=90642505892012742: there is no unique or exclusion constraint matching the ON CONFLICT specification","event":"row_upsert_error"}
+2026-05-16T22:28:48.4214840Z {"ts":"2026-05-16T22:28:48.421Z","level":"warn","runId":"25973834258-1","company":null,"msg":"Per-row upsert failed for external_id=76244374282740422: there is no unique or exclusion constraint matching the ON CONFLICT specification","event":"row_upsert_error"}
+2026-05-16T22:28:48.6847720Z {"ts":"2026-05-16T22:28:48.684Z","level":"warn","runId":"25973834258-1","company":null,"msg":"Per-row upsert failed for external_id=144039196099519174: there is no unique or exclusion constraint matching the ON CONFLICT specification","event":"row_upsert_error"}
+2026-05-16T22:28:48.9381630Z {"ts":"2026-05-16T22:28:48.937Z","level":"warn","runId":"25973834258-1","company":null,"msg":"Per-row upsert failed for external_id=134197141101781702: there is no unique or exclusion constraint matching the ON CONFLICT specification","event":"row_upsert_error"}
+2026-05-16T22:28:49.1913725Z {"ts":"2026-05-16T22:28:49.190Z","level":"warn","runId":"25973834258-1","company":null,"msg":"Per-row upsert failed for external_id=86672725602378438: there is no unique or exclusion constraint matching the ON CONFLICT specification","event":"row_upsert_error"}
+2026-05-16T22:28:49.4680280Z {"ts":"2026-05-16T22:28:49.467Z","level":"warn","runId":"25973834258-1","company":null,"msg":"Per-row upsert failed for external_id=83762468647510726: there is no unique or exclusion constraint matching the ON CONFLICT specification","event":"row_upsert_error"}
+2026-05-16T22:28:49.7449674Z {"ts":"2026-05-16T22:28:49.744Z","level":"warn","runId":"25973834258-1","company":null,"msg":"Per-row upsert failed for external_id=74734391556743878: there is no unique or exclusion constraint matching the ON CONFLICT specification","event":"row_upsert_error"}
+2026-05-16T22:28:50.0187100Z {"ts":"2026-05-16T22:28:50.018Z","level":"warn","runId":"25973834258-1","company":null,"msg":"Per-row upsert failed for external_id=101212497425375942: there is no unique or exclusion constraint matching the ON CONFLICT specification","event":"row_upsert_error"}
+2026-05-16T22:28:50.2741069Z {"ts":"2026-05-16T22:28:50.273Z","level":"warn","runId":"25973834258-1","company":null,"msg":"Per-row upsert failed for external_id=134488747906343622: there is no unique or exclusion constraint matching the ON CONFLICT specification","event":"row_upsert_error"}
+2026-05-16T22:28:50.5280245Z {"ts":"2026-05-16T22:28:50.527Z","level":"warn","runId":"25973834258-1","company":null,"msg":"Per-row upsert failed for external_id=138701299074900678: there is no unique or exclusion constraint matching the ON CONFLICT specification","event":"row_upsert_error"}
+2026-05-16T22:28:50.8011017Z {"ts":"2026-05-16T22:28:50.800Z","level":"warn","runId":"25973834258-1","company":null,"msg":"Per-row upsert failed for external_id=121542684610306758: there is no unique or exclusion constraint matching the ON CONFLICT specification","event":"row_upsert_error"}
+2026-05-16T22:28:51.0743114Z {"ts":"2026-05-16T22:28:51.073Z","level":"warn","runId":"25973834258-1","company":null,"msg":"Per-row upsert failed for external_id=121552602763535046: there is no unique or exclusion constraint matching the ON CONFLICT specification","event":"row_upsert_error"}
+2026-05-16T22:28:51.3485842Z {"ts":"2026-05-16T22:28:51.348Z","level":"warn","runId":"25973834258-1","company":null,"msg":"Per-row upsert failed for external_id=132925224118035142: there is no unique or exclusion constraint matching the ON CONFLICT specification","event":"row_upsert_error"}
+2026-05-16T22:28:51.6232954Z {"ts":"2026-05-16T22:28:51.622Z","level":"warn","runId":"25973834258-1","company":null,"msg":"Per-row upsert failed for external_id=108886347996897990: there is no unique or exclusion constraint matching the ON CONFLICT specification","event":"row_upsert_error"}
+2026-05-16T22:28:51.8818020Z {"ts":"2026-05-16T22:28:51.881Z","level":"warn","runId":"25973834258-1","company":null,"msg":"Per-row upsert failed for external_id=90640256402891462: there is no unique or exclusion constraint matching the ON CONFLICT specification","event":"row_upsert_error"}
+2026-05-16T22:28:52.1360800Z {"ts":"2026-05-16T22:28:52.135Z","level":"warn","runId":"25973834258-1","company":null,"msg":"Per-row upsert failed for external_id=112121451581973190: there is no unique or exclusion constraint matching the ON CONFLICT specification","event":"row_upsert_error"}
+2026-05-16T22:28:52.3908162Z {"ts":"2026-05-16T22:28:52.390Z","level":"warn","runId":"25973834258-1","company":null,"msg":"Per-row upsert failed for external_id=97059926840353478: there is no unique or exclusion constraint matching the ON CONFLICT specification","event":"row_upsert_error"}
+2026-05-16T22:28:52.6670052Z {"ts":"2026-05-16T22:28:52.666Z","level":"warn","runId":"25973834258-1","company":null,"msg":"Per-row upsert failed for external_id=126593140948640454: there is no unique or exclusion constraint matching the ON CONFLICT specification","event":"row_upsert_error"}
+2026-05-16T22:28:52.9279373Z {"ts":"2026-05-16T22:28:52.927Z","level":"warn","runId":"25973834258-1","company":null,"msg":"Per-row upsert failed for external_id=72986309802500806: there is no unique or exclusion constraint matching the ON CONFLICT specification","event":"row_upsert_error"}
+2026-05-16T22:28:53.2037978Z {"ts":"2026-05-16T22:28:53.203Z","level":"warn","runId":"25973834258-1","company":null,"msg":"Per-row upsert failed for external_id=87349377298768582: there is no unique or exclusion constraint matching the ON CONFLICT specification","event":"row_upsert_error"}
+2026-05-16T22:28:53.4579308Z {"ts":"2026-05-16T22:28:53.457Z","level":"warn","runId":"25973834258-1","company":null,"msg":"Per-row upsert failed for external_id=134353507976127174: there is no unique or exclusion constraint matching the ON CONFLICT specification","event":"row_upsert_error"}
+2026-05-16T22:28:53.7210228Z {"ts":"2026-05-16T22:28:53.720Z","level":"warn","runId":"25973834258-1","company":null,"msg":"Per-row upsert failed for external_id=135440912091095750: there is no unique or exclusion constraint matching the ON CONFLICT specification","event":"row_upsert_error"}
+2026-05-16T22:28:53.9744610Z {"ts":"2026-05-16T22:28:53.974Z","level":"warn","runId":"25973834258-1","company":null,"msg":"Per-row upsert failed for external_id=117746213767258822: there is no unique or exclusion constraint matching the ON CONFLICT specification","event":"row_upsert_error"}
+2026-05-16T22:28:54.2285803Z {"ts":"2026-05-16T22:28:54.228Z","level":"warn","runId":"25973834258-1","company":null,"msg":"Per-row upsert failed for external_id=76318286374937286: there is no unique or exclusion constraint matching the ON CONFLICT specification","event":"row_upsert_error"}
+2026-05-16T22:28:54.4808541Z {"ts":"2026-05-16T22:28:54.480Z","level":"warn","runId":"25973834258-1","company":null,"msg":"Per-row upsert failed for external_id=114802025497010886: there is no unique or exclusion constraint matching the ON CONFLICT specification","event":"row_upsert_error"}
+2026-05-16T22:28:54.7393033Z {"ts":"2026-05-16T22:28:54.738Z","level":"warn","runId":"25973834258-1","company":null,"msg":"Per-row upsert failed for external_id=141387972648805062: there is no unique or exclusion constraint matching the ON CONFLICT specification","event":"row_upsert_error"}
+2026-05-16T22:28:54.9939608Z {"ts":"2026-05-16T22:28:54.993Z","level":"warn","runId":"25973834258-1","company":null,"msg":"Per-row upsert failed for external_id=140817578711753414: there is no unique or exclusion constraint matching the ON CONFLICT specification","event":"row_upsert_error"}
+2026-05-16T22:28:55.2507331Z {"ts":"2026-05-16T22:28:55.250Z","level":"warn","runId":"25973834258-1","company":null,"msg":"Per-row upsert failed for external_id=141430486651019974: there is no unique or exclusion constraint matching the ON CONFLICT specification","event":"row_upsert_error"}
+2026-05-16T22:28:55.5044335Z {"ts":"2026-05-16T22:28:55.504Z","level":"warn","runId":"25973834258-1","company":null,"msg":"Per-row upsert failed for external_id=115778967348093638: there is no unique or exclusion constraint matching the ON CONFLICT specification","event":"row_upsert_error"}
+2026-05-16T22:28:55.7794206Z {"ts":"2026-05-16T22:28:55.779Z","level":"warn","runId":"25973834258-1","company":null,"msg":"Per-row upsert failed for external_id=137593234019754694: there is no unique or exclusion constraint matching the ON CONFLICT specification","event":"row_upsert_error"}
+2026-05-16T22:28:56.0528892Z {"ts":"2026-05-16T22:28:56.052Z","level":"warn","runId":"25973834258-1","company":null,"msg":"Per-row upsert failed for external_id=130300693083759302: there is no unique or exclusion constraint matching the ON CONFLICT specification","event":"row_upsert_error"}
+2026-05-16T22:28:56.3054132Z {"ts":"2026-05-16T22:28:56.305Z","level":"warn","runId":"25973834258-1","company":null,"msg":"Per-row upsert failed for external_id=133261321415074502: there is no unique or exclusion constraint matching the ON CONFLICT specification","event":"row_upsert_error"}
+2026-05-16T22:28:56.3056140Z {"ts":"2026-05-16T22:28:56.305Z","level":"info","runId":"25973834258-1","company":null,"msg":"Per-row recovery: 0/50","event":"bulk_upsert_recovered","data":{"recovered":0,"total":50}}
+2026-05-16T22:28:57.2522577Z {"ts":"2026-05-16T22:28:57.251Z","level":"warn","runId":"25973834258-1","company":null,"msg":"Bulk upsert error: there is no unique or exclusion constraint matching the ON CONFLICT specification — falling back to per-row","event":"bulk_upsert_error","data":{"batchSize":48,"error":"there is no unique or exclusion constraint matching the ON CONFLICT specification"}}
+2026-05-16T22:28:57.5054350Z {"ts":"2026-05-16T22:28:57.505Z","level":"warn","runId":"25973834258-1","company":null,"msg":"Per-row upsert failed for external_id=119883926364660422: there is no unique or exclusion constraint matching the ON CONFLICT specification","event":"row_upsert_error"}
+2026-05-16T22:28:57.7809728Z {"ts":"2026-05-16T22:28:57.780Z","level":"warn","runId":"25973834258-1","company":null,"msg":"Per-row upsert failed for external_id=100981142861030086: there is no unique or exclusion constraint matching the ON CONFLICT specification","event":"row_upsert_error"}
+2026-05-16T22:28:58.0367673Z {"ts":"2026-05-16T22:28:58.036Z","level":"warn","runId":"25973834258-1","company":null,"msg":"Per-row upsert failed for external_id=92634746873356998: there is no unique or exclusion constraint matching the ON CONFLICT specification","event":"row_upsert_error"}
+2026-05-16T22:28:58.2897300Z {"ts":"2026-05-16T22:28:58.289Z","level":"warn","runId":"25973834258-1","company":null,"msg":"Per-row upsert failed for external_id=94444190825358022: there is no unique or exclusion constraint matching the ON CONFLICT specification","event":"row_upsert_error"}
+2026-05-16T22:28:58.5437553Z {"ts":"2026-05-16T22:28:58.543Z","level":"warn","runId":"25973834258-1","company":null,"msg":"Per-row upsert failed for external_id=114584018325775046: there is no unique or exclusion constraint matching the ON CONFLICT specification","event":"row_upsert_error"}
+2026-05-16T22:28:58.8291813Z {"ts":"2026-05-16T22:28:58.828Z","level":"warn","runId":"25973834258-1","company":null,"msg":"Per-row upsert failed for external_id=110621956092371654: there is no unique or exclusion constraint matching the ON CONFLICT specification","event":"row_upsert_error"}
+2026-05-16T22:28:59.0851591Z {"ts":"2026-05-16T22:28:59.084Z","level":"warn","runId":"25973834258-1","company":null,"msg":"Per-row upsert failed for external_id=112072232559092422: there is no unique or exclusion constraint matching the ON CONFLICT specification","event":"row_upsert_error"}
+2026-05-16T22:28:59.3431022Z {"ts":"2026-05-16T22:28:59.342Z","level":"warn","runId":"25973834258-1","company":null,"msg":"Per-row upsert failed for external_id=140095542095946438: there is no unique or exclusion constraint matching the ON CONFLICT specification","event":"row_upsert_error"}
+2026-05-16T22:28:59.6274431Z {"ts":"2026-05-16T22:28:59.627Z","level":"warn","runId":"25973834258-1","company":null,"msg":"Per-row upsert failed for external_id=139774991506776774: there is no unique or exclusion constraint matching the ON CONFLICT specification","event":"row_upsert_error"}
+2026-05-16T22:28:59.9020405Z {"ts":"2026-05-16T22:28:59.901Z","level":"warn","runId":"25973834258-1","company":null,"msg":"Per-row upsert failed for external_id=110309889137353414: there is no unique or exclusion constraint matching the ON CONFLICT specification","event":"row_upsert_error"}
+2026-05-16T22:29:00.1569490Z {"ts":"2026-05-16T22:29:00.156Z","level":"warn","runId":"25973834258-1","company":null,"msg":"Per-row upsert failed for external_id=99284125046710982: there is no unique or exclusion constraint matching the ON CONFLICT specification","event":"row_upsert_error"}
+2026-05-16T22:29:00.4130225Z {"ts":"2026-05-16T22:29:00.412Z","level":"warn","runId":"25973834258-1","company":null,"msg":"Per-row upsert failed for external_id=76675730733179590: there is no unique or exclusion constraint matching the ON CONFLICT specification","event":"row_upsert_error"}
+2026-05-16T22:29:00.6872006Z {"ts":"2026-05-16T22:29:00.686Z","level":"warn","runId":"25973834258-1","company":null,"msg":"Per-row upsert failed for external_id=113361226104218310: there is no unique or exclusion constraint matching the ON CONFLICT specification","event":"row_upsert_error"}
+2026-05-16T22:29:00.9407765Z {"ts":"2026-05-16T22:29:00.940Z","level":"warn","runId":"25973834258-1","company":null,"msg":"Per-row upsert failed for external_id=110912729136407238: there is no unique or exclusion constraint matching the ON CONFLICT specification","event":"row_upsert_error"}
+2026-05-16T22:29:01.2149351Z {"ts":"2026-05-16T22:29:01.214Z","level":"warn","runId":"25973834258-1","company":null,"msg":"Per-row upsert failed for external_id=132618759947854534: there is no unique or exclusion constraint matching the ON CONFLICT specification","event":"row_upsert_error"}
+2026-05-16T22:29:01.4693100Z {"ts":"2026-05-16T22:29:01.468Z","level":"warn","runId":"25973834258-1","company":null,"msg":"Per-row upsert failed for external_id=90756171127759558: there is no unique or exclusion constraint matching the ON CONFLICT specification","event":"row_upsert_error"}
+2026-05-16T22:29:01.7464261Z {"ts":"2026-05-16T22:29:01.746Z","level":"warn","runId":"25973834258-1","company":null,"msg":"Per-row upsert failed for external_id=123788145052263110: there is no unique or exclusion constraint matching the ON CONFLICT specification","event":"row_upsert_error"}
+2026-05-16T22:29:02.0087261Z {"ts":"2026-05-16T22:29:02.008Z","level":"warn","runId":"25973834258-1","company":null,"msg":"Per-row upsert failed for external_id=132568402530050758: there is no unique or exclusion constraint matching the ON CONFLICT specification","event":"row_upsert_error"}
+2026-05-16T22:29:02.2855599Z {"ts":"2026-05-16T22:29:02.285Z","level":"warn","runId":"25973834258-1","company":null,"msg":"Per-row upsert failed for external_id=87278363235754694: there is no unique or exclusion constraint matching the ON CONFLICT specification","event":"row_upsert_error"}
+2026-05-16T22:29:02.5594934Z {"ts":"2026-05-16T22:29:02.559Z","level":"warn","runId":"25973834258-1","company":null,"msg":"Per-row upsert failed for external_id=124627914237846214: there is no unique or exclusion constraint matching the ON CONFLICT specification","event":"row_upsert_error"}
+2026-05-16T22:29:02.8359486Z {"ts":"2026-05-16T22:29:02.835Z","level":"warn","runId":"25973834258-1","company":null,"msg":"Per-row upsert failed for external_id=75107100228756166: there is no unique or exclusion constraint matching the ON CONFLICT specification","event":"row_upsert_error"}
+2026-05-16T22:29:03.1120604Z {"ts":"2026-05-16T22:29:03.111Z","level":"warn","runId":"25973834258-1","company":null,"msg":"Per-row upsert failed for external_id=82686336674210502: there is no unique or exclusion constraint matching the ON CONFLICT specification","event":"row_upsert_error"}
+2026-05-16T22:29:03.3873740Z {"ts":"2026-05-16T22:29:03.387Z","level":"warn","runId":"25973834258-1","company":null,"msg":"Per-row upsert failed for external_id=80545071065113286: there is no unique or exclusion constraint matching the ON CONFLICT specification","event":"row_upsert_error"}
+2026-05-16T22:29:03.6617235Z {"ts":"2026-05-16T22:29:03.661Z","level":"warn","runId":"25973834258-1","company":null,"msg":"Per-row upsert failed for external_id=127756777511887558: there is no unique or exclusion constraint matching the ON CONFLICT specification","event":"row_upsert_error"}
+2026-05-16T22:29:03.9231816Z {"ts":"2026-05-16T22:29:03.922Z","level":"warn","runId":"25973834258-1","company":null,"msg":"Per-row upsert failed for external_id=105719139254837958: there is no unique or exclusion constraint matching the ON CONFLICT specification","event":"row_upsert_error"}
+2026-05-16T22:29:04.1774713Z {"ts":"2026-05-16T22:29:04.177Z","level":"warn","runId":"25973834258-1","company":null,"msg":"Per-row upsert failed for external_id=78247816538792646: there is no unique or exclusion constraint matching the ON CONFLICT specification","event":"row_upsert_error"}
+2026-05-16T22:29:04.4311427Z {"ts":"2026-05-16T22:29:04.430Z","level":"warn","runId":"25973834258-1","company":null,"msg":"Per-row upsert failed for external_id=88309520459014854: there is no unique or exclusion constraint matching the ON CONFLICT specification","event":"row_upsert_error"}
+2026-05-16T22:29:04.6857186Z {"ts":"2026-05-16T22:29:04.685Z","level":"warn","runId":"25973834258-1","company":null,"msg":"Per-row upsert failed for external_id=75364997982495430: there is no unique or exclusion constraint matching the ON CONFLICT specification","event":"row_upsert_error"}
+2026-05-16T22:29:04.9603529Z {"ts":"2026-05-16T22:29:04.960Z","level":"warn","runId":"25973834258-1","company":null,"msg":"Per-row upsert failed for external_id=79586284040790726: there is no unique or exclusion constraint matching the ON CONFLICT specification","event":"row_upsert_error"}
+2026-05-16T22:29:05.2329667Z {"ts":"2026-05-16T22:29:05.232Z","level":"warn","runId":"25973834258-1","company":null,"msg":"Per-row upsert failed for external_id=129904728237580998: there is no unique or exclusion constraint matching the ON CONFLICT specification","event":"row_upsert_error"}
+2026-05-16T22:29:05.4869648Z {"ts":"2026-05-16T22:29:05.486Z","level":"warn","runId":"25973834258-1","company":null,"msg":"Per-row upsert failed for external_id=108040519686202054: there is no unique or exclusion constraint matching the ON CONFLICT specification","event":"row_upsert_error"}
+2026-05-16T22:29:05.7404467Z {"ts":"2026-05-16T22:29:05.740Z","level":"warn","runId":"25973834258-1","company":null,"msg":"Per-row upsert failed for external_id=109578244679705286: there is no unique or exclusion constraint matching the ON CONFLICT specification","event":"row_upsert_error"}
+2026-05-16T22:29:05.9999677Z {"ts":"2026-05-16T22:29:05.999Z","level":"warn","runId":"25973834258-1","company":null,"msg":"Per-row upsert failed for external_id=106704636680774342: there is no unique or exclusion constraint matching the ON CONFLICT specification","event":"row_upsert_error"}
+2026-05-16T22:29:06.2798869Z {"ts":"2026-05-16T22:29:06.279Z","level":"warn","runId":"25973834258-1","company":null,"msg":"Per-row upsert failed for external_id=121429193320735430: there is no unique or exclusion constraint matching the ON CONFLICT specification","event":"row_upsert_error"}
+2026-05-16T22:29:06.5528733Z {"ts":"2026-05-16T22:29:06.552Z","level":"warn","runId":"25973834258-1","company":null,"msg":"Per-row upsert failed for external_id=109548292651524806: there is no unique or exclusion constraint matching the ON CONFLICT specification","event":"row_upsert_error"}
+2026-05-16T22:29:06.8071745Z {"ts":"2026-05-16T22:29:06.806Z","level":"warn","runId":"25973834258-1","company":null,"msg":"Per-row upsert failed for external_id=130847426314412742: there is no unique or exclusion constraint matching the ON CONFLICT specification","event":"row_upsert_error"}
+2026-05-16T22:29:07.0803923Z {"ts":"2026-05-16T22:29:07.080Z","level":"warn","runId":"25973834258-1","company":null,"msg":"Per-row upsert failed for external_id=123782897675969222: there is no unique or exclusion constraint matching the ON CONFLICT specification","event":"row_upsert_error"}
+2026-05-16T22:29:07.3363515Z {"ts":"2026-05-16T22:29:07.335Z","level":"warn","runId":"25973834258-1","company":null,"msg":"Per-row upsert failed for external_id=91540920708539078: there is no unique or exclusion constraint matching the ON CONFLICT specification","event":"row_upsert_error"}
+2026-05-16T22:29:07.5906182Z {"ts":"2026-05-16T22:29:07.590Z","level":"warn","runId":"25973834258-1","company":null,"msg":"Per-row upsert failed for external_id=76813950296957638: there is no unique or exclusion constraint matching the ON CONFLICT specification","event":"row_upsert_error"}
+2026-05-16T22:29:07.8437106Z {"ts":"2026-05-16T22:29:07.843Z","level":"warn","runId":"25973834258-1","company":null,"msg":"Per-row upsert failed for external_id=136369288599478982: there is no unique or exclusion constraint matching the ON CONFLICT specification","event":"row_upsert_error"}
+2026-05-16T22:29:08.0969587Z {"ts":"2026-05-16T22:29:08.096Z","level":"warn","runId":"25973834258-1","company":null,"msg":"Per-row upsert failed for external_id=118168502467994310: there is no unique or exclusion constraint matching the ON CONFLICT specification","event":"row_upsert_error"}
+2026-05-16T22:29:08.3521351Z {"ts":"2026-05-16T22:29:08.351Z","level":"warn","runId":"25973834258-1","company":null,"msg":"Per-row upsert failed for external_id=110857205409817286: there is no unique or exclusion constraint matching the ON CONFLICT specification","event":"row_upsert_error"}
+2026-05-16T22:29:08.6262535Z {"ts":"2026-05-16T22:29:08.625Z","level":"warn","runId":"25973834258-1","company":null,"msg":"Per-row upsert failed for external_id=133846090876101318: there is no unique or exclusion constraint matching the ON CONFLICT specification","event":"row_upsert_error"}
+2026-05-16T22:29:08.9000274Z {"ts":"2026-05-16T22:29:08.899Z","level":"warn","runId":"25973834258-1","company":null,"msg":"Per-row upsert failed for external_id=123625667513197254: there is no unique or exclusion constraint matching the ON CONFLICT specification","event":"row_upsert_error"}
+2026-05-16T22:29:09.1590682Z {"ts":"2026-05-16T22:29:09.158Z","level":"warn","runId":"25973834258-1","company":null,"msg":"Per-row upsert failed for external_id=80334874291905222: there is no unique or exclusion constraint matching the ON CONFLICT specification","event":"row_upsert_error"}
+2026-05-16T22:29:09.4135660Z {"ts":"2026-05-16T22:29:09.413Z","level":"warn","runId":"25973834258-1","company":null,"msg":"Per-row upsert failed for external_id=86085633637786310: there is no unique or exclusion constraint matching the ON CONFLICT specification","event":"row_upsert_error"}
+2026-05-16T22:29:09.6876487Z {"ts":"2026-05-16T22:29:09.687Z","level":"warn","runId":"25973834258-1","company":null,"msg":"Per-row upsert failed for external_id=82579201936237254: there is no unique or exclusion constraint matching the ON CONFLICT specification","event":"row_upsert_error"}
+2026-05-16T22:29:09.9634570Z {"ts":"2026-05-16T22:29:09.963Z","level":"warn","runId":"25973834258-1","company":null,"msg":"Per-row upsert failed for external_id=126217779060581062: there is no unique or exclusion constraint matching the ON CONFLICT specification","event":"row_upsert_error"}
+2026-05-16T22:29:09.9637365Z {"ts":"2026-05-16T22:29:09.963Z","level":"info","runId":"25973834258-1","company":null,"msg":"Per-row recovery: 0/48","event":"bulk_upsert_recovered","data":{"recovered":0,"total":48}}
+2026-05-16T22:29:11.0360886Z {"ts":"2026-05-16T22:29:11.035Z","level":"info","runId":"25973834258-1","company":"google","msg":"Inserted: 348, Updated: 0, Stale: 0, Rejected: 18","event":"company_done","data":{"inserted":348,"updated":0,"stale":0,"parseOk":348,"parseErr":0,"skippedBudget":0,"skippedQuota":0,"rejectedNonEng":18,"coverageSkipped":false,"elapsedMs":2312592}}
+2026-05-16T22:29:11.9089722Z {"ts":"2026-05-16T22:29:11.908Z","level":"info","runId":"25973834258-1","company":"microsoft","msg":"Crawling…","event":"company_start"}
+2026-05-16T22:29:11.9091369Z {"ts":"2026-05-16T22:29:11.908Z","level":"info","runId":"25973834258-1","company":"microsoft","msg":"Fetching start=0 / ?..."}
+2026-05-16T22:29:12.7439914Z {"ts":"2026-05-16T22:29:12.743Z","level":"info","runId":"25973834258-1","company":"microsoft","msg":"Fetching start=10 / 165..."}
+2026-05-16T22:29:13.4816333Z {"ts":"2026-05-16T22:29:13.481Z","level":"info","runId":"25973834258-1","company":"microsoft","msg":"Fetching start=20 / 165..."}
+2026-05-16T22:29:14.1695667Z {"ts":"2026-05-16T22:29:14.169Z","level":"info","runId":"25973834258-1","company":"microsoft","msg":"Fetching start=30 / 165..."}
+2026-05-16T22:29:14.8102614Z {"ts":"2026-05-16T22:29:14.809Z","level":"info","runId":"25973834258-1","company":"microsoft","msg":"Fetching start=40 / 165..."}
+2026-05-16T22:29:15.5053508Z {"ts":"2026-05-16T22:29:15.504Z","level":"info","runId":"25973834258-1","company":"microsoft","msg":"Fetching start=50 / 165..."}
+2026-05-16T22:29:16.1956378Z {"ts":"2026-05-16T22:29:16.195Z","level":"info","runId":"25973834258-1","company":"microsoft","msg":"Fetching start=60 / 165..."}
+2026-05-16T22:29:16.9216115Z {"ts":"2026-05-16T22:29:16.921Z","level":"info","runId":"25973834258-1","company":"microsoft","msg":"Fetching start=70 / 165..."}
+2026-05-16T22:29:17.6317761Z {"ts":"2026-05-16T22:29:17.631Z","level":"info","runId":"25973834258-1","company":"microsoft","msg":"Fetching start=80 / 165..."}
+2026-05-16T22:29:17.8964797Z ##[error]The operation was canceled.
+2026-05-16T22:29:17.9027725Z Post job cleanup.
+2026-05-16T22:29:18.0451823Z Pruning is unnecessary.
+2026-05-16T22:29:18.0584377Z Post job cleanup.
+2026-05-16T22:29:18.1451629Z [command]/usr/bin/git version
+2026-05-16T22:29:18.1519697Z git version 2.54.0
+2026-05-16T22:29:18.1558241Z Temporarily overriding HOME='/home/runner/work/_temp/1a0af75e-2d01-4924-9c8a-5092a9aec9c9' before making global git config changes
+2026-05-16T22:29:18.1559487Z Adding repository directory to the temporary git global config as a safe directory
+2026-05-16T22:29:18.1563789Z [command]/usr/bin/git config --global --add safe.directory /home/runner/work/productcompanies/productcompanies
+2026-05-16T22:29:18.1600250Z [command]/usr/bin/git config --local --name-only --get-regexp core\.sshCommand
+2026-05-16T22:29:18.1632658Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'core\.sshCommand' && git config --local --unset-all 'core.sshCommand' || :"
+2026-05-16T22:29:18.1851492Z [command]/usr/bin/git config --local --name-only --get-regexp http\.https\:\/\/github\.com\/\.extraheader
+2026-05-16T22:29:18.1876469Z http.https://github.com/.extraheader
+2026-05-16T22:29:18.1886683Z [command]/usr/bin/git config --local --unset-all http.https://github.com/.extraheader
+2026-05-16T22:29:18.1919326Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'http\.https\:\/\/github\.com\/\.extraheader' && git config --local --unset-all 'http.https://github.com/.extraheader' || :"
+2026-05-16T22:29:18.2136883Z [command]/usr/bin/git config --local --name-only --get-regexp ^includeIf\.gitdir:
+2026-05-16T22:29:18.2166154Z [command]/usr/bin/git submodule foreach --recursive git config --local --show-origin --name-only --get-regexp remote.origin.url
+2026-05-16T22:29:18.2516495Z Cleaning up orphan processes
+2026-05-16T22:29:18.2746688Z Terminate orphan process: pid (3505) (node)
+2026-05-16T22:29:18.2773789Z Terminate orphan process: pid (3521) (sh)
+2026-05-16T22:29:18.2800532Z Terminate orphan process: pid (3522) (node)
+2026-05-16T22:29:18.2850860Z Terminate orphan process: pid (3538) (node)
+2026-05-16T22:29:18.2885328Z Terminate orphan process: pid (3551) (esbuild)
+2026-05-16T22:29:18.2918655Z Terminate orphan process: pid (3558) (esbuild)
+2026-05-16T22:29:18.3010458Z Terminate orphan process: pid (4072) (chrome-headless-shell)
+2026-05-16T22:29:18.3081492Z ##[warning]Node.js 20 actions are deprecated. The following actions are running on Node.js 20 and may not work as expected: nick-fields/retry@v3, pnpm/action-setup@v4. Actions will be forced to run with Node.js 24 by default starting June 2nd, 2026. Node.js 20 will be removed from the runner on September 16th, 2026. Please check if updated versions of these actions are available that support Node.js 24. To opt into Node.js 24 now, set the FORCE_JAVASCRIPT_ACTIONS_TO_NODE24=true environment variable on the runner or in your workflow file. Once Node.js 24 becomes the default, you can temporarily opt out by setting ACTIONS_ALLOW_USE_UNSECURE_NODE_VERSION=true. For more information see: https://github.blog/changelog/2025-09-19-deprecation-of-node-20-on-github-actions-runners/
