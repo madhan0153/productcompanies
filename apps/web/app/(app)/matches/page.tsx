@@ -262,64 +262,54 @@ export default async function MatchesPage({
   })();
 
   return (
-    <div className="space-y-6 pb-6">
+    <div className="space-y-4 pb-6">
 
       {/* Session-history beacon — records this URL so the job detail
           page's "← Matches" link returns to the exact tab/filter slice. */}
       <MatchesURLBeacon />
 
       {/* ── Header ──────────────────────────────────────────────── */}
-      <div className="flex items-start justify-between gap-3">
+      {/* Counts removed — they're duplicated in the BandStrip pills below.
+          Timestamp shrunk to a single inline line. */}
+      <div className="flex items-center justify-between gap-3">
         <div className="min-w-0">
-          <h1 className="text-2xl font-semibold tracking-tight">Matches</h1>
-          {allRows.length > 0 ? (
-            <p className="mt-1 text-sm text-muted-foreground">
-              <span className="font-medium text-success tabular-nums">{bandCounts.shortlist}</span> shortlist
-              {" · "}<span className="tabular-nums">{bandCounts.worthALook}</span> maybe
-              {" · "}<span className="opacity-60 tabular-nums">{bandCounts.filtered}</span> filtered
-            </p>
-          ) : (
-            <p className="mt-1 text-sm text-muted-foreground">Compute your first matches below</p>
-          )}
-          {computeAgo && (
-            <div className="mt-1.5 flex items-center gap-1.5 text-[11px] text-muted-foreground">
+          <h1 className="text-xl font-semibold tracking-tight sm:text-2xl">Matches</h1>
+          {computeAgo ? (
+            <div className="mt-0.5 flex items-center gap-1.5 text-[11px] text-muted-foreground">
               <Activity className="h-3 w-3 text-success" />
               <span>
-                You computed {computeAgo}
+                Computed {computeAgo}
                 {newCount > 0 && tab !== "new" && (
                   <> · <Link href={buildHref("new")} className="font-medium text-success hover:underline focus-ring rounded">{newCount} new</Link></>
                 )}
               </span>
             </div>
-          )}
+          ) : allRows.length === 0 ? (
+            <p className="mt-0.5 text-[11px] text-muted-foreground">Compute your first matches</p>
+          ) : null}
         </div>
         <div className="shrink-0">
           <ComputeButton hasResume={hasResume} />
         </div>
       </div>
 
-      {/* ── Resume score banner ────────────────────────────────── */}
-      {hasResume && resumeScore !== null && (
-        <ResumeScoreBanner score={resumeScore} />
-      )}
-
-      {/* ── No-resume prompt ───────────────────────────────────── */}
+      {/* ── No-resume prompt — only when there's actually no resume ─ */}
       {!hasResume && (
-        <div className="rounded-xl border border-primary/30 bg-primary-soft p-5 sm:p-6">
-          <h2 className="font-semibold">Start with your resume</h2>
-          <p className="mt-1.5 max-w-2xl text-sm leading-relaxed text-muted-foreground">
+        <div className="rounded-xl border border-primary/30 bg-primary-soft p-4">
+          <h2 className="text-sm font-semibold">Start with your resume</h2>
+          <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
             Upload your PDF — we&apos;ll parse it, score your resume against live demand from 18 product companies, and rank every active role with a structured Fit Card.
           </p>
           <Link
             href="/profile"
-            className="press mt-4 inline-flex h-10 items-center gap-2 rounded-md bg-primary px-4 text-sm font-semibold text-primary-foreground transition hover:bg-primary/90 focus-ring"
+            className="press mt-3 inline-flex h-9 items-center gap-2 rounded-md bg-primary px-3 text-xs font-semibold text-primary-foreground transition hover:bg-primary/90 focus-ring"
           >
-            Upload resume <ArrowUpRight className="h-3.5 w-3.5" />
+            Upload resume <ArrowUpRight className="h-3 w-3" />
           </Link>
         </div>
       )}
 
-      {/* ── Band strip — sticky tab spine ───────────────────────── */}
+      {/* ── Band strip — sticky tab spine, right under title ─────── */}
       {allRows.length > 0 && (
         <BandStrip counts={bandCounts} active={tab} buildHref={buildHref} />
       )}
@@ -332,6 +322,13 @@ export default async function MatchesPage({
           totalCount={totalVisibleScope}
           filteredCount={scopedRows.length}
         />
+      )}
+
+      {/* ── Resume score strip — only when score < 60 (where the
+          weak-resume → weak-matches connection actually matters).
+          Strong/Application-ready scores hide entirely. */}
+      {hasResume && resumeScore !== null && resumeScore < 60 && (
+        <ResumeScoreStrip score={resumeScore} />
       )}
 
       {/* ── Missing-skills banner — scoped to current tab ──────── */}
@@ -464,51 +461,34 @@ function emptyStateForTab(tab: MatchTab, activeFilterCount: number): React.React
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Resume Score Banner — unchanged from previous version.
+// Resume Score Strip — compact 1-line alert. Only renders for score < 60.
+// Above 60 the resume isn't the bottleneck, so the strip stays hidden and
+// the matches page is purely about matches.
 // ─────────────────────────────────────────────────────────────────────────────
 
-function ResumeScoreBanner({ score }: { score: number }) {
-  const { tone, ringTone, grade, desc } =
-    score >= 80
-      ? { tone: "text-success",   ringTone: "stroke-success",     grade: score >= 85 ? "Application-ready" : "Strong",
-          desc: "Your resume is highly competitive for top product companies" }
-      : score >= 60
-        ? { tone: "text-warning", ringTone: "stroke-warning",     grade: "Solid baseline",
-            desc: "Minor improvements will significantly boost match quality" }
-        : { tone: "text-destructive", ringTone: "stroke-destructive", grade: "Needs work",
-            desc: "Review the tips on your profile to improve match quality" };
-
-  const circ = 2 * Math.PI * 22;
-  const offset = circ - (Math.max(0, Math.min(100, score)) / 100) * circ;
+function ResumeScoreStrip({ score }: { score: number }) {
+  const tone = score < 40 ? "destructive" : "warning";
+  const grade = score < 40 ? "Needs work" : "Could be stronger";
+  const tones = {
+    destructive: { border: "border-destructive/30", bg: "bg-destructive/5",  pill: "bg-destructive text-destructive-foreground", text: "text-destructive" },
+    warning:     { border: "border-warning/30",     bg: "bg-warning/5",      pill: "bg-warning text-warning-foreground",         text: "text-warning"     },
+  }[tone];
 
   return (
     <Link
       href="/profile#resume-score"
-      className="group flex items-center justify-between gap-4 rounded-xl border border-border bg-card px-5 py-4 transition hover:border-primary/30 hover:bg-secondary/40 focus-ring"
+      className={`group flex items-center justify-between gap-2 rounded-lg border ${tones.border} ${tones.bg} px-3 py-2 text-xs transition hover:border-foreground/30 focus-ring`}
     >
-      <div className="flex items-center gap-4">
-        <div className="relative flex h-14 w-14 shrink-0 items-center justify-center">
-          <svg className="absolute inset-0 -rotate-90" viewBox="0 0 56 56">
-            <circle cx="28" cy="28" r="22" fill="none" stroke="hsl(var(--border))" strokeWidth="4" />
-            <circle
-              cx="28" cy="28" r="22"
-              fill="none"
-              strokeWidth="4"
-              strokeLinecap="round"
-              className={ringTone}
-              strokeDasharray={circ}
-              strokeDashoffset={offset}
-            />
-          </svg>
-          <span className={`text-base font-semibold tabular-nums ${tone}`}>{score}</span>
-        </div>
-        <div>
-          <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Resume strength</p>
-          <p className={`text-base font-semibold ${tone}`}>{grade}</p>
-          <p className="text-xs leading-relaxed text-muted-foreground">{desc}</p>
-        </div>
+      <div className="flex min-w-0 items-center gap-2">
+        <span className={`inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-[11px] font-bold tabular-nums ${tones.pill}`}>
+          {score}
+        </span>
+        <span className="truncate">
+          Resume score: <strong className={tones.text}>{grade}</strong>{" "}
+          <span className="text-muted-foreground">— this is capping your matches</span>
+        </span>
       </div>
-      <ArrowUpRight className="h-4 w-4 shrink-0 text-muted-foreground transition group-hover:text-primary" />
+      <ArrowUpRight className="h-3.5 w-3.5 shrink-0 text-muted-foreground transition group-hover:text-foreground" />
     </Link>
   );
 }

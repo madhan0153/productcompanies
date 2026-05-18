@@ -63,37 +63,33 @@ export function MissingSkillsBanner({
   const sample = data.top.slice(0, 5);
 
   return (
-    <section className="rounded-xl border border-warning/25 bg-warning/5 p-4 sm:p-5" aria-label="Skill gaps">
-      <div className="flex items-start gap-3">
-        <div className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-warning text-warning-foreground">
-          <Target className="h-4 w-4" strokeWidth={2.25} />
-        </div>
-        <div className="min-w-0 flex-1">
-          <p className="text-sm font-semibold text-warning">
-            Top skills missing from your resume{" "}
-            <span className="text-muted-foreground font-normal">· across {scopeLabel}</span>
-          </p>
-          <ul className="mt-2.5 flex flex-wrap gap-1.5">
-            {sample.map((s) => (
-              <li key={s.skill}>
-                <span
-                  className="inline-flex items-center gap-1.5 rounded-full border border-warning/30 bg-card px-2.5 py-0.5 text-[11px]"
-                  title={`Missing in ${s.n} JD${s.n === 1 ? "" : "s"} · best score there: ${Math.round(s.bestScore)}`}
-                >
-                  <span className="font-medium">{s.skill}</span>
-                  <span className="font-semibold tabular-nums text-warning">{s.n}</span>
-                </span>
-              </li>
-            ))}
-          </ul>
-          <Link
-            href="/coach"
-            className="mt-3 inline-flex items-center gap-1 text-[11px] font-medium text-primary hover:underline focus-ring rounded"
-          >
-            Ask the Coach which to learn first <ChevronRight className="h-3 w-3" />
-          </Link>
-        </div>
+    <section className="rounded-lg border border-warning/25 bg-warning/5 px-3 py-2.5" aria-label="Skill gaps">
+      <div className="flex items-center gap-2">
+        <Target className="h-3.5 w-3.5 shrink-0 text-warning" strokeWidth={2.25} />
+        <p className="min-w-0 flex-1 truncate text-xs font-semibold text-warning">
+          Missing skills <span className="font-normal text-muted-foreground">· {scopeLabel}</span>
+        </p>
+        <Link
+          href="/coach"
+          className="inline-flex shrink-0 items-center gap-0.5 text-[11px] font-medium text-primary hover:underline focus-ring rounded"
+          aria-label="Ask the Coach which to learn first"
+        >
+          Coach <ChevronRight className="h-3 w-3" />
+        </Link>
       </div>
+      <ul className="mt-1.5 flex flex-wrap gap-1">
+        {sample.map((s) => (
+          <li key={s.skill}>
+            <span
+              className="inline-flex items-center gap-1 rounded-full border border-warning/30 bg-card px-2 py-0.5 text-[10px]"
+              title={`Missing in ${s.n} JD${s.n === 1 ? "" : "s"} · best score there: ${Math.round(s.bestScore)}`}
+            >
+              <span className="font-medium">{s.skill}</span>
+              <span className="font-semibold tabular-nums text-warning">{s.n}</span>
+            </span>
+          </li>
+        ))}
+      </ul>
     </section>
   );
 }
