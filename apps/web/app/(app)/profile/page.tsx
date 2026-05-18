@@ -12,7 +12,12 @@ import { ResumeVersionsPanel } from "./resume-versions-panel";
 import { EnhancementHistoryPanel } from "./enhancement-history-panel";
 
 export const metadata: Metadata = { title: "My Profile" };
-export const maxDuration = 60;
+// The resume upload action does a Gemini PDF parse (10-20s) + profile
+// upsert. Bumped from 60→90s so a cold start (Next dev compile or Vercel
+// function spin-up) doesn't time out before the parse completes. The
+// resume-score + embedding work runs in after() and therefore doesn't
+// count against this budget.
+export const maxDuration = 90;
 
 export default async function ProfilePage() {
   const supabase = await createSupabaseServerClient();

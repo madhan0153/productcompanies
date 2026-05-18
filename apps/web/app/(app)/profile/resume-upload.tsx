@@ -60,10 +60,29 @@ export function ResumeUpload({ hasExisting, existingRole, existingDnaScore }: Pr
     const fd = new FormData();
     fd.append("resume", file);
     startTransition(async () => {
-      const r = await uploadAndParseResume(fd);
-      setResult(r);
-      setCurrentStep(-1);
-      if (r.ok) router.refresh();
+      try {
+        const r = await uploadAndParseResume(fd);
+        setResult(r);
+        setCurrentStep(-1);
+        if (r.ok) router.refresh();
+      } catch (err) {
+        // Next.js wraps thrown server errors as "An unexpected response was
+        // received from the server" — opaque and unactionable. Catch it
+        // here and surface a friendly retry message. Common cause: cold
+        // start on first upload (dev compile / Vercel spin-up).
+        setCurrentStep(-1);
+        const isUnexpected = err instanceof Error
+          && /unexpected response|failed to fetch|network|aborted/i.test(err.message);
+        setResult({
+          ok: false,
+          error: isUnexpected
+            ? "The server took too long to respond. This usually happens on the first upload while things warm up — please retry and it should work."
+            : err instanceof Error
+              ? err.message
+              : "Couldn't upload your resume. Please retry.",
+          retryable: true,
+        });
+      }
     });
   }
 

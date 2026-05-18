@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+import { after } from "next/server";
 import { createHash } from "node:crypto";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
@@ -301,49 +302,64 @@ export async function uploadAndParseResume(formData: FormData): Promise<UploadRe
     resume_signature: resumeSignature,
   });
 
-  // Compute resume score immediately so the user sees the gauge on first save.
-  // Runs against current market signal — cheap, no LLM call.
-  try {
-    const top30 = await fetchTop30Demand(admin);
-    const score = computeResumeScore({
-      resume: parsed,
-      top30Demand: top30,
-      userTargets: parsed.target_role_functions ?? [],
-    });
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    await (admin.from("profiles") as any).update({
-      resume_score: score.score,
-      resume_score_breakdown: score.breakdown as unknown as Json,
-      resume_tips: score.tips as unknown as Json,
-      resume_score_at: new Date().toISOString(),
-    }).eq("id", user.id);
-  } catch (err) {
-    console.warn("[resume-score] post-upload compute failed", err);
-  }
-
-  // Phase I — embed the resume for semantic JD↔resume alignment at match time.
-  // One Gemini text-embedding-004 call per upload; soft-fail if it 429s.
-  try {
-    const resumeEmbedding = await embed(buildResumeEmbedText(parsed));
-    if (resumeEmbedding.length > 0) {
+  // ── EARLY RESPONSE — everything below runs after the response is flushed.
+  // Why: the resume score / embedding / market-demand calls add another
+  // 4-8s to the request. On a cold start (dev compile or Vercel) the total
+  // blocking time can exceed the client's patience and the user sees
+  // "Something went wrong / unexpected response from server". By deferring
+  // to after() we keep the response under ~15s on a warm path and ~30s on
+  // a cold path — both well within the 60s maxDuration.
+  //
+  // What the user sees immediately: parse succeeded, profile populated,
+  // DNA + role + years all rendered. Score gauge + embedding land within
+  // a few seconds in the background; matches auto-recompute via the
+  // existing enqueue facade.
+  after(async () => {
+    // 1. Resume score against current market signal (cheap, no LLM).
+    try {
+      const top30 = await fetchTop30Demand(admin);
+      const score = computeResumeScore({
+        resume: parsed,
+        top30Demand: top30,
+        userTargets: parsed.target_role_functions ?? [],
+      });
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       await (admin.from("profiles") as any).update({
-        resume_embedding: resumeEmbedding,
-        resume_embedding_at: new Date().toISOString(),
+        resume_score: score.score,
+        resume_score_breakdown: score.breakdown as unknown as Json,
+        resume_tips: score.tips as unknown as Json,
+        resume_score_at: new Date().toISOString(),
       }).eq("id", user.id);
+    } catch (err) {
+      console.warn("[resume-score] post-upload compute failed", err);
     }
-  } catch (err) {
-    console.warn("[resume-embed] post-upload embed failed", err);
-  }
 
-  revalidatePath("/profile");
-  revalidatePath("/dashboard");
-  revalidatePath("/matches");
-  revalidatePath("/coach");
-  revalidatePath("/insights");
+    // 2. Phase I — embed the resume for semantic JD↔resume alignment at
+    //    match time. One Gemini text-embedding-004 call; soft-fail on 429.
+    try {
+      const resumeEmbedding = await embed(buildResumeEmbedText(parsed));
+      if (resumeEmbedding.length > 0) {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        await (admin.from("profiles") as any).update({
+          resume_embedding: resumeEmbedding,
+          resume_embedding_at: new Date().toISOString(),
+        }).eq("id", user.id);
+      }
+    } catch (err) {
+      console.warn("[resume-embed] post-upload embed failed", err);
+    }
 
-  // Sprint 4 Item 13 — dispatch via the queue facade so the swap to a real
-  // queue is a one-file change. Today the work still runs in after().
+    // 3. Path revalidations — invalidate cached pages so the next nav
+    //    sees the new resume/score.
+    revalidatePath("/profile");
+    revalidatePath("/dashboard");
+    revalidatePath("/matches");
+    revalidatePath("/coach");
+    revalidatePath("/insights");
+  });
+
+  // Sprint 4 Item 13 — match recompute already runs via after() inside
+  // enqueueUserRecompute. Triggered immediately; doesn't add to response time.
   enqueueUserRecompute(user.id, { forceFull: true, source: "resume_upload" });
 
   return {
