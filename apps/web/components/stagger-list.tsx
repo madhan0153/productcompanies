@@ -27,12 +27,12 @@ export function StaggerList({ children, className, step = 0.04 }: Props) {
       {items.map((child, i) => (
         <motion.div
           key={(child as { key?: string | number })?.key ?? i}
-          initial={{ opacity: 0, y: 12 }}
-          animate={{ opacity: 1, y: 0 }}
+          initial={{ opacity: 0, y: 16, scale: 0.98 }}
+          animate={{ opacity: 1, y: 0, scale: 1 }}
           transition={{
-            duration: 0.45,
+            duration: 0.4,
             delay: i * step,
-            ease: [0.22, 1, 0.36, 1],
+            ease: [0.21, 1.02, 0.49, 1], // Custom springy cubic bezier
           }}
         >
           {child}

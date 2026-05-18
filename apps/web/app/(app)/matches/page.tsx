@@ -298,7 +298,7 @@ export default async function MatchesPage({
       {/* ── Card list ───────────────────────────────────────────── */}
       {tabRows.length > 0 ? (
         <>
-          <StaggerList className="space-y-3">
+          <StaggerList key={tab} className="space-y-3">
             {tabRows.map((m) => (
               <MatchCard
                 key={m.jobs.id}
