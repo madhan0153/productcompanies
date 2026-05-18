@@ -59,6 +59,12 @@ export default async function AdminHealthPage() {
     { count: matchesTotal },
     { count: matchesUnseen },
     { count: matchesHidden },
+    // Phase R4 — Resume Intelligence ops counters.
+    { count: enhancedTotal },
+    { count: enhancedFinalised },
+    { count: enhancedPending },
+    { count: tailoredFinalised },
+    intelEventsRecent,
   ] = await Promise.all([
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     admin.from("companies").select("id, name, slug").order("name") as any,
@@ -86,6 +92,18 @@ export default async function AdminHealthPage() {
     admin.from("matches").select("user_id", { count: "exact", head: true }),
     admin.from("matches").select("user_id", { count: "exact", head: true }).is("seen_at", null),
     admin.from("matches").select("user_id", { count: "exact", head: true }).eq("user_hidden", true),
+    // Resume Intelligence counters
+    admin.from("enhanced_resumes").select("id", { count: "exact", head: true }),
+    admin.from("enhanced_resumes").select("id", { count: "exact", head: true }).eq("status", "finalised"),
+    admin.from("enhanced_resumes").select("id", { count: "exact", head: true }).eq("status", "pending_review"),
+    admin.from("tailored_resumes").select("id", { count: "exact", head: true }).eq("status", "finalised"),
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    admin
+      .from("resume_intel_events")
+      .select("kind, scope, ok, latency_ms, created_at")
+      .gte("created_at", since24h)
+      .order("created_at", { ascending: false })
+      .limit(1000) as any,
   ]);
 
   // ── Crawl runs by company ────────────────────────────────────────────────
@@ -202,6 +220,28 @@ export default async function AdminHealthPage() {
         </ul>
       </section>
 
+      {/* ── Resume Intelligence ops (Phase R4) ───────────────────────── */}
+      <section className="rounded-2xl border border-border bg-card/40">
+        <header className="flex items-center justify-between gap-3 border-b border-border/50 px-5 py-3">
+          <div>
+            <p className="text-sm font-semibold flex items-center gap-2">
+              <BarChart3 className="h-4 w-4 text-primary" />
+              Resume Intelligence (last 24h)
+            </p>
+            <p className="text-xs text-muted-foreground">
+              Enhanced + Tailored pipeline volume, success rate, and latency. Powers the USP cost model.
+            </p>
+          </div>
+        </header>
+        <ResumeIntelSummary
+          enhancedTotal={enhancedTotal ?? 0}
+          enhancedFinalised={enhancedFinalised ?? 0}
+          enhancedPending={enhancedPending ?? 0}
+          tailoredFinalised={tailoredFinalised ?? 0}
+          events={(intelEventsRecent as IntelEventRow[] | null) ?? []}
+        />
+      </section>
+
       <section className="rounded-2xl border border-border bg-card/30">
         <header className="border-b border-border/50 px-5 py-3">
           <p className="text-sm font-semibold flex items-center gap-2">
@@ -304,4 +344,89 @@ function ConfigPill({ set }: { set: boolean }) {
       {set ? "set" : "unset"}
     </span>
   );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Phase R4 — Resume Intelligence operational summary
+// ─────────────────────────────────────────────────────────────────────────────
+
+interface IntelEventRow {
+  kind: string;
+  scope: string;
+  ok: boolean;
+  latency_ms: number | null;
+  created_at: string;
+}
+
+interface IntelSummaryProps {
+  enhancedTotal: number;
+  enhancedFinalised: number;
+  enhancedPending: number;
+  tailoredFinalised: number;
+  events: IntelEventRow[];
+}
+
+function ResumeIntelSummary({
+  enhancedTotal,
+  enhancedFinalised,
+  enhancedPending,
+  tailoredFinalised,
+  events,
+}: IntelSummaryProps) {
+  const diagnoses = events.filter((e) => e.kind === "diagnosis");
+  const rewriteBatches = events.filter((e) => e.kind === "rewrite_batch");
+  const renders = events.filter((e) => e.kind === "render_docx");
+
+  const diagOk = diagnoses.filter((e) => e.ok).length;
+  const diagFail = diagnoses.filter((e) => !e.ok).length;
+  const diagP50 = percentile(diagnoses.map((e) => e.latency_ms ?? 0).filter((n) => n > 0), 0.5);
+  const diagP90 = percentile(diagnoses.map((e) => e.latency_ms ?? 0).filter((n) => n > 0), 0.9);
+
+  const rewriteOk = rewriteBatches.filter((e) => e.ok).length;
+  const rewriteFail = rewriteBatches.filter((e) => !e.ok).length;
+  const rewriteP50 = percentile(rewriteBatches.map((e) => e.latency_ms ?? 0).filter((n) => n > 0), 0.5);
+
+  return (
+    <div className="grid grid-cols-1 gap-4 px-5 py-4 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="rounded-lg border border-border/50 bg-card/40 p-3">
+        <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Enhanced</p>
+        <p className="mt-0.5 text-xl font-bold tabular-nums">{enhancedFinalised}</p>
+        <p className="text-[11px] text-muted-foreground">
+          finalised · {enhancedPending} pending · {enhancedTotal} total
+        </p>
+      </div>
+      <div className="rounded-lg border border-border/50 bg-card/40 p-3">
+        <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Tailored</p>
+        <p className="mt-0.5 text-xl font-bold tabular-nums">{tailoredFinalised}</p>
+        <p className="text-[11px] text-muted-foreground">finalised (all-time)</p>
+      </div>
+      <div className="rounded-lg border border-border/50 bg-card/40 p-3">
+        <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Diagnoses 24h</p>
+        <p className="mt-0.5 text-xl font-bold tabular-nums">
+          {diagnoses.length}
+          {diagFail > 0 && <span className="ml-2 text-xs font-semibold text-rose-400">{diagFail} fail</span>}
+        </p>
+        <p className="text-[11px] text-muted-foreground">
+          p50 {diagP50}ms · p90 {diagP90}ms · {diagOk} ok
+        </p>
+      </div>
+      <div className="rounded-lg border border-border/50 bg-card/40 p-3">
+        <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Rewrites 24h</p>
+        <p className="mt-0.5 text-xl font-bold tabular-nums">
+          {rewriteBatches.length}
+          {rewriteFail > 0 && <span className="ml-2 text-xs font-semibold text-rose-400">{rewriteFail} fail</span>}
+        </p>
+        <p className="text-[11px] text-muted-foreground">
+          p50 {rewriteP50}ms · {rewriteOk} ok · {renders.length} renders
+        </p>
+      </div>
+    </div>
+  );
+}
+
+function percentile(values: number[], p: number): number {
+  if (values.length === 0) return 0;
+  const sorted = [...values].sort((a, b) => a - b);
+  const idx = Math.max(0, Math.min(sorted.length - 1, Math.floor(sorted.length * p)));
+  return Math.round(sorted[idx]);
 }

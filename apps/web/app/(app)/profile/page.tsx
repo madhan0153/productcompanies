@@ -12,6 +12,7 @@ import type { DnaBreakdown } from "@/lib/matching/dna-breakdown";
 import { listResumeVersions } from "./actions";
 import { ResumeVersionsPanel } from "./resume-versions-panel";
 import { ParsedReviewPanel } from "./parsed-review-panel";
+import { EnhancementHistoryPanel } from "./enhancement-history-panel";
 
 export const metadata: Metadata = { title: "My Profile" };
 export const maxDuration = 60;
@@ -160,6 +161,11 @@ export default async function ProfilePage() {
         <div id="resume-history" className="scroll-mt-20">
           <ResumeVersionsPanel versions={versions} />
         </div>
+      )}
+
+      {/* ── Enhancement history (Phase R4) ─────────────────────── */}
+      {hasResume && (
+        <EnhancementHistoryPanel userId={user.id} />
       )}
 
       {/* ── Resume upload ──────────────────────────────────────── */}
