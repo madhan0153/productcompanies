@@ -247,14 +247,12 @@ function DnaRing({ score }: { score: number }) {
 }
 
 function dnaScoreLabel(score: number): string {
-  // Neutral, progression-oriented labels. No language that frames a services
-  // background as a deficit — every Indian engineer's career starts somewhere,
-  // and this signal only describes the *next-step* alignment with product-co
-  // hiring patterns, not the engineer's worth.
-  if (score >= 80) return "Application-ready for top product companies";
-  if (score >= 60) return "Strong readiness — minor refinements unlock more roles";
-  if (score >= 40) return "Solid foundation — a few signal upgrades will lift you";
-  return "Early in product-co readiness — clear levers to grow this signal";
+  // Neutral, progression-oriented labels describing product-company signal
+  // strength. Not a callback predictor — the Resume Score handles that.
+  if (score >= 80) return "Strong product-company profile signal";
+  if (score >= 60) return "Solid signal — minor refinements unlock more roles";
+  if (score >= 40) return "Building signal — focus on product-impact framing";
+  return "Early-stage signal — clear levers to grow this";
 }
 
 // ── Career Trajectory ────────────────────────────────────────────────────────
@@ -406,24 +404,24 @@ function CareerTrajectoryPanel({
 // ── ATS & Recruiter Signal ────────────────────────────────────────────────────
 
 function AtsSignalPanel({ score }: { score: number }) {
-  const probability   = score >= 80 ? "High" : score >= 62 ? "Medium" : "Low";
-  const probTone      = score >= 80 ? { text: "text-success", bg: "bg-success/10", border: "border-success/20" }
-                      : score >= 62 ? { text: "text-warning", bg: "bg-warning/10", border: "border-warning/20" }
+  const probability   = score >= 70 ? "High" : score >= 55 ? "Medium" : "Low";
+  const probTone      = score >= 70 ? { text: "text-success", bg: "bg-success/10", border: "border-success/20" }
+                      : score >= 55 ? { text: "text-warning", bg: "bg-warning/10", border: "border-warning/20" }
                       : { text: "text-destructive", bg: "bg-destructive/10", border: "border-destructive/20" };
 
-  const recruiterRead = score >= 85
-    ? "Immediately shortlistable — strong signal-to-noise"
+  const recruiterRead = score >= 80
+    ? "Very likely shortlisted — strong ATS and human-scan signal"
     : score >= 70
-    ? "Likely shortlisted — minor gaps may need cover letter"
+    ? "Likely shortlisted — well-structured with good keyword coverage"
     : score >= 55
-    ? "Conditional — needs targeted improvements before applying"
-    : "High drop-off risk at screening — review tips above";
+    ? "May be shortlisted — a few targeted improvements will help"
+    : "Higher drop-off risk at screening — review tips in resume score";
 
-  const atsGrade      = score >= 85 ? "A" : score >= 72 ? "B" : score >= 58 ? "C" : "D";
-  const atsGradeColor = score >= 85 ? "text-success" : score >= 72 ? "text-warning" : score >= 58 ? "text-primary" : "text-destructive";
+  const atsGrade      = score >= 80 ? "A" : score >= 67 ? "B" : score >= 53 ? "C" : "D";
+  const atsGradeColor = score >= 80 ? "text-success" : score >= 67 ? "text-warning" : score >= 53 ? "text-primary" : "text-destructive";
 
   const readinessTone =
-    score >= 75 ? "text-success" :
+    score >= 70 ? "text-success" :
     score >= 55 ? "text-warning" :
     "text-destructive";
 

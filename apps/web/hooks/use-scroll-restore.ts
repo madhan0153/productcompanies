@@ -2,33 +2,51 @@
 
 // Session history — pathname-scoped scroll restoration.
 //
-// Next.js App Router already restores scroll on browser back/forward, but
-// it fires BEFORE server-component rehydration completes — so on a long
-// list page (matches), the browser scrolls to top before the cards mount.
+// The App Router's built-in scroll restoration fires before server-component
+// rehydration, so the browser clamps to top on long list pages (matches).
 //
-// This hook stashes scrollY on `beforeunload` / route-change-out, then
-// restores it on mount of the same pathname (server components have
-// already painted by then). Keyed by pathname + search so a filter change
-// doesn't restore the wrong position.
+// IMPORTANT: the scrollable element in AppShell is `motion.main#main-content`
+// (overflow-y-auto), NOT window. All saves/restores must target that element.
+// window.scrollY is always 0 in this app.
+//
+// Keyed by pathname + search so a filter/tab change doesn't restore the
+// wrong position.
 
-import { useEffect } from "react";
+import { useEffect, useCallback } from "react";
 import { usePathname, useSearchParams } from "next/navigation";
 
 const KEY_PREFIX = "scroll:";
 const MAX_AGE_MS = 30 * 60 * 1000; // 30 minutes
+const SCROLL_EL_ID = "main-content";
 
 interface Stored { y: number; ts: number }
+
+/** Locate the app's primary scroll container. Returns null in SSR. */
+function getScrollEl(): HTMLElement | null {
+  if (typeof document === "undefined") return null;
+  return document.getElementById(SCROLL_EL_ID);
+}
 
 export function useScrollRestore(): void {
   const pathname = usePathname();
   const params = useSearchParams();
   const key = `${KEY_PREFIX}${pathname}?${params.toString()}`;
 
-  // Restore on mount (or when params change → new key).
-  // We retry up to ~1.2s: server components stream content in, so the
-  // document height may not reach the saved scrollY until cards mount.
-  // Without the retry, the first attempt clamps to current maxY and the
-  // user lands several screens above the intended row.
+  // ── Save on route change-out ────────────────────────────────────────────
+  // Called from the cleanup of the restore effect and on visibilitychange/
+  // beforeunload to ensure we capture the position even on hard navigations.
+  const save = useCallback(() => {
+    try {
+      const el = getScrollEl();
+      const y = el ? el.scrollTop : window.scrollY;
+      const stored: Stored = { y, ts: Date.now() };
+      window.sessionStorage.setItem(key, JSON.stringify(stored));
+    } catch { /* sessionStorage unavailable — silent */ }
+  }, [key]);
+
+  // ── Restore on mount ───────────────────────────────────────────────────
+  // Retries up to ~1.5s while the page streams in content. Without retries,
+  // the scroll restores before cards mount and clamps to a lower position.
   useEffect(() => {
     if (typeof window === "undefined") return;
     try {
@@ -40,24 +58,31 @@ export function useScrollRestore(): void {
         window.sessionStorage.removeItem(key);
         return;
       }
+      if (parsed.y < 10) return; // already at top, no need to restore
+
       const targetY = parsed.y;
       let cancelled = false;
       let attempts = 0;
+
       const tryRestore = () => {
         if (cancelled) return;
         attempts++;
-        const maxY = document.documentElement.scrollHeight - window.innerHeight;
-        if (maxY >= targetY - 20) {
-          // Content has streamed in far enough — scroll and stop retrying.
-          window.scrollTo({ top: targetY, behavior: "instant" as ScrollBehavior });
+        const el = getScrollEl();
+        if (!el) {
+          // Element not mounted yet — retry
+          if (attempts < 30) setTimeout(tryRestore, 50);
           return;
         }
-        // Page still streaming; retry. 24 × 50ms = 1.2s ceiling.
-        if (attempts < 24) {
+        const maxY = el.scrollHeight - el.clientHeight;
+        if (maxY >= targetY - 20) {
+          el.scrollTop = targetY;
+          return;
+        }
+        // Page still streaming; retry. 30 × 50ms = 1.5s ceiling.
+        if (attempts < 30) {
           setTimeout(tryRestore, 50);
         } else {
-          // Final attempt — best-effort scroll to whatever is available.
-          window.scrollTo({ top: Math.min(targetY, maxY), behavior: "instant" as ScrollBehavior });
+          el.scrollTop = Math.min(targetY, maxY);
         }
       };
       requestAnimationFrame(tryRestore);
@@ -65,21 +90,41 @@ export function useScrollRestore(): void {
     } catch { /* sessionStorage unavailable — silent */ }
   }, [key]);
 
-  // Persist on unload and on visibility hidden (mobile Safari pre-unload).
+  // ── Persist on every key change (new route) and browser close ──────────
   useEffect(() => {
     if (typeof window === "undefined") return;
-    const save = () => {
-      try {
-        const stored: Stored = { y: window.scrollY, ts: Date.now() };
-        window.sessionStorage.setItem(key, JSON.stringify(stored));
-      } catch { /* silent */ }
-    };
-    window.addEventListener("beforeunload", save);
-    document.addEventListener("visibilitychange", save);
-    return () => {
-      save();
-      window.removeEventListener("beforeunload", save);
-      document.removeEventListener("visibilitychange", save);
-    };
-  }, [key]);
+
+    // Save current position before key changes (navigating away).
+    // The key at cleanup time is the previous route's key — correct.
+    const el = getScrollEl();
+    if (el) {
+      // Scroll listener: save on scroll idle for tab-switch within same URL
+      let rafId = 0;
+      const onScroll = () => {
+        cancelAnimationFrame(rafId);
+        rafId = requestAnimationFrame(save);
+      };
+      el.addEventListener("scroll", onScroll, { passive: true });
+
+      window.addEventListener("beforeunload", save);
+      document.addEventListener("visibilitychange", save);
+
+      return () => {
+        save();
+        cancelAnimationFrame(rafId);
+        el.removeEventListener("scroll", onScroll);
+        window.removeEventListener("beforeunload", save);
+        document.removeEventListener("visibilitychange", save);
+      };
+    } else {
+      // Fallback to window (non-AppShell pages)
+      window.addEventListener("beforeunload", save);
+      document.addEventListener("visibilitychange", save);
+      return () => {
+        save();
+        window.removeEventListener("beforeunload", save);
+        document.removeEventListener("visibilitychange", save);
+      };
+    }
+  }, [key, save]);
 }

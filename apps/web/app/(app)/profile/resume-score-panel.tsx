@@ -69,10 +69,10 @@ export function ResumeScorePanel({ score, breakdown, tips, scoredAt }: ResumeSco
                   { text: "text-destructive", border: "border-destructive/30", bg: "bg-destructive/5" };
 
   const grade =
-    score >= 85 ? "Application-ready" :
-    score >= 70 ? "Strong" :
-    score >= 55 ? "Solid baseline" :
-                  "Needs work";
+    score >= 85 ? "High callback likelihood" :
+    score >= 70 ? "Good callback likelihood" :
+    score >= 55 ? "Moderate — improvements will help" :
+                  "Low — address tips below first";
 
   return (
     <motion.section
@@ -88,10 +88,10 @@ export function ResumeScorePanel({ score, breakdown, tips, scoredAt }: ResumeSco
             <span className="text-xl font-bold tabular-nums">{score}</span>
           </div>
           <div className="min-w-0">
-            <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Resume strength</p>
+            <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Callback signal</p>
             <p className={`text-lg font-semibold ${tone.text}`}>{grade}</p>
             <p className="text-xs leading-relaxed text-muted-foreground">
-              {scoredAt ? `Updated ${formatDate(scoredAt)}` : ""} · grounded in live demand from your 18 target companies
+              {scoredAt ? `Updated ${formatDate(scoredAt)}` : ""} · scored against live JD demand from 18 product companies
             </p>
           </div>
         </div>
@@ -116,7 +116,7 @@ export function ResumeScorePanel({ score, breakdown, tips, scoredAt }: ResumeSco
         <div className="mt-5">
           <header className="mb-3 flex items-center gap-2">
             <Lightbulb className="h-4 w-4 text-primary" />
-            <h3 className="text-sm font-semibold">3 highest-impact tweaks</h3>
+            <h3 className="text-sm font-semibold">3 highest-impact tweaks to lift callbacks</h3>
           </header>
           <ol className="space-y-2.5">
             {tips.map((t, i) => (

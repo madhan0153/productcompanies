@@ -225,15 +225,15 @@ export function computeAtsView(input: AtsViewInput): AtsView {
   const niceTotal = nice.length;
 
   // Composite ATS score (0-100):
-  //   60 pts — must-have coverage
-  //   20 pts — nice-to-have coverage
-  //   20 pts — structural checks (proportional)
+  //   70 pts — must-have coverage (primary ATS filter gate)
+  //   15 pts — nice-to-have coverage (differentiator, not gate)
+  //   15 pts — structural checks (format / completeness)
   const mustPoints =
-    mustTotal === 0 ? 45 : Math.round((mustPresent / mustTotal) * 60);
+    mustTotal === 0 ? 52 : Math.round((mustPresent / mustTotal) * 70);
   const nicePoints =
-    niceTotal === 0 ? 14 : Math.round((niceWithCredit / niceTotal) * 20);
+    niceTotal === 0 ? 11 : Math.round((niceWithCredit / niceTotal) * 15);
   const structPoints = Math.round(
-    (struct.checks.filter((c) => c.passed).length / struct.checks.length) * 20,
+    (struct.checks.filter((c) => c.passed).length / struct.checks.length) * 15,
   );
 
   return {

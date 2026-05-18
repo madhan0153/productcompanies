@@ -1,14 +1,20 @@
+"use client";
+
 // Matches — compact band segmented control.
 //
-// Replaces the 3-tile grid with a single-row pill segmented control:
-// Shortlist · Maybe · Filtered (+ New/Dismissed only when populated).
-// Each pill is a Link to ?tab=...; active pill gets a filled bg + colored
-// border so the user always knows which slice they're viewing.
+// Each pill is a client-side router push inside `useTransition` so:
+//  1. The active pill highlights INSTANTLY on click (no waiting for the server).
+//  2. While the new tab data loads, a subtle loading indicator appears.
+//  3. The tab label text never flickers because we drive active state from
+//     local `isPending` optimistically, not from the URL only.
 //
 // On mobile this saves ~100px vs the previous tile grid — keeps the matches
 // list above the fold instead of pushing it 70% down the viewport.
 
-import Link from "next/link";
+import { useTransition } from "react";
+import { useRouter } from "next/navigation";
+import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
+import { Loader2 } from "lucide-react";
 
 export type MatchTab = "shortlist" | "worth_a_look" | "filtered" | "new";
 
@@ -23,11 +29,11 @@ export interface BandCounts {
   newCount: number;
 }
 
-const TILE_META: Record<MatchTab, { label: string; activeBg: string; activeTone: string; activeBorder: string }> = {
-  shortlist:    { label: "Shortlist", activeTone: "text-success",     activeBg: "bg-success/10",    activeBorder: "border-success" },
-  worth_a_look: { label: "Maybe",     activeTone: "text-warning",     activeBg: "bg-warning/10",    activeBorder: "border-warning" },
-  filtered:     { label: "Filtered",  activeTone: "text-foreground",  activeBg: "bg-secondary",     activeBorder: "border-foreground/40" },
-  new:          { label: "New",       activeTone: "text-primary",     activeBg: "bg-primary-soft",  activeBorder: "border-primary" },
+const TILE_META: Record<MatchTab, { label: string; activeTone: string; activeBg: string; activeBorder: string; pendingRing: string }> = {
+  shortlist:    { label: "Shortlist", activeTone: "text-success",     activeBg: "bg-success/10",   activeBorder: "border-success",       pendingRing: "ring-success/40" },
+  worth_a_look: { label: "Maybe",     activeTone: "text-warning",     activeBg: "bg-warning/10",   activeBorder: "border-warning",       pendingRing: "ring-warning/40" },
+  filtered:     { label: "Filtered",  activeTone: "text-foreground",  activeBg: "bg-secondary",    activeBorder: "border-foreground/40", pendingRing: "ring-border" },
+  new:          { label: "New",       activeTone: "text-primary",     activeBg: "bg-primary-soft", activeBorder: "border-primary",       pendingRing: "ring-primary/40" },
 };
 
 export function BandStrip({
@@ -37,17 +43,29 @@ export function BandStrip({
 }: {
   counts: BandCounts;
   active: MatchTab;
-  /** Caller-controlled URL builder so filter chips (company, hub, skill) survive a tab change. */
+  /** Caller-controlled URL builder so filter chips (company, hub) survive a tab change. */
   buildHref: (tab: MatchTab) => string;
 }) {
+  const router = useRouter();
+  const [isPending, startTransition] = useTransition();
+  const reduce = useReducedMotion();
+
   const order: MatchTab[] = ["shortlist", "worth_a_look", "filtered"];
   const tail: MatchTab[] = counts.newCount > 0 ? ["new"] : [];
+  const tabs = [...order, ...tail];
 
   const countFor: Record<MatchTab, number> = {
     shortlist:    counts.shortlist,
     worth_a_look: counts.worthALook,
     filtered:     counts.filtered,
     new:          counts.newCount,
+  };
+
+  const handleClick = (tab: MatchTab) => {
+    if (tab === active && !isPending) return;
+    startTransition(() => {
+      router.push(buildHref(tab));
+    });
   };
 
   return (
@@ -59,33 +77,76 @@ export function BandStrip({
         role="tablist"
         className="no-scrollbar flex gap-1.5 overflow-x-auto pb-0.5 sm:flex-wrap sm:overflow-visible"
       >
-        {[...order, ...tail].map((tab) => {
+        {tabs.map((tab) => {
           const meta = TILE_META[tab];
           const isActive = tab === active;
+          const count = countFor[tab];
+
           return (
             <li key={tab} className="shrink-0">
-              <Link
-                href={buildHref(tab)}
+              <button
                 role="tab"
+                type="button"
                 aria-selected={isActive}
-                aria-label={`${meta.label} (${countFor[tab]})`}
-                className={`tap-target-sm inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-semibold transition focus-ring ${
+                aria-label={`${meta.label} (${count})`}
+                disabled={isActive && !isPending}
+                onClick={() => handleClick(tab)}
+                className={[
+                  "tap-target-sm relative inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-semibold",
+                  "transition-all duration-150 focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-1",
                   isActive
-                    ? `${meta.activeBorder} ${meta.activeBg} ${meta.activeTone}`
-                    : "border-border bg-card/40 text-muted-foreground hover:border-foreground/30 hover:text-foreground"
-                }`}
+                    ? `${meta.activeBorder} ${meta.activeBg} ${meta.activeTone} ${isPending ? `ring-2 ${meta.pendingRing}` : ""}`
+                    : "border-border bg-card/40 text-muted-foreground hover:border-foreground/30 hover:bg-secondary/60 hover:text-foreground active:scale-95",
+                ].filter(Boolean).join(" ")}
               >
+                {/* Active indicator dot — animates in */}
+                <AnimatePresence>
+                  {isActive && isPending && !reduce && (
+                    <motion.span
+                      key="spinner"
+                      initial={{ opacity: 0, scale: 0.5 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      exit={{ opacity: 0, scale: 0.5 }}
+                      transition={{ duration: 0.15 }}
+                      className="absolute -right-1 -top-1"
+                    >
+                      <Loader2 className="h-3 w-3 animate-spin text-muted-foreground" />
+                    </motion.span>
+                  )}
+                </AnimatePresence>
+
                 <span>{meta.label}</span>
-                <span className={`rounded-full px-1.5 py-0.5 text-[10px] tabular-nums ${
-                  isActive ? "bg-background/70 text-foreground" : "bg-secondary text-muted-foreground"
-                }`}>
-                  {countFor[tab].toLocaleString("en-IN")}
-                </span>
-              </Link>
+                <motion.span
+                  className={`rounded-full px-1.5 py-0.5 text-[10px] tabular-nums ${
+                    isActive ? "bg-background/70 text-foreground" : "bg-secondary text-muted-foreground"
+                  }`}
+                  // Animate count changes
+                  key={count}
+                  initial={reduce ? undefined : { scale: 0.85, opacity: 0.5 }}
+                  animate={{ scale: 1, opacity: 1 }}
+                  transition={{ duration: 0.2 }}
+                >
+                  {count.toLocaleString("en-IN")}
+                </motion.span>
+              </button>
             </li>
           );
         })}
       </ul>
+
+      {/* Full-width loading bar — subtly signals the server is fetching */}
+      <AnimatePresence>
+        {isPending && !reduce && (
+          <motion.div
+            key="loading-bar"
+            className="absolute inset-x-0 bottom-0 h-0.5 origin-left bg-primary/50 sm:hidden"
+            initial={{ scaleX: 0 }}
+            animate={{ scaleX: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.6, ease: "easeOut" }}
+          />
+        )}
+      </AnimatePresence>
     </nav>
   );
 }
