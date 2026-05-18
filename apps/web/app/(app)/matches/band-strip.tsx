@@ -2,23 +2,20 @@
 
 // Matches — compact band segmented control.
 //
-// Accepts plain serializable props from the Server Component (no functions,
-// no useSearchParams). Builds the tab URL internally from those props.
-// Uses useTransition + router.push for instant visual feedback on tap.
+// Client Component: uses useTransition + router.push for instant visual
+// feedback when switching tabs. Accepts plain serializable props only —
+// no function props, no useSearchParams.
+//
+// Types and classifyMatch live in ./match-types.ts (no "use client") so
+// the server page.tsx can import them without crossing the boundary.
 
 import { useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
 import { Loader2 } from "lucide-react";
+import type { MatchTab, BandCounts } from "./match-types";
 
-export type MatchTab = "shortlist" | "worth_a_look" | "filtered" | "new";
-
-export interface BandCounts {
-  shortlist: number;
-  worthALook: number;
-  filtered: number;
-  newCount: number;
-}
+export type { MatchTab, BandCounts };
 
 const TILE_META: Record<
   MatchTab,
@@ -33,7 +30,7 @@ const TILE_META: Record<
 interface BandStripProps {
   counts: BandCounts;
   active: MatchTab;
-  /** Plain filter values — NOT functions. Server Component passes these. */
+  /** Plain serializable filter values — NOT functions. */
   selectedCompanies: string[];
   selectedHubs: string[];
   minScore: number | null;
@@ -50,7 +47,6 @@ export function BandStrip({
   const [isPending, startTransition] = useTransition();
   const reduce = useReducedMotion();
 
-  /** Build the URL for a given tab, preserving current filter params. */
   const buildHref = (nextTab: MatchTab): string => {
     const sp = new URLSearchParams();
     if (selectedCompanies.length > 0) sp.set("c", selectedCompanies.join(","));
@@ -63,7 +59,6 @@ export function BandStrip({
 
   const order: MatchTab[] = ["shortlist", "worth_a_look", "filtered"];
   const tail: MatchTab[]  = counts.newCount > 0 ? ["new"] : [];
-  const tabs = [...order, ...tail];
 
   const countFor: Record<MatchTab, number> = {
     shortlist:    counts.shortlist,
@@ -74,9 +69,7 @@ export function BandStrip({
 
   const handleClick = (tab: MatchTab) => {
     if (tab === active && !isPending) return;
-    startTransition(() => {
-      router.push(buildHref(tab));
-    });
+    startTransition(() => { router.push(buildHref(tab)); });
   };
 
   return (
@@ -88,7 +81,7 @@ export function BandStrip({
         role="tablist"
         className="no-scrollbar flex gap-1.5 overflow-x-auto pb-0.5 sm:flex-wrap sm:overflow-visible"
       >
-        {tabs.map((tab) => {
+        {[...order, ...tail].map((tab) => {
           const meta    = TILE_META[tab];
           const isActive = tab === active;
           const count   = countFor[tab];
@@ -125,13 +118,9 @@ export function BandStrip({
                 </AnimatePresence>
 
                 <span>{meta.label}</span>
-                <span
-                  className={`rounded-full px-1.5 py-0.5 text-[10px] tabular-nums ${
-                    isActive
-                      ? "bg-background/70 text-foreground"
-                      : "bg-secondary text-muted-foreground"
-                  }`}
-                >
+                <span className={`rounded-full px-1.5 py-0.5 text-[10px] tabular-nums ${
+                  isActive ? "bg-background/70 text-foreground" : "bg-secondary text-muted-foreground"
+                }`}>
                   {count.toLocaleString("en-IN")}
                 </span>
               </button>
@@ -154,16 +143,4 @@ export function BandStrip({
       </AnimatePresence>
     </nav>
   );
-}
-
-/** Server-side tab classification — used by page.tsx to slice loaded rows. */
-export function classifyMatch(m: {
-  score: number;
-  hidden_reason: string | null;
-  seen_at: string | null;
-}): MatchTab | null {
-  if (m.hidden_reason === "mismatch") return "filtered";
-  if (m.score >= 60) return "shortlist";
-  if (m.score >= 40) return "worth_a_look";
-  return "filtered";
 }

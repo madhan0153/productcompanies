@@ -13,7 +13,8 @@ import type { Verdict, Json } from "@/lib/supabase/types";
 import { ComputeButton } from "./compute-button";
 import { MatchFilters } from "./filters";
 import { MatchCard, type MatchCardData } from "./match-card";
-import { BandStrip, classifyMatch, type MatchTab, type BandCounts } from "./band-strip";
+import { BandStrip } from "./band-strip";
+import { classifyMatch, type MatchTab, type BandCounts } from "./match-types";
 import { MatchesURLBeacon } from "./matches-url-beacon";
 
 export const metadata: Metadata = { title: "Matches" };
