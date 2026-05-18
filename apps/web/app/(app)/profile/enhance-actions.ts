@@ -604,6 +604,496 @@ export async function finaliseEnhancement(
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// Auto-enhance — one-shot pipeline (no per-bullet review)
+// ─────────────────────────────────────────────────────────────────────────────
+//
+// Single server action that runs the whole pipeline end-to-end:
+//   1. extract bullets from PDF
+//   2. diagnose
+//   3. rewrite weak bullets
+//   4. AUTO-PICK the safest alternative for each (lowest risk first;
+//      ties broken by alternative containing more concrete signal)
+//   5. render docx
+//   6. compute ats_after, write finalised row with all decisions captured
+//
+// Returns the new ATS score, list of changes, and signed download URL —
+// the UI surfaces this as a single result page, no per-bullet UX.
+//
+// Authenticity guard rails are unchanged: the rewriter prompt is identical,
+// risk_flag logic is identical. Auto-acceptance just removes the human
+// click — every flagged change is still SURFACED in the result page so
+// the user knows what was assumed.
+
+interface AutoChangeDescriptor {
+  location: string;       // "NTT Data · Experience" / "Summary"
+  original: string;
+  rewritten: string;
+  risk_flag: RewriteRiskFlag;
+  why: string;
+}
+
+export type AutoEnhanceResult =
+  | {
+      ok: true;
+      id: string;
+      ats_before: number;
+      ats_after: number;
+      docx_url: string;
+      print_url: string;
+      changes: AutoChangeDescriptor[];
+      risk_flag_count: number;
+    }
+  | { ok: false; error: string };
+
+// Picks the best alternative for an auto-flow:
+//   1. Prefer alternatives with no risk_flag (fully grounded).
+//   2. Among ties, prefer the longest / most-quantified text — proxy for
+//      "more useful improvement".
+//   3. If only flagged alts exist, take the safest flag tier
+//      (scope_inferred < tech_inferred < metric_inferred), since
+//      scope-inferred is the least likely to be a fabrication.
+function pickBestAlternative(
+  alts: BulletRewrite["alternatives"],
+): BulletRewrite["alternatives"][number] | null {
+  if (!alts || alts.length === 0) return null;
+  const noRisk = alts.filter((a) => a.risk_flag === null);
+  if (noRisk.length > 0) {
+    // Among no-risk alts, prefer the one with a number (more concrete).
+    return noRisk.sort((a, b) => {
+      const aHasNum = /\d/.test(a.text) ? 1 : 0;
+      const bHasNum = /\d/.test(b.text) ? 1 : 0;
+      if (aHasNum !== bHasNum) return bHasNum - aHasNum;
+      return b.text.length - a.text.length;
+    })[0];
+  }
+  // All alts are flagged; pick the safest flag tier.
+  const order: Record<string, number> = {
+    scope_inferred: 1, tech_inferred: 2, metric_inferred: 3,
+  };
+  return [...alts].sort((a, b) =>
+    (order[a.risk_flag ?? ""] ?? 4) - (order[b.risk_flag ?? ""] ?? 4),
+  )[0];
+}
+
+export async function autoEnhanceResume(): Promise<AutoEnhanceResult> {
+  const pre = await preflight();
+  if (!pre.ok) return pre;
+  const { user, admin, profile } = pre;
+
+  // Quota — counts against the same 5/30d enhanced bucket as the
+  // per-bullet flow. A user choosing the auto-flow consumes one slot;
+  // re-running consumes another.
+  const quota = await getQuotaState(user.id, "enhanced");
+  if (quota.exhausted) {
+    return {
+      ok: false,
+      error: `You've used your ${quota.limit} resume enhancements for this 30-day window. Resets ${resetsInHumanForm(quota.resets_at)}.`,
+    };
+  }
+
+  // ── Step 0: extract real bullets from the source PDF ─────────────────
+  let extracted: ExtractedResumeContent | null = null;
+  if (profile.resume_storage_path) {
+    try {
+      const { data: blob, error: dlErr } = await admin.storage
+        .from("resumes")
+        .download(profile.resume_storage_path);
+      if (!dlErr && blob) {
+        const bytes = Buffer.from(await blob.arrayBuffer());
+        const base64 = bytes.toString("base64");
+        extracted = await extractResumeContent(base64);
+      }
+    } catch (err) {
+      console.warn("[auto-enhance] extraction failed:",
+        err instanceof Error ? err.message : String(err));
+    }
+  }
+
+  if (!extracted || !hasUsableContent(extracted)) {
+    return {
+      ok: false,
+      error: "Your resume needs more bullet content for AI enhancement. Most of your roles have only job titles — add 2-3 lines per role describing what you actually did, then re-upload.",
+    };
+  }
+
+  const resumeTextForDiagnosis = renderExtractedAsText(extracted);
+
+  // Market keyword pool (same as diagnoseEnhancement).
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data: shortlistRaw } = await (admin
+    .from("matches")
+    .select("jobs(must_have_skills, nice_to_have_skills)")
+    .eq("user_id", user.id)
+    .gte("score", 60)
+    .order("score", { ascending: false })
+    .limit(40) as any) as { data: Array<{ jobs: { must_have_skills: string[] | null; nice_to_have_skills: string[] | null } | null }> | null };
+
+  const keywordCounts = new Map<string, number>();
+  for (const row of shortlistRaw ?? []) {
+    for (const s of row.jobs?.must_have_skills ?? []) keywordCounts.set(s, (keywordCounts.get(s) ?? 0) + 3);
+    for (const s of row.jobs?.nice_to_have_skills ?? []) keywordCounts.set(s, (keywordCounts.get(s) ?? 0) + 1);
+  }
+  const market_keywords = Array.from(keywordCounts.entries())
+    .sort((a, b) => b[1] - a[1]).slice(0, 30).map(([k]) => k);
+
+  // ── Step 1: diagnose ─────────────────────────────────────────────────
+  let diagnosis: ResumeDiagnosis;
+  try {
+    const result = await diagnoseResume({
+      resume:        profile.resume_parsed!,
+      resume_text:   resumeTextForDiagnosis,
+      role_function: profile.role_function ?? null,
+      market_keywords,
+    });
+    diagnosis = result.diagnosis;
+    void recordResumeIntelEvent({
+      user_id: user.id, kind: "diagnosis", scope: "enhanced",
+      llm_tier: "heavy", latency_ms: result.latency_ms, ok: true,
+    });
+  } catch (err) {
+    return { ok: false, error: friendlyLlmError(err) };
+  }
+
+  // ── Step 2: rewrite weak bullets in batches ──────────────────────────
+  const rewriteRequests: RewriteRequest[] = diagnosis.weak_bullets.map((b, idx) => ({
+    index: idx,
+    original: b.original,
+    weakness: b.weakness,
+  }));
+  const chunks = chunkBullets(rewriteRequests, 8);
+  const rewritesById: Record<number, BulletRewrite> = {};
+
+  for (const chunk of chunks) {
+    try {
+      const res = await rewriteBullets({
+        bullets:           chunk,
+        role_function:     profile.role_function ?? null,
+        mode:              "polish",
+        resume_tech_stack: profile.tech_stack ?? [],
+      });
+      for (const r of res.rewrites) {
+        r.alternatives = r.alternatives.map((a) => ({
+          ...a,
+          risk_flag: heuristicallyFlagRewrite({
+            original: r.original, alt: a,
+            resume_tech_stack: profile.tech_stack ?? [],
+          }) as RewriteRiskFlag,
+        }));
+        rewritesById[r.index] = r;
+      }
+    } catch {
+      // Continue with other chunks — best-effort.
+    }
+  }
+
+  // ── Step 3: auto-pick decisions + assemble changes summary ───────────
+  const decisions: Record<string, EnhancementDecision> = {};
+  const changes: AutoChangeDescriptor[] = [];
+
+  diagnosis.weak_bullets.forEach((wb, idx) => {
+    const rw = rewritesById[idx];
+    if (!rw) {
+      decisions[String(idx)] = { choice: "kept" };
+      return;
+    }
+    const best = pickBestAlternative(rw.alternatives);
+    if (!best) {
+      decisions[String(idx)] = { choice: "kept" };
+      return;
+    }
+    const altIdx = rw.alternatives.indexOf(best);
+    decisions[String(idx)] = { choice: `alt-${altIdx}` };
+    changes.push({
+      location: wb.section === "summary"
+        ? "Summary"
+        : wb.section === "projects"
+          ? `Projects · ${wb.bullet_index + 1}`
+          : `${wb.company ?? "Experience"}`,
+      original: wb.original,
+      rewritten: best.text,
+      risk_flag: best.risk_flag,
+      why: best.why,
+    });
+  });
+
+  // ── Step 4: build content ────────────────────────────────────────────
+  const baseContent = buildContentFromExtracted({
+    extracted,
+    displayName:   profile.display_name ?? profile.resume_parsed!.name,
+    currentRole:   profile.resume_parsed!.current_role,
+    preferredHubs: profile.preferred_hubs ?? [],
+  });
+  const enhancedContent = patchContentWithDecisions({
+    base: baseContent, diagnosis, rewrites: rewritesById, decisions,
+  });
+
+  // ── Step 5: ATS before + after ───────────────────────────────────────
+  const ats_before = computeAtsScorecard({
+    resume:        profile.resume_parsed!,
+    resume_text:   resumeTextForDiagnosis,
+    role_function: profile.role_function ?? null,
+  });
+
+  const enhancedText = synthesiseTextFromContent(enhancedContent);
+  const synthesizedParsed: ParsedResume = {
+    ...profile.resume_parsed!,
+    summary: enhancedContent.summary,
+    tech_stack: enhancedContent.skills.flatMap((g) => g.items),
+    products_built: enhancedContent.experience.flatMap((r) => r.bullets),
+  };
+  const ats_after = computeAtsScorecard({
+    resume:        synthesizedParsed,
+    resume_text:   enhancedText,
+    role_function: profile.role_function ?? null,
+  });
+
+  // ── Step 6: render docx, upload, persist as finalised ────────────────
+  try {
+    // Discard any prior pending row for this resume signature — the
+    // auto-flow supersedes the per-bullet pending state.
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    await (admin.from("enhanced_resumes") as any)
+      .update({ status: "discarded", updated_at: new Date().toISOString() })
+      .eq("user_id", user.id)
+      .eq("source_resume_signature", profile.resume_signature!)
+      .eq("status", "pending_review");
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data: inserted, error: insertErr } = await (admin
+      .from("enhanced_resumes") as any)
+      .insert({
+        user_id:                 user.id,
+        source_resume_signature: profile.resume_signature!,
+        target_role_function:    profile.role_function ?? null,
+        market_keywords,
+        diagnosis,
+        rewrites: rewritesById,
+        decisions,
+        ats_before,
+        ats_after,
+        enhanced_content: enhancedContent,
+        status: "finalised",
+        finalised_at: new Date().toISOString(),
+      })
+      .select("id")
+      .single();
+
+    if (insertErr || !inserted) {
+      return { ok: false, error: insertErr?.message ?? "Couldn't save the enhancement." };
+    }
+    const id = (inserted as { id: string }).id;
+
+    const docxBuffer = await renderTailoredResumeDocx(enhancedContent);
+    const storagePath = `${user.id}/${id}.docx`;
+    const { error: uploadErr } = await admin.storage
+      .from(STORAGE_BUCKET)
+      .upload(storagePath, docxBuffer, {
+        contentType: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        upsert: true,
+      });
+    if (uploadErr) {
+      return { ok: false, error: `Couldn't render the resume file: ${uploadErr.message}` };
+    }
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    await (admin.from("enhanced_resumes") as any)
+      .update({ docx_storage_path: storagePath })
+      .eq("id", id);
+
+    // Close the loop on profile.resume_score so the user sees the lift.
+    if (ats_after.total > 0) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      await (admin.from("profiles") as any)
+        .update({
+          resume_score: ats_after.total,
+          resume_score_at: new Date().toISOString(),
+        })
+        .eq("id", user.id);
+    }
+
+    void recordResumeIntelEvent({
+      user_id: user.id, kind: "render_docx", scope: "enhanced",
+      scope_ref_id: id, ok: true,
+    });
+    void recordResumeIntelEvent({
+      user_id: user.id, kind: "finalise", scope: "enhanced",
+      scope_ref_id: id, ok: true,
+    });
+
+    const { data: signed } = await admin.storage
+      .from(STORAGE_BUCKET)
+      .createSignedUrl(storagePath, SIGNED_URL_TTL);
+
+    revalidatePath("/profile");
+    revalidatePath("/profile/enhance");
+
+    const risk_flag_count = changes.filter((c) => c.risk_flag !== null).length;
+
+    return {
+      ok: true,
+      id,
+      ats_before: ats_before.total,
+      ats_after: ats_after.total,
+      docx_url: signed?.signedUrl ?? "",
+      print_url: `/profile/enhance/${id}/print`,
+      changes,
+      risk_flag_count,
+    };
+  } catch (err) {
+    console.error("[auto-enhance] unexpected error:", err);
+    return {
+      ok: false,
+      error: err instanceof Error
+        ? `Couldn't finalise: ${err.message}`
+        : "Couldn't finalise the resume. Please retry.",
+    };
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Keep enhanced resume as my profile resume — closes the loop
+// ─────────────────────────────────────────────────────────────────────────────
+//
+// Promotes a finalised enhanced_resumes row to be the user's canonical
+// parsed resume. Snapshots the existing parsed state into resume_versions
+// (always reversible). Updates denormalized fields (tech_stack,
+// current_role, etc.) so downstream matching uses the new content.
+//
+// Does NOT replace the stored PDF — the user's source PDF stays unchanged
+// in the resumes bucket. Matching uses parsed JSON + embedding, not the
+// PDF itself.
+
+export type KeepEnhancedResult =
+  | { ok: true; new_resume_score: number }
+  | { ok: false; error: string };
+
+export async function keepEnhancedAsResume(id: string): Promise<KeepEnhancedResult> {
+  if (!UUID_RE.test(id)) return { ok: false, error: "Invalid id." };
+  const pre = await preflight();
+  if (!pre.ok) return pre;
+  const { user, admin, profile } = pre;
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data: row } = await (admin
+    .from("enhanced_resumes")
+    .select("id, enhanced_content, ats_after, status")
+    .eq("id", id)
+    .eq("user_id", user.id)
+    .maybeSingle() as any) as {
+      data: {
+        id: string;
+        enhanced_content: TailoredResumeContent | null;
+        ats_after: AtsScorecard | null;
+        status: string;
+      } | null;
+    };
+
+  if (!row) return { ok: false, error: "Enhancement not found." };
+  if (row.status !== "finalised" || !row.enhanced_content) {
+    return { ok: false, error: "Enhancement isn't ready yet." };
+  }
+
+  // ── Snapshot current profile resume to resume_versions (always reversible)
+  if (profile.resume_parsed) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    await (admin.from("resume_versions") as any).insert({
+      user_id:             user.id,
+      resume_parsed:       profile.resume_parsed,
+      resume_storage_path: profile.resume_storage_path,
+      product_dna_score:   null,        // not relevant for the snapshot
+      dna_breakdown:       null,
+      resume_signature:    profile.resume_signature,
+      source:              "auto_enhance_swap",
+    });
+  }
+
+  // ── Map TailoredResumeContent → ParsedResume shape ───────────────────
+  // The matching engine consumes ParsedResume; we synthesise it from the
+  // enhanced content while preserving the candidate's stated current_role
+  // and education from the prior parsed copy (those don't change).
+  const ec = row.enhanced_content;
+  const newParsed: ParsedResume = {
+    ...profile.resume_parsed!,
+    name: ec.header.name || profile.resume_parsed!.name,
+    current_role: ec.header.title || profile.resume_parsed!.current_role,
+    summary: ec.summary || profile.resume_parsed!.summary,
+    tech_stack: ec.skills.flatMap((g) => g.items),
+    products_built: ec.projects?.map((p) => p.summary) ?? profile.resume_parsed!.products_built,
+    companies: ec.experience.map((r) => {
+      // Try to preserve is_product_company from the source companies array
+      // so DNA / matching signals don't reset on swap.
+      const src = (profile.resume_parsed!.companies ?? []).find((c) => c.name === r.company);
+      return {
+        name:               r.company,
+        role:               r.role,
+        years:              src?.years ?? 0,
+        is_product_company: src?.is_product_company ?? false,
+      };
+    }),
+    education: ec.education.map((e) => ({
+      degree: e.degree,
+      institution: e.institution,
+      year: e.year ?? undefined,
+    })),
+  };
+
+  // New signature so caches invalidate cleanly. Mirrors the formula in
+  // profile/actions.ts:computeResumeSignature so we stay in lock-step
+  // with the upload path (re-uploading the same content produces the
+  // same signature).
+  const { createHash } = await import("node:crypto");
+  const stable = JSON.stringify({
+    role_function:          newParsed.role_function ?? "",
+    target_role_functions:  [...(newParsed.target_role_functions ?? [])].sort(),
+    total_years_experience: Math.round((newParsed.total_years_experience ?? 0) * 10) / 10,
+    tech_stack:             [...(newParsed.tech_stack ?? [])].map((s) => s.toLowerCase().trim()).sort(),
+    companies:              (newParsed.companies ?? []).map((c) => ({
+                              name: (c.name ?? "").toLowerCase().trim(),
+                              role: (c.role ?? "").toLowerCase().trim(),
+                              years: Math.round((c.years ?? 0) * 10) / 10,
+                              is_product_company: Boolean(c.is_product_company),
+                            })),
+    products_built:         [...(newParsed.products_built ?? [])].map((s) => s.trim()).sort(),
+    summary:                (newParsed.summary ?? "").trim(),
+  });
+  const newSignature = createHash("sha256").update(stable).digest("hex");
+
+  // ── Recompute DNA breakdown on the new parsed payload ────────────────
+  const { computeDnaBreakdown } = await import("@/lib/matching/dna-breakdown");
+  const newDna = computeDnaBreakdown(newParsed);
+
+  // ── Update profile with new parsed JSON + signature + denormalized fields
+  // Sets resume_embedding_at=null so the next matches recompute re-embeds.
+  // Sets last_match_compute_at=null so the matches page knows to refresh.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { error: updateErr } = await (admin.from("profiles") as any)
+    .update({
+      resume_parsed:           newParsed,
+      resume_signature:        newSignature,
+      tech_stack:              newParsed.tech_stack,
+      current_role:            newParsed.current_role,
+      product_dna_score:       newDna.total,
+      dna_breakdown:           newDna,
+      resume_score:            row.ats_after?.total ?? profile.resume_parsed!.product_dna_score,
+      resume_score_at:         new Date().toISOString(),
+      resume_embedding_at:     null,    // queue re-embed
+      last_match_compute_at:   null,    // matches page knows to refresh
+      updated_at:              new Date().toISOString(),
+    })
+    .eq("id", user.id);
+
+  if (updateErr) {
+    return { ok: false, error: `Couldn't update profile: ${updateErr.message}` };
+  }
+
+  revalidatePath("/profile");
+  revalidatePath("/profile/enhance");
+  revalidatePath("/matches");
+
+  return { ok: true, new_resume_score: row.ats_after?.total ?? 0 };
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // Discard
 // ─────────────────────────────────────────────────────────────────────────────
 
