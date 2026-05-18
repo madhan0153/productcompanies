@@ -258,7 +258,13 @@ export default async function MatchesPage({
 
       {/* ── Band strip — sticky tab spine, right under title ─────── */}
       {allRows.length > 0 && (
-        <BandStrip counts={bandCounts} active={tab} />
+        <BandStrip
+          counts={bandCounts}
+          active={tab}
+          selectedCompanies={selectedCompanies}
+          selectedHubs={selectedHubs}
+          minScore={minScore}
+        />
       )}
 
       {/* ── Filters (company/hub/min-score) ─────────────────────── */}

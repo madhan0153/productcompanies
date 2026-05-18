@@ -2,31 +2,21 @@
 
 // Matches — compact band segmented control.
 //
-// IMPORTANT: This is a Client Component. Server Components cannot pass
-// function props to Client Components in Next.js App Router. Instead of
-// accepting a `buildHref` function prop, this component reads the current
-// search params itself via `useSearchParams()` and builds URLs internally.
-//
-// Each pill uses useTransition + router.push so:
-//  1. The active pill highlights INSTANTLY on tap (optimistic update).
-//  2. A loading indicator appears while the server renders the new tab.
-//  3. No layout shift — the tab bar never disappears during navigation.
+// Accepts plain serializable props from the Server Component (no functions,
+// no useSearchParams). Builds the tab URL internally from those props.
+// Uses useTransition + router.push for instant visual feedback on tap.
 
 import { useTransition } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
 import { Loader2 } from "lucide-react";
 
 export type MatchTab = "shortlist" | "worth_a_look" | "filtered" | "new";
 
 export interface BandCounts {
-  /** score >= 60, hidden_reason IS NULL */
   shortlist: number;
-  /** 40 <= score < 60, hidden_reason IS NULL */
   worthALook: number;
-  /** score < 40 OR hidden_reason = mismatch */
   filtered: number;
-  /** seen_at IS NULL across visible scope */
   newCount: number;
 }
 
@@ -40,32 +30,39 @@ const TILE_META: Record<
   new:          { label: "New",       activeTone: "text-primary",    activeBg: "bg-primary-soft", activeBorder: "border-primary" },
 };
 
+interface BandStripProps {
+  counts: BandCounts;
+  active: MatchTab;
+  /** Plain filter values — NOT functions. Server Component passes these. */
+  selectedCompanies: string[];
+  selectedHubs: string[];
+  minScore: number | null;
+}
+
 export function BandStrip({
   counts,
   active,
-}: {
-  counts: BandCounts;
-  active: MatchTab;
-}) {
+  selectedCompanies,
+  selectedHubs,
+  minScore,
+}: BandStripProps) {
   const router = useRouter();
-  const searchParams = useSearchParams();
   const [isPending, startTransition] = useTransition();
   const reduce = useReducedMotion();
 
-  /** Build the tab URL, preserving all current filters (company, hub, min_score). */
+  /** Build the URL for a given tab, preserving current filter params. */
   const buildHref = (nextTab: MatchTab): string => {
-    const sp = new URLSearchParams(searchParams.toString());
-    if (nextTab === "shortlist") {
-      sp.delete("tab");
-    } else {
-      sp.set("tab", nextTab);
-    }
+    const sp = new URLSearchParams();
+    if (selectedCompanies.length > 0) sp.set("c", selectedCompanies.join(","));
+    if (selectedHubs.length > 0)      sp.set("h", selectedHubs.join(","));
+    if (minScore !== null)            sp.set("min_score", String(minScore));
+    if (nextTab !== "shortlist")      sp.set("tab", nextTab);
     const qs = sp.toString();
     return qs ? `/matches?${qs}` : "/matches";
   };
 
   const order: MatchTab[] = ["shortlist", "worth_a_look", "filtered"];
-  const tail: MatchTab[] = counts.newCount > 0 ? ["new"] : [];
+  const tail: MatchTab[]  = counts.newCount > 0 ? ["new"] : [];
   const tabs = [...order, ...tail];
 
   const countFor: Record<MatchTab, number> = {
@@ -92,9 +89,9 @@ export function BandStrip({
         className="no-scrollbar flex gap-1.5 overflow-x-auto pb-0.5 sm:flex-wrap sm:overflow-visible"
       >
         {tabs.map((tab) => {
-          const meta = TILE_META[tab];
+          const meta    = TILE_META[tab];
           const isActive = tab === active;
-          const count = countFor[tab];
+          const count   = countFor[tab];
 
           return (
             <li key={tab} className="shrink-0">
@@ -112,7 +109,6 @@ export function BandStrip({
                     : "border-border bg-card/40 text-muted-foreground hover:border-foreground/30 hover:bg-secondary/60 hover:text-foreground active:scale-95",
                 ].join(" ")}
               >
-                {/* Pending spinner — appears only on the newly-clicked tab */}
                 <AnimatePresence>
                   {isActive && isPending && !reduce && (
                     <motion.span
@@ -144,7 +140,6 @@ export function BandStrip({
         })}
       </ul>
 
-      {/* Progress bar — visible on mobile while loading */}
       <AnimatePresence>
         {isPending && !reduce && (
           <motion.div
