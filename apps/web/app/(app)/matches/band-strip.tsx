@@ -1,15 +1,14 @@
-// Sprint 6 matches redesign — interactive band strip.
+// Matches — compact band segmented control.
 //
-// Replaces the old 5-cell verdict summary with a 3-cell intent strip:
-// Shortlist (≥60) / Worth a look (40-59) / Filtered (<40 OR hard-mismatched).
-// Each tile is a link to the corresponding ?tab=... view; the active tile
-// has a primary border.
+// Replaces the 3-tile grid with a single-row pill segmented control:
+// Shortlist · Maybe · Filtered (+ New/Dismissed only when populated).
+// Each pill is a Link to ?tab=...; active pill gets a filled bg + colored
+// border so the user always knows which slice they're viewing.
 //
-// On mobile: 3-up grid. On sm+: horizontal strip. Sticky on scroll so the
-// user always knows which slice they're in.
+// On mobile this saves ~100px vs the previous tile grid — keeps the matches
+// list above the fold instead of pushing it 70% down the viewport.
 
 import Link from "next/link";
-import { ListChecks, Eye, EyeOff, Zap, Inbox } from "lucide-react";
 
 export type MatchTab = "shortlist" | "worth_a_look" | "filtered" | "new" | "dismissed";
 
@@ -26,57 +25,12 @@ export interface BandCounts {
   dismissed: number;
 }
 
-const TILE_META: Record<MatchTab, { label: string; sub: string; icon: React.ReactNode; tone: string; border: string; bg: string; activeBorder: string; activeBg: string }> = {
-  shortlist: {
-    label: "Shortlist",
-    sub: "Worth applying",
-    icon: <ListChecks className="h-4 w-4" />,
-    tone: "text-success",
-    border: "border-success/25",
-    bg: "bg-success/5",
-    activeBorder: "border-success",
-    activeBg: "bg-success/10",
-  },
-  worth_a_look: {
-    label: "Worth a look",
-    sub: "Read before deciding",
-    icon: <Eye className="h-4 w-4" />,
-    tone: "text-warning",
-    border: "border-warning/25",
-    bg: "bg-warning/5",
-    activeBorder: "border-warning",
-    activeBg: "bg-warning/10",
-  },
-  filtered: {
-    label: "Filtered",
-    sub: "Score capped or wrong field",
-    icon: <Inbox className="h-4 w-4" />,
-    tone: "text-muted-foreground",
-    border: "border-border",
-    bg: "bg-secondary/40",
-    activeBorder: "border-foreground/40",
-    activeBg: "bg-secondary",
-  },
-  new: {
-    label: "New",
-    sub: "Since your last visit",
-    icon: <Zap className="h-4 w-4" />,
-    tone: "text-primary",
-    border: "border-primary/25",
-    bg: "bg-primary-soft",
-    activeBorder: "border-primary",
-    activeBg: "bg-primary-soft",
-  },
-  dismissed: {
-    label: "Dismissed",
-    sub: "You hid these",
-    icon: <EyeOff className="h-4 w-4" />,
-    tone: "text-muted-foreground",
-    border: "border-border",
-    bg: "bg-secondary/40",
-    activeBorder: "border-foreground/40",
-    activeBg: "bg-secondary",
-  },
+const TILE_META: Record<MatchTab, { label: string; activeBg: string; activeTone: string; activeBorder: string }> = {
+  shortlist:    { label: "Shortlist", activeTone: "text-success",     activeBg: "bg-success/10",    activeBorder: "border-success" },
+  worth_a_look: { label: "Maybe",     activeTone: "text-warning",     activeBg: "bg-warning/10",    activeBorder: "border-warning" },
+  filtered:     { label: "Filtered",  activeTone: "text-foreground",  activeBg: "bg-secondary",     activeBorder: "border-foreground/40" },
+  new:          { label: "New",       activeTone: "text-primary",     activeBg: "bg-primary-soft",  activeBorder: "border-primary" },
+  dismissed:    { label: "Dismissed", activeTone: "text-foreground",  activeBg: "bg-secondary",     activeBorder: "border-foreground/40" },
 };
 
 export function BandStrip({
@@ -90,7 +44,6 @@ export function BandStrip({
   buildHref: (tab: MatchTab) => string;
 }) {
   const order: MatchTab[] = ["shortlist", "worth_a_look", "filtered"];
-  // New and Dismissed only render when they have content — kept compact.
   const tail: MatchTab[] = [
     ...(counts.newCount > 0 ? ["new" as const] : []),
     ...(counts.dismissed > 0 ? ["dismissed" as const] : []),
@@ -110,33 +63,31 @@ export function BandStrip({
       className="sticky top-0 z-10 -mx-4 bg-background/95 px-4 py-2 backdrop-blur-md sm:static sm:mx-0 sm:bg-transparent sm:p-0 sm:backdrop-blur-none"
     >
       <ul
-        className="grid grid-cols-3 gap-2 sm:flex sm:flex-wrap sm:items-stretch sm:gap-3"
         role="tablist"
+        className="no-scrollbar flex gap-1.5 overflow-x-auto pb-0.5 sm:flex-wrap sm:overflow-visible"
       >
         {[...order, ...tail].map((tab) => {
           const meta = TILE_META[tab];
           const isActive = tab === active;
           return (
-            <li key={tab} className="min-w-0">
+            <li key={tab} className="shrink-0">
               <Link
                 href={buildHref(tab)}
                 role="tab"
                 aria-selected={isActive}
                 aria-label={`${meta.label} (${countFor[tab]})`}
-                className={`flex h-full flex-col gap-0.5 rounded-xl border px-3 py-2.5 transition focus-ring sm:min-w-[10rem] ${
+                className={`tap-target-sm inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-semibold transition focus-ring ${
                   isActive
-                    ? `${meta.activeBorder} ${meta.activeBg}`
-                    : `${meta.border} ${meta.bg} hover:border-foreground/30`
+                    ? `${meta.activeBorder} ${meta.activeBg} ${meta.activeTone}`
+                    : "border-border bg-card/40 text-muted-foreground hover:border-foreground/30 hover:text-foreground"
                 }`}
               >
-                <div className={`flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wider ${meta.tone}`}>
-                  {meta.icon}
-                  <span className="truncate">{meta.label}</span>
-                </div>
-                <div className="flex items-baseline justify-between gap-2">
-                  <span className={`text-lg font-bold tabular-nums sm:text-xl ${meta.tone}`}>{countFor[tab]}</span>
-                </div>
-                <p className="hidden text-[10px] text-muted-foreground sm:block">{meta.sub}</p>
+                <span>{meta.label}</span>
+                <span className={`rounded-full px-1.5 py-0.5 text-[10px] tabular-nums ${
+                  isActive ? "bg-background/70 text-foreground" : "bg-secondary text-muted-foreground"
+                }`}>
+                  {countFor[tab].toLocaleString("en-IN")}
+                </span>
               </Link>
             </li>
           );

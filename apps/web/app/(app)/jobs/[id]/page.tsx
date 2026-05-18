@@ -3,7 +3,7 @@ import { notFound, redirect } from "next/navigation";
 import Link from "next/link";
 import {
   ExternalLink, MapPin, Briefcase, Calendar,
-  Sparkles, CheckCircle2, AlertCircle, TrendingUp, Target,
+  CheckCircle2, AlertCircle, TrendingUp, Target,
   ChevronRight, ShieldCheck,
 } from "lucide-react";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
@@ -14,7 +14,6 @@ import { SectionCard } from "@/components/section-card";
 import { JobActions } from "./job-actions";
 import { StickyApplyBar } from "./sticky-apply-bar";
 import { JobDescription } from "./job-description";
-import { PrepBrief } from "./prep-brief";
 import { FitCardPanel, type FitCardData } from "./fit-card";
 import { ScoreEvidence } from "./score-evidence";
 import { SmartMatchesBackLink } from "./smart-back";
@@ -25,8 +24,6 @@ import { computeAtsView } from "@/lib/matching/ats-view";
 import { getUserConsents } from "@/lib/dpdp/consent";
 import type { ParsedResume } from "@/lib/llm/prompts/resume-parse";
 import type { TailoredResumeContent } from "@/lib/llm/prompts/tailor-resume";
-import type { NegotiationMemoContent } from "@/lib/llm/prompts/negotiation-memo";
-import type { CompBracket } from "@/lib/insights/comp-percentiles";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 
 export const dynamic = "force-dynamic";
@@ -153,7 +150,7 @@ export default async function JobDetailPage({ params }: { params: Promise<{ id: 
   const admin = createSupabaseAdminClient();
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const [{ data: profileRow }, { data: tailoredRow }, { data: memoRow }] = await Promise.all([
+  const [{ data: profileRow }, { data: tailoredRow }] = await Promise.all([
     supabase
       .from("profiles")
       .select("resume_parsed, resume_storage_path")
@@ -165,16 +162,9 @@ export default async function JobDetailPage({ params }: { params: Promise<{ id: 
       .eq("user_id", user.id)
       .eq("job_id", id)
       .maybeSingle() as any,
-    admin
-      .from("negotiation_memos")
-      .select("content, market_comp, generated_at")
-      .eq("user_id", user.id)
-      .eq("job_id", id)
-      .maybeSingle() as any,
   ]) as [
     { data: { resume_parsed: ParsedResume | null; resume_storage_path: string | null } | null },
     { data: { content: TailoredResumeContent; docx_storage_path: string | null; generated_at: string } | null },
-    { data: { content: NegotiationMemoContent; market_comp: CompBracket | null; generated_at: string } | null },
   ];
 
   const parsedResume = profileRow?.resume_parsed ?? null;
@@ -294,18 +284,6 @@ export default async function JobDetailPage({ params }: { params: Promise<{ id: 
             <ApplyButton jobId={job.id} applyUrl={job.apply_url} variant="default" />
           )}
           <JobActions jobId={job.id} existingApp={application} />
-          {company?.careers_url && (
-            <a
-              href={company.careers_url}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="press tap-target ml-auto inline-flex items-center gap-1.5 rounded-md border border-border bg-card px-3 py-2 text-xs font-medium text-muted-foreground transition hover:border-primary/40 hover:text-foreground focus-ring"
-            >
-              <ExternalLink className="h-3 w-3" />
-              <span className="hidden sm:inline">Official careers page</span>
-              <span className="sm:hidden">Careers</span>
-            </a>
-          )}
         </div>
       </div>
 
@@ -318,7 +296,6 @@ export default async function JobDetailPage({ params }: { params: Promise<{ id: 
       {match && match.fit_card && (
         <FitCardPanel
           data={match.fit_card}
-          score={match.score}
           evidence={{
             confidence: match.confidence ?? null,
             hardCapReason: match.hard_cap_reason ?? null,
@@ -348,11 +325,6 @@ export default async function JobDetailPage({ params }: { params: Promise<{ id: 
           content: tailoredRow.content,
           download_url: initialTailorUrl,
           generated_at: tailoredRow.generated_at,
-        } : null}
-        initialMemo={memoRow ? {
-          content: memoRow.content,
-          market_comp: memoRow.market_comp,
-          generated_at: memoRow.generated_at,
         } : null}
       />
 
@@ -407,15 +379,6 @@ export default async function JobDetailPage({ params }: { params: Promise<{ id: 
           )}
         </div>
       )}
-
-      {/* ── Interview prep brief ──────────────────────────────── */}
-      <PrepBrief
-        title={job.title}
-        companyName={company?.name ?? "this company"}
-        companySlug={company?.slug ?? null}
-        seniority={job.seniority}
-        techStack={job.tech_stack ?? []}
-      />
 
       {/* ── Description + sidebar ─────────────────────────────── */}
       <div className="grid grid-cols-1 gap-5 lg:grid-cols-3">

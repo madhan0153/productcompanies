@@ -100,22 +100,23 @@ export function ComputeButton({ hasResume }: { hasResume: boolean }) {
       <button
         onClick={handleClick}
         disabled={pending || queued || !hasResume}
-        className="flex items-center gap-2 rounded-xl bg-primary px-5 py-2.5 text-sm font-medium text-primary-foreground shadow shadow-primary/20 transition hover:opacity-90 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50"
+        aria-label="Compute my matches"
+        className="inline-flex items-center gap-1.5 rounded-lg bg-primary px-3 py-2 text-xs font-semibold text-primary-foreground shadow shadow-primary/20 transition hover:opacity-90 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50 sm:text-sm"
       >
         {buttonState === "starting" || buttonState === "running" ? (
           <>
-            <Loader2 className="h-4 w-4 animate-spin" />
-            {buttonState === "starting" ? "Queueing…" : `Recomputing… ${progress}%`}
+            <Loader2 className="h-3.5 w-3.5 animate-spin sm:h-4 sm:w-4" />
+            <span>{buttonState === "starting" ? "Queueing…" : `${progress}%`}</span>
           </>
         ) : buttonState === "done" ? (
           <>
-            <CheckCircle2 className="h-4 w-4" />
-            Updated — recompute again
+            <CheckCircle2 className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+            <span>Updated</span>
           </>
         ) : (
           <>
-            <Sparkles className="h-4 w-4" />
-            Compute my matches
+            <Sparkles className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+            <span>Compute<span className="hidden sm:inline"> matches</span></span>
           </>
         )}
       </button>
@@ -141,11 +142,6 @@ export function ComputeButton({ hasResume }: { hasResume: boolean }) {
         </div>
       )}
 
-      {!hasResume && (
-        <p className="text-xs text-muted-foreground">
-          <a href="/profile" className="underline underline-offset-2 hover:text-foreground">Upload your resume</a> first to compute matches.
-        </p>
-      )}
     </div>
   );
 }

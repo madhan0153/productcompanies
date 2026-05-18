@@ -252,7 +252,7 @@ export default async function MatchesPage({
   const scopeLabel = (() => {
     const parts: string[] = [];
     if (tab === "shortlist")    parts.push("your shortlist");
-    if (tab === "worth_a_look") parts.push("worth-a-look matches");
+    if (tab === "worth_a_look") parts.push("maybe-fit matches");
     if (tab === "filtered")     parts.push("filtered roles");
     if (tab === "new")          parts.push("new since last visit");
     if (tab === "dismissed")    parts.push("dismissed roles");
@@ -269,23 +269,23 @@ export default async function MatchesPage({
       <MatchesURLBeacon />
 
       {/* ── Header ──────────────────────────────────────────────── */}
-      <div className="flex flex-wrap items-start justify-between gap-4">
-        <div>
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
           <h1 className="text-2xl font-semibold tracking-tight">Matches</h1>
           {allRows.length > 0 ? (
             <p className="mt-1 text-sm text-muted-foreground">
               <span className="font-medium text-success tabular-nums">{bandCounts.shortlist}</span> shortlist
-              {" · "}<span className="tabular-nums">{bandCounts.worthALook}</span> worth a look
+              {" · "}<span className="tabular-nums">{bandCounts.worthALook}</span> maybe
               {" · "}<span className="opacity-60 tabular-nums">{bandCounts.filtered}</span> filtered
             </p>
           ) : (
             <p className="mt-1 text-sm text-muted-foreground">Compute your first matches below</p>
           )}
           {computeAgo && (
-            <div className="mt-2 flex items-center gap-2 text-xs text-muted-foreground">
+            <div className="mt-1.5 flex items-center gap-1.5 text-[11px] text-muted-foreground">
               <Activity className="h-3 w-3 text-success" />
               <span>
-                Last refreshed {computeAgo}
+                You computed {computeAgo}
                 {newCount > 0 && tab !== "new" && (
                   <> · <Link href={buildHref("new")} className="font-medium text-success hover:underline focus-ring rounded">{newCount} new</Link></>
                 )}
@@ -293,7 +293,9 @@ export default async function MatchesPage({
             </div>
           )}
         </div>
-        <ComputeButton hasResume={hasResume} />
+        <div className="shrink-0">
+          <ComputeButton hasResume={hasResume} />
+        </div>
       </div>
 
       {/* ── Resume score banner ────────────────────────────────── */}
@@ -417,9 +419,9 @@ function emptyStateForTab(tab: MatchTab, activeFilterCount: number): React.React
       <EmptyState
         icon={<Activity className="h-5 w-5" />}
         title="Your shortlist is empty"
-        body="Nothing scored ≥60 yet. Check 'Worth a look' for partial fits, or set your preferred hubs / strengthen your resume to lift more roles."
+        body="Nothing scored ≥60 yet. Check 'Maybe' for partial fits, or set your preferred hubs / strengthen your resume to lift more roles."
         actions={[
-          { label: "Worth a look", href: "/matches?tab=worth_a_look", variant: "primary" },
+          { label: "See Maybe matches", href: "/matches?tab=worth_a_look", variant: "primary" },
           { label: "Edit profile", href: "/profile", variant: "ghost" },
         ]}
       />
