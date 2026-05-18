@@ -17,7 +17,6 @@ import { StickyApplyBar } from "./sticky-apply-bar";
 import { JobDescription } from "./job-description";
 import { FitCardPanel, type FitCardData } from "./fit-card";
 import { ScoreEvidence } from "./score-evidence";
-import { ScrollToFitCard } from "./scroll-to-fit-card";
 import { SmartMatchesBackLink } from "./smart-back";
 import { ApplyButton } from "@/components/apply-button";
 import { ApplyToolkit } from "./apply-toolkit";
@@ -27,6 +26,7 @@ import { getUserConsents } from "@/lib/dpdp/consent";
 import type { ParsedResume } from "@/lib/llm/prompts/resume-parse";
 import type { TailoredResumeContent } from "@/lib/llm/prompts/tailor-resume";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
+import { JobDetailTabs, type JobTabId } from "./job-detail-tabs";
 
 export const dynamic = "force-dynamic";
 
@@ -54,7 +54,6 @@ type SimilarRow = {
   } | null;
 };
 
-// Verdict styling — semantic tokens only, mirrors /matches.
 type Verdict = "strong_fit" | "stretch" | "off_target" | "underqualified" | "mismatch";
 const VERDICT_META: Record<Verdict, { label: string; tone: string; bg: string; border: string; icon: React.ReactNode }> = {
   strong_fit:     { label: "Strong fit",     tone: "text-success",     bg: "bg-success/10",     border: "border-success/30",     icon: <CheckCircle2 className="h-3 w-3" /> },
@@ -133,7 +132,6 @@ export default async function JobDetailPage({ params }: { params: Promise<{ id: 
     verdict?: string | null;
     fit_card?: FitCardData | null;
     fit_card_at?: string | null;
-    /** Sprint 6 */
     confidence?: number | null;
     hard_cap_reason?: string | null;
     tech_coverage?: unknown;
@@ -147,7 +145,6 @@ export default async function JobDetailPage({ params }: { params: Promise<{ id: 
   const verdictKey = (match?.verdict as Verdict | undefined) ?? null;
   const verdictMeta = verdictKey ? VERDICT_META[verdictKey] : null;
 
-  // ── Apply Toolkit data load ────────────────────────────────────────
   const consents = await getUserConsents(user.id);
   const admin = createSupabaseAdminClient();
 
@@ -188,9 +185,11 @@ export default async function JobDetailPage({ params }: { params: Promise<{ id: 
     initialTailorUrl = signed?.signedUrl ?? null;
   }
 
+  // Fit tab is the default when a match exists (USP-first). Apply otherwise.
+  const initialTab: JobTabId = match ? "fit" : "apply";
+
   return (
     <div className="space-y-5 pb-6">
-      <StaggerList step={0.05} className="space-y-5">
       <StickyApplyBar
         companyName={company?.name ?? ""}
         companyLogoUrl={company?.logo_url ?? null}
@@ -199,271 +198,277 @@ export default async function JobDetailPage({ params }: { params: Promise<{ id: 
         jobId={job.id}
       />
 
-      {/* Breadcrumb — SmartMatchesBackLink reads sessionStorage to return
-          the user to the exact tab/filter slice they came from. */}
-      <nav aria-label="Breadcrumb" className="flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground">
-        <SmartMatchesBackLink />
-        <ChevronRight className="h-3 w-3 opacity-40" />
-        {company?.name && <span className="text-foreground/70">{company.name}</span>}
-        <ChevronRight className="h-3 w-3 opacity-40" />
-        <span className="max-w-xs truncate text-foreground/50">{job.title}</span>
-      </nav>
+      <StaggerList step={0.05} className="space-y-5">
+        {/* Breadcrumb */}
+        <nav aria-label="Breadcrumb" className="flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground">
+          <SmartMatchesBackLink />
+          <ChevronRight className="h-3 w-3 opacity-40" />
+          {company?.name && <span className="text-foreground/70">{company.name}</span>}
+          <ChevronRight className="h-3 w-3 opacity-40" />
+          <span className="max-w-xs truncate text-foreground/50">{job.title}</span>
+        </nav>
 
-      {/* ── Job hero — mobile-first compact layout ──────────────
-          Single row on mobile: small logo + company micro-text + score ring
-          on the right. Title + meta + comp sit below. The action bar is
-          collapsed into a single flex-row that wraps to two lines only when
-          there's no horizontal room. Total height ≈ 150px on phone. */}
-      <div className="rounded-xl border border-border bg-card p-4 sm:p-5">
-        <div className="flex items-start gap-3 sm:gap-4">
-          <CompanyLogo
-            name={company?.name ?? "?"}
-            logoUrl={company?.logo_url ?? null}
-            size={40}
-          />
+        {/* ── Job hero — always visible above tabs ─────────────────────── */}
+        <div className="rounded-xl border border-border bg-card p-4 sm:p-5">
+          <div className="flex items-start gap-3 sm:gap-4">
+            <CompanyLogo
+              name={company?.name ?? "?"}
+              logoUrl={company?.logo_url ?? null}
+              size={40}
+            />
 
-          <div className="min-w-0 flex-1">
-            <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-              <p className="text-xs font-medium text-muted-foreground sm:text-sm">{company?.name ?? ""}</p>
-              {verdictMeta && (
-                <span className={`inline-flex items-center gap-1 rounded-full border px-1.5 py-0.5 text-[10px] font-semibold sm:text-[11px] ${verdictMeta.tone} ${verdictMeta.bg} ${verdictMeta.border}`}>
-                  {verdictMeta.icon}
-                  {verdictMeta.label}
-                </span>
-              )}
-              {match?.hard_cap_reason && (
-                <span
-                  className="inline-flex items-center rounded-full border border-warning/30 bg-warning/10 px-1.5 py-0.5 text-[10px] font-medium text-warning sm:text-[11px]"
-                  title={
-                    match.hard_cap_reason === "thin_jd"       ? "Score capped: JD too short to score reliably."
-                    : match.hard_cap_reason === "no_stack"    ? "Score capped: none of the JD's must-haves match your resume."
-                    : match.hard_cap_reason === "adjacent_only" ? "Score capped: must-haves matched only by adjacent skills."
-                    : match.hard_cap_reason === "senior_no_exp" ? "Score capped: senior role, <2 yrs professional experience."
-                    : "Score capped"
-                  }
-                >
-                  Capped
-                </span>
-              )}
-              {!job.is_active && (
-                <span className="inline-flex items-center gap-1 rounded-full border border-destructive/30 bg-destructive/10 px-1.5 py-0.5 text-[10px] font-medium text-destructive sm:text-[11px]">
-                  <AlertCircle className="h-2.5 w-2.5" /> Stale
-                </span>
-              )}
-            </div>
-
-            <h1 className="mt-1 text-base font-semibold leading-snug sm:text-xl">{job.title}</h1>
-
-            <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-0.5 text-[11px] text-muted-foreground sm:mt-2 sm:text-xs">
-              {(job.hubs ?? []).slice(0, 2).map((h) => (
-                <span key={h} className="inline-flex items-center gap-1">
-                  <MapPin className="h-3 w-3" />{h}
-                </span>
-              ))}
-              {expRange && (
-                <span className="inline-flex items-center gap-1">
-                  <Briefcase className="h-3 w-3" />{expRange}
-                </span>
-              )}
-              {compRange && (
-                <span className="font-semibold text-primary">{compRange}</span>
-              )}
-              {job.posted_at && (
-                <span className="inline-flex items-center gap-1 text-muted-foreground/80">
-                  <Calendar className="h-3 w-3" />{formatDate(job.posted_at)}
-                </span>
-              )}
-            </div>
-          </div>
-
-          {match && (
-            <Tooltip label="Score combines a rules engine (experience, location, comp, tech overlap) with AI-graded fit. 75+ is a strong fit.">
-              <div className="flex shrink-0 cursor-help flex-col items-center gap-0.5">
-                <ScoreRing score={match.score} size="sm" showLabel={false} />
-                <span className="text-[9px] font-semibold uppercase tracking-wider text-muted-foreground">Match</span>
+            <div className="min-w-0 flex-1">
+              <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                <p className="text-xs font-medium text-muted-foreground sm:text-sm">{company?.name ?? ""}</p>
+                {verdictMeta && (
+                  <span className={`inline-flex items-center gap-1 rounded-full border px-1.5 py-0.5 text-[10px] font-semibold sm:text-[11px] ${verdictMeta.tone} ${verdictMeta.bg} ${verdictMeta.border}`}>
+                    {verdictMeta.icon}
+                    {verdictMeta.label}
+                  </span>
+                )}
+                {match?.hard_cap_reason && (
+                  <span
+                    className="inline-flex items-center rounded-full border border-warning/30 bg-warning/10 px-1.5 py-0.5 text-[10px] font-medium text-warning sm:text-[11px]"
+                    title={
+                      match.hard_cap_reason === "thin_jd"         ? "Score capped: JD too short to score reliably."
+                      : match.hard_cap_reason === "no_stack"      ? "Score capped: none of the JD's must-haves match your resume."
+                      : match.hard_cap_reason === "adjacent_only" ? "Score capped: must-haves matched only by adjacent skills."
+                      : match.hard_cap_reason === "senior_no_exp" ? "Score capped: senior role, <2 yrs professional experience."
+                      : "Score capped"
+                    }
+                  >
+                    Capped
+                  </span>
+                )}
+                {!job.is_active && (
+                  <span className="inline-flex items-center gap-1 rounded-full border border-destructive/30 bg-destructive/10 px-1.5 py-0.5 text-[10px] font-medium text-destructive sm:text-[11px]">
+                    <AlertCircle className="h-2.5 w-2.5" /> Stale
+                  </span>
+                )}
               </div>
-            </Tooltip>
-          )}
-        </div>
 
-        {/* Action bar — apply primary, status secondary. Single row on
-            mobile, both controls equal width when wrapped. */}
-        <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-border pt-3 sm:mt-4 sm:pt-4">
-          {job.apply_url && (
-            <ApplyButton jobId={job.id} applyUrl={job.apply_url} variant="default" />
-          )}
-          <JobActions jobId={job.id} existingApp={application} />
-        </div>
-      </div>
+              <h1 className="mt-1 text-base font-semibold leading-snug sm:text-xl">{job.title}</h1>
 
-      {/* Always force the page to start at the top on fresh navigation —
-          users were landing mid-page (in the old Fit Card section) which
-          felt like a broken page. Back/forward still restores position. */}
-      <ScrollToFitCard />
-
-      {/* ── Fit Card (when present) ──────────────────────────── */}
-      {/* When there's no Fit Card we skip the placeholder entirely; the
-          hero already shows score + verdict + cap chip, and ScoreEvidence
-          below renders only when there's substance to explain. */}
-      {match && match.fit_card && (
-        <FitCardPanel
-          data={match.fit_card}
-          evidence={{
-            confidence: match.confidence ?? null,
-            hardCapReason: match.hard_cap_reason ?? null,
-            techCoverage: match.tech_coverage,
-            feedbackAdjustment: match.feedback_adjustment ?? null,
-          }}
-        />
-      )}
-
-      {/* ── Apply Toolkit ─────────────────────────────────────── */}
-      <ApplyToolkit
-        jobId={job.id}
-        jobTitle={job.title}
-        companyName={company?.name ?? "this company"}
-        hasResume={hasResume}
-        matchingConsent={consents.matching === true}
-        recruiterView={
-          atsView
-            ? <RecruiterView view={atsView} />
-            : (
-              <div className="rounded-xl border border-dashed border-border bg-secondary/30 p-5 text-center text-xs text-muted-foreground">
-                The recruiter view needs your parsed resume and a parsed JD. Upload your resume on /profile, then return here.
-              </div>
-            )
-        }
-        initialTailor={tailoredRow && initialTailorUrl ? {
-          content: tailoredRow.content,
-          download_url: initialTailorUrl,
-          generated_at: tailoredRow.generated_at,
-        } : null}
-      />
-
-      {/* Sprint 6 — Score evidence. Self-suppresses when nothing useful
-          (no cap, no missing skills, high confidence) so most jobs
-          without a Fit Card hide this entirely. When it does render it's
-          the explanation of WHY the score is what it is — cap reason,
-          missing skills, low confidence. Below Apply Toolkit because the
-          action matters more than diagnostics. */}
-      {match && !match.fit_card && (
-        <ScoreEvidence
-          score={match.score}
-          confidence={match.confidence ?? null}
-          hardCapReason={match.hard_cap_reason ?? null}
-          techCoverage={match.tech_coverage}
-          feedbackAdjustment={match.feedback_adjustment ?? null}
-        />
-      )}
-
-      {/* ── Quick strengths + gaps (pre-Fit Card) ─────────────── */}
-      {match && !match.fit_card && match.strengths && match.gaps && (
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-          {match.strengths && match.strengths.length > 0 && (
-            <div className="rounded-xl border border-success/30 bg-success/5 p-5">
-              <p className="mb-3 flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-success">
-                <CheckCircle2 className="h-3.5 w-3.5" /> Your strengths
-              </p>
-              <ul className="space-y-2">
-                {match.strengths.slice(0, 3).map((s, i) => (
-                  <li key={i} className="flex items-start gap-2 text-sm text-muted-foreground">
-                    <span className="mt-1.5 h-1 w-1 shrink-0 rounded-full bg-success" />
-                    {s}
-                  </li>
-                ))}
-              </ul>
-            </div>
-          )}
-          {match.gaps && match.gaps.length > 0 && (
-            <div className="rounded-xl border border-warning/30 bg-warning/5 p-5">
-              <p className="mb-3 flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-warning">
-                <TrendingUp className="h-3.5 w-3.5" /> Gaps to address
-              </p>
-              <ul className="space-y-2">
-                {match.gaps.slice(0, 3).map((g, i) => (
-                  <li key={i} className="flex items-start gap-2 text-sm text-muted-foreground">
-                    <span className="mt-1.5 h-1 w-1 shrink-0 rounded-full bg-warning" />
-                    {g}
-                  </li>
-                ))}
-              </ul>
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* ── Description + sidebar ─────────────────────────────── */}
-      <div className="grid grid-cols-1 gap-5 lg:grid-cols-3">
-        <div className="rounded-xl border border-border bg-card p-5 sm:p-6 lg:col-span-2">
-          <h2 className="mb-4 text-sm font-semibold">Job description</h2>
-          {job.description ? (
-            <JobDescription text={job.description} />
-          ) : (
-            <p className="text-sm text-muted-foreground">
-              Full description not captured. View on the official site for the latest details.
-            </p>
-          )}
-
-          {(job.tech_stack ?? []).length > 0 && (
-            <div className="mt-6">
-              <h3 className="mb-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">Tech stack</h3>
-              <div className="flex flex-wrap gap-2">
-                {(job.tech_stack ?? []).map((t) => (
-                  <span key={t} className="rounded-md border border-border bg-secondary/50 px-2.5 py-1 font-mono text-xs">
-                    {t}
+              <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-0.5 text-[11px] text-muted-foreground sm:mt-2 sm:text-xs">
+                {(job.hubs ?? []).slice(0, 2).map((h) => (
+                  <span key={h} className="inline-flex items-center gap-1">
+                    <MapPin className="h-3 w-3" />{h}
                   </span>
                 ))}
+                {expRange && (
+                  <span className="inline-flex items-center gap-1">
+                    <Briefcase className="h-3 w-3" />{expRange}
+                  </span>
+                )}
+                {compRange && (
+                  <span className="font-semibold text-primary">{compRange}</span>
+                )}
+                {job.posted_at && (
+                  <span className="inline-flex items-center gap-1 text-muted-foreground/80">
+                    <Calendar className="h-3 w-3" />{formatDate(job.posted_at)}
+                  </span>
+                )}
               </div>
             </div>
-          )}
-        </div>
 
-        {/* Sidebar */}
-        <div className="space-y-4">
-          {similar.length > 0 && (
-            <SectionCard title={`More at ${company?.name ?? ""}`} subtitle="Similar roles for you">
-              <div className="space-y-1">
-                {similar.map((s) => (
-                  <Link
-                    key={s.job_id}
-                    href={`/jobs/${s.job_id}`}
-                    className="group flex items-center gap-3 rounded-md px-2 py-2.5 transition hover:bg-secondary focus-ring"
-                  >
-                    <CompanyLogo name={s.jobs?.companies?.name ?? "?"} logoUrl={s.jobs?.companies?.logo_url ?? null} size={28} />
-                    <div className="min-w-0 flex-1">
-                      <p className="truncate text-sm transition group-hover:text-primary">{s.jobs?.title ?? "Role"}</p>
-                    </div>
-                    <span className="shrink-0 rounded bg-secondary px-1.5 py-0.5 text-xs font-bold tabular-nums">{Math.round(s.score)}</span>
-                  </Link>
-                ))}
-              </div>
-            </SectionCard>
-          )}
+            {match && (
+              <Tooltip label="Score combines a rules engine (experience, comp, tech overlap) with AI-graded semantic fit. 75+ is a strong fit.">
+                <div className="flex shrink-0 cursor-help flex-col items-center gap-0.5">
+                  <ScoreRing score={match.score} size="sm" showLabel={false} />
+                  <span className="text-[9px] font-semibold uppercase tracking-wider text-muted-foreground">Match</span>
+                </div>
+              </Tooltip>
+            )}
+          </div>
 
-          {/* Trust badge — single concise line. The three previous
-              bullets ("official only / no aggregators / refreshed daily")
-              were redundant ways of saying the same thing. */}
-          <div className="flex items-start gap-2 rounded-xl border border-border bg-card px-4 py-3 text-xs text-muted-foreground">
-            <CheckCircle2 className="mt-0.5 h-3.5 w-3.5 shrink-0 text-success" />
-            <div className="min-w-0 flex-1">
-              <p className="leading-relaxed">
-                Sourced directly from {company?.name ?? "the company"}&apos;s official careers page — refreshed daily.
-              </p>
-              {company?.careers_url && (
-                <a
-                  href={company.careers_url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="mt-1.5 inline-flex items-center gap-1 text-foreground/80 transition hover:text-foreground focus-ring rounded"
-                >
-                  <ExternalLink className="h-3 w-3 shrink-0" />
-                  Open careers page
-                </a>
-              )}
-            </div>
+          <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-border pt-3 sm:mt-4 sm:pt-4">
+            {job.apply_url && (
+              <ApplyButton jobId={job.id} applyUrl={job.apply_url} variant="default" />
+            )}
+            <JobActions jobId={job.id} existingApp={application} />
           </div>
         </div>
-      </div>
+
+        {/* ── Three-tab body ──────────────────────────────────────────────
+            Fit   → AI match analysis (Fit Card / score evidence / strengths)
+            Apply → Apply Toolkit (tailored resume + recruiter view)
+            Job   → Full JD, tech stack, similar roles
+        ────────────────────────────────────────────────────────────────── */}
+        <JobDetailTabs
+          initial={initialTab}
+          panels={{
+
+            // ── Fit tab ────────────────────────────────────────────────
+            fit: (
+              <>
+                {match?.fit_card && (
+                  <FitCardPanel
+                    data={match.fit_card}
+                    evidence={{
+                      confidence: match.confidence ?? null,
+                      hardCapReason: match.hard_cap_reason ?? null,
+                      techCoverage: match.tech_coverage,
+                      feedbackAdjustment: match.feedback_adjustment ?? null,
+                    }}
+                  />
+                )}
+
+                {match && !match.fit_card && (
+                  <ScoreEvidence
+                    score={match.score}
+                    confidence={match.confidence ?? null}
+                    hardCapReason={match.hard_cap_reason ?? null}
+                    techCoverage={match.tech_coverage}
+                    feedbackAdjustment={match.feedback_adjustment ?? null}
+                  />
+                )}
+
+                {match && !match.fit_card && (match.strengths?.length ?? 0) > 0 && (match.gaps?.length ?? 0) > 0 && (
+                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                    {(match.strengths?.length ?? 0) > 0 && (
+                      <div className="rounded-xl border border-success/30 bg-success/5 p-5">
+                        <p className="mb-3 flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-success">
+                          <CheckCircle2 className="h-3.5 w-3.5" /> Your strengths
+                        </p>
+                        <ul className="space-y-2">
+                          {(match.strengths ?? []).slice(0, 3).map((s, i) => (
+                            <li key={i} className="flex items-start gap-2 text-sm text-muted-foreground">
+                              <span className="mt-1.5 h-1 w-1 shrink-0 rounded-full bg-success" />
+                              {s}
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+                    {(match.gaps?.length ?? 0) > 0 && (
+                      <div className="rounded-xl border border-warning/30 bg-warning/5 p-5">
+                        <p className="mb-3 flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-warning">
+                          <TrendingUp className="h-3.5 w-3.5" /> Gaps to address
+                        </p>
+                        <ul className="space-y-2">
+                          {(match.gaps ?? []).slice(0, 3).map((g, i) => (
+                            <li key={i} className="flex items-start gap-2 text-sm text-muted-foreground">
+                              <span className="mt-1.5 h-1 w-1 shrink-0 rounded-full bg-warning" />
+                              {g}
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {!match && (
+                  <div className="rounded-xl border border-dashed border-border bg-secondary/30 p-6 text-center">
+                    <p className="text-sm text-muted-foreground">Match not computed yet for this role.</p>
+                    <Link
+                      href="/matches?recompute=1"
+                      className="press mt-3 inline-flex items-center gap-1.5 rounded-md bg-primary px-3.5 py-2 text-xs font-semibold text-primary-foreground transition hover:bg-primary/90 focus-ring"
+                    >
+                      Compute matches
+                    </Link>
+                  </div>
+                )}
+              </>
+            ),
+
+            // ── Apply tab ──────────────────────────────────────────────
+            apply: (
+              <ApplyToolkit
+                jobId={job.id}
+                jobTitle={job.title}
+                companyName={company?.name ?? "this company"}
+                hasResume={hasResume}
+                matchingConsent={consents.matching === true}
+                recruiterView={
+                  atsView
+                    ? <RecruiterView view={atsView} />
+                    : (
+                      <div className="rounded-xl border border-dashed border-border bg-secondary/30 p-5 text-center text-xs text-muted-foreground">
+                        The recruiter view needs your parsed resume and a parsed JD. Upload your resume on /profile, then return here.
+                      </div>
+                    )
+                }
+                initialTailor={tailoredRow && initialTailorUrl ? {
+                  content: tailoredRow.content,
+                  download_url: initialTailorUrl,
+                  generated_at: tailoredRow.generated_at,
+                } : null}
+              />
+            ),
+
+            // ── Job tab ────────────────────────────────────────────────
+            job: (
+              <div className="grid grid-cols-1 gap-5 lg:grid-cols-3">
+                <div className="rounded-xl border border-border bg-card p-5 sm:p-6 lg:col-span-2">
+                  <h2 className="mb-4 text-sm font-semibold">Job description</h2>
+                  {job.description ? (
+                    <JobDescription text={job.description} />
+                  ) : (
+                    <p className="text-sm text-muted-foreground">
+                      Full description not captured. View on the official site for the latest details.
+                    </p>
+                  )}
+
+                  {(job.tech_stack ?? []).length > 0 && (
+                    <div className="mt-6">
+                      <h3 className="mb-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">Tech stack</h3>
+                      <div className="flex flex-wrap gap-2">
+                        {(job.tech_stack ?? []).map((t) => (
+                          <span key={t} className="rounded-md border border-border bg-secondary/50 px-2.5 py-1 font-mono text-xs">
+                            {t}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                <div className="space-y-4">
+                  {similar.length > 0 && (
+                    <SectionCard title={`More at ${company?.name ?? ""}`} subtitle="Similar roles for you">
+                      <div className="space-y-1">
+                        {similar.map((s) => (
+                          <Link
+                            key={s.job_id}
+                            href={`/jobs/${s.job_id}`}
+                            className="group flex items-center gap-3 rounded-md px-2 py-2.5 transition hover:bg-secondary focus-ring"
+                          >
+                            <CompanyLogo name={s.jobs?.companies?.name ?? "?"} logoUrl={s.jobs?.companies?.logo_url ?? null} size={28} />
+                            <div className="min-w-0 flex-1">
+                              <p className="truncate text-sm transition group-hover:text-primary">{s.jobs?.title ?? "Role"}</p>
+                            </div>
+                            <span className="shrink-0 rounded bg-secondary px-1.5 py-0.5 text-xs font-bold tabular-nums">{Math.round(s.score)}</span>
+                          </Link>
+                        ))}
+                      </div>
+                    </SectionCard>
+                  )}
+
+                  <div className="flex items-start gap-2 rounded-xl border border-border bg-card px-4 py-3 text-xs text-muted-foreground">
+                    <CheckCircle2 className="mt-0.5 h-3.5 w-3.5 shrink-0 text-success" />
+                    <div className="min-w-0 flex-1">
+                      <p className="leading-relaxed">
+                        Sourced directly from {company?.name ?? "the company"}&apos;s official careers page — refreshed daily.
+                      </p>
+                      {company?.careers_url && (
+                        <a
+                          href={company.careers_url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="mt-1.5 inline-flex items-center gap-1 text-foreground/80 transition hover:text-foreground focus-ring rounded"
+                        >
+                          <ExternalLink className="h-3 w-3 shrink-0" />
+                          Open careers page
+                        </a>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            ),
+          }}
+        />
       </StaggerList>
     </div>
   );
