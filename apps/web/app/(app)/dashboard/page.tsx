@@ -323,17 +323,17 @@ export default async function DashboardPage() {
   const allSetupDone = setupSteps.every((s) => s.done);
 
   return (
-    <div className="space-y-5 pb-6">
+    <div className="space-y-4 pb-6">
 
-      {/* ── Hero ─────────────────────────────────────────────────── */}
-      <div className="rounded-xl border border-border bg-card p-5 sm:p-6">
-        {/* Responsive reflow: name+role full-width on mobile, DNA below.
-            On `sm+`, flex-row with DNA right-aligned. */}
-        <div className="flex flex-col gap-4 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between sm:gap-6">
+      {/* ── Hero — compact, always flex-row ──────────────────────── */}
+      <div className="rounded-xl border border-border bg-card p-4 sm:p-5">
+        <div className="flex items-center justify-between gap-3">
           <div className="min-w-0">
-            <p className="text-sm text-muted-foreground">{greeting}</p>
-            <h1 className="mt-0.5 text-2xl font-semibold tracking-tight">{greetingSubject}</h1>
-            <p className="mt-1.5 text-sm text-muted-foreground">{subline}</p>
+            <p className="text-xs text-muted-foreground">{greeting}</p>
+            <h1 className="mt-0.5 text-xl font-semibold tracking-tight sm:text-2xl">{greetingSubject}</h1>
+            {subline !== "Your career intelligence command center." && (
+              <p className="mt-0.5 text-xs text-muted-foreground">{subline}</p>
+            )}
           </div>
 
           {dnaScore !== null && (
@@ -350,21 +350,21 @@ export default async function DashboardPage() {
                     </Link>
                   </div>
                 ) : (
-                  "Product-Co Readiness (0–100) — a coaching signal of how recruiter screens at top product companies are likely to read your profile. It does not affect your match scores."
+                  "Product-Co Readiness (0–100) — coaching signal of how recruiter screens at top product companies will likely read your profile."
                 )
               }
             >
-              <Link href="/profile#dna-breakdown" className="flex shrink-0 cursor-pointer items-center gap-3 sm:flex-col sm:items-center sm:gap-1.5">
-                <ScoreRing score={dnaScore} size="lg" showLabel={false} />
-                <span className="text-xs font-medium text-muted-foreground">Readiness</span>
+              <Link href="/profile#dna-breakdown" className="flex shrink-0 cursor-pointer flex-col items-center gap-1">
+                <ScoreRing score={dnaScore} size="sm" showLabel={false} />
+                <span className="text-[10px] font-medium text-muted-foreground">Readiness</span>
               </Link>
             </Tooltip>
           )}
         </div>
 
-        {/* Catalog pulse + career health */}
+        {/* Catalog pulse + career health — compact row */}
         {((activeJobCount ?? 0) > 0 || careerHealth !== null) && (
-          <div className="mt-5 space-y-3 border-t border-border pt-4">
+          <div className="mt-3 space-y-2 border-t border-border pt-3">
             {(activeJobCount ?? 0) > 0 && (
               <CatalogPulse
                 lastFinishedAt={latestCrawl?.finished_at ?? null}
@@ -373,7 +373,7 @@ export default async function DashboardPage() {
             )}
             {careerHealth !== null && (
               <div className="flex items-center gap-3">
-                <span className="w-24 shrink-0 text-xs text-muted-foreground">Career health</span>
+                <span className="w-20 shrink-0 text-xs text-muted-foreground">Career health</span>
                 <div className="relative h-1.5 flex-1 overflow-hidden rounded-full bg-secondary">
                   <div
                     className={`h-full rounded-full transition-all duration-700 ${
@@ -393,16 +393,13 @@ export default async function DashboardPage() {
         )}
       </div>
 
-      {/* ── Continue where you left off (Sprint 6 session history) ─ */}
-      <ContinueCard />
-
-      {/* ── Profile incompleteness banner (PR 1.2) ──────────────── */}
-      {incompleteness.length > 0 && <IncompletenessBanner issues={incompleteness} />}
-
-      {/* ── Next best action (PR 3.1) ───────────────────────────── */}
+      {/* ── Next best action — highest priority CTA ──────────────── */}
       {nextAction && <NextActionCard action={nextAction} />}
 
-      {/* ── Stats grid — Matches card now shows band stack ──────── */}
+      {/* ── Top matches carousel — the core USP, mobile-first ────── */}
+      <TopMatchesMobile matches={topMatchesForMobile} />
+
+      {/* ── Stats row — 2 key metrics on mobile, 4 on desktop ────── */}
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
         <StatCard
           icon={<Target className="h-4 w-4" />}
@@ -429,16 +426,15 @@ export default async function DashboardPage() {
         />
       </div>
 
-      {/* ── Resume guidance card (PR 1.4) ───────────────────────── */}
+      {/* ── Continue card + incompleteness — below fold on mobile ─── */}
+      <ContinueCard />
+      {incompleteness.length > 0 && <IncompletenessBanner issues={incompleteness} />}
+
+      {/* ── Resume guidance + skill coverage — detail analytics ──── */}
       {resumeScore !== null && (
         <ResumeGuidanceCard resumeScore={resumeScore} breakdown={resumeBreakdown} />
       )}
-
-      {/* ── Skill coverage (PR 2.1) ─────────────────────────────── */}
       <SkillCoverageCard data={skillCoverage} />
-
-      {/* ── Mobile top-matches carousel (PR 3.6) ────────────────── */}
-      <TopMatchesMobile matches={topMatchesForMobile} />
 
       {/* ── Main content grid ───────────────────────────────────── */}
       <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">

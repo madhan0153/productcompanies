@@ -2,14 +2,12 @@
 
 // Matches — compact band segmented control.
 //
-// Client Component: uses useTransition + router.push for instant visual
-// feedback when switching tabs. Accepts plain serializable props only —
-// no function props, no useSearchParams.
-//
-// Types and classifyMatch live in ./match-types.ts (no "use client") so
-// the server page.tsx can import them without crossing the boundary.
+// Optimistic tab switching: the active pill switches instantly on click
+// (setOptimisticTab) while the router.push transition loads the new
+// server-rendered content. This eliminates the perceived lag between
+// Shortlist → Maybe → Filtered tab changes.
 
-import { useTransition } from "react";
+import { useTransition, useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
 import type { MatchTab, BandCounts } from "./match-types";
@@ -29,7 +27,6 @@ const TILE_META: Record<
 interface BandStripProps {
   counts: BandCounts;
   active: MatchTab;
-  /** Plain serializable filter values — NOT functions. */
   selectedCompanies: string[];
   selectedHubs: string[];
   minScore: number | null;
@@ -45,6 +42,13 @@ export function BandStrip({
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const reduce = useReducedMotion();
+
+  // Optimistic: switch the active pill immediately on click; sync back from
+  // server when navigation completes (isPending drops to false).
+  const [optimisticTab, setOptimisticTab] = useState<MatchTab>(active);
+  useEffect(() => {
+    if (!isPending) setOptimisticTab(active);
+  }, [active, isPending]);
 
   const buildHref = (nextTab: MatchTab): string => {
     const sp = new URLSearchParams();
@@ -67,7 +71,8 @@ export function BandStrip({
   };
 
   const handleClick = (tab: MatchTab) => {
-    if (tab === active && !isPending) return;
+    if (tab === optimisticTab) return;
+    setOptimisticTab(tab);
     startTransition(() => { router.push(buildHref(tab)); });
   };
 
@@ -81,12 +86,12 @@ export function BandStrip({
         className="no-scrollbar flex gap-1.5 overflow-x-auto pb-0.5 sm:flex-wrap sm:overflow-visible"
       >
         {[...order, ...tail].map((tab) => {
-          const meta    = TILE_META[tab];
-          const isActive = tab === active;
-          const count   = countFor[tab];
+          const meta     = TILE_META[tab];
+          const isActive = tab === optimisticTab;
+          const count    = countFor[tab];
 
           return (
-            <li key={tab} className="shrink-0 relative">
+            <li key={tab} className="relative shrink-0">
               <button
                 role="tab"
                 type="button"
@@ -95,27 +100,26 @@ export function BandStrip({
                 onClick={() => handleClick(tab)}
                 className={[
                   "tap-target-sm relative z-10 inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold",
-                  "transition-colors duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/50",
-                  isActive
-                    ? meta.activeTone
-                    : "text-muted-foreground hover:text-foreground",
+                  "transition-colors duration-150 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/50",
+                  isActive ? meta.activeTone : "text-muted-foreground hover:text-foreground",
                 ].join(" ")}
               >
                 <span className="relative z-10">{meta.label}</span>
-                <span className={`relative z-10 rounded-full px-1.5 py-0.5 text-[10px] tabular-nums transition-colors duration-200 ${
-                  isActive ? "bg-background/80 text-foreground shadow-sm" : "bg-secondary text-muted-foreground group-hover:bg-secondary/80"
+                <span className={`relative z-10 rounded-full px-1.5 py-0.5 text-[10px] tabular-nums transition-colors duration-150 ${
+                  isActive
+                    ? "bg-background/80 text-foreground shadow-sm"
+                    : "bg-secondary text-muted-foreground"
                 }`}>
                   {count.toLocaleString("en-IN")}
                 </span>
               </button>
 
-              {/* The buttery smooth active pill background */}
               {isActive && (
                 <motion.div
                   layoutId="activeTabPill"
                   className={`absolute inset-0 z-0 rounded-full border ${meta.activeBorder} ${meta.activeBg}`}
                   initial={false}
-                  transition={{ type: "spring", stiffness: 400, damping: 30 }}
+                  transition={{ type: "spring", stiffness: 500, damping: 35 }}
                 />
               )}
             </li>
@@ -123,15 +127,16 @@ export function BandStrip({
         })}
       </ul>
 
+      {/* Thin loading bar at the bottom of the nav — signals server re-render in flight */}
       <AnimatePresence>
         {isPending && !reduce && (
           <motion.div
             key="loading-bar"
-            className="absolute inset-x-0 bottom-0 h-[2px] origin-left bg-primary/50"
+            className="absolute inset-x-0 bottom-0 h-[2px] origin-left bg-primary/60"
             initial={{ scaleX: 0, opacity: 0 }}
             animate={{ scaleX: 1, opacity: 1 }}
-            exit={{ opacity: 0, transition: { duration: 0.2 } }}
-            transition={{ duration: 0.8, ease: "easeOut" }}
+            exit={{ opacity: 0, transition: { duration: 0.15 } }}
+            transition={{ duration: 0.6, ease: "easeOut" }}
           />
         )}
       </AnimatePresence>

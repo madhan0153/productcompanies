@@ -3,7 +3,7 @@ import { redirect } from "next/navigation";
 import Link from "next/link";
 import {
   Compass, Target, GraduationCap, Building2, FileEdit,
-  CalendarDays, ArrowRight, IndianRupee, TrendingUp,
+  CalendarDays, IndianRupee, TrendingUp, Sparkles,
 } from "lucide-react";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { CompanyLogo } from "@/components/company-logo";
@@ -54,20 +54,32 @@ export default async function CoachPage() {
     ? compTopForBand - profile.target_lpa
     : null;
 
+  const canGenerate = hasResume && jobs.length > 0;
+
   return (
-    <div className="space-y-6 pb-6">
-      <header className="flex flex-wrap items-start justify-between gap-4">
-        <div className="min-w-0">
-          <div className="inline-flex items-center gap-1.5 rounded-full border border-border bg-secondary/40 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wider text-primary">
-            <Compass className="h-3 w-3" /> Coach
+    <div className="space-y-5 pb-6">
+
+      {/* ── Hero ─────────────────────────────────────────────────── */}
+      <div className="rounded-xl border border-border bg-card p-4 sm:p-6">
+        <div className="flex items-start gap-3">
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary-soft text-primary-soft-foreground">
+            <Compass className="h-5 w-5" />
           </div>
-          <h1 className="mt-2 text-2xl font-semibold tracking-tight">Your career coach</h1>
-          <p className="mt-1 max-w-2xl text-sm leading-relaxed text-muted-foreground">
-            A focused 90-day plan tied to live demand from the 18 approved product companies — generated from your stack, your gaps, and what the market is actually paying.
-          </p>
+          <div className="min-w-0 flex-1">
+            <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Career Coach</p>
+            <h1 className="mt-0.5 text-lg font-semibold leading-snug sm:text-xl">Your 90-day plan</h1>
+            <p className="mt-1 text-xs leading-relaxed text-muted-foreground sm:text-sm">
+              Tied to live demand from 18 product companies — built from your stack, your gaps, and what the market is actually paying.
+            </p>
+          </div>
         </div>
-        {hasResume && jobs.length > 0 && <GenerateButton hasPlan={Boolean(plan)} />}
-      </header>
+
+        {canGenerate && (
+          <div className="mt-4 border-t border-border pt-4">
+            <GenerateButton hasPlan={Boolean(plan)} />
+          </div>
+        )}
+      </div>
 
       {!hasResume ? (
         <EmptyState
@@ -84,38 +96,44 @@ export default async function CoachPage() {
         />
       ) : (
         <>
-          {/* Snapshot */}
-          <section className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-            <StatCard
-              icon={<Target className="h-4 w-4" />}
-              label="Stack coverage"
-              value={`${agg.coverage}%`}
-              sub="of the top 30 in-demand technologies"
-              tone="primary"
-            />
-            <StatCard
-              icon={<TrendingUp className="h-4 w-4" />}
-              label="High-leverage adjacencies"
-              value={adjacency.length}
-              sub="single skills that unlock 2+ extra roles"
-              tone="warning"
-            />
-            <StatCard
-              icon={<IndianRupee className="h-4 w-4" />}
-              label="Top 10% in your band"
-              value={compTopForBand ? `₹${compTopForBand} L` : "—"}
-              sub={
-                compGap !== null
-                  ? compGap > 0
-                    ? `₹${compGap} L above your current target`
-                    : "You're already targeting the top decile"
-                  : "Set a target LPA in your profile"
-              }
-              tone="success"
-            />
-          </section>
+          {/* ── Snapshot stats — horizontal scroll on mobile ─────── */}
+          <div className="no-scrollbar -mx-4 flex snap-x snap-mandatory gap-3 overflow-x-auto px-4 sm:mx-0 sm:grid sm:grid-cols-3 sm:overflow-visible sm:px-0">
+            <div className="w-[72%] shrink-0 snap-start sm:w-auto">
+              <StatCard
+                icon={<Target className="h-4 w-4" />}
+                label="Stack coverage"
+                value={`${agg.coverage}%`}
+                sub="of the top 30 in-demand technologies"
+                tone="primary"
+              />
+            </div>
+            <div className="w-[72%] shrink-0 snap-start sm:w-auto">
+              <StatCard
+                icon={<TrendingUp className="h-4 w-4" />}
+                label="High-leverage adjacencies"
+                value={adjacency.length}
+                sub="single skills that unlock 2+ extra roles"
+                tone="warning"
+              />
+            </div>
+            <div className="w-[72%] shrink-0 snap-start sm:w-auto">
+              <StatCard
+                icon={<IndianRupee className="h-4 w-4" />}
+                label="Top 10% in your band"
+                value={compTopForBand ? `₹${compTopForBand} L` : "—"}
+                sub={
+                  compGap !== null
+                    ? compGap > 0
+                      ? `₹${compGap} L above your current target`
+                      : "You're already targeting the top decile"
+                    : "Set a target LPA in your profile"
+                }
+                tone="success"
+              />
+            </div>
+          </div>
 
-          {/* Highest-leverage skills */}
+          {/* ── Highest-leverage skills ───────────────────────────── */}
           {adjacency.length > 0 && (
             <SectionCard
               title="Highest-leverage skills to add"
@@ -142,7 +160,7 @@ export default async function CoachPage() {
             </SectionCard>
           )}
 
-          {/* Target shortlist */}
+          {/* ── Target companies ──────────────────────────────────── */}
           {compDemand.length > 0 && (
             <SectionCard
               title="Where to focus your applications"
@@ -175,21 +193,21 @@ export default async function CoachPage() {
             </SectionCard>
           )}
 
-          {/* AI-generated 90-day plan */}
+          {/* ── AI-generated 90-day plan ──────────────────────────── */}
           {plan ? (
             <PlanCard plan={plan} generatedAt={profile?.coach_plan_at ?? null} companyByName={companyByName} />
           ) : (
-            <section className="rounded-xl border border-dashed border-border bg-secondary/30 p-8 text-center">
+            <section className="rounded-xl border border-dashed border-border bg-secondary/30 p-6 text-center sm:p-8">
               <div className="mx-auto mb-3 inline-flex h-12 w-12 items-center justify-center rounded-xl bg-primary-soft text-primary-soft-foreground">
-                <Compass className="h-5 w-5" />
+                <Sparkles className="h-5 w-5" />
               </div>
               <h2 className="text-base font-semibold">Generate your 90-day plan</h2>
               <p className="mx-auto mt-1 max-w-md text-sm leading-relaxed text-muted-foreground">
-                We&apos;ll synthesise your stack, your gaps, and live JD signal into a four- or five-phase plan that ladders up to a real shippable artefact. About a second per generate.
+                We&apos;ll synthesise your stack, gaps, and live JD signal into a phased plan with a real shippable artefact. Takes about a second.
               </p>
-              <p className="mt-4 inline-flex items-center gap-1 text-xs text-muted-foreground">
-                <ArrowRight className="h-3 w-3" /> Use the &quot;Generate plan&quot; button at the top right.
-              </p>
+              <div className="mt-5 flex justify-center">
+                <GenerateButton hasPlan={false} />
+              </div>
             </section>
           )}
         </>
@@ -206,11 +224,11 @@ function PlanCard({
   companyByName: Map<string, CompanyLite>;
 }) {
   return (
-    <section className="space-y-6 rounded-xl border border-primary/30 bg-primary-soft p-5 sm:p-6">
+    <section className="space-y-6 rounded-xl border border-primary/30 bg-primary-soft p-4 sm:p-6">
       <header className="flex flex-wrap items-start justify-between gap-3">
         <div className="min-w-0">
-          <p className="text-[11px] font-semibold uppercase tracking-wider text-primary-soft-foreground/80">Your plan</p>
-          <h2 className="mt-1 text-xl font-semibold tracking-tight">{plan.headline}</h2>
+          <p className="text-[10px] font-semibold uppercase tracking-wider text-primary-soft-foreground/80">Your plan</p>
+          <h2 className="mt-1 text-lg font-semibold tracking-tight sm:text-xl">{plan.headline}</h2>
           <p className="mt-1 max-w-2xl text-sm leading-relaxed text-muted-foreground">{plan.thesis}</p>
         </div>
         {generatedAt && (

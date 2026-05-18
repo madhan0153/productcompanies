@@ -10,7 +10,7 @@ import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { StaggerList } from "@/components/stagger-list";
 import { EmptyState } from "@/components/empty-state";
 import type { Verdict, Json } from "@/lib/supabase/types";
-import { ComputeButton } from "./compute-button";
+import { ComputeProvider, ComputeTrigger, ComputeStatusBanner } from "./compute-button";
 import { MatchFilters } from "./filters";
 import { MatchCard, type MatchCardData } from "./match-card";
 import { BandStrip } from "./band-strip";
@@ -210,15 +210,13 @@ export default async function MatchesPage({
   };
 
   return (
+    <ComputeProvider hasResume={hasResume}>
     <div className="space-y-4 pb-6">
 
-      {/* Session-history beacon — records this URL so the job detail
-          page's "← Matches" link returns to the exact tab/filter slice. */}
+      {/* Session-history beacon */}
       <MatchesURLBeacon />
 
       {/* ── Header ──────────────────────────────────────────────── */}
-      {/* Counts removed — they're duplicated in the BandStrip pills below.
-          Timestamp shrunk to a single inline line. */}
       <div className="flex items-center justify-between gap-3">
         <div className="min-w-0">
           <h1 className="text-xl font-semibold tracking-tight sm:text-2xl">Matches</h1>
@@ -236,10 +234,11 @@ export default async function MatchesPage({
             <p className="mt-0.5 text-[11px] text-muted-foreground">Compute your first matches</p>
           ) : null}
         </div>
-        <div className="shrink-0">
-          <ComputeButton hasResume={hasResume} />
-        </div>
+        <ComputeTrigger />
       </div>
+
+      {/* ── Compute status banner — full-width, only when running/error ─ */}
+      <ComputeStatusBanner />
 
       {/* ── No-resume prompt — only when there's actually no resume ─ */}
       {!hasResume && (
@@ -340,6 +339,7 @@ export default async function MatchesPage({
         />
       ) : null}
     </div>
+    </ComputeProvider>
   );
 }
 
