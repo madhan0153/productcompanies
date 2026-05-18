@@ -12,7 +12,7 @@ import { TailorReview } from "./review";
 import type { ResumeDiagnosis } from "@/lib/llm/prompts/resume-diagnose";
 import type { BulletRewrite, RewriteMode } from "@/lib/llm/prompts/bullet-rewrite";
 import type { ParsedResume } from "@/lib/llm/prompts/resume-parse";
-import type { EnhancementDecision } from "../../../profile/enhance-actions";
+import type { EnhancementDecision } from "../tailor-actions";
 
 export const metadata: Metadata = { title: "Tailor for this role" };
 export const dynamic = "force-dynamic";

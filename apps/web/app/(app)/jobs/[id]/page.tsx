@@ -277,7 +277,7 @@ export default async function JobDetailPage({ params }: { params: Promise<{ id: 
           </div>
 
           {match && (
-            <Tooltip label="Score combines a rules engine (experience, location, comp, tech overlap) with Gemini-graded fit. 75+ is a strong fit.">
+            <Tooltip label="Score combines a rules engine (experience, location, comp, tech overlap) with AI-graded fit. 75+ is a strong fit.">
               <div className="flex shrink-0 cursor-help flex-col items-center gap-0.5">
                 <ScoreRing score={match.score} size="sm" showLabel={false} />
                 <span className="text-[9px] font-semibold uppercase tracking-wider text-muted-foreground">Match</span>

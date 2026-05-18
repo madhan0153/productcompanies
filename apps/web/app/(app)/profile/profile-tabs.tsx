@@ -9,13 +9,12 @@
 // #career, #details, #history) so back/forward + share-the-link both work.
 
 import { useEffect, useState } from "react";
-import { FileText, BarChart3, User, History } from "lucide-react";
+import { FileText, User, History } from "lucide-react";
 
-export type ProfileTabId = "resume" | "career" | "details" | "history";
+export type ProfileTabId = "resume" | "details" | "history";
 
 const TABS: Array<{ id: ProfileTabId; label: string; icon: React.ComponentType<{ className?: string }> }> = [
   { id: "resume",  label: "Resume",  icon: FileText },
-  { id: "career",  label: "Career",  icon: BarChart3 },
   { id: "details", label: "Details", icon: User },
   { id: "history", label: "History", icon: History },
 ];
@@ -23,7 +22,7 @@ const TABS: Array<{ id: ProfileTabId; label: string; icon: React.ComponentType<{
 function parseHash(): ProfileTabId | null {
   if (typeof window === "undefined") return null;
   const h = window.location.hash.replace(/^#/, "") as ProfileTabId;
-  if (h === "resume" || h === "career" || h === "details" || h === "history") return h;
+  if (h === "resume" || h === "details" || h === "history") return h;
   return null;
 }
 

@@ -118,7 +118,6 @@ export default async function DashboardPage() {
     consents,
     { count: tailoredCount },
     { count: memoCount },
-    { count: finalisedEnhancementCount },
   ] = await Promise.all([
     supabase.from("profiles")
       .select("display_name, resume_storage_path, product_dna_score, dna_breakdown, years_experience, current_role, resume_score, resume_score_breakdown, tech_stack, preferred_hubs, resume_embedding_at, last_match_compute_at, resume_signature, resume_parsed")
@@ -185,15 +184,6 @@ export default async function DashboardPage() {
     getUserConsents(user.id),
     supabase.from("tailored_resumes").select("*", { count: "exact", head: true }).eq("user_id", user.id),
     supabase.from("negotiation_memos").select("*", { count: "exact", head: true }).eq("user_id", user.id),
-    // Phase R2 — used by the NBA picker to suppress the "Enhance my resume"
-    // nudge once the user has already finalised at least one enhancement
-    // on the current resume signature. The signature filter would be safer
-    // but introduces another fetch; a count of >0 finalised is good enough
-    // since each resume re-upload starts fresh.
-    supabase.from("enhanced_resumes")
-      .select("*", { count: "exact", head: true })
-      .eq("user_id", user.id)
-      .eq("status", "finalised"),
   ]);
 
   const marketJobs = (marketJobsRaw as MarketJobLite[] | null) ?? [];
@@ -287,10 +277,6 @@ export default async function DashboardPage() {
     coachOrToolUsed: (tailoredCount ?? 0) + (memoCount ?? 0) > 0,
     preferredHubsCount: preferredHubs.length,
     weakestResumeDim,
-    // Phase R2 — Resume Intelligence inputs for the NBA picker.
-    resumeScore: resumeScore ?? null,
-    resumeIntelConsentGranted: consents.resume_intelligence === true,
-    hasFinalisedEnhancement: (finalisedEnhancementCount ?? 0) > 0,
   });
 
   const incompleteness = detectIncompleteness({

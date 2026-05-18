@@ -173,7 +173,7 @@ export function Hero({ companies, liveStats }: Props) {
           <Feature
             icon={<Sparkles className="h-5 w-5" />}
             title="Explainable AI matching"
-            body="Every match shows your strengths and gaps. Gemini grades each role and writes a structured Fit Card."
+            body="Every match shows your strengths and gaps. Our AI grades each role and writes a structured Fit Card."
             stat="100% transparent"
           />
           <Feature
@@ -279,7 +279,7 @@ function ExplainabilityShowcase() {
           <span className="ml-2 font-mono text-[11px]">fit-card · sample</span>
         </div>
         <span className="rounded-full border border-primary/20 bg-primary-soft px-2.5 py-0.5 text-[10px] font-medium text-primary-soft-foreground">
-          AI-generated · Gemini
+          AI-generated
         </span>
       </div>
 

@@ -78,7 +78,7 @@ export function ParseStatusBanner({
             Resume parse in progress
           </p>
           <p className="mt-0.5 text-xs text-muted-foreground">
-            Gemini is reading your PDF. This page will update automatically when it&apos;s done — usually 15–30 seconds.
+            Our AI is reading your PDF. This page will update automatically when it&apos;s done — usually 15–30 seconds.
           </p>
         </div>
       </motion.div>

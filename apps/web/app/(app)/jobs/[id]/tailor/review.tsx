@@ -19,7 +19,7 @@ import { AtsScorecardPanel } from "@/components/diff-review/ats-compare";
 import type { ResumeDiagnosis } from "@/lib/llm/prompts/resume-diagnose";
 import type { BulletRewrite, RewriteMode } from "@/lib/llm/prompts/bullet-rewrite";
 import type { AtsScorecard } from "@/lib/matching/ats-scorecard";
-import type { EnhancementDecision } from "../../../profile/enhance-actions";
+import type { EnhancementDecision } from "../tailor-actions";
 
 interface Props {
   jobId: string;

@@ -44,7 +44,15 @@ import { recordResumeIntelEvent } from "@/lib/resume-intel/telemetry";
 import { renderTailoredResumeDocx } from "@/lib/docx/tailored-resume";
 import type { ParsedResume } from "@/lib/llm/prompts/resume-parse";
 import type { TailoredResumeContent } from "@/lib/llm/prompts/tailor-resume";
-import type { EnhancementDecision } from "../../profile/enhance-actions";
+
+// Per-bullet decision the user makes in the review screen. Inlined here
+// (was previously imported from the now-deleted profile-level enhance flow).
+export interface EnhancementDecision {
+  /** "kept" | "skipped" | "edited" | "alt-<n>" (accepted alternative index) */
+  choice: string;
+  /** If choice='edited', the final edited bullet text. */
+  text?: string;
+}
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const STORAGE_BUCKET = "tailored-resumes";

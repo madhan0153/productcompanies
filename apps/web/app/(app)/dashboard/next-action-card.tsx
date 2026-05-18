@@ -34,13 +34,6 @@ export interface NextActionInputs {
   preferredHubsCount: number;
   /** Lowest-scoring resume dim under 50% of weight, if computed. */
   weakestResumeDim: { label: string; hint: string } | null;
-  /** Phase R2 — resume_score; drives the "Enhance my resume" nudge when <70. */
-  resumeScore: number | null;
-  /** Phase R2 — whether the user has the resume_intelligence consent on. */
-  resumeIntelConsentGranted: boolean;
-  /** Phase R2 — whether the user already finalised an enhancement on the
-   *  current resume signature. Avoids re-nudging after they've acted. */
-  hasFinalisedEnhancement: boolean;
 }
 
 export interface NextAction {
@@ -104,26 +97,6 @@ export function pickNextAction(inputs: NextActionInputs): NextAction | null {
       body: `${inputs.unseenStrongFit.company} — full Fit Card ready, with resume tweaks and story prompts.`,
       cta: "Open role",
       href: `/jobs/${inputs.unseenStrongFit.jobId}`,
-      tone: "action",
-    };
-  }
-
-  // 5.5 (Phase R2) — Resume enhancement when score is weak. Higher priority
-  // than "try a tool on top match" because a weaker resume drags down every
-  // future match score and recruiter callback.
-  if (
-    inputs.hasResume &&
-    inputs.resumeScore !== null &&
-    inputs.resumeScore < 70 &&
-    !inputs.hasFinalisedEnhancement
-  ) {
-    return {
-      title: "Enhance your resume",
-      body: inputs.resumeIntelConsentGranted
-        ? "Your resume score is below 70. AI reviews ATS readability and bullet quality — you approve every change."
-        : "Your resume score is below 70. Turn on Resume Intelligence to get AI-reviewed bullet improvements.",
-      cta: inputs.resumeIntelConsentGranted ? "Run enhancement" : "Turn on + enhance",
-      href: inputs.resumeIntelConsentGranted ? "/profile/enhance" : "/settings/privacy",
       tone: "action",
     };
   }

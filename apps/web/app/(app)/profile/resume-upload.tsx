@@ -242,8 +242,8 @@ export function ResumeUpload({ hasExisting, existingRole, existingDnaScore }: Pr
             </div>
             <p className="mt-2 text-center text-[10px] text-muted-foreground">
               {pollingStartedAt
-                ? "Saved — Gemini is finishing the parse in the background. You can leave this page; we'll keep your spot."
-                : "Usually takes 15–30 seconds · Powered by Gemini 2.0"}
+                ? "Saved — our AI is finishing the parse in the background. You can leave this page; we'll keep your spot."
+                : "Usually takes 15–30 seconds"}
             </p>
           </motion.div>
         ) : (
@@ -296,7 +296,7 @@ export function ResumeUpload({ hasExisting, existingRole, existingDnaScore }: Pr
                 </p>
               </div>
               <div className="flex items-center gap-4 text-xs text-muted-foreground">
-                <span className="flex items-center gap-1"><Brain className="h-3 w-3 text-primary" /> AI-parsed by Gemini</span>
+                <span className="flex items-center gap-1"><Brain className="h-3 w-3 text-primary" /> AI-parsed</span>
                 <span className="flex items-center gap-1"><Sparkles className="h-3 w-3 text-primary" /> Readiness scored</span>
               </div>
             </div>

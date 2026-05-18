@@ -34,7 +34,7 @@ export function ToolDiscoveryCard({ inputs }: { inputs: ToolDiscoveryInputs }) {
         <p className="mt-0.5 text-xs text-muted-foreground">
           {inputs.topJobTitle
             ? `Try one on your top match: ${inputs.topJobTitle}`
-            : "Powered by Gemini, grounded in your resume + the live JD."}
+            : "AI-powered, grounded in your resume + the live JD."}
         </p>
       </header>
       <ul className="space-y-2">
