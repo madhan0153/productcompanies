@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
-import { CheckCircle2, FileText, User, Sparkles, TrendingUp, UserCheck, BarChart3, Zap } from "lucide-react";
+import { CheckCircle2, FileText, User, Sparkles, TrendingUp, UserCheck, BarChart3, Zap, ChevronRight as ChevronRightIcon } from "lucide-react";
+import Link from "next/link";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { ResumeUpload } from "./resume-upload";
 import { SaveProfileForm } from "./save-profile-form";
@@ -189,6 +190,28 @@ export default async function ProfilePage() {
           tips={(profile as { resume_tips?: ResumeScorePanelData["tips"] } | null)?.resume_tips ?? null}
           scoredAt={(profile as { resume_score_at?: string | null } | null)?.resume_score_at ?? null}
         />
+      )}
+
+      {/* ── Enhance my resume — Phase R2 ────────────────────────── */}
+      {hasResume && (
+        <Link
+          href="/profile/enhance"
+          className="press tap-target group block rounded-xl border border-primary/30 bg-primary-soft p-4 transition hover:border-primary/50 hover:bg-primary-soft/80 focus-ring"
+        >
+          <div className="flex items-start gap-3">
+            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary text-primary-foreground">
+              <Sparkles className="h-4 w-4" aria-hidden />
+            </div>
+            <div className="min-w-0 flex-1">
+              <p className="text-sm font-semibold">Enhance my resume</p>
+              <p className="mt-0.5 text-xs leading-relaxed text-muted-foreground">
+                AI reviews your resume for ATS readability and bullet quality.{" "}
+                <strong className="text-foreground/90">Every change is yours to accept.</strong> We never invent experience.
+              </p>
+            </div>
+            <ChevronRightIcon aria-hidden className="mt-1 h-4 w-4 shrink-0 text-muted-foreground transition group-hover:translate-x-0.5 group-hover:text-primary" />
+          </div>
+        </Link>
       )}
 
       {/* ── ATS & Recruiter Signal ─────────────────────────────── */}

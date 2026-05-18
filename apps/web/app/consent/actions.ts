@@ -26,6 +26,7 @@ export async function submitConsents(formData: FormData) {
     matching: formData.get("matching") === "on",
     digest_email: digestOn,
     analytics: formData.get("analytics") === "on",
+    resume_intelligence: formData.get("resume_intelligence") === "on",
   };
 
   await saveConsents(user.id, grants);
