@@ -64,45 +64,57 @@ export function EnhanceResult({
   const [error, setError] = useState<string | null>(null);
   const [kept, setKept] = useState(false);
 
-  // Build the changes list from the decisions map.
-  // For each weak_bullet where the user (auto-flow) accepted an alt, we
-  // surface: location, original, rewritten, risk flag, why.
-  const changes = diagnosis.weak_bullets.map((wb, idx) => {
-    const d = decisions[String(idx)];
-    if (!d) return null;
-    if (d.choice === "kept" || d.choice === "skipped") return null;
+  // Prefer the persisted auto-flow changes list (set by autoEnhanceResume).
+  // It includes both bullet rewrites AND gap-fills, and survives reload.
+  // For older per-bullet-review rows, fall back to rebuilding from decisions.
+  interface PersistedChange {
+    location: string;
+    original: string;
+    rewritten: string;
+    risk_flag: RewriteRiskFlag;
+    why: string;
+  }
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const persistedChanges = (decisions as any)._auto_changes as PersistedChange[] | undefined;
 
-    let rewritten: string | null = null;
-    let risk_flag: RewriteRiskFlag = null;
-    let why = "";
+  const changes: PersistedChange[] = persistedChanges && Array.isArray(persistedChanges)
+    ? persistedChanges
+    : diagnosis.weak_bullets.map((wb, idx) => {
+        const d = decisions[String(idx)];
+        if (!d) return null;
+        if (d.choice === "kept" || d.choice === "skipped") return null;
 
-    if (d.choice === "edited" && d.text) {
-      rewritten = d.text;
-    } else {
-      const m = /^alt-(\d+)$/.exec(d.choice);
-      if (m) {
-        const altIdx = parseInt(m[1], 10);
-        const alt = rewrites[String(idx)]?.alternatives[altIdx];
-        if (alt) {
-          rewritten = alt.text;
-          risk_flag = alt.risk_flag;
-          why = alt.why;
+        let rewritten: string | null = null;
+        let risk_flag: RewriteRiskFlag = null;
+        let why = "";
+
+        if (d.choice === "edited" && d.text) {
+          rewritten = d.text;
+        } else {
+          const m = /^alt-(\d+)$/.exec(d.choice);
+          if (m) {
+            const altIdx = parseInt(m[1], 10);
+            const alt = rewrites[String(idx)]?.alternatives[altIdx];
+            if (alt) {
+              rewritten = alt.text;
+              risk_flag = alt.risk_flag;
+              why = alt.why;
+            }
+          }
         }
-      }
-    }
-    if (!rewritten) return null;
-    return {
-      location: wb.section === "summary"
-        ? "Summary"
-        : wb.section === "projects"
-          ? `Project ${wb.bullet_index + 1}`
-          : (wb.company ?? "Experience"),
-      original: wb.original,
-      rewritten,
-      risk_flag,
-      why,
-    };
-  }).filter((x): x is NonNullable<typeof x> => x !== null);
+        if (!rewritten) return null;
+        return {
+          location: wb.section === "summary"
+            ? "Summary"
+            : wb.section === "projects"
+              ? `Project ${wb.bullet_index + 1}`
+              : (wb.company ?? "Experience"),
+          original: wb.original,
+          rewritten,
+          risk_flag,
+          why,
+        };
+      }).filter((x): x is NonNullable<typeof x> => x !== null);
 
   const riskCount = changes.filter((c) => c.risk_flag !== null).length;
   const delta = atsAfter ? atsAfter.total - atsBefore.total : null;
@@ -173,13 +185,14 @@ export function EnhanceResult({
 
       {/* Risk flag banner — only if any */}
       {riskCount > 0 && (
-        <div className="rounded-xl border border-warning/30 bg-warning/5 p-4">
+        <div className="rounded-xl border border-warning/40 bg-warning/10 p-4">
           <p className="flex items-center gap-2 text-sm font-semibold text-warning">
             <AlertTriangle className="h-4 w-4" aria-hidden />
-            {riskCount} change{riskCount === 1 ? "" : "s"} need a quick check
+            {riskCount} item{riskCount === 1 ? "" : "s"} need your review
           </p>
           <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
-            We surfaced content your resume doesn&apos;t explicitly say (a number, a tech, a tighter scope). Confirm these match reality before applying to roles.
+            We drafted content for sections that were thin or empty (role bullets, project descriptions, summary). These are
+            <strong className="text-foreground"> starting points</strong> — confirm each one matches what you actually did before keeping this resume. Edit the .docx after download if anything is off.
           </p>
         </div>
       )}

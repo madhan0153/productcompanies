@@ -36,7 +36,6 @@ import {
 import {
   extractResumeContent,
   renderExtractedAsText,
-  hasUsableContent,
   type ExtractedResumeContent,
 } from "@/lib/llm/prompts/extract-resume-content";
 import { computeAtsScorecard, type AtsScorecard } from "@/lib/matching/ats-scorecard";
@@ -256,12 +255,10 @@ export async function diagnoseTailored(
     ? renderExtractedAsText(extracted)
     : profile.resume_text;
 
-  if (extracted && !hasUsableContent(extracted)) {
-    return {
-      ok: false,
-      error: "Your resume is short on bullet content — most entries are just titles. Add 2-3 bullets per role describing what you did, then tailor again.",
-    };
-  }
+  // Thin resumes (titles without bullets) proceed — the diagnosis will
+  // simply flag fewer weak bullets. For the auto-enhance flow we also
+  // run a gap-fill step that generates plausible content for empty
+  // sections; the per-bullet review flow doesn't, by design.
 
   // (3) Step 1 — diagnose with JD context, against the rich extracted text.
   let diagnosis: ResumeDiagnosis;

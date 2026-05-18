@@ -195,15 +195,8 @@ export function renderExtractedAsText(content: ExtractedResumeContent): string {
   return parts.join("\n");
 }
 
-/**
- * Whether the extracted content has enough material for the enhancement
- * pipeline to do useful work. When false, the UI surfaces a friendlier
- * "your resume needs bullets" message instead of running the rewrites.
- */
-export function hasUsableContent(content: ExtractedResumeContent): boolean {
-  const expBulletCount = content.experience.reduce((s, r) => s + r.bullets.length, 0);
-  const projBulletCount = content.projects.reduce((s, p) => s + p.bullets.length, 0);
-  // At least 3 substantive bullets total — below this the enhancement just
-  // surfaces "add bullets" advice, which the user can act on without LLM cost.
-  return expBulletCount + projBulletCount >= 3;
-}
+// hasUsableContent removed: the auto-enhance pipeline now generates
+// content for empty roles/projects via the gap-fill step instead of
+// blocking thin resumes. The check was user-hostile — it told people
+// "you can't use this until you write more first", which is exactly
+// what the product is supposed to help with.

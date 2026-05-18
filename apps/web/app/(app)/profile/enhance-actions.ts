@@ -51,9 +51,12 @@ import {
 import {
   extractResumeContent,
   renderExtractedAsText,
-  hasUsableContent,
   type ExtractedResumeContent,
 } from "@/lib/llm/prompts/extract-resume-content";
+import {
+  generateGapFill,
+  type GapFillResult,
+} from "@/lib/llm/prompts/gap-fill";
 import {
   computeAtsScorecard,
   type AtsScorecard,
@@ -256,15 +259,10 @@ export async function diagnoseEnhancement(): Promise<DiagnoseEnhancementResult> 
     ? renderExtractedAsText(extracted)
     : profile.resume_text!;
 
-  // If extraction succeeded but there are still ≤3 bullets total, the
-  // resume is structurally thin — surface a clear message rather than
-  // running diagnosis + rewrites that won't help.
-  if (extracted && !hasUsableContent(extracted)) {
-    return {
-      ok: false,
-      error: "Your resume is short on bullet content — most entries are just titles. Add 2-3 bullets per role describing what you did, then run the enhancement again. The AI can only improve what's already there.",
-    };
-  }
+  // (Note: the gap-fill step in autoEnhanceResume handles thin resumes by
+  // generating plausible content for empty roles/projects. The diagnose +
+  // rewrite path here proceeds even if extracted is thin — diagnosis will
+  // simply have fewer weak_bullets to flag.)
 
   // (4) Step 1 — diagnose against the rich extracted text.
   let diagnosis: ResumeDiagnosis;
@@ -709,10 +707,10 @@ export async function autoEnhanceResume(): Promise<AutoEnhanceResult> {
     }
   }
 
-  if (!extracted || !hasUsableContent(extracted)) {
+  if (!extracted) {
     return {
       ok: false,
-      error: "Your resume needs more bullet content for AI enhancement. Most of your roles have only job titles — add 2-3 lines per role describing what you actually did, then re-upload.",
+      error: "Couldn't read your resume content. Please re-upload the PDF and try again.",
     };
   }
 
@@ -816,16 +814,77 @@ export async function autoEnhanceResume(): Promise<AutoEnhanceResult> {
     });
   });
 
-  // ── Step 4: build content ────────────────────────────────────────────
+  // ── Step 3.5: gap-fill — generate content for empty roles/projects ───
+  // This is what makes the auto-flow useful for resumes that have only
+  // titles. Every generated bullet is marked `scope_inferred` in the
+  // changes list so the user sees a risk flag and can verify.
+  let gapFill: GapFillResult | null = null;
+  try {
+    gapFill = await generateGapFill({
+      extracted,
+      role_function:    profile.role_function ?? null,
+      market_keywords,
+      years_experience: profile.resume_parsed!.total_years_experience ?? null,
+    });
+    void recordResumeIntelEvent({
+      user_id: user.id, kind: "rewrite_batch", scope: "enhanced",
+      llm_tier: "heavy", ok: true,
+    });
+  } catch (err) {
+    console.warn("[auto-enhance] gap-fill failed (continuing without it):",
+      err instanceof Error ? err.message : String(err));
+  }
+
+  // Surface each gap-fill into the changes list with a prominent risk
+  // flag so the result UI tells the user these are AI-generated drafts.
+  if (gapFill) {
+    if (gapFill.summary_needed && gapFill.summary_suggestion) {
+      changes.push({
+        location: "Summary (new)",
+        original: extracted.summary || "(empty)",
+        rewritten: gapFill.summary_suggestion,
+        risk_flag: "scope_inferred",
+        why: "Drafted a professional summary — verify it reflects your actual focus.",
+      });
+    }
+    for (const rf of gapFill.role_fills) {
+      for (const b of rf.bullets) {
+        changes.push({
+          location: `${rf.company} (new bullet)`,
+          original: "(role had no bullets)",
+          rewritten: b,
+          risk_flag: "scope_inferred",
+          why: `Drafted plausible work for "${rf.role}" — confirm it matches what you actually did.`,
+        });
+      }
+    }
+    for (const pf of gapFill.project_fills) {
+      changes.push({
+        location: `${pf.name} (new description)`,
+        original: "(project had no description)",
+        rewritten: pf.description,
+        risk_flag: "scope_inferred",
+        why: "Drafted a description from your stack — confirm tech list and scope.",
+      });
+    }
+  }
+
+  // ── Step 4: build content + merge gap-fills ──────────────────────────
+  // baseContent starts from extracted bullets. patchContentWithDecisions
+  // applies user's choices to weak-bullet rewrites. Then mergeGapFills
+  // inserts the AI-generated additions into the matching roles/projects.
   const baseContent = buildContentFromExtracted({
     extracted,
     displayName:   profile.display_name ?? profile.resume_parsed!.name,
     currentRole:   profile.resume_parsed!.current_role,
     preferredHubs: profile.preferred_hubs ?? [],
   });
-  const enhancedContent = patchContentWithDecisions({
+  const patchedContent = patchContentWithDecisions({
     base: baseContent, diagnosis, rewrites: rewritesById, decisions,
   });
+  const enhancedContent = gapFill
+    ? mergeGapFillIntoContent(patchedContent, gapFill)
+    : patchedContent;
 
   // ── Step 5: ATS before + after ───────────────────────────────────────
   const ats_before = computeAtsScorecard({
@@ -858,6 +917,15 @@ export async function autoEnhanceResume(): Promise<AutoEnhanceResult> {
       .eq("source_resume_signature", profile.resume_signature!)
       .eq("status", "pending_review");
 
+    // Persist the auto-flow changes list in decisions under a reserved
+    // key so the result view can render the full list (including gap-fills)
+    // when the user navigates back later. The per-bullet review flow
+    // ignores keys starting with "_".
+    const decisionsWithChanges: Record<string, unknown> = {
+      ...decisions,
+      _auto_changes: changes,
+    };
+
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { data: inserted, error: insertErr } = await (admin
       .from("enhanced_resumes") as any)
@@ -868,7 +936,7 @@ export async function autoEnhanceResume(): Promise<AutoEnhanceResult> {
         market_keywords,
         diagnosis,
         rewrites: rewritesById,
-        decisions,
+        decisions: decisionsWithChanges,
         ats_before,
         ats_after,
         enhanced_content: enhancedContent,
@@ -1407,6 +1475,56 @@ function patchContentWithDecisions(input: {
     experience: patchedExperience,
     projects: patchedProjects,
   };
+}
+
+/**
+ * Merge gap-fill suggestions into a base TailoredResumeContent.
+ *
+ * Rules:
+ *   • Summary — replaced only if needed AND the gap-fill produced one.
+ *   • Roles  — only roles whose existing bullets list is empty get the
+ *     generated bullets appended. Roles with existing content are
+ *     untouched (the rewriter handles those).
+ *   • Projects — only projects with empty summary text get the generated
+ *     description.
+ *
+ * Strict additive: never overwrites content the user already has.
+ */
+function mergeGapFillIntoContent(
+  base: TailoredResumeContent,
+  gap: GapFillResult,
+): TailoredResumeContent {
+  // Summary
+  const summary = gap.summary_needed && gap.summary_suggestion
+    ? gap.summary_suggestion
+    : base.summary;
+
+  // Experience — index gap-fill role fills by company for O(1) lookup.
+  const roleFillsByCompany = new Map<string, GapFillResult["role_fills"][number]>();
+  for (const rf of gap.role_fills) {
+    roleFillsByCompany.set(rf.company, rf);
+  }
+  const experience = base.experience.map((r) => {
+    if (r.bullets.length > 0) return r; // already has content
+    const fill = roleFillsByCompany.get(r.company);
+    if (!fill) return r;
+    return { ...r, bullets: fill.bullets.slice(0, 4) };
+  });
+
+  // Projects — index project fills by name.
+  const projectFillsByName = new Map<string, GapFillResult["project_fills"][number]>();
+  for (const pf of gap.project_fills) {
+    projectFillsByName.set(pf.name, pf);
+  }
+  const projects = (base.projects ?? []).map((p) => {
+    const hasContent = p.summary && p.summary.trim().length > 4;
+    if (hasContent) return p;
+    const fill = projectFillsByName.get(p.name);
+    if (!fill) return p;
+    return { ...p, summary: fill.description };
+  });
+
+  return { ...base, summary, experience, projects };
 }
 
 function synthesiseTextFromContent(content: TailoredResumeContent): string {
