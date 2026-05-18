@@ -28,7 +28,11 @@ import type { CompBracket } from "@/lib/insights/comp-percentiles";
 // also persisted server-side (see toolkit-actions.ts) so a full page
 // reload restores them.
 
-type Tab = "recruiter" | "tailor" | "memo";
+// Sprint 6 — Tailor leads. The Recruiter view is analytical; what an
+// Indian engineer applying to product companies actually wants is the
+// tailored resume + the negotiation memo, in that order. Recruiter view
+// is kept as the third tab for diagnostics.
+type Tab = "tailor" | "memo" | "recruiter";
 
 interface CachedTailor {
   content: TailoredResumeContent;
@@ -61,7 +65,7 @@ export function ApplyToolkit({
   recruiterView,
   initialTailor, initialMemo,
 }: Props) {
-  const [tab, setTab] = useState<Tab>("recruiter");
+  const [tab, setTab] = useState<Tab>("tailor");
 
   // Block all three when the user can't actually use them.
   if (!hasResume) {
@@ -99,14 +103,14 @@ export function ApplyToolkit({
       </header>
 
       <div role="tablist" aria-label="Apply Toolkit" className="no-scrollbar flex gap-1 overflow-x-auto border-b border-border px-2 pt-2">
-        <TabButton selected={tab === "recruiter"} onClick={() => setTab("recruiter")} icon={<Eye className="h-3.5 w-3.5" />}>
-          Recruiter view
-        </TabButton>
         <TabButton selected={tab === "tailor"} onClick={() => setTab("tailor")} icon={<FileDown className="h-3.5 w-3.5" />}>
           Tailor resume
         </TabButton>
         <TabButton selected={tab === "memo"} onClick={() => setTab("memo")} icon={<IndianRupee className="h-3.5 w-3.5" />}>
           Negotiation memo
+        </TabButton>
+        <TabButton selected={tab === "recruiter"} onClick={() => setTab("recruiter")} icon={<Eye className="h-3.5 w-3.5" />}>
+          Recruiter view
         </TabButton>
       </div>
 

@@ -230,6 +230,22 @@ export default async function JobDetailPage({ params }: { params: Promise<{ id: 
                   {verdictMeta.label}
                 </span>
               )}
+              {/* Sprint 6 — inline cap chip so the reason is visible without
+                  expanding the Score Evidence card below. */}
+              {match?.hard_cap_reason && (
+                <span
+                  className="inline-flex items-center gap-1 rounded-full border border-warning/30 bg-warning/10 px-2 py-0.5 text-[11px] font-medium text-warning"
+                  title={
+                    match.hard_cap_reason === "thin_jd"       ? "Score capped: JD too short to score reliably."
+                    : match.hard_cap_reason === "no_stack"    ? "Score capped: none of the JD's must-haves match your resume."
+                    : match.hard_cap_reason === "adjacent_only" ? "Score capped: must-haves matched only by adjacent skills."
+                    : match.hard_cap_reason === "senior_no_exp" ? "Score capped: senior role, <2 yrs professional experience."
+                    : "Score capped"
+                  }
+                >
+                  Score capped
+                </span>
+              )}
               {!job.is_active && (
                 <span className="inline-flex items-center gap-1 rounded-full border border-destructive/30 bg-destructive/10 px-2 py-0.5 text-xs font-medium text-destructive">
                   <AlertCircle className="h-3 w-3" /> Stale — may be closed
@@ -293,14 +309,13 @@ export default async function JobDetailPage({ params }: { params: Promise<{ id: 
         </div>
       </div>
 
-      {/* ── Fit Card (when present) or Match snapshot fallback ─── */}
-      {/* Sprint 6: When the match has a Fit Card, render the tabbed panel
-          (Evidence is one of its tabs). When there's no Fit Card — which
-          is the common case, since only the top ~25 matches get one — we
-          render the lightweight Match snapshot AND a standalone Score
-          Evidence panel below. This guarantees confidence, cap reason,
-          and tech coverage are visible on every match. */}
-      {match && match.fit_card ? (
+      {/* ── Fit Card (when present) ──────────────────────────── */}
+      {/* Sprint 6 — mobile-first: when there's no Fit Card we skip the
+          "Match snapshot" placeholder entirely (it just said "JD has no
+          specific details" which adds zero value). The hero already shows
+          score + verdict + cap chip; ScoreEvidence below renders only
+          when there's substance (cap reason, missing skills, low conf). */}
+      {match && match.fit_card && (
         <FitCardPanel
           data={match.fit_card}
           score={match.score}
@@ -311,27 +326,6 @@ export default async function JobDetailPage({ params }: { params: Promise<{ id: 
             feedbackAdjustment: match.feedback_adjustment ?? null,
           }}
         />
-      ) : (
-        <>
-          {match && match.reasoning && (
-            <SectionCard
-              title="Match snapshot"
-              icon={<Sparkles className="h-4 w-4" />}
-              subtitle={`Score ${Math.round(match.score)} — full Fit Card lands after the next match compute`}
-            >
-              <p className="text-sm leading-relaxed text-muted-foreground">{match.reasoning}</p>
-            </SectionCard>
-          )}
-          {match && (
-            <ScoreEvidence
-              score={match.score}
-              confidence={match.confidence ?? null}
-              hardCapReason={match.hard_cap_reason ?? null}
-              techCoverage={match.tech_coverage}
-              feedbackAdjustment={match.feedback_adjustment ?? null}
-            />
-          )}
-        </>
       )}
 
       {/* ── Apply Toolkit ─────────────────────────────────────── */}
@@ -361,6 +355,22 @@ export default async function JobDetailPage({ params }: { params: Promise<{ id: 
           generated_at: memoRow.generated_at,
         } : null}
       />
+
+      {/* Sprint 6 — Score evidence. Self-suppresses when nothing useful
+          (no cap, no missing skills, high confidence) so most jobs
+          without a Fit Card hide this entirely. When it does render it's
+          the explanation of WHY the score is what it is — cap reason,
+          missing skills, low confidence. Below Apply Toolkit because the
+          action matters more than diagnostics. */}
+      {match && !match.fit_card && (
+        <ScoreEvidence
+          score={match.score}
+          confidence={match.confidence ?? null}
+          hardCapReason={match.hard_cap_reason ?? null}
+          techCoverage={match.tech_coverage}
+          feedbackAdjustment={match.feedback_adjustment ?? null}
+        />
+      )}
 
       {/* ── Quick strengths + gaps (pre-Fit Card) ─────────────── */}
       {match && !match.fit_card && match.strengths && match.gaps && (

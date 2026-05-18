@@ -1,13 +1,16 @@
-// Standalone Score Evidence panel — renders when the match has Sprint 6
-// signals but no Fit Card (the most common case; only ~25 of 1000 matches
-// get a Fit Card via the top-K limit).
+// Standalone Score Evidence panel.
 //
-// Mirrors the "Evidence" tab inside FitCardPanel so users see the same
-// information whether or not Gemini has generated a full Fit Card for
-// the role.
+// Mobile-first rewrite: this used to render unconditionally and ate ~120px
+// just to display "Weak fit · conf 82". Now it ONLY renders when there's
+// substance worth a card-sized block:
+//   - Hard cap reason set
+//   - Tech coverage has at least one missing must-have
+//   - Feedback delta is material
+//   - Low confidence (<55)
+// Otherwise returns null and the page uses the hero's inline chips instead.
 
 import { Layers, ShieldAlert, Activity } from "lucide-react";
-import { getScoreBand, getConfidenceLabel } from "@/lib/matching/bands";
+import { getConfidenceLabel } from "@/lib/matching/bands";
 
 interface TechCoverage {
   direct?: string[];
@@ -23,85 +26,81 @@ const HARD_CAP_NOTES: Record<string, { label: string; tone: string }> = {
 };
 
 export function ScoreEvidence({
-  score,
   confidence,
   hardCapReason,
   techCoverage,
   feedbackAdjustment,
 }: {
-  score: number;
+  /** Score retained as prop for future use but not displayed (hero shows it). */
+  score?: number;
   confidence: number | null | undefined;
   hardCapReason: string | null | undefined;
   techCoverage: unknown;
   feedbackAdjustment: number | null | undefined;
 }) {
-  const band = getScoreBand(score);
-  const confLabel = confidence != null ? getConfidenceLabel(confidence) : null;
   const tc = asTechCoverage(techCoverage);
   const capNote = hardCapReason ? HARD_CAP_NOTES[hardCapReason] : null;
+  const lowConfidence = confidence != null && confidence < 55;
+  const hasMissing = !!tc && (tc.missing?.length ?? 0) > 0;
+  const hasFeedback = feedbackAdjustment != null && Math.abs(feedbackAdjustment) >= 0.5;
 
-  const hasAnything = confidence != null || capNote || tc || (feedbackAdjustment != null && Math.abs(feedbackAdjustment) >= 0.5);
-  if (!hasAnything) return null;
+  // Mobile-first gate: only render when there's substance. Boring evidence
+  // (high confidence + no cap + no missing skills) is silent — the hero
+  // card already communicates everything via verdict + score + cap chip.
+  const worthRendering = capNote || hasMissing || lowConfidence || hasFeedback;
+  if (!worthRendering) return null;
 
   return (
-    <section className="rounded-xl border border-border bg-card p-5 sm:p-6" aria-label="Score evidence">
-      <div className="mb-4 flex items-center justify-between gap-3">
-        <div>
-          <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Score evidence</p>
-          <p className="mt-0.5 text-sm font-semibold">{band.label}</p>
-        </div>
-        {confidence != null && (
-          <div className="flex flex-col items-end">
-            <p className={`text-[10px] font-semibold uppercase tracking-wider ${
-              confLabel === "high" ? "text-success" : confLabel === "low" ? "text-warning" : "text-muted-foreground"
-            }`}>
-              Confidence {confLabel}
-            </p>
-            <p className="text-xs tabular-nums text-muted-foreground">{Math.round(confidence)}/100</p>
-          </div>
+    <section className="rounded-xl border border-border bg-card p-4 sm:p-5" aria-label="Score evidence">
+      <header className="mb-3 flex items-center justify-between gap-3">
+        <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Why this score</p>
+        {lowConfidence && confidence != null && (
+          <span className="inline-flex items-center rounded-full border border-warning/30 bg-warning/10 px-2 py-0.5 text-[10px] font-semibold text-warning">
+            Confidence {getConfidenceLabel(confidence)} · {Math.round(confidence)}
+          </span>
         )}
-      </div>
+      </header>
 
       {capNote && (
-        <div className={`mb-4 flex items-start gap-2 rounded-md border border-warning/30 bg-warning/5 px-3 py-2 text-xs ${capNote.tone}`}>
+        <div className={`mb-3 flex items-start gap-2 rounded-md border border-warning/30 bg-warning/5 px-3 py-2 text-xs ${capNote.tone}`}>
           <ShieldAlert className="mt-0.5 h-3.5 w-3.5 shrink-0" />
           <span className="leading-relaxed">{capNote.label}</span>
         </div>
       )}
 
-      {tc && (
-        <div className="mb-2">
+      {tc && hasMissing && (
+        <div>
           <div className="mb-2 flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
-            <Layers className="h-3.5 w-3.5" /> Tech coverage vs JD must-haves
+            <Layers className="h-3.5 w-3.5" /> Skills the JD asks for
           </div>
-          <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
+          {/* Mobile: 2-col grid (Have/Missing). Adjacent only shows when present. */}
+          <div className="grid grid-cols-2 gap-2">
             <CoverageBucket
               tone="success"
-              label="Direct"
-              count={tc.direct?.length ?? 0}
+              label={`On your resume · ${(tc.direct?.length ?? 0)}`}
               items={tc.direct ?? []}
             />
             <CoverageBucket
-              tone="warning"
-              label="Adjacent"
-              count={tc.adjacent?.length ?? 0}
-              items={(tc.adjacent ?? []).map((a) => `${a.jdSkill} (via ${a.via})`)}
-            />
-            <CoverageBucket
               tone="destructive"
-              label="Missing"
-              count={tc.missing?.length ?? 0}
+              label={`Missing · ${(tc.missing?.length ?? 0)}`}
               items={tc.missing ?? []}
             />
           </div>
+          {tc.adjacent && tc.adjacent.length > 0 && (
+            <p className="mt-2 text-[11px] leading-relaxed text-muted-foreground">
+              <span className="font-semibold text-warning">Adjacent on your resume:</span>{" "}
+              {tc.adjacent.slice(0, 4).map((a) => `${a.jdSkill} (via ${a.via})`).join(", ")}
+              {tc.adjacent.length > 4 && ` +${tc.adjacent.length - 4} more`}
+            </p>
+          )}
         </div>
       )}
 
-      {feedbackAdjustment != null && Math.abs(feedbackAdjustment) >= 0.5 && (
+      {hasFeedback && (
         <div className="mt-3 flex items-start gap-2 rounded-md border border-border bg-secondary/40 px-3 py-2 text-xs text-muted-foreground">
           <Activity className="mt-0.5 h-3.5 w-3.5 shrink-0" />
           <span className="leading-relaxed">
-            {feedbackAdjustment > 0 ? "+" : ""}{feedbackAdjustment.toFixed(1)} from your activity (saves, applies, dismisses).
+            {feedbackAdjustment > 0 ? "+" : ""}{feedbackAdjustment.toFixed(1)} from your activity.
           </span>
         </div>
       )}
@@ -110,28 +109,24 @@ export function ScoreEvidence({
 }
 
 function CoverageBucket({
-  tone, label, count, items,
+  tone, label, items,
 }: {
   tone: "success" | "warning" | "destructive";
   label: string;
-  count: number;
   items: string[];
 }) {
   const tones = {
-    success:     { border: "border-success/30",     bg: "bg-success/5",     text: "text-success",     count: "text-success" },
-    warning:     { border: "border-warning/30",     bg: "bg-warning/5",     text: "text-warning",     count: "text-warning" },
-    destructive: { border: "border-destructive/30", bg: "bg-destructive/5", text: "text-destructive", count: "text-destructive" },
+    success:     { border: "border-success/30",     bg: "bg-success/5",     text: "text-success"     },
+    warning:     { border: "border-warning/30",     bg: "bg-warning/5",     text: "text-warning"     },
+    destructive: { border: "border-destructive/30", bg: "bg-destructive/5", text: "text-destructive" },
   }[tone];
   return (
-    <div className={`rounded-md border ${tones.border} ${tones.bg} px-3 py-2`}>
-      <div className="flex items-baseline justify-between">
-        <span className={`text-[10px] font-semibold uppercase tracking-wider ${tones.text}`}>{label}</span>
-        <span className={`text-sm font-bold tabular-nums ${tones.count}`}>{count}</span>
-      </div>
+    <div className={`rounded-md border ${tones.border} ${tones.bg} px-2.5 py-2`}>
+      <span className={`text-[10px] font-semibold uppercase tracking-wider ${tones.text}`}>{label}</span>
       {items.length > 0 && (
         <p className="mt-1 line-clamp-3 text-[11px] leading-relaxed text-muted-foreground">
-          {items.slice(0, 6).join(", ")}
-          {items.length > 6 && ` +${items.length - 6} more`}
+          {items.slice(0, 5).join(", ")}
+          {items.length > 5 && ` +${items.length - 5} more`}
         </p>
       )}
     </div>

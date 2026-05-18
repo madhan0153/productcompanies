@@ -5,7 +5,7 @@
 // Top: headline ATS score + summary numbers.
 
 import {
-  Eye, CheckCircle2, AlertTriangle, XCircle, ShieldCheck, FileWarning,
+  Eye, CheckCircle2, AlertTriangle, XCircle, ShieldCheck,
 } from "lucide-react";
 import type { AtsView } from "@/lib/matching/ats-view";
 
@@ -63,46 +63,20 @@ export function RecruiterView({ view }: { view: AtsView }) {
         </div>
       </header>
 
-      {/* Summary strip */}
-      <div className="mb-5 grid grid-cols-2 gap-3 sm:grid-cols-4">
+      {/* Summary strip — Sprint 6: dropped "Quantified bullets" and
+          "Structural checks" cells. Those are resume-wide observations
+          (same on every job) so they don't belong on a job-specific view.
+          They live on /profile#resume-score where they get fixed once. */}
+      <div className="mb-5 grid grid-cols-2 gap-3">
         <SummaryStat label="Must-haves matched" value={`${view.summary.must_present} / ${view.summary.must_total}`} pct={view.summary.must_coverage_pct} tone="primary" />
         <SummaryStat label="Nice-to-haves matched" value={`${view.summary.nice_present} / ${view.summary.nice_total}`} pct={view.summary.nice_coverage_pct} tone="primary" />
-        <SummaryStat label="Quantified bullets" value={`${view.summary.bullets_with_metrics} / ${view.summary.bullets_total}`} pct={view.summary.bullets_total ? Math.round((view.summary.bullets_with_metrics / view.summary.bullets_total) * 100) : 0} tone="warning" />
-        <SummaryStat label="Structural checks" value={`${view.checks.filter((c) => c.passed).length} / ${view.checks.length}`} pct={view.checks.length ? Math.round((view.checks.filter((c) => c.passed).length / view.checks.length) * 100) : 0} tone="success" />
       </div>
 
-      {/* Two-column: keywords | structural */}
-      <div className="grid grid-cols-1 gap-5 lg:grid-cols-3">
-        <div className="lg:col-span-2 space-y-4">
-          <KeywordBlock title="Must-have keywords (JD)" rows={view.must_haves} emptyHint="JD doesn't name any must-have skills explicitly. ATS keyword-match has nothing to score against." />
-          <KeywordBlock title="Nice-to-have keywords (JD)" rows={view.nice_to_haves} emptyHint="No nice-to-haves named in the JD." />
-        </div>
-
-        <div className="space-y-4">
-          <div className="rounded-xl border border-border bg-card">
-            <div className="flex items-center gap-2 border-b border-border px-3 py-2">
-              <FileWarning className="h-3.5 w-3.5 text-primary" />
-              <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Structural checks</p>
-            </div>
-            <ul className="divide-y divide-border">
-              {view.checks.map((c) => (
-                <li key={c.id} className="px-3 py-2.5">
-                  <div className="flex items-start gap-2">
-                    {c.passed ? (
-                      <CheckCircle2 className="mt-0.5 h-3.5 w-3.5 shrink-0 text-success" />
-                    ) : (
-                      <XCircle className="mt-0.5 h-3.5 w-3.5 shrink-0 text-destructive" />
-                    )}
-                    <div>
-                      <p className={`text-xs font-medium ${c.passed ? "text-foreground" : "text-destructive"}`}>{c.label}</p>
-                      <p className="mt-0.5 text-[11px] text-muted-foreground">{c.detail}</p>
-                    </div>
-                  </div>
-                </li>
-              ))}
-            </ul>
-          </div>
-        </div>
+      {/* Keywords only — the JD-specific signal. The structural-checks
+          column moved to the profile page (it's the same on every job). */}
+      <div className="space-y-4">
+        <KeywordBlock title="Must-have keywords (JD)" rows={view.must_haves} emptyHint="JD doesn't name any must-have skills explicitly. ATS keyword-match has nothing to score against." />
+        <KeywordBlock title="Nice-to-have keywords (JD)" rows={view.nice_to_haves} emptyHint="No nice-to-haves named in the JD." />
       </div>
 
       <footer className="mt-5 flex items-center gap-2 border-t border-border pt-3 text-[11px] text-muted-foreground">
