@@ -1,27 +1,20 @@
 // POST /api/cron/recompute-matches
 //
-// Daily fan-out invoked by GitHub Actions after the crawl finishes. Walks
-// every consented user with a parsed resume and runs computeMatchesForUser
-// for each.
+// Daily fan-out invoked by:
+//   (a) GitHub Actions after the crawl finishes (primary trigger), and
+//   (b) Vercel cron at 04:00 IST / 22:30 UTC (fallback — fires if GH Actions
+//       failed or ran late, picks up any users still stale).
 //
-// Sprint 4 — Item 13. Two important upgrades from earlier versions:
+// Enterprise design:
+//   1. Cron lock — acquire_cron_lock("recompute_matches", ttl=600) prevents
+//      concurrent invocations from racing.
+//   2. Stale-first pagination — oldest last_match_compute_at processed first.
+//   3. Concurrent processing — up to COMPUTE_CONCURRENCY users in parallel so
+//      a slow Fit Card LLM call on user A doesn't stall user B.
+//   4. Single-retry DLQ — failed users are retried once in the same invocation
+//      before being left for the next run (when they'll appear stale-first again).
 //
-//   1. Cron lock. acquire_cron_lock("recompute_matches", ttl=600) prevents
-//      a manual trigger from racing against a scheduled run. The leased
-//      holder_id is released at the end; if the function dies the lease
-//      auto-expires after the TTL.
-//
-//   2. Stale-first pagination. Instead of walking every eligible user on
-//      every call, we pull the oldest `last_match_compute_at` first and
-//      cap the batch at BATCH_SIZE. The endpoint reports `remaining` so
-//      the workflow loops until 0. With incremental compute averaging 3-8s
-//      per user, a 60-user batch fits comfortably under the 300s ceiling.
-//
-// The GH Actions loop should call this in a `until remaining=0` pattern
-// (capped at, say, 20 iterations / 2h total). Each call grabs its own
-// lock; an over-running prior call returns 409 and the loop sleeps + retries.
-//
-// Auth: Bearer $CRON_SECRET (same pattern as the digest cron).
+// Auth: Bearer $CRON_SECRET.
 
 import { NextRequest, NextResponse } from "next/server";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
@@ -35,10 +28,13 @@ export const dynamic = "force-dynamic";
 // Wall-clock budget — leave 30s headroom under Vercel's 300s cap.
 const WALL_CLOCK_BUDGET_MS = 270_000;
 
-// Per-invocation user cap. Set conservatively; the workflow loops until
-// `remaining === 0`. Tune up once we have telemetry from production
-// (average compute duration via /admin/health).
+// Per-invocation user cap. The workflow loops until `remaining === 0`.
 const BATCH_SIZE = 60;
+
+// How many users to process in parallel. Fit Card LLM calls inside each user's
+// compute already run at FIT_CARD_CONCURRENCY=4; this outer concurrency batches
+// users so a single slow user doesn't stall the rest of the batch.
+const COMPUTE_CONCURRENCY = 3;
 
 const LOCK_NAME = "recompute_matches";
 const LOCK_TTL_SECONDS = 600;
@@ -132,27 +128,52 @@ export async function POST(req: NextRequest) {
     const eligibleCount = eligibleAll.length;
     const batch = eligibleAll.slice(0, BATCH_SIZE);
 
-    // ── Drain the batch under wall-clock budget ──────────────────────────
+    // ── Drain the batch under wall-clock budget (concurrent) ─────────────
     const results: UserResult[] = [];
     let processed = 0;
     let bailed = false;
 
-    for (const p of batch) {
-      if (Date.now() - startedAt > WALL_CLOCK_BUDGET_MS) { bailed = true; break; }
-      const r = await runUserRecomputeBlocking(p.id, { source: "cron_daily" });
-      if (r.ok) {
-        results.push({
-          user_id: p.id,
-          ok: true,
-          mode: r.mode,
-          total: r.total,
-          new_matches: r.new_matches,
-          with_fit_card: r.with_fit_card,
-          duration_ms: r.duration_ms,
-        });
-        processed++;
-      } else {
-        results.push({ user_id: p.id, ok: false, error: r.error });
+    // Shared work queue — COMPUTE_CONCURRENCY workers pull from it concurrently.
+    const workQueue = [...batch];
+    let drainBailed = false;
+
+    const drainWorker = async () => {
+      while (true) {
+        if (drainBailed || Date.now() - startedAt > WALL_CLOCK_BUDGET_MS) {
+          drainBailed = true;
+          return;
+        }
+        const p = workQueue.shift();
+        if (!p) return;
+        const r = await runUserRecomputeBlocking(p.id, { source: "cron_daily" });
+        if (r.ok) {
+          results.push({ user_id: p.id, ok: true, mode: r.mode, total: r.total, new_matches: r.new_matches, with_fit_card: r.with_fit_card, duration_ms: r.duration_ms });
+          processed++;
+        } else {
+          results.push({ user_id: p.id, ok: false, error: r.error });
+        }
+      }
+    };
+
+    await Promise.allSettled(
+      Array.from({ length: Math.min(COMPUTE_CONCURRENCY, batch.length) }, drainWorker),
+    );
+    bailed = drainBailed;
+
+    // ── DLQ: single retry for each failed user ────────────────────────────
+    // Failed users will also appear stale-first on the next cron invocation,
+    // but retrying once here ensures transient errors (timeout, cold-start
+    // Supabase connection) don't leave users with stale matches for 24h.
+    if (!bailed) {
+      const failedIds = new Set(results.filter((r) => !r.ok).map((r) => r.user_id));
+      for (const p of batch.filter((p) => failedIds.has(p.id))) {
+        if (Date.now() - startedAt > WALL_CLOCK_BUDGET_MS) break;
+        const r = await runUserRecomputeBlocking(p.id, { source: "cron_retry" });
+        if (r.ok) {
+          const idx = results.findIndex((res) => res.user_id === p.id);
+          if (idx >= 0) results[idx] = { user_id: p.id, ok: true, mode: r.mode, total: r.total, new_matches: r.new_matches, with_fit_card: r.with_fit_card, duration_ms: r.duration_ms };
+          // Don't double-count in `processed`; already counted on first attempt.
+        }
       }
     }
 

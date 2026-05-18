@@ -127,7 +127,7 @@ export function pickNextAction(inputs: NextActionInputs): NextAction | null {
   if (inputs.preferredHubsCount === 0) {
     return {
       title: "Set your preferred hubs",
-      body: "Adds up to +5 points on every match in Bengaluru, Hyderabad, Pune, Delhi NCR, or Remote-India.",
+      body: "Tell us your preferred cities (Bengaluru, Hyderabad, Pune, Delhi NCR, Remote-India) so we can highlight location-fit roles.",
       cta: "Set hubs",
       href: "/profile",
       tone: "polish",
