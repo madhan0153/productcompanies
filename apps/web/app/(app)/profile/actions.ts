@@ -143,9 +143,22 @@ export async function saveProfile(formData: FormData) {
 }
 
 // ── Upload PDF and parse ──────────────────────────────────────────────────────
+//
+// Non-blocking model:
+//   1. The action saves the PDF + marks profiles.resume_parsing_at = now()
+//      and returns within ~2s.
+//   2. The Gemini parse + DNA + signature + snapshot + score + embedding all
+//      run inside next/server `after()`.
+//   3. The client polls `getParseStatus()` every few seconds. When parsing_at
+//      clears, parsing is done — either resume_parsed is populated (success)
+//      or resume_parse_error is set (failure).
+//
+// Why: parseResumePdf takes 15–45s on a cold-start. Holding the response open
+// that long triggers browser/proxy timeouts ("unexpected response from
+// server"). Returning fast eliminates the class of cold-start failures.
 
 export type UploadResult =
-  | { ok: true; dnaScore: number; role: string; years: number; techCount: number }
+  | { ok: true; processing: true; startedAt: string }
   | { ok: false; error: string; retryable?: boolean };
 
 function friendlyParseError(err: unknown): { message: string; retryable: boolean } {
@@ -158,8 +171,6 @@ function friendlyParseError(err: unknown): { message: string; retryable: boolean
         };
       case "quota_disabled":
         return {
-          // limit:0 — the project running the resume parser is misconfigured.
-          // Surface a clear, non-technical message; logs carry the underlying reason.
           message: "Resume processing is temporarily unavailable. Please try again later.",
           retryable: true,
         };
@@ -187,7 +198,6 @@ export async function uploadAndParseResume(formData: FormData): Promise<UploadRe
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return { ok: false, error: "Not authenticated" };
 
-  // Check matching consent
   const consents = await getUserConsents(user.id);
   if (!consents.matching) {
     return { ok: false, error: "Enable AI Matching consent in Settings → Privacy to use this feature." };
@@ -200,18 +210,12 @@ export async function uploadAndParseResume(formData: FormData): Promise<UploadRe
   if (file.size > 5 * 1024 * 1024) {
     return { ok: false, error: "File too large — max 5 MB." };
   }
-  // Sprint 4 Item 26 — empty / near-empty PDFs are usually scan-failures or
-  // accidental empty exports. The Gemini PDF parser returns generic errors
-  // on them; catch upfront with a friendlier message.
   if (file.size < 4 * 1024) {
     return { ok: false, error: "PDF is too small to be a real resume — re-export and try again." };
   }
 
-  // Upload to Supabase Storage
   const path = `${user.id}/${crypto.randomUUID()}.pdf`;
   const bytes = await file.arrayBuffer();
-  // Light header check — every valid PDF starts with "%PDF-" within the first
-  // few bytes. Catches "renamed .docx as .pdf" and similar mistakes.
   const head = new Uint8Array(bytes.slice(0, 5));
   const headStr = String.fromCharCode(...head);
   if (!headStr.startsWith("%PDF-")) {
@@ -222,28 +226,10 @@ export async function uploadAndParseResume(formData: FormData): Promise<UploadRe
     .upload(path, bytes, { contentType: "application/pdf", upsert: false });
   if (storageError) return { ok: false, error: `Storage error: ${storageError.message}` };
 
-  // Parse the PDF (with retry + key rotation + model fallback under the hood).
-  let parsed;
-  try {
-    const base64 = Buffer.from(bytes).toString("base64");
-    parsed = await parseResumePdf(base64);
-  } catch (err) {
-    // Clean up uploaded file on parse failure so re-upload doesn't accumulate
-    // orphaned blobs in Storage.
-    await admin.storage.from("resumes").remove([path]);
-
-    // Log the raw provider error for ops; never surface it to the user.
-    console.error("[resume-parse] failure", err instanceof LlmRunError ? err.detail : err);
-
-    const { message, retryable } = friendlyParseError(err);
-    return { ok: false, error: message, retryable };
-  }
-
-  // Sprint 2 Item 8 — snapshot the existing parsed profile before we overwrite
-  // it, so the user can revert. Pull the columns we need; if any is missing
-  // (first-ever upload) we simply skip the snapshot.
+  // Snapshot the prior parsed profile BEFORE the upload row gets touched so
+  // a re-upload doesn't lose the previous version (revert remains possible).
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { data: profile } = await (supabase
+  const { data: priorProfile } = await (supabase
     .from("profiles")
     .select("resume_storage_path, resume_parsed, product_dna_score, dna_breakdown, resume_signature")
     .eq("id", user.id)
@@ -255,67 +241,80 @@ export async function uploadAndParseResume(formData: FormData): Promise<UploadRe
       resume_signature: string | null;
     } | null };
 
-  if (profile?.resume_parsed) {
-    await snapshotCurrentResume(admin, {
-      userId:              user.id,
-      resume_parsed:       profile.resume_parsed,
-      resume_storage_path: profile.resume_storage_path,
-      product_dna_score:   profile.product_dna_score,
-      dna_breakdown:       profile.dna_breakdown,
-      resume_signature:    profile.resume_signature,
-      source:              "overwrite",
-    });
-  }
-
-  // Delete old resume file if one exists
-  if (profile?.resume_storage_path) {
-    await admin.storage.from("resumes").remove([profile.resume_storage_path as string]);
-  }
-
-  // Deterministic DNA breakdown — no LLM, transparent. Replaces the opaque
-  // single integer from the parser with a 4-axis structure the user can
-  // audit on the dashboard + profile.
-  const dnaBreakdown = computeDnaBreakdown(parsed);
-
-  // Content signature — used by the Fit-Card cache to skip Gemini calls
-  // when neither the resume nor the JD have changed since the cached card.
-  const resumeSignature = computeResumeSignature(parsed);
-
-  // Update profile with parsed data
+  // Mark parsing in flight + store the new PDF path. We intentionally do NOT
+  // overwrite resume_parsed yet — the previous parse stays visible to the UI
+  // until the new parse completes. resume_parse_error is cleared so a fresh
+  // upload after a failure can succeed.
+  const startedAt = new Date().toISOString();
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  await (supabase.from("profiles") as any).upsert({
+  await (admin.from("profiles") as any).upsert({
     id: user.id,
     resume_storage_path: path,
-    resume_parsed: parsed as unknown as Json,
-    display_name: parsed.name || undefined,
-    current_role: parsed.current_role || null,
-    role_function: parsed.role_function || null,
-    target_role_functions: parsed.target_role_functions ?? [],
-    years_experience: Math.round(parsed.total_years_experience) || null,
-    current_lpa: parsed.estimated_current_lpa ?? null,
-    tech_stack: parsed.tech_stack ?? [],
-    preferred_hubs: (parsed.preferred_hubs ?? []).filter((h: string) => INDIA_HUBS.includes(h)),
-    // product_dna_score is now the deterministic sum of the visible axes —
-    // a single source of truth. The Gemini-supplied number is discarded.
-    product_dna_score: dnaBreakdown.total,
-    dna_breakdown: dnaBreakdown as unknown as Json,
-    resume_signature: resumeSignature,
+    resume_parsing_at:   startedAt,
+    resume_parse_error:  null,
   });
 
-  // ── EARLY RESPONSE — everything below runs after the response is flushed.
-  // Why: the resume score / embedding / market-demand calls add another
-  // 4-8s to the request. On a cold start (dev compile or Vercel) the total
-  // blocking time can exceed the client's patience and the user sees
-  // "Something went wrong / unexpected response from server". By deferring
-  // to after() we keep the response under ~15s on a warm path and ~30s on
-  // a cold path — both well within the 60s maxDuration.
-  //
-  // What the user sees immediately: parse succeeded, profile populated,
-  // DNA + role + years all rendered. Score gauge + embedding land within
-  // a few seconds in the background; matches auto-recompute via the
-  // existing enqueue facade.
+  // Encode bytes once on the request thread — buffers don't survive into
+  // after() reliably across edge/node boundaries.
+  const base64 = Buffer.from(bytes).toString("base64");
+
   after(async () => {
-    // 1. Resume score against current market signal (cheap, no LLM).
+    let parsed;
+    try {
+      parsed = await parseResumePdf(base64);
+    } catch (err) {
+      // Clean up the orphan upload + record the failure so the client poll
+      // can surface a friendly message.
+      console.error("[resume-parse] failure", err instanceof LlmRunError ? err.detail : err);
+      await admin.storage.from("resumes").remove([path]);
+      const { message } = friendlyParseError(err);
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      await (admin.from("profiles") as any).update({
+        resume_parsing_at:  null,
+        resume_parse_error: message,
+        // Roll the path back to whatever was there before, so the UI doesn't
+        // think a resume exists when the parse never landed.
+        resume_storage_path: priorProfile?.resume_storage_path ?? null,
+      }).eq("id", user.id);
+      return;
+    }
+
+    if (priorProfile?.resume_parsed) {
+      await snapshotCurrentResume(admin, {
+        userId:              user.id,
+        resume_parsed:       priorProfile.resume_parsed,
+        resume_storage_path: priorProfile.resume_storage_path,
+        product_dna_score:   priorProfile.product_dna_score,
+        dna_breakdown:       priorProfile.dna_breakdown,
+        resume_signature:    priorProfile.resume_signature,
+        source:              "overwrite",
+      });
+    }
+    if (priorProfile?.resume_storage_path && priorProfile.resume_storage_path !== path) {
+      await admin.storage.from("resumes").remove([priorProfile.resume_storage_path]);
+    }
+
+    const dnaBreakdown    = computeDnaBreakdown(parsed);
+    const resumeSignature = computeResumeSignature(parsed);
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    await (admin.from("profiles") as any).update({
+      resume_parsed: parsed as unknown as Json,
+      display_name: parsed.name || undefined,
+      current_role: parsed.current_role || null,
+      role_function: parsed.role_function || null,
+      target_role_functions: parsed.target_role_functions ?? [],
+      years_experience: Math.round(parsed.total_years_experience) || null,
+      current_lpa: parsed.estimated_current_lpa ?? null,
+      tech_stack: parsed.tech_stack ?? [],
+      preferred_hubs: (parsed.preferred_hubs ?? []).filter((h: string) => INDIA_HUBS.includes(h)),
+      product_dna_score: dnaBreakdown.total,
+      dna_breakdown: dnaBreakdown as unknown as Json,
+      resume_signature: resumeSignature,
+      resume_parsing_at: null,
+      resume_parse_error: null,
+    }).eq("id", user.id);
+
     try {
       const top30 = await fetchTop30Demand(admin);
       const score = computeResumeScore({
@@ -334,8 +333,6 @@ export async function uploadAndParseResume(formData: FormData): Promise<UploadRe
       console.warn("[resume-score] post-upload compute failed", err);
     }
 
-    // 2. Phase I — embed the resume for semantic JD↔resume alignment at
-    //    match time. One Gemini text-embedding-004 call; soft-fail on 429.
     try {
       const resumeEmbedding = await embed(buildResumeEmbedText(parsed));
       if (resumeEmbedding.length > 0) {
@@ -349,8 +346,8 @@ export async function uploadAndParseResume(formData: FormData): Promise<UploadRe
       console.warn("[resume-embed] post-upload embed failed", err);
     }
 
-    // 3. Path revalidations — invalidate cached pages so the next nav
-    //    sees the new resume/score.
+    enqueueUserRecompute(user.id, { forceFull: true, source: "resume_upload" });
+
     revalidatePath("/profile");
     revalidatePath("/dashboard");
     revalidatePath("/matches");
@@ -358,17 +355,63 @@ export async function uploadAndParseResume(formData: FormData): Promise<UploadRe
     revalidatePath("/insights");
   });
 
-  // Sprint 4 Item 13 — match recompute already runs via after() inside
-  // enqueueUserRecompute. Triggered immediately; doesn't add to response time.
-  enqueueUserRecompute(user.id, { forceFull: true, source: "resume_upload" });
+  return { ok: true, processing: true, startedAt };
+}
 
-  return {
-    ok: true,
-    dnaScore: parsed.product_dna_score,
-    role: parsed.current_role,
-    years: Math.round(parsed.total_years_experience),
-    techCount: parsed.tech_stack.length,
+// ── Parse-status polling ──────────────────────────────────────────────────────
+// Called by the client every few seconds after a non-blocking upload. The
+// transition the client watches for: `state` flips from "parsing" to "done"
+// (or "failed"). On "done", the client triggers router.refresh() so the page
+// re-renders with the populated profile.
+
+export type ParseStatus =
+  | { state: "idle" }
+  | { state: "parsing"; startedAt: string }
+  | { state: "done"; dnaScore: number; role: string; years: number; techCount: number }
+  | { state: "failed"; error: string };
+
+export async function getParseStatus(): Promise<ParseStatus> {
+  const supabase = await createSupabaseServerClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return { state: "idle" };
+
+  const { data } = await supabase
+    .from("profiles")
+    .select(
+      "resume_parsing_at, resume_parse_error, resume_parsed, current_role, years_experience, product_dna_score, tech_stack",
+    )
+    .eq("id", user.id)
+    .maybeSingle();
+
+  if (!data) return { state: "idle" };
+
+  type ProfileRow = {
+    resume_parsing_at:  string | null;
+    resume_parse_error: string | null;
+    resume_parsed:      unknown;
+    current_role:       string | null;
+    years_experience:   number | null;
+    product_dna_score:  number | null;
+    tech_stack:         string[] | null;
   };
+  const row = data as unknown as ProfileRow;
+
+  if (row.resume_parsing_at) {
+    return { state: "parsing", startedAt: row.resume_parsing_at };
+  }
+  if (row.resume_parse_error) {
+    return { state: "failed", error: row.resume_parse_error };
+  }
+  if (row.resume_parsed) {
+    return {
+      state: "done",
+      dnaScore: row.product_dna_score ?? 0,
+      role:     row.current_role ?? "",
+      years:    row.years_experience ?? 0,
+      techCount: (row.tech_stack ?? []).length,
+    };
+  }
+  return { state: "idle" };
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

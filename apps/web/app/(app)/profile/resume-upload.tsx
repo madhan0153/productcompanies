@@ -1,13 +1,13 @@
 "use client";
 
-import { useRef, useState, useTransition } from "react";
+import { useRef, useState, useTransition, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { motion, useReducedMotion, AnimatePresence } from "framer-motion";
 import {
   Upload, FileText, CheckCircle2, AlertCircle,
   Sparkles, Brain, Cpu, TrendingUp, Zap,
 } from "lucide-react";
-import { uploadAndParseResume, type UploadResult } from "./actions";
+import { uploadAndParseResume, getParseStatus, type UploadResult, type ParseStatus } from "./actions";
 
 type Props = {
   hasExisting: boolean;
@@ -25,15 +25,41 @@ const AI_STEPS = [
   { icon: Zap,       label: "Generating Fit Cards",           duration: 4000 },
 ];
 
+// Client-visible result shape — derived from UploadResult + poll outcomes.
+type DisplayResult =
+  | { ok: true; dnaScore: number; role: string; years: number; techCount: number }
+  | { ok: false; error: string; retryable?: boolean };
+
 export function ResumeUpload({ hasExisting, existingRole, existingDnaScore }: Props) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [dragging, setDragging] = useState(false);
   const [fileName, setFileName] = useState<string | null>(null);
-  const [result, setResult] = useState<UploadResult | null>(null);
+  const [result, setResult] = useState<DisplayResult | null>(null);
   const [currentStep, setCurrentStep] = useState(-1);
+  // pollingStartedAt: set when the upload action returns processing=true.
+  // We poll getParseStatus() while this is set; clear it on terminal state.
+  const [pollingStartedAt, setPollingStartedAt] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
   const reduce = useReducedMotion();
   const router = useRouter();
+
+  function startStepAnimation() {
+    setCurrentStep(0);
+    if (reduce) return;
+    let step = 0;
+    const advance = () => {
+      step++;
+      if (step < AI_STEPS.length) {
+        setCurrentStep(step);
+        setTimeout(advance, AI_STEPS[step]?.duration ?? 4000);
+      } else {
+        // Park on the final step so the UI doesn't snap back during the
+        // poll wait. The "running…" pulse keeps it from looking frozen.
+        setCurrentStep(AI_STEPS.length - 1);
+      }
+    };
+    setTimeout(advance, AI_STEPS[0]?.duration ?? 3000);
+  }
 
   function onFile(file: File) {
     if (file.type !== "application/pdf") {
@@ -42,41 +68,30 @@ export function ResumeUpload({ hasExisting, existingRole, existingDnaScore }: Pr
     }
     setFileName(file.name);
     setResult(null);
-    setCurrentStep(0);
-
-    // Animate through steps while actual upload runs
-    if (!reduce) {
-      let step = 0;
-      const advance = () => {
-        step++;
-        if (step < AI_STEPS.length) {
-          setCurrentStep(step);
-          setTimeout(advance, AI_STEPS[step]?.duration ?? 4000);
-        }
-      };
-      setTimeout(advance, AI_STEPS[0]?.duration ?? 3000);
-    }
+    setPollingStartedAt(null);
+    startStepAnimation();
 
     const fd = new FormData();
     fd.append("resume", file);
     startTransition(async () => {
       try {
-        const r = await uploadAndParseResume(fd);
-        setResult(r);
-        setCurrentStep(-1);
-        if (r.ok) router.refresh();
+        const r: UploadResult = await uploadAndParseResume(fd);
+        if (r.ok) {
+          // Upload + storage write succeeded; parse is running in after().
+          // The poll effect below will watch for completion.
+          setPollingStartedAt(r.startedAt);
+        } else {
+          setCurrentStep(-1);
+          setResult({ ok: false, error: r.error, retryable: r.retryable });
+        }
       } catch (err) {
-        // Next.js wraps thrown server errors as "An unexpected response was
-        // received from the server" — opaque and unactionable. Catch it
-        // here and surface a friendly retry message. Common cause: cold
-        // start on first upload (dev compile / Vercel spin-up).
         setCurrentStep(-1);
         const isUnexpected = err instanceof Error
           && /unexpected response|failed to fetch|network|aborted/i.test(err.message);
         setResult({
           ok: false,
           error: isUnexpected
-            ? "The server took too long to respond. This usually happens on the first upload while things warm up — please retry and it should work."
+            ? "The server took too long to respond. Please retry."
             : err instanceof Error
               ? err.message
               : "Couldn't upload your resume. Please retry.",
@@ -86,7 +101,68 @@ export function ResumeUpload({ hasExisting, existingRole, existingDnaScore }: Pr
     });
   }
 
-  const isProcessing = pending && currentStep >= 0;
+  // Poll the server every ~3s while parsing. Stop on terminal state, or
+  // after 3 min hard cap (something's badly wrong if the parse takes that
+  // long; user can retry).
+  useEffect(() => {
+    if (!pollingStartedAt) return;
+    let cancelled = false;
+    const HARD_CAP_MS = 3 * 60 * 1000;
+    const startMs = Date.now();
+
+    async function tick() {
+      if (cancelled) return;
+      let status: ParseStatus;
+      try {
+        status = await getParseStatus();
+      } catch {
+        status = { state: "parsing", startedAt: pollingStartedAt! };
+      }
+      if (cancelled) return;
+
+      // If the row reports a different (or absent) parsing_at, the
+      // background work has either finished or failed.
+      if (status.state === "done") {
+        setCurrentStep(-1);
+        setPollingStartedAt(null);
+        setResult({
+          ok: true,
+          dnaScore: status.dnaScore,
+          role: status.role,
+          years: status.years,
+          techCount: status.techCount,
+        });
+        router.refresh();
+        return;
+      }
+      if (status.state === "failed") {
+        setCurrentStep(-1);
+        setPollingStartedAt(null);
+        setResult({ ok: false, error: status.error, retryable: true });
+        return;
+      }
+      if (Date.now() - startMs > HARD_CAP_MS) {
+        setCurrentStep(-1);
+        setPollingStartedAt(null);
+        setResult({
+          ok: false,
+          error: "Parsing is taking unusually long. Refresh the page in a minute to see if it finished, or re-upload.",
+          retryable: true,
+        });
+        return;
+      }
+      setTimeout(tick, 3000);
+    }
+    // Kick off after a 2s grace so we don't hammer the row immediately —
+    // the parse takes 10s+ even on a warm path, polling sooner is wasted.
+    const initial = setTimeout(tick, 2000);
+    return () => {
+      cancelled = true;
+      clearTimeout(initial);
+    };
+  }, [pollingStartedAt, router]);
+
+  const isProcessing = (pending || pollingStartedAt !== null) && currentStep >= 0;
 
   return (
     <div className="space-y-4">
@@ -162,7 +238,9 @@ export function ResumeUpload({ hasExisting, existingRole, existingDnaScore }: Pr
               />
             </div>
             <p className="mt-2 text-center text-[10px] text-muted-foreground">
-              Usually takes 15–30 seconds · Powered by Gemini 2.0
+              {pollingStartedAt
+                ? "Saved — Gemini is finishing the parse in the background. You can leave this page; we'll keep your spot."
+                : "Usually takes 15–30 seconds · Powered by Gemini 2.0"}
             </p>
           </motion.div>
         ) : (
@@ -269,7 +347,7 @@ export function ResumeUpload({ hasExisting, existingRole, existingDnaScore }: Pr
       </AnimatePresence>
 
       {/* Existing resume badge */}
-      {hasExisting && !result?.ok && !pending && (
+      {hasExisting && !result?.ok && !pending && !pollingStartedAt && (
         <div className="flex items-center gap-2.5 rounded-xl border border-border bg-secondary/30 px-4 py-2.5 text-xs text-muted-foreground">
           <FileText className="h-3.5 w-3.5 shrink-0 text-primary" />
           <span>

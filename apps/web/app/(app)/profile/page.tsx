@@ -10,6 +10,7 @@ import { SectionCard } from "@/components/section-card";
 import { listResumeVersions } from "./actions";
 import { ResumeVersionsPanel } from "./resume-versions-panel";
 import { EnhancementHistoryPanel } from "./enhancement-history-panel";
+import { ParseStatusBanner } from "./parse-status-banner";
 
 export const metadata: Metadata = { title: "My Profile" };
 // The resume upload action does a Gemini PDF parse (10-20s) + profile
@@ -24,17 +25,23 @@ export default async function ProfilePage() {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect("/auth/login");
 
-  const { data: profile } = await supabase
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data: profile } = await (supabase
     .from("profiles")
     .select(
-      "display_name, current_role, years_experience, current_lpa, target_lpa, tech_stack, preferred_hubs, seniority, resume_storage_path, product_dna_score, dna_breakdown, resume_parsed, resume_score, resume_score_breakdown, resume_tips, resume_score_at, role_function, target_role_functions",
+      "display_name, current_role, years_experience, current_lpa, target_lpa, tech_stack, preferred_hubs, seniority, resume_storage_path, product_dna_score, dna_breakdown, resume_parsed, resume_score, resume_score_breakdown, resume_tips, resume_score_at, role_function, target_role_functions, resume_parsing_at, resume_parse_error",
     )
     .eq("id", user.id)
-    .maybeSingle();
+    .maybeSingle() as any) as { data: Record<string, unknown> | null };
 
   const preferredHubs = (profile?.preferred_hubs as string[] | null) ?? [];
   const techStack = (profile?.tech_stack as string[] | null) ?? [];
-  const hasResume = !!profile?.resume_storage_path;
+  // A row counts as "having a resume" only when the parse has actually
+  // landed. While resume_parsing_at is set, the rest of the page hides
+  // and the ParseStatusBanner takes over.
+  const isParsing = !!(profile as { resume_parsing_at?: string | null } | null)?.resume_parsing_at;
+  const parseError = (profile as { resume_parse_error?: string | null } | null)?.resume_parse_error ?? null;
+  const hasResume = !!profile?.resume_storage_path && !!profile?.resume_parsed && !isParsing;
   const dnaScore = profile?.product_dna_score as number | null ?? null;
   const resumeScore = (profile as { resume_score?: number | null } | null)?.resume_score ?? null;
 
@@ -42,6 +49,13 @@ export default async function ProfilePage() {
 
   return (
     <div className="max-w-3xl space-y-4 pb-8">
+      {/* Parse-status banner — shows during background parse (incl. when the
+          user navigates away and comes back). Renders nothing on idle. */}
+      <ParseStatusBanner
+        initialStartedAt={(profile as { resume_parsing_at?: string | null } | null)?.resume_parsing_at ?? null}
+        initialError={parseError}
+      />
+
       {/* ── Compact header — single row ─────────────────────────── */}
       <div className="flex items-center justify-between gap-3">
         <div className="min-w-0">

@@ -329,6 +329,14 @@ alter table public.profiles add column if not exists resume_score_breakdown json
 alter table public.profiles add column if not exists resume_tips            jsonb;         -- ranked list of {tip, why}
 alter table public.profiles add column if not exists resume_score_at        timestamptz;
 
+-- Non-blocking resume upload: the PDF is saved + this timestamp is set
+-- synchronously, but the heavy Gemini parse runs in next/server `after()`.
+-- Client polls until parsing_at clears + resume_parsed is populated (or
+-- parse_error is filled on failure). Prevents browser-side cold-start
+-- timeouts that surfaced as "unexpected response from server".
+alter table public.profiles add column if not exists resume_parsing_at  timestamptz;
+alter table public.profiles add column if not exists resume_parse_error text;
+
 
 -- ─────────────────────────────────────────────────────────────────────────────
 -- Phase I: Semantic JD↔Resume alignment (Gemini text-embedding-004, 768-dim)
