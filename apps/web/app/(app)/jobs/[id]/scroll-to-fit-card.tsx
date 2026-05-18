@@ -1,14 +1,16 @@
 "use client";
 
-// On a fresh navigation to a job that has a Fit Card, scroll the viewport
-// so the Fit Card section is at the top. The hero card stays accessible
-// (user can scroll back up) but the user lands on the high-value content.
+// Ensure the Job Detail page opens at the top.
 //
-// Skipped on back/forward navigations — those should restore the previous
-// scroll position via useScrollRestore on the matches page. Skipped when
-// the user has a URL hash (they navigated to a specific anchor).
+// Previously this component auto-scrolled the page to the Fit Card section
+// on first visit, which made the page appear to open in the middle and
+// hurt orientation/trust. We now always start at the top for fresh
+// navigations, and let the browser restore scroll position on back/forward.
 //
-// Honors prefers-reduced-motion: instant scroll instead of smooth.
+// Behavior:
+//   • Fresh navigation (push/reload) with no URL hash → scrollTo(0, 0).
+//   • Back / forward → no-op (browser restores prior position).
+//   • Anchor link with a hash → no-op (let the anchor handle it).
 
 import { useEffect } from "react";
 
@@ -17,37 +19,16 @@ export function ScrollToFitCard() {
     if (typeof window === "undefined") return;
     if (window.location.hash) return;
 
-    // performance.navigation.type is deprecated; use the modern API.
     try {
-      const nav = performance.getEntriesByType("navigation")[0] as PerformanceNavigationTiming | undefined;
+      const nav = performance.getEntriesByType("navigation")[0] as
+        | PerformanceNavigationTiming
+        | undefined;
       if (nav?.type === "back_forward") return;
-    } catch { /* old browser — fall through */ }
+    } catch {
+      /* old browser — fall through */
+    }
 
-    // If user has already scrolled past the top (e.g. anchor restore from
-    // browser cache), don't yank them. Auto-scroll only on a clean entry.
-    if (window.scrollY > 4) return;
-
-    const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    let cancelled = false;
-    let attempts = 0;
-    const tryScroll = () => {
-      if (cancelled) return;
-      attempts++;
-      const el = document.getElementById("fit-card");
-      if (el) {
-        const y = el.getBoundingClientRect().top + window.scrollY - 12;
-        window.scrollTo({ top: y, behavior: reduce ? "auto" : "smooth" });
-        return;
-      }
-      // Fit card not in DOM yet (SSR streaming). Retry up to ~1s.
-      if (attempts < 20) setTimeout(tryScroll, 50);
-    };
-    // Brief delay so the hero finishes paint before we scroll past it.
-    const start = setTimeout(tryScroll, 120);
-    return () => {
-      cancelled = true;
-      clearTimeout(start);
-    };
+    window.scrollTo({ top: 0, left: 0, behavior: "auto" });
   }, []);
 
   return null;

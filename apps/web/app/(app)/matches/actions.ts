@@ -93,56 +93,7 @@ export async function markMatchesSeen(): Promise<void> {
     .is("seen_at", null);
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Sprint 1 — Item 4. Dismiss / restore flow.
-// ─────────────────────────────────────────────────────────────────────────────
-// User can hide any role from their default match list. Persisted on the
-// matches row (user_hidden=true, hidden_at=now()). The default list query
-// filters them out; a "Hidden" tab shows them with a Restore button.
-//
-// Why server actions and not a REST endpoint:
-//   - Already authenticated via the Supabase SSR cookie session.
-//   - revalidatePath gives an immediate, correct re-render on the matches
-//     page without a roundtrip + client-state sync dance.
-
-const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-
-export type DismissResult = { ok: true } | { ok: false; error: string };
-
-export async function dismissMatch(jobId: string): Promise<DismissResult> {
-  if (!UUID_RE.test(jobId)) return { ok: false, error: "Invalid job id." };
-
-  const supabase = await createSupabaseServerClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return { ok: false, error: "Not signed in." };
-
-  const admin = createSupabaseAdminClient();
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { error } = await (admin.from("matches") as any)
-    .update({ user_hidden: true, hidden_at: new Date().toISOString() })
-    .eq("user_id", user.id)
-    .eq("job_id", jobId);
-  if (error) return { ok: false, error: error.message };
-
-  revalidatePath("/matches");
-  return { ok: true };
-}
-
-export async function restoreMatch(jobId: string): Promise<DismissResult> {
-  if (!UUID_RE.test(jobId)) return { ok: false, error: "Invalid job id." };
-
-  const supabase = await createSupabaseServerClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return { ok: false, error: "Not signed in." };
-
-  const admin = createSupabaseAdminClient();
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { error } = await (admin.from("matches") as any)
-    .update({ user_hidden: false, hidden_at: null })
-    .eq("user_id", user.id)
-    .eq("job_id", jobId);
-  if (error) return { ok: false, error: error.message };
-
-  revalidatePath("/matches");
-  return { ok: true };
-}
+// Dismiss / restore flow removed — accidental dismisses were eroding trust.
+// All matches stay visible; users use tabs and filters to focus the list.
+// The `user_hidden` column remains on the schema (used as a negative-feedback
+// signal by the matching engine) but no UI surface writes to it now.

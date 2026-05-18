@@ -26,8 +26,8 @@ export function DnaBreakdownPanel({ breakdown }: { breakdown: DnaBreakdown }) {
     <div className="rounded-xl border border-border bg-card">
       <div className="flex items-center justify-between border-b border-border px-5 py-3">
         <div>
-          <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">DNA breakdown</p>
-          <p className="text-sm font-semibold">How your <span className="text-primary">{breakdown.total}/100</span> was computed</p>
+          <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Readiness breakdown</p>
+          <p className="text-sm font-semibold">How your <span className="text-primary">{breakdown.total}/100</span> readiness signal is composed</p>
         </div>
       </div>
       <ul className="divide-y divide-border">

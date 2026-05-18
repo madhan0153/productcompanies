@@ -54,7 +54,7 @@ function VersionRow({ version }: { version: ResumeVersionLite }) {
           )}
           {version.product_dna_score != null && (
             <span className="rounded-full border border-border bg-secondary px-1.5 py-0.5 text-[10px] font-medium tabular-nums">
-              DNA {version.product_dna_score}
+              Ready {version.product_dna_score}
             </span>
           )}
         </div>

@@ -10,19 +10,17 @@
 
 import Link from "next/link";
 
-export type MatchTab = "shortlist" | "worth_a_look" | "filtered" | "new" | "dismissed";
+export type MatchTab = "shortlist" | "worth_a_look" | "filtered" | "new";
 
 export interface BandCounts {
-  /** score >= 60, not user_hidden, hidden_reason != mismatch */
+  /** score >= 60, hidden_reason IS NULL */
   shortlist: number;
-  /** 40 <= score < 60, not user_hidden, hidden_reason != mismatch */
+  /** 40 <= score < 60, hidden_reason IS NULL */
   worthALook: number;
-  /** score < 40 OR hidden_reason = mismatch, not user_hidden */
+  /** score < 40 OR hidden_reason = mismatch */
   filtered: number;
   /** seen_at IS NULL across visible scope */
   newCount: number;
-  /** user_hidden = true */
-  dismissed: number;
 }
 
 const TILE_META: Record<MatchTab, { label: string; activeBg: string; activeTone: string; activeBorder: string }> = {
@@ -30,7 +28,6 @@ const TILE_META: Record<MatchTab, { label: string; activeBg: string; activeTone:
   worth_a_look: { label: "Maybe",     activeTone: "text-warning",     activeBg: "bg-warning/10",    activeBorder: "border-warning" },
   filtered:     { label: "Filtered",  activeTone: "text-foreground",  activeBg: "bg-secondary",     activeBorder: "border-foreground/40" },
   new:          { label: "New",       activeTone: "text-primary",     activeBg: "bg-primary-soft",  activeBorder: "border-primary" },
-  dismissed:    { label: "Dismissed", activeTone: "text-foreground",  activeBg: "bg-secondary",     activeBorder: "border-foreground/40" },
 };
 
 export function BandStrip({
@@ -44,17 +41,13 @@ export function BandStrip({
   buildHref: (tab: MatchTab) => string;
 }) {
   const order: MatchTab[] = ["shortlist", "worth_a_look", "filtered"];
-  const tail: MatchTab[] = [
-    ...(counts.newCount > 0 ? ["new" as const] : []),
-    ...(counts.dismissed > 0 ? ["dismissed" as const] : []),
-  ];
+  const tail: MatchTab[] = counts.newCount > 0 ? ["new"] : [];
 
   const countFor: Record<MatchTab, number> = {
     shortlist:    counts.shortlist,
     worth_a_look: counts.worthALook,
     filtered:     counts.filtered,
     new:          counts.newCount,
-    dismissed:    counts.dismissed,
   };
 
   return (
@@ -100,11 +93,9 @@ export function BandStrip({
 /** Server-side tab classification — used by page.tsx to slice the loaded rows. */
 export function classifyMatch(m: {
   score: number;
-  user_hidden: boolean;
   hidden_reason: string | null;
   seen_at: string | null;
 }): MatchTab | null {
-  if (m.user_hidden) return "dismissed";
   if (m.hidden_reason === "mismatch") return "filtered";
   if (m.score >= 60) return "shortlist";
   if (m.score >= 40) return "worth_a_look";

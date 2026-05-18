@@ -315,7 +315,7 @@ export default async function DashboardPage() {
   });
 
   const setupSteps = [
-    { done: hasResume,                   label: "Upload your resume",      href: "/profile",   desc: "We parse and compute your DNA score" },
+    { done: hasResume,                   label: "Upload your resume",      href: "/profile",   desc: "We parse it and compute your readiness signal" },
     { done: matchingConsentGranted,      label: "Grant matching consent",   href: "/settings/privacy", desc: "DPDP Act 2023 — required to run AI matching" },
     { done: (matchCount ?? 0) > 0,       label: "Compute your matches",    href: "/matches",   desc: "AI ranks every active role for you" },
     { done: (appCount ?? 0) > 0,         label: "Track an application",    href: "/applications", desc: "Stay on top of your pipeline" },
@@ -342,7 +342,7 @@ export default async function DashboardPage() {
                 dnaBreakdown ? (
                   <div className="space-y-2 text-left">
                     <p className="text-xs leading-relaxed text-muted-foreground">
-                      Product DNA — sums to <span className="font-bold text-foreground">{dnaBreakdown.total}/100</span>
+                      Readiness sums to <span className="font-bold text-foreground">{dnaBreakdown.total}/100</span>
                     </p>
                     <DnaBreakdownInline breakdown={dnaBreakdown} />
                     <Link href="/profile#dna-breakdown" className="block text-[10px] font-semibold uppercase tracking-wider text-primary hover:underline">
@@ -350,13 +350,13 @@ export default async function DashboardPage() {
                     </Link>
                   </div>
                 ) : (
-                  "Product DNA score (0–100): how strongly your background fits high-package product-company hiring."
+                  "Product-Co Readiness (0–100) — a coaching signal of how recruiter screens at top product companies are likely to read your profile. It does not affect your match scores."
                 )
               }
             >
               <Link href="/profile#dna-breakdown" className="flex shrink-0 cursor-pointer items-center gap-3 sm:flex-col sm:items-center sm:gap-1.5">
                 <ScoreRing score={dnaScore} size="lg" showLabel={false} />
-                <span className="text-xs font-medium text-muted-foreground">Product DNA</span>
+                <span className="text-xs font-medium text-muted-foreground">Readiness</span>
               </Link>
             </Tooltip>
           )}
@@ -406,7 +406,7 @@ export default async function DashboardPage() {
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
         <StatCard
           icon={<Target className="h-4 w-4" />}
-          label="Product DNA"
+          label="Readiness"
           value={dnaScore !== null ? String(dnaScore) : "—"}
           sub={dnaScore !== null ? dnaScoreLabel(dnaScore) : "Upload resume"}
           href="/profile"
@@ -766,10 +766,10 @@ function StatCard({
 }
 
 function dnaScoreLabel(score: number): string {
-  if (score >= 80) return "Strong product fit";
-  if (score >= 60) return "Good product exp";
-  if (score >= 40) return "Mixed background";
-  return "Building product exp";
+  if (score >= 80) return "Application-ready";
+  if (score >= 60) return "Strong — minor lifts available";
+  if (score >= 40) return "Solid foundation";
+  return "Early — clear levers to grow";
 }
 
 function formatDate(iso: string) {

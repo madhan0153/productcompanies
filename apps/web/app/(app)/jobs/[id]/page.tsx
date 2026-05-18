@@ -207,25 +207,31 @@ export default async function JobDetailPage({ params }: { params: Promise<{ id: 
         <span className="max-w-xs truncate text-foreground/50">{job.title}</span>
       </nav>
 
-      {/* ── Job hero card ─────────────────────────────────────── */}
-      <div className="rounded-xl border border-border bg-card p-5 sm:p-6">
-        <div className="flex flex-wrap items-start gap-4 sm:gap-5">
-          <CompanyLogo name={company?.name ?? "?"} logoUrl={company?.logo_url ?? null} size={64} />
+      {/* ── Job hero — mobile-first compact layout ──────────────
+          Single row on mobile: small logo + company micro-text + score ring
+          on the right. Title + meta + comp sit below. The action bar is
+          collapsed into a single flex-row that wraps to two lines only when
+          there's no horizontal room. Total height ≈ 150px on phone. */}
+      <div className="rounded-xl border border-border bg-card p-4 sm:p-5">
+        <div className="flex items-start gap-3 sm:gap-4">
+          <CompanyLogo
+            name={company?.name ?? "?"}
+            logoUrl={company?.logo_url ?? null}
+            size={40}
+          />
 
           <div className="min-w-0 flex-1">
-            <div className="flex flex-wrap items-center gap-2">
-              <p className="text-sm font-medium text-muted-foreground">{company?.name ?? ""}</p>
+            <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+              <p className="text-xs font-medium text-muted-foreground sm:text-sm">{company?.name ?? ""}</p>
               {verdictMeta && (
-                <span className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-0.5 text-xs font-semibold ${verdictMeta.tone} ${verdictMeta.bg} ${verdictMeta.border}`}>
+                <span className={`inline-flex items-center gap-1 rounded-full border px-1.5 py-0.5 text-[10px] font-semibold sm:text-[11px] ${verdictMeta.tone} ${verdictMeta.bg} ${verdictMeta.border}`}>
                   {verdictMeta.icon}
                   {verdictMeta.label}
                 </span>
               )}
-              {/* Sprint 6 — inline cap chip so the reason is visible without
-                  expanding the Score Evidence card below. */}
               {match?.hard_cap_reason && (
                 <span
-                  className="inline-flex items-center gap-1 rounded-full border border-warning/30 bg-warning/10 px-2 py-0.5 text-[11px] font-medium text-warning"
+                  className="inline-flex items-center rounded-full border border-warning/30 bg-warning/10 px-1.5 py-0.5 text-[10px] font-medium text-warning sm:text-[11px]"
                   title={
                     match.hard_cap_reason === "thin_jd"       ? "Score capped: JD too short to score reliably."
                     : match.hard_cap_reason === "no_stack"    ? "Score capped: none of the JD's must-haves match your resume."
@@ -234,53 +240,53 @@ export default async function JobDetailPage({ params }: { params: Promise<{ id: 
                     : "Score capped"
                   }
                 >
-                  Score capped
+                  Capped
                 </span>
               )}
               {!job.is_active && (
-                <span className="inline-flex items-center gap-1 rounded-full border border-destructive/30 bg-destructive/10 px-2 py-0.5 text-xs font-medium text-destructive">
-                  <AlertCircle className="h-3 w-3" /> Stale — may be closed
+                <span className="inline-flex items-center gap-1 rounded-full border border-destructive/30 bg-destructive/10 px-1.5 py-0.5 text-[10px] font-medium text-destructive sm:text-[11px]">
+                  <AlertCircle className="h-2.5 w-2.5" /> Stale
                 </span>
               )}
             </div>
 
-            <h1 className="mt-2 text-xl font-semibold leading-tight sm:text-2xl">{job.title}</h1>
+            <h1 className="mt-1 text-base font-semibold leading-snug sm:text-xl">{job.title}</h1>
 
-            <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1.5 text-sm text-muted-foreground">
-              {(job.hubs ?? []).slice(0, 3).map((h) => (
-                <span key={h} className="inline-flex items-center gap-1.5">
-                  <MapPin className="h-3.5 w-3.5" />{h}
+            <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-0.5 text-[11px] text-muted-foreground sm:mt-2 sm:text-xs">
+              {(job.hubs ?? []).slice(0, 2).map((h) => (
+                <span key={h} className="inline-flex items-center gap-1">
+                  <MapPin className="h-3 w-3" />{h}
                 </span>
               ))}
               {expRange && (
-                <span className="inline-flex items-center gap-1.5">
-                  <Briefcase className="h-3.5 w-3.5" />{expRange}
+                <span className="inline-flex items-center gap-1">
+                  <Briefcase className="h-3 w-3" />{expRange}
                 </span>
               )}
+              {compRange && (
+                <span className="font-semibold text-primary">{compRange}</span>
+              )}
               {job.posted_at && (
-                <span className="inline-flex items-center gap-1.5">
-                  <Calendar className="h-3.5 w-3.5" />Posted {formatDate(job.posted_at)}
+                <span className="inline-flex items-center gap-1 text-muted-foreground/80">
+                  <Calendar className="h-3 w-3" />{formatDate(job.posted_at)}
                 </span>
               )}
             </div>
-
-            {compRange && (
-              <p className="mt-3 text-lg font-semibold text-primary sm:text-xl">{compRange}</p>
-            )}
           </div>
 
           {match && (
             <Tooltip label="Score combines a rules engine (experience, location, comp, tech overlap) with Gemini-graded fit. 75+ is a strong fit.">
-              <div className="flex shrink-0 cursor-help flex-col items-center gap-1.5">
-                <ScoreRing score={match.score} size="lg" showLabel={false} />
-                <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Match</span>
+              <div className="flex shrink-0 cursor-help flex-col items-center gap-0.5">
+                <ScoreRing score={match.score} size="sm" showLabel={false} />
+                <span className="text-[9px] font-semibold uppercase tracking-wider text-muted-foreground">Match</span>
               </div>
             </Tooltip>
           )}
         </div>
 
-        {/* Action bar */}
-        <div className="mt-5 flex flex-wrap items-center gap-2 border-t border-border pt-4">
+        {/* Action bar — apply primary, status secondary. Single row on
+            mobile, both controls equal width when wrapped. */}
+        <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-border pt-3 sm:mt-4 sm:pt-4">
           {job.apply_url && (
             <ApplyButton jobId={job.id} applyUrl={job.apply_url} variant="default" />
           )}
@@ -288,25 +294,25 @@ export default async function JobDetailPage({ params }: { params: Promise<{ id: 
         </div>
       </div>
 
+      {/* Always force the page to start at the top on fresh navigation —
+          users were landing mid-page (in the old Fit Card section) which
+          felt like a broken page. Back/forward still restores position. */}
+      <ScrollToFitCard />
+
       {/* ── Fit Card (when present) ──────────────────────────── */}
-      {/* Sprint 6 — mobile-first: when there's no Fit Card we skip the
-          "Match snapshot" placeholder entirely (it just said "JD has no
-          specific details" which adds zero value). The hero already shows
-          score + verdict + cap chip; ScoreEvidence below renders only
-          when there's substance (cap reason, missing skills, low conf). */}
+      {/* When there's no Fit Card we skip the placeholder entirely; the
+          hero already shows score + verdict + cap chip, and ScoreEvidence
+          below renders only when there's substance to explain. */}
       {match && match.fit_card && (
-        <>
-          <ScrollToFitCard />
-          <FitCardPanel
-            data={match.fit_card}
-            evidence={{
-              confidence: match.confidence ?? null,
-              hardCapReason: match.hard_cap_reason ?? null,
-              techCoverage: match.tech_coverage,
-              feedbackAdjustment: match.feedback_adjustment ?? null,
-            }}
-          />
-        </>
+        <FitCardPanel
+          data={match.fit_card}
+          evidence={{
+            confidence: match.confidence ?? null,
+            hardCapReason: match.hard_cap_reason ?? null,
+            techCoverage: match.tech_coverage,
+            feedbackAdjustment: match.feedback_adjustment ?? null,
+          }}
+        />
       )}
 
       {/* ── Apply Toolkit ─────────────────────────────────────── */}

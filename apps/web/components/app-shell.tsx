@@ -151,6 +151,7 @@ export function AppShell({ user, navBadges, banner, children }: Props) {
                   <li key={href}>
                     <Link
                       href={href}
+                      prefetch
                       onClick={() => setOpen(false)}
                       aria-current={active ? "page" : undefined}
                       className={cn(
@@ -210,7 +211,7 @@ export function AppShell({ user, navBadges, banner, children }: Props) {
               {dnaScore !== null && (
                 <div className="shrink-0 text-right">
                   <p className={cn("text-sm font-semibold tabular-nums", dnaColor)}>{dnaScore}</p>
-                  <p className="text-[10px] uppercase tracking-wide text-muted-foreground">DNA</p>
+                  <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Ready</p>
                 </div>
               )}
             </div>
@@ -261,14 +262,15 @@ export function AppShell({ user, navBadges, banner, children }: Props) {
           </button>
         </header>
 
+        {/* Page transition kept short (130ms) to feel snappy. The previous
+            240ms felt laggy on top of an SSR roundtrip — the route was
+            ready well before the animation completed. */}
         <motion.main
           id="main-content"
           key={pathname}
-          initial={reduce ? false : { opacity: 0, y: 6 }}
+          initial={reduce ? false : { opacity: 0, y: 3 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.24, ease: [0.22, 1, 0.36, 1] }}
-          // pb-24 on mobile so the fixed bottom nav doesn't cover content;
-          // lg:pb-8 restores normal padding on desktop where bottom nav is hidden.
+          transition={{ duration: 0.13, ease: [0.22, 1, 0.36, 1] }}
           className="flex-1 overflow-y-auto px-4 pb-24 pt-5 sm:px-6 sm:pt-6 lg:px-8 lg:pb-8"
           tabIndex={-1}
         >

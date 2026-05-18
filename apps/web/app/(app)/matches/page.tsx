@@ -14,7 +14,6 @@ import { ComputeButton } from "./compute-button";
 import { MatchFilters } from "./filters";
 import { MatchCard, type MatchCardData } from "./match-card";
 import { BandStrip, classifyMatch, type MatchTab, type BandCounts } from "./band-strip";
-import { MissingSkillsBanner, aggregateMissingSkills } from "./missing-skills-banner";
 import { MatchesURLBeacon } from "./matches-url-beacon";
 
 export const metadata: Metadata = { title: "Matches" };
@@ -29,7 +28,6 @@ type MatchRow = MatchCardData & {
   fit_card_at: string | null;
   computed_at: string;
   seen_at: string | null;
-  user_hidden: boolean;
   /** Phase G derived field — kept for routing/cap reads. */
   hidden_reason: string | null;
 };
@@ -52,18 +50,18 @@ export default async function MatchesPage({
   const selectedHubs = (params.h ?? "").split(",").filter(Boolean);
   const minScore = params.min_score ? parseInt(params.min_score, 10) : null;
 
-  // Sprint 6 — Tab is the spine. Back-compat with the legacy ?show= param:
-  //   ?show=new     → tab=new
-  //   ?show=hidden  → tab=dismissed
-  //   ?show=all     → tab=filtered (lets users see capped/mismatched)
-  // Default tab is "shortlist" so the user lands on actionable rows.
+  // Tabs spine. Back-compat with the legacy ?show= param. Dismiss was
+  // removed in this refinement pass — older ?show=hidden / ?tab=dismissed
+  // URLs gracefully fall back to the shortlist.
   const legacyShow = params.show;
-  const tab: MatchTab =
-    (params.tab as MatchTab) ??
+  const requestedTab = (params.tab as MatchTab | "dismissed" | undefined) ??
     (legacyShow === "new"    ? "new"
-    : legacyShow === "hidden" ? "dismissed"
     : legacyShow === "all"    ? "filtered"
-    : "shortlist");
+    : undefined);
+  const tab: MatchTab =
+    requestedTab === "new" || requestedTab === "filtered" || requestedTab === "worth_a_look" || requestedTab === "shortlist"
+      ? requestedTab
+      : "shortlist";
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { data: profile } = await (supabase
@@ -76,16 +74,10 @@ export default async function MatchesPage({
   const resumeScore = profile?.resume_score ?? null;
   const lastComputeAt = profile?.last_match_compute_at ?? null;
 
-  // Sprint 6 — Accurate band counts via parallel head-count queries.
-  //
-  // The previous version reduced in-memory over the .limit(500) list, which
-  // undercounted any user with >500 matches (the test user has 1794). Each
-  // band is now a separate `count: "exact", head: true` query — Postgres
-  // does a fast indexed COUNT(*) without returning rows and bypasses the
-  // PostgREST max_rows cap entirely.
-  //
-  // The scope filters (company, hub) apply here so the strip honours them.
-  // Score predicates are mutually exclusive AND-able with the scope.
+  // Accurate band counts via parallel head-count queries — each is a fast
+  // indexed COUNT(*) that bypasses the PostgREST max_rows cap. Scope filters
+  // (company, hub) apply server-side so the strip honours them.
+  // Dismiss was removed — there is no longer a user_hidden filter.
   const baseCountQuery = () => {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     let q: any = supabase
@@ -98,46 +90,20 @@ export default async function MatchesPage({
   };
 
   const [
-    cShortlist, cWorthALook, cFilteredLow, cFilteredMismatch, cDismissed, cNew, cTotal,
+    cShortlist, cWorthALook, cFilteredLow, cFilteredMismatch, cNew, cTotal,
   ] = await Promise.all([
-    // Shortlist: score >= 60, NOT user_hidden, NOT mismatch hidden_reason
-    baseCountQuery().gte("score", 60).eq("user_hidden", false).neq("hidden_reason", "mismatch"),
-    // Worth a look: 40 <= score < 60
-    baseCountQuery().gte("score", 40).lt("score", 60).eq("user_hidden", false).neq("hidden_reason", "mismatch"),
-    // Filtered (low score): score < 40, not hidden by user
-    baseCountQuery().lt("score", 40).eq("user_hidden", false),
-    // Filtered (mismatch): hidden_reason = mismatch
-    baseCountQuery().eq("user_hidden", false).eq("hidden_reason", "mismatch"),
-    // Dismissed: user_hidden = true
-    baseCountQuery().eq("user_hidden", true),
-    // New: seen_at is null AND not dismissed
-    baseCountQuery().is("seen_at", null).eq("user_hidden", false),
-    // Total visible scope (everything not user_hidden) — drives the header
-    baseCountQuery().eq("user_hidden", false),
+    baseCountQuery().gte("score", 60).is("hidden_reason", null),
+    baseCountQuery().gte("score", 40).lt("score", 60).is("hidden_reason", null),
+    baseCountQuery().lt("score", 40),
+    baseCountQuery().eq("hidden_reason", "mismatch"),
+    baseCountQuery().is("seen_at", null),
+    baseCountQuery(),
   ]);
-
-  // PostgREST returns null on neq with NULL values, so the shortlist /
-  // worth-a-look queries with `neq("hidden_reason", "mismatch")` exclude
-  // rows where hidden_reason IS NULL. Add those back: subtract mismatch
-  // count to derive the true filtered<40 figure, but the shortlist count
-  // missing nulls is a real problem. Compensate by OR-style splits below.
-  // Empirically: nearly all baseline rows have hidden_reason=NULL, so the
-  // neq query DROPS them. We instead use `is.null OR ne.mismatch`:
-  // Supabase JS doesn't expose that ergonomically, so fall back to two
-  // separate queries and add them.
-
-  // Re-do shortlist/worth_a_look using is.null branch for accurate counts.
-  const [cShortlistNull, cWorthNull] = await Promise.all([
-    baseCountQuery().gte("score", 60).eq("user_hidden", false).is("hidden_reason", null),
-    baseCountQuery().gte("score", 40).lt("score", 60).eq("user_hidden", false).is("hidden_reason", null),
-  ]);
-  void cShortlist; void cWorthALook; // neq-based counts kept for reference
 
   const bandCounts: BandCounts = {
-    shortlist:  cShortlistNull.count ?? 0,
-    worthALook: cWorthNull.count ?? 0,
+    shortlist:  cShortlist.count ?? 0,
+    worthALook: cWorthALook.count ?? 0,
     filtered:   (cFilteredLow.count ?? 0) + (cFilteredMismatch.count ?? 0),
-    dismissed:  cDismissed.count ?? 0,
     newCount:   cNew.count ?? 0,
   };
   const totalVisibleScope = cTotal.count ?? 0;
@@ -150,7 +116,7 @@ export default async function MatchesPage({
     .from("matches")
     .select(`
       score, verdict, fit_card, fit_card_at, hidden_reason, reasoning, computed_at, seen_at,
-      score_breakdown, user_hidden,
+      score_breakdown,
       confidence, hard_cap_reason, tech_coverage, feedback_adjustment,
       jobs (
         id, title, location, hubs, tech_stack,
@@ -188,8 +154,7 @@ export default async function MatchesPage({
     if (tab === "shortlist")    return cls === "shortlist";
     if (tab === "worth_a_look") return cls === "worth_a_look";
     if (tab === "filtered")     return cls === "filtered";
-    if (tab === "dismissed")    return cls === "dismissed";
-    if (tab === "new")          return m.seen_at === null && !m.user_hidden;
+    if (tab === "new")          return m.seen_at === null;
     return true;
   });
 
@@ -227,13 +192,7 @@ export default async function MatchesPage({
   ).values()].sort((a, b) => a.name.localeCompare(b.name));
   const allHubs = [...new Set(allRows.flatMap((m) => m.jobs.hubs ?? []))].sort();
 
-  // Missing-skills aggregation — across the CURRENT tab + scope, not the
-  // whole catalog. Updates dynamically as the user filters.
-  const missingSkills = aggregateMissingSkills({
-    rows: tabRows.map((m) => ({ score: m.score, tech_coverage: m.tech_coverage })),
-  });
-
-  const newCount       = scopedRows.filter((m) => m.seen_at === null && !m.user_hidden).length;
+  const newCount       = scopedRows.filter((m) => m.seen_at === null).length;
   const computeAgo     = lastComputeAt ? humanAgo(lastComputeAt) : null;
 
   // URL builder for the band strip — preserves company/hub/min_score filters
@@ -248,18 +207,6 @@ export default async function MatchesPage({
     const qs = sp.toString();
     return qs ? `/matches?${qs}` : "/matches";
   };
-
-  const scopeLabel = (() => {
-    const parts: string[] = [];
-    if (tab === "shortlist")    parts.push("your shortlist");
-    if (tab === "worth_a_look") parts.push("maybe-fit matches");
-    if (tab === "filtered")     parts.push("filtered roles");
-    if (tab === "new")          parts.push("new since last visit");
-    if (tab === "dismissed")    parts.push("dismissed roles");
-    if (selectedCompanies.length > 0) parts.push(`${selectedCompanies.length} compan${selectedCompanies.length === 1 ? "y" : "ies"}`);
-    if (selectedHubs.length > 0)      parts.push(`${selectedHubs.length} hub${selectedHubs.length === 1 ? "" : "s"}`);
-    return parts.join(" · ");
-  })();
 
   return (
     <div className="space-y-4 pb-6">
@@ -331,11 +278,6 @@ export default async function MatchesPage({
         <ResumeScoreStrip score={resumeScore} />
       )}
 
-      {/* ── Missing-skills banner — scoped to current tab ──────── */}
-      {tabRows.length > 0 && (tab === "shortlist" || tab === "worth_a_look") && (
-        <MissingSkillsBanner data={missingSkills} scopeLabel={scopeLabel} />
-      )}
-
       {/* ── Filtered tab inline note ────────────────────────────── */}
       {tab === "filtered" && tabRows.length > 0 && (
         <div className="flex items-start gap-2.5 rounded-md border border-dashed border-border bg-secondary/40 px-4 py-3 text-sm">
@@ -355,10 +297,9 @@ export default async function MatchesPage({
                 key={m.jobs.id}
                 match={m}
                 verdict={(m.verdict ?? "stretch") as Verdict}
-                isNew={m.seen_at === null && !m.user_hidden}
+                isNew={m.seen_at === null}
                 allScores={allScores}
                 applicationStatus={applicationStatus.get(m.jobs.id) ?? null}
-                hiddenView={tab === "dismissed"}
               />
             ))}
           </StaggerList>
@@ -371,7 +312,6 @@ export default async function MatchesPage({
               : tab === "worth_a_look" ? bandCounts.worthALook
               : tab === "filtered"   ? bandCounts.filtered
               : tab === "new"        ? bandCounts.newCount
-              : tab === "dismissed"  ? bandCounts.dismissed
               : 0;
             if (tabExpected > tabRows.length) {
               return (
@@ -439,15 +379,6 @@ function emptyStateForTab(tab: MatchTab, activeFilterCount: number): React.React
         icon={<Activity className="h-5 w-5" />}
         title="No new matches yet"
         body="The catalog refreshes daily. Anything new since your last visit will surface here."
-      />
-    );
-  }
-  if (tab === "dismissed") {
-    return (
-      <EmptyState
-        icon={<Eye className="h-5 w-5" />}
-        title="No dismissed roles"
-        body="Roles you dismiss from the main list will show up here so you can restore them anytime."
       />
     );
   }

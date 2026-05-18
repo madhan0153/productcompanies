@@ -40,7 +40,7 @@ export default async function ProfilePage() {
 
   const steps = [
     { done: hasResume, label: "Resume uploaded" },
-    { done: dnaScore !== null, label: "DNA score computed" },
+    { done: dnaScore !== null, label: "Readiness computed" },
     { done: resumeScore !== null, label: "Market strength scored" },
   ];
   const progress = steps.filter((s) => s.done).length;
@@ -97,16 +97,20 @@ export default async function ProfilePage() {
         </div>
       </div>
 
-      {/* ── DNA score display ──────────────────────────────────── */}
+      {/* ── Product-Co Readiness card ──────────────────────────
+          Renamed from "Product DNA" to a neutral readiness signal.
+          Doesn't gate matching — purely a profile-side coaching signal.
+          Background (services / product / mixed) is not a judgment;
+          it's information you can act on. */}
       {hasResume && dnaScore !== null && (
         <div className="rounded-xl border border-primary/30 bg-primary-soft p-5 sm:p-6">
           <div className="flex flex-wrap items-center gap-5">
             <DnaRing score={dnaScore} />
             <div className="min-w-0 flex-1">
-              <p className="text-[11px] font-semibold uppercase tracking-wider text-primary-soft-foreground/80">Product DNA Score</p>
+              <p className="text-[11px] font-semibold uppercase tracking-wider text-primary-soft-foreground/80">Product-Co Readiness</p>
               <p className="mt-0.5 text-lg font-semibold">{dnaScoreLabel(dnaScore)}</p>
               <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
-                Measures your product-company fit: tenure, scale signals, modern stack, and ownership.
+                A coaching signal — not a gate. Built from scale of work, modern stack, ownership, and product-co exposure. It does not affect your match scores.
               </p>
               {parsedResume && (parsedResume.summary as string | undefined) && (
                 <p className="mt-2 line-clamp-2 text-xs text-muted-foreground/80">
@@ -160,7 +164,7 @@ export default async function ProfilePage() {
       {/* ── Resume upload ──────────────────────────────────────── */}
       <SectionCard
         title="Resume"
-        subtitle="We extract your skills and compute your Product DNA score"
+        subtitle="We parse your resume to populate your profile and inform your readiness signal"
         icon={<FileText className="h-4 w-4" />}
         badge={
           hasResume ? (
@@ -264,10 +268,14 @@ function DnaRing({ score }: { score: number }) {
 }
 
 function dnaScoreLabel(score: number): string {
-  if (score >= 80) return "Strong product engineering background";
-  if (score >= 60) return "Good product company experience";
-  if (score >= 40) return "Mixed product / services background";
-  return "Primarily services background — building product exp";
+  // Neutral, progression-oriented labels. No language that frames a services
+  // background as a deficit — every Indian engineer's career starts somewhere,
+  // and this signal only describes the *next-step* alignment with product-co
+  // hiring patterns, not the engineer's worth.
+  if (score >= 80) return "Application-ready for top product companies";
+  if (score >= 60) return "Strong readiness — minor refinements unlock more roles";
+  if (score >= 40) return "Solid foundation — a few signal upgrades will lift you";
+  return "Early in product-co readiness — clear levers to grow this signal";
 }
 
 // ── Career Trajectory ────────────────────────────────────────────────────────
@@ -324,7 +332,7 @@ function CareerTrajectoryPanel({
   } else if (stageName === "senior") {
     insights.push(
       dnaScore !== null && dnaScore >= 70
-        ? `Your Product DNA score of ${dnaScore} signals strong Senior-to-Staff transition potential at top companies.`
+        ? `Your readiness of ${dnaScore}/100 signals strong Senior-to-Staff transition potential at top companies.`
         : "Strengthen product-company tenure and system-design ownership to close the gap to Staff-level standards.",
     );
     insights.push(
@@ -337,7 +345,7 @@ function CareerTrajectoryPanel({
     insights.push("At this seniority, technical breadth and demonstrated leadership across multiple engineering teams are primary evaluation signals.");
     insights.push(
       dnaScore !== null && dnaScore >= 80
-        ? `Your Product DNA score of ${dnaScore} strongly positions you for Principal / EM transitions at top-tier companies.`
+        ? `Your readiness of ${dnaScore}/100 strongly positions you for Principal / EM transitions at top-tier companies.`
         : "Deepen product-company exposure — Principal and EM roles are predominantly filled by engineers with strong product-company pedigrees.",
     );
     if (hasAI) insights.push("AI platform and GenAI infra leadership is the highest-demand differentiation for Staff/Principal roles in 2025–26.");

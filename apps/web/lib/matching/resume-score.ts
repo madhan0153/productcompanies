@@ -196,10 +196,10 @@ export function computeResumeScore(input: ScoreResumeInput): ResumeScoreResult {
     },
     {
       dimension: "product_dna",
-      label: "Product DNA",
+      label: "Product-Co Readiness",
       score: dna.score,
       weight: WEIGHTS.product_dna,
-      hint: `${input.resume.product_dna_score ?? 50}/100 — based on % time at product companies, scale of products built, modern stack, ownership signals.`,
+      hint: `${input.resume.product_dna_score ?? 50}/100 — built from product-co exposure, scale signals, modern stack, and ownership language. A coaching signal; not a gate.`,
     },
     {
       dimension: "recency_fit",

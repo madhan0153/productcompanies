@@ -197,7 +197,7 @@ export function ResumeUpload({ hasExisting, existingRole, existingDnaScore }: Pr
               </div>
               <div className="flex items-center gap-4 text-xs text-muted-foreground">
                 <span className="flex items-center gap-1"><Brain className="h-3 w-3 text-primary" /> AI-parsed by Gemini</span>
-                <span className="flex items-center gap-1"><Sparkles className="h-3 w-3 text-primary" /> DNA score computed</span>
+                <span className="flex items-center gap-1"><Sparkles className="h-3 w-3 text-primary" /> Readiness scored</span>
               </div>
             </div>
           </motion.div>
@@ -232,7 +232,7 @@ export function ResumeUpload({ hasExisting, existingRole, existingDnaScore }: Pr
                     Role: {result.role} · {result.years}y exp · {result.techCount} technologies detected
                   </p>
                   <p className="mt-0.5 text-xs text-success/80">
-                    Product DNA score: <strong>{result.dnaScore}/100</strong>
+                    Product-Co Readiness: <strong>{result.dnaScore}/100</strong>
                   </p>
                   <a
                     href="/matches"
@@ -256,7 +256,7 @@ export function ResumeUpload({ hasExisting, existingRole, existingDnaScore }: Pr
           <span>
             Current: <strong className="text-foreground">{existingRole ?? "Detected from resume"}</strong>
             {existingDnaScore != null && (
-              <> · DNA score: <strong className="text-primary">{existingDnaScore}/100</strong></>
+              <> · Readiness: <strong className="text-primary">{existingDnaScore}/100</strong></>
             )}
           </span>
         </div>
