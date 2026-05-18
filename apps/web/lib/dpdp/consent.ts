@@ -2,7 +2,12 @@ import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { serverEnv } from "@/lib/env";
 import type { DpdpEventType } from "@/lib/supabase/types";
 
-export type ConsentPurpose = "account" | "matching" | "digest_email" | "analytics";
+export type ConsentPurpose =
+  | "account"
+  | "matching"
+  | "digest_email"
+  | "analytics"
+  | "resume_intelligence";
 
 export const CONSENT_LABELS: Record<ConsentPurpose, { title: string; description: string; required: boolean }> = {
   account: {
@@ -23,6 +28,11 @@ export const CONSENT_LABELS: Record<ConsentPurpose, { title: string; description
   analytics: {
     title: "Product Analytics",
     description: "Collect anonymised usage data to improve the product. No PII is shared.",
+    required: false,
+  },
+  resume_intelligence: {
+    title: "Resume Intelligence",
+    description: "Run AI diagnosis and bullet-rewrite suggestions on your uploaded resume. Every change is reviewed by you before saving. We never invent experience.",
     required: false,
   },
 };

@@ -1033,6 +1033,206 @@ comment on column public.matches.tech_coverage     is 'JSON breakdown {direct:[]
 comment on column public.matches.feedback_adjustment is 'Per-user re-rank delta from prior dismissals/applies. Clamped [-18, 18].';
 
 
+-- ─────────────────────────────────────────────────────────────────────────────
+-- Phase R1 — Resume Intelligence (USP): enhanced + tailored review flow
+-- ─────────────────────────────────────────────────────────────────────────────
+-- Adds:
+--   • `resume_intelligence` value to consent_purpose enum
+--   • `enhanced_resumes` table (per-user general resume enhancement)
+--   • `enhanced-resumes` private storage bucket + owner-only read policy
+--   • Augments `tailored_resumes` with diagnosis/rewrites/decisions/pdf/status
+--   • `resume_intel_events` audit + cost telemetry table
+-- Authenticity rule: every rewrite is derivable from the source resume. We
+-- never store the user's bullet text in the audit table — only structural
+-- counts and severities.
+
+-- (1) Extend consent_purpose with a granular per-purpose toggle.
+alter type consent_purpose add value if not exists 'resume_intelligence';
+
+-- (2) enhanced_resumes — one per (user, source_resume_signature, status).
+--     A user can have at most one 'pending_review' row per resume signature;
+--     finalised + discarded rows accumulate as history.
+create table if not exists public.enhanced_resumes (
+  id                       uuid primary key default gen_random_uuid(),
+  user_id                  uuid not null references auth.users(id) on delete cascade,
+
+  -- Snapshot of inputs at generation time
+  source_resume_signature  text not null,
+  target_role_function     text,
+  market_keywords          text[] not null default '{}',
+
+  -- LLM outputs (Step 1 + Step 2 of the pipeline)
+  diagnosis                jsonb not null,
+  rewrites                 jsonb not null default '{}'::jsonb,
+  ats_before               jsonb not null,
+  ats_after                jsonb,
+
+  -- User decisions per bullet (Map<bullet_id, "kept" | "edited" | accepted_alt_id>)
+  decisions                jsonb not null default '{}'::jsonb,
+
+  -- Finalised content + rendered artifacts
+  enhanced_content         jsonb,
+  docx_storage_path        text,
+  pdf_storage_path         text,
+
+  status                   text not null default 'pending_review',
+  -- 'pending_review' | 'finalised' | 'discarded'
+
+  generated_at             timestamptz not null default now(),
+  finalised_at             timestamptz,
+  updated_at               timestamptz not null default now(),
+
+  constraint enhanced_resumes_status_chk
+    check (status in ('pending_review','finalised','discarded'))
+);
+
+-- Only one pending row per (user, signature) — prevents review screens
+-- racing each other. Old pending rows are auto-discarded when a new
+-- diagnosis is requested (see enhance-actions.ts).
+create unique index if not exists uniq_enhanced_resumes_pending
+  on public.enhanced_resumes(user_id, source_resume_signature)
+  where status = 'pending_review';
+
+create index if not exists idx_enhanced_resumes_user
+  on public.enhanced_resumes(user_id, generated_at desc);
+
+alter table public.enhanced_resumes enable row level security;
+
+do $$ begin
+  if not exists (
+    select 1 from pg_policies
+    where schemaname = 'public' and tablename = 'enhanced_resumes'
+      and policyname = 'enhanced_resumes_select_own'
+  ) then
+    create policy enhanced_resumes_select_own on public.enhanced_resumes
+      for select to authenticated
+      using (auth.uid() = user_id);
+  end if;
+end $$;
+
+drop trigger if exists tg_enhanced_resumes_updated_at on public.enhanced_resumes;
+create trigger tg_enhanced_resumes_updated_at
+  before update on public.enhanced_resumes
+  for each row execute function public.tg_set_updated_at();
+
+-- (3) Private storage bucket for enhanced resume artifacts (docx + pdf).
+do $$ begin
+  insert into storage.buckets (id, name, public)
+  values ('enhanced-resumes', 'enhanced-resumes', false)
+  on conflict (id) do nothing;
+end $$;
+
+do $$ begin
+  if not exists (
+    select 1 from pg_policies
+    where schemaname = 'storage' and tablename = 'objects'
+      and policyname = 'enhanced_resumes_owner_read'
+  ) then
+    create policy enhanced_resumes_owner_read on storage.objects
+      for select to authenticated
+      using (
+        bucket_id = 'enhanced-resumes'
+        and (storage.foldername(name))[1] = auth.uid()::text
+      );
+  end if;
+end $$;
+
+-- (4) Augment tailored_resumes with the diff-review workflow columns.
+--     Existing rows keep working: status defaults to 'finalised' so they
+--     skip the review screen and behave like the pre-R1 flow.
+alter table public.tailored_resumes
+  add column if not exists diagnosis         jsonb,
+  add column if not exists rewrites          jsonb default '{}'::jsonb,
+  add column if not exists decisions         jsonb default '{}'::jsonb,
+  add column if not exists pdf_storage_path  text,
+  add column if not exists mode              text default 'polish',
+  add column if not exists status            text not null default 'finalised';
+
+-- Belt-and-suspenders constraint check (idempotent attempt).
+do $$ begin
+  alter table public.tailored_resumes
+    add constraint tailored_resumes_status_chk
+    check (status in ('pending_review','finalised','discarded'));
+exception when duplicate_object then null;
+         when others then null;
+end $$;
+
+do $$ begin
+  alter table public.tailored_resumes
+    add constraint tailored_resumes_mode_chk
+    check (mode in ('polish','tailor'));
+exception when duplicate_object then null;
+         when others then null;
+end $$;
+
+-- (5) Audit + cost telemetry. Records only structural facts about runs.
+--     Resume bullet text is NEVER written here — DPDP discipline.
+create table if not exists public.resume_intel_events (
+  id            uuid primary key default gen_random_uuid(),
+  user_id       uuid not null references auth.users(id) on delete cascade,
+  kind          text not null,
+  -- 'diagnosis' | 'rewrite_batch' | 'render_docx' | 'render_pdf' | 'finalise' | 'discard'
+  scope         text not null,
+  -- 'enhanced' | 'tailored'
+  scope_ref_id  uuid,
+
+  llm_tier      text,
+  cost_tokens_in   integer,
+  cost_tokens_out  integer,
+  latency_ms       integer,
+
+  ok            boolean not null,
+  error_kind    text,
+
+  created_at    timestamptz not null default now()
+);
+
+create index if not exists idx_resume_intel_events_user
+  on public.resume_intel_events(user_id, created_at desc);
+
+create index if not exists idx_resume_intel_events_scope
+  on public.resume_intel_events(user_id, scope, created_at desc);
+
+alter table public.resume_intel_events enable row level security;
+
+do $$ begin
+  if not exists (
+    select 1 from pg_policies
+    where schemaname = 'public' and tablename = 'resume_intel_events'
+      and policyname = 'resume_intel_events_select_own'
+  ) then
+    create policy resume_intel_events_select_own on public.resume_intel_events
+      for select to authenticated
+      using (auth.uid() = user_id);
+  end if;
+end $$;
+
+-- (6) Update request_user_erasure() to clean up the new tables.
+--     The cascade chain already deletes enhanced_resumes + tailored extra
+--     columns via auth.users → profiles → ... but we explicitly delete
+--     them first so the dpdp_events row records the erasure in full.
+create or replace function public.request_user_erasure_r1(uid uuid)
+returns void
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  delete from public.resume_intel_events where user_id = uid;
+  delete from public.enhanced_resumes    where user_id = uid;
+  -- Existing erasure handles tailored_resumes via auth.users on-delete cascade
+  insert into public.dpdp_events (user_id, event, metadata)
+  values (uid, 'erasure_completed',
+          jsonb_build_object('scope', 'resume_intelligence', 'completed_at', now()));
+end;
+$$;
+
+comment on table public.enhanced_resumes is 'Per-user general resume enhancement runs. Pipeline: diagnosis → bullet rewrites → user decisions → render docx+pdf. Authenticity rule: rewrites must be derivable from the source resume.';
+comment on table public.resume_intel_events is 'Audit + cost telemetry for the resume intelligence pipeline. Stores structural facts only — never resume bullet text.';
+comment on column public.tailored_resumes.mode is 'Tailoring mode: polish (default, minimal edits) or tailor (aggressive JD-aligned rewrites). Captured at diagnosis time.';
+comment on column public.tailored_resumes.status is 'pending_review | finalised | discarded. Legacy rows default to finalised so existing single-shot flow continues to work.';
+
+
 -- -----------------------------------------------------------------------------
 -- 8. SEED — 18 approved product companies (no jobs)
 -- -----------------------------------------------------------------------------

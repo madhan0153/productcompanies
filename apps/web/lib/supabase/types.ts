@@ -4,7 +4,7 @@
 export interface JsonObject { [key: string]: Json }
 export type Json = string | number | boolean | null | JsonObject | Json[];
 
-export type ConsentPurpose = "account" | "matching" | "digest_email" | "analytics";
+export type ConsentPurpose = "account" | "matching" | "digest_email" | "analytics" | "resume_intelligence";
 export type ApplicationStatus = "saved" | "applied" | "interviewing" | "offer" | "rejected" | "withdrawn";
 export type DigestFrequency = "weekly" | "off";
 export type DpdpEventType =
@@ -106,19 +106,116 @@ export interface Database {
           content: Json; docx_storage_path: string | null;
           resume_signature: string | null; job_signature: string | null;
           generated_at: string; updated_at: string;
+          /** Phase R1 — diff-review workflow */
+          diagnosis: Json | null;
+          rewrites: Json | null;
+          decisions: Json | null;
+          pdf_storage_path: string | null;
+          mode: "polish" | "tailor" | null;
+          status: "pending_review" | "finalised" | "discarded";
         };
         Insert: {
           id?: string; user_id: string; job_id: string;
           content: Json; docx_storage_path?: string | null;
           resume_signature?: string | null; job_signature?: string | null;
           generated_at?: string; updated_at?: string;
+          diagnosis?: Json | null;
+          rewrites?: Json | null;
+          decisions?: Json | null;
+          pdf_storage_path?: string | null;
+          mode?: "polish" | "tailor" | null;
+          status?: "pending_review" | "finalised" | "discarded";
         };
         Update: {
           id?: string; user_id?: string; job_id?: string;
           content?: Json; docx_storage_path?: string | null;
           resume_signature?: string | null; job_signature?: string | null;
           generated_at?: string; updated_at?: string;
+          diagnosis?: Json | null;
+          rewrites?: Json | null;
+          decisions?: Json | null;
+          pdf_storage_path?: string | null;
+          mode?: "polish" | "tailor" | null;
+          status?: "pending_review" | "finalised" | "discarded";
         };
+        Relationships: [];
+      };
+      enhanced_resumes: {
+        Row: {
+          id: string; user_id: string;
+          source_resume_signature: string;
+          target_role_function: string | null;
+          market_keywords: string[];
+          diagnosis: Json;
+          rewrites: Json;
+          ats_before: Json;
+          ats_after: Json | null;
+          decisions: Json;
+          enhanced_content: Json | null;
+          docx_storage_path: string | null;
+          pdf_storage_path: string | null;
+          status: "pending_review" | "finalised" | "discarded";
+          generated_at: string;
+          finalised_at: string | null;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string; user_id: string;
+          source_resume_signature: string;
+          target_role_function?: string | null;
+          market_keywords?: string[];
+          diagnosis: Json;
+          rewrites?: Json;
+          ats_before: Json;
+          ats_after?: Json | null;
+          decisions?: Json;
+          enhanced_content?: Json | null;
+          docx_storage_path?: string | null;
+          pdf_storage_path?: string | null;
+          status?: "pending_review" | "finalised" | "discarded";
+          generated_at?: string;
+          finalised_at?: string | null;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string; user_id?: string;
+          source_resume_signature?: string;
+          target_role_function?: string | null;
+          market_keywords?: string[];
+          diagnosis?: Json;
+          rewrites?: Json;
+          ats_before?: Json;
+          ats_after?: Json | null;
+          decisions?: Json;
+          enhanced_content?: Json | null;
+          docx_storage_path?: string | null;
+          pdf_storage_path?: string | null;
+          status?: "pending_review" | "finalised" | "discarded";
+          finalised_at?: string | null;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
+      resume_intel_events: {
+        Row: {
+          id: string; user_id: string;
+          kind: string; scope: string; scope_ref_id: string | null;
+          llm_tier: string | null;
+          cost_tokens_in: number | null; cost_tokens_out: number | null;
+          latency_ms: number | null;
+          ok: boolean; error_kind: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string; user_id: string;
+          kind: string; scope: string; scope_ref_id?: string | null;
+          llm_tier?: string | null;
+          cost_tokens_in?: number | null; cost_tokens_out?: number | null;
+          latency_ms?: number | null;
+          ok: boolean; error_kind?: string | null;
+          created_at?: string;
+        };
+        Update: never;
         Relationships: [];
       };
       negotiation_memos: {
