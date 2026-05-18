@@ -33,6 +33,12 @@ import {
   type RewriteMode,
   type RewriteRiskFlag,
 } from "@/lib/llm/prompts/bullet-rewrite";
+import {
+  extractResumeContent,
+  renderExtractedAsText,
+  hasUsableContent,
+  type ExtractedResumeContent,
+} from "@/lib/llm/prompts/extract-resume-content";
 import { computeAtsScorecard, type AtsScorecard } from "@/lib/matching/ats-scorecard";
 import { getQuotaState, resetsInHumanForm } from "@/lib/resume-intel/quota";
 import { recordResumeIntelEvent } from "@/lib/resume-intel/telemetry";
@@ -226,12 +232,43 @@ export async function diagnoseTailored(
     };
   }
 
-  // (3) Step 1 — diagnose with JD context.
+  // (2.5) Extract REAL bullets from the source PDF. Same trick as the
+  //       enhancement flow — profiles.resume_parsed only has titles, not
+  //       the bullet content the rewriter needs to work with.
+  let extracted: ExtractedResumeContent | null = null;
+  if (profile.resume_storage_path) {
+    try {
+      const { data: blob, error: dlErr } = await admin.storage
+        .from("resumes")
+        .download(profile.resume_storage_path);
+      if (!dlErr && blob) {
+        const bytes = Buffer.from(await blob.arrayBuffer());
+        const base64 = bytes.toString("base64");
+        extracted = await extractResumeContent(base64);
+      }
+    } catch (err) {
+      console.warn("[tailor] bullet-extraction failed, falling back to lean text:",
+        err instanceof Error ? err.message : String(err));
+    }
+  }
+
+  const resumeTextForDiagnosis = extracted
+    ? renderExtractedAsText(extracted)
+    : profile.resume_text;
+
+  if (extracted && !hasUsableContent(extracted)) {
+    return {
+      ok: false,
+      error: "Your resume is short on bullet content — most entries are just titles. Add 2-3 bullets per role describing what you did, then tailor again.",
+    };
+  }
+
+  // (3) Step 1 — diagnose with JD context, against the rich extracted text.
   let diagnosis: ResumeDiagnosis;
   try {
     const result = await diagnoseResume({
       resume:        profile.resume_parsed!,
-      resume_text:   profile.resume_text!,
+      resume_text:   resumeTextForDiagnosis,
       role_function: profile.role_function ?? null,
       market_keywords: (job.must_have_skills ?? []).slice(0, 30),
       jd_context: {

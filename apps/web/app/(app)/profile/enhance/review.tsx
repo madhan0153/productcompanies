@@ -84,13 +84,25 @@ export function EnhanceReview({ row }: { row: EnhancedRow }) {
   const onFinalise = () => {
     setFinaliseError(null);
     startFinalising(async () => {
-      const res = await finaliseEnhancement(row.id);
-      if (res.ok) {
-        setFinalisedUrls({ docx: res.docx_url, print: res.print_url });
-        // Hard-refresh so the parent loads ats_after etc.
-        router.refresh();
-      } else {
-        setFinaliseError(res.error);
+      try {
+        const res = await finaliseEnhancement(row.id);
+        if (res.ok) {
+          setFinalisedUrls({ docx: res.docx_url, print: res.print_url });
+          // Hard-refresh so the parent loads ats_after etc.
+          router.refresh();
+        } else {
+          // Surface the server-side error inline so the spinner can't
+          // appear to hang forever on a known failure.
+          setFinaliseError(res.error || "Couldn't finalise. Please retry.");
+        }
+      } catch (err) {
+        // Network drop / unhandled server exception — surface a friendly
+        // message instead of leaving the spinner spinning.
+        setFinaliseError(
+          err instanceof Error
+            ? `Couldn't finalise: ${err.message}`
+            : "Couldn't finalise. Please check your connection and retry.",
+        );
       }
     });
   };

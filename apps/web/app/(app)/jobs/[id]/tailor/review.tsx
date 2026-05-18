@@ -75,12 +75,20 @@ export function TailorReview({
   const onFinalise = () => {
     setError(null);
     startFinalising(async () => {
-      const res = await finaliseTailored(jobId);
-      if (res.ok) {
-        setFinalisedUrls({ docx: res.download_url, print: res.print_url });
-        router.refresh();
-      } else {
-        setError(res.error);
+      try {
+        const res = await finaliseTailored(jobId);
+        if (res.ok) {
+          setFinalisedUrls({ docx: res.download_url, print: res.print_url });
+          router.refresh();
+        } else {
+          setError(res.error || "Couldn't finalise. Please retry.");
+        }
+      } catch (err) {
+        setError(
+          err instanceof Error
+            ? `Couldn't finalise: ${err.message}`
+            : "Couldn't finalise. Please check your connection and retry.",
+        );
       }
     });
   };
