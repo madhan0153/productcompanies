@@ -15,6 +15,7 @@ import { MatchFilters } from "./filters";
 import { MatchCard, type MatchCardData } from "./match-card";
 import { BandStrip, classifyMatch, type MatchTab, type BandCounts } from "./band-strip";
 import { MissingSkillsBanner, aggregateMissingSkills } from "./missing-skills-banner";
+import { MatchesURLBeacon } from "./matches-url-beacon";
 
 export const metadata: Metadata = { title: "Matches" };
 export const maxDuration = 60;
@@ -262,6 +263,10 @@ export default async function MatchesPage({
 
   return (
     <div className="space-y-6 pb-6">
+
+      {/* Session-history beacon — records this URL so the job detail
+          page's "← Matches" link returns to the exact tab/filter slice. */}
+      <MatchesURLBeacon />
 
       {/* ── Header ──────────────────────────────────────────────── */}
       <div className="flex flex-wrap items-start justify-between gap-4">

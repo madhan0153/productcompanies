@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { notFound, redirect } from "next/navigation";
 import Link from "next/link";
 import {
-  ArrowLeft, ExternalLink, MapPin, Briefcase, Calendar,
+  ExternalLink, MapPin, Briefcase, Calendar,
   Sparkles, CheckCircle2, AlertCircle, TrendingUp, Target,
   ChevronRight, ShieldCheck,
 } from "lucide-react";
@@ -16,6 +16,8 @@ import { StickyApplyBar } from "./sticky-apply-bar";
 import { JobDescription } from "./job-description";
 import { PrepBrief } from "./prep-brief";
 import { FitCardPanel, type FitCardData } from "./fit-card";
+import { ScoreEvidence } from "./score-evidence";
+import { SmartMatchesBackLink } from "./smart-back";
 import { ApplyButton } from "@/components/apply-button";
 import { ApplyToolkit } from "./apply-toolkit";
 import { RecruiterView } from "@/components/recruiter-view";
@@ -204,11 +206,10 @@ export default async function JobDetailPage({ params }: { params: Promise<{ id: 
         jobId={job.id}
       />
 
-      {/* Breadcrumb */}
+      {/* Breadcrumb — SmartMatchesBackLink reads sessionStorage to return
+          the user to the exact tab/filter slice they came from. */}
       <nav aria-label="Breadcrumb" className="flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground">
-        <Link href="/matches" className="inline-flex items-center gap-1 rounded transition hover:text-foreground focus-ring">
-          <ArrowLeft className="h-3 w-3" /> Matches
-        </Link>
+        <SmartMatchesBackLink />
         <ChevronRight className="h-3 w-3 opacity-40" />
         {company?.name && <span className="text-foreground/70">{company.name}</span>}
         <ChevronRight className="h-3 w-3 opacity-40" />
@@ -292,10 +293,13 @@ export default async function JobDetailPage({ params }: { params: Promise<{ id: 
         </div>
       </div>
 
-      {/* ── Fit Card ──────────────────────────────────────────── */}
-      {/* Sprint 6 — embeds Score Evidence as the "Evidence" tab inside the
-          Fit Card. The standalone ScoreEvidence panel is gone; the same
-          data flows in via the `evidence` prop. */}
+      {/* ── Fit Card (when present) or Match snapshot fallback ─── */}
+      {/* Sprint 6: When the match has a Fit Card, render the tabbed panel
+          (Evidence is one of its tabs). When there's no Fit Card — which
+          is the common case, since only the top ~25 matches get one — we
+          render the lightweight Match snapshot AND a standalone Score
+          Evidence panel below. This guarantees confidence, cap reason,
+          and tech coverage are visible on every match. */}
       {match && match.fit_card ? (
         <FitCardPanel
           data={match.fit_card}
@@ -307,15 +311,28 @@ export default async function JobDetailPage({ params }: { params: Promise<{ id: 
             feedbackAdjustment: match.feedback_adjustment ?? null,
           }}
         />
-      ) : match && match.reasoning ? (
-        <SectionCard
-          title="Match snapshot"
-          icon={<Sparkles className="h-4 w-4" />}
-          subtitle={`Score ${Math.round(match.score)} — full Fit Card lands after the next match compute`}
-        >
-          <p className="text-sm leading-relaxed text-muted-foreground">{match.reasoning}</p>
-        </SectionCard>
-      ) : null}
+      ) : (
+        <>
+          {match && match.reasoning && (
+            <SectionCard
+              title="Match snapshot"
+              icon={<Sparkles className="h-4 w-4" />}
+              subtitle={`Score ${Math.round(match.score)} — full Fit Card lands after the next match compute`}
+            >
+              <p className="text-sm leading-relaxed text-muted-foreground">{match.reasoning}</p>
+            </SectionCard>
+          )}
+          {match && (
+            <ScoreEvidence
+              score={match.score}
+              confidence={match.confidence ?? null}
+              hardCapReason={match.hard_cap_reason ?? null}
+              techCoverage={match.tech_coverage}
+              feedbackAdjustment={match.feedback_adjustment ?? null}
+            />
+          )}
+        </>
+      )}
 
       {/* ── Apply Toolkit ─────────────────────────────────────── */}
       <ApplyToolkit
