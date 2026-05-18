@@ -78,8 +78,11 @@ export function ResumeUpload({ hasExisting, existingRole, existingDnaScore }: Pr
         const r: UploadResult = await uploadAndParseResume(fd);
         if (r.ok) {
           // Upload + storage write succeeded; parse is running in after().
-          // The poll effect below will watch for completion.
+          // The poll effect below will watch for completion. Refresh the
+          // route cache now so navigating away + back during the parse
+          // shows the in-progress banner, not the stale pre-upload state.
           setPollingStartedAt(r.startedAt);
+          router.refresh();
         } else {
           setCurrentStep(-1);
           setResult({ ok: false, error: r.error, retryable: r.retryable });

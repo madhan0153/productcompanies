@@ -254,6 +254,12 @@ export async function uploadAndParseResume(formData: FormData): Promise<UploadRe
     resume_parse_error:  null,
   });
 
+  // Bust the client + server route cache for /profile immediately. Without
+  // this, a user who uploads then navigates to /matches and back gets the
+  // pre-upload cached render — no parse banner, just the upload card again.
+  // We revalidate again inside after() once the parse lands.
+  revalidatePath("/profile");
+
   // Encode bytes once on the request thread — buffers don't survive into
   // after() reliably across edge/node boundaries.
   const base64 = Buffer.from(bytes).toString("base64");

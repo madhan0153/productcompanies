@@ -11,6 +11,7 @@ import { listResumeVersions } from "./actions";
 import { ResumeVersionsPanel } from "./resume-versions-panel";
 import { EnhancementHistoryPanel } from "./enhancement-history-panel";
 import { ParseStatusBanner } from "./parse-status-banner";
+import { ProfileTabs } from "./profile-tabs";
 
 export const metadata: Metadata = { title: "My Profile" };
 // The resume upload action does a Gemini PDF parse (10-20s) + profile
@@ -36,12 +37,12 @@ export default async function ProfilePage() {
 
   const preferredHubs = (profile?.preferred_hubs as string[] | null) ?? [];
   const techStack = (profile?.tech_stack as string[] | null) ?? [];
-  // A row counts as "having a resume" only when the parse has actually
-  // landed. While resume_parsing_at is set, the rest of the page hides
-  // and the ParseStatusBanner takes over.
   const isParsing = !!(profile as { resume_parsing_at?: string | null } | null)?.resume_parsing_at;
   const parseError = (profile as { resume_parse_error?: string | null } | null)?.resume_parse_error ?? null;
-  const hasResume = !!profile?.resume_storage_path && !!profile?.resume_parsed && !isParsing;
+  // hasResume is true whenever parsed data exists — even if a NEW parse is
+  // currently running. This keeps the tabs + previous data visible during a
+  // re-upload, and the ParseStatusBanner explains the in-flight parse.
+  const hasResume = !!profile?.resume_parsed;
   const dnaScore = profile?.product_dna_score as number | null ?? null;
   const resumeScore = (profile as { resume_score?: number | null } | null)?.resume_score ?? null;
 
@@ -65,21 +66,19 @@ export default async function ProfilePage() {
           </p>
         </div>
         {hasResume && dnaScore !== null && (
-          <Link
-            href="#readiness"
-            className="press tap-target-sm flex shrink-0 flex-col items-center gap-0.5 rounded-md px-2 py-1 transition hover:bg-secondary focus-ring"
-          >
+          <div className="flex shrink-0 flex-col items-center gap-0.5 rounded-md px-2 py-1">
             <span className={`text-lg font-bold tabular-nums ${
               dnaScore >= 75 ? "text-success" : dnaScore >= 55 ? "text-warning" : "text-primary"
             }`}>{dnaScore}</span>
             <span className="text-[9px] font-medium uppercase tracking-wider text-muted-foreground">
               Ready
             </span>
-          </Link>
+          </div>
         )}
       </div>
 
-      {/* ── Enhance my resume — MAIN USP, top placement ─────────── */}
+      {/* ── Enhance my resume — MAIN USP, lives above the tabs so it's
+            always visible regardless of which section the user is in. ── */}
       {hasResume && (
         <Link
           href="/profile/enhance"
@@ -100,107 +99,116 @@ export default async function ProfilePage() {
         </Link>
       )}
 
-      {/* ── Resume upload (compact when resume already present) ─── */}
-      <SectionCard
-        title="Resume"
-        subtitle={hasResume ? "Upload a new version to replace" : "Upload your PDF to get started"}
-        icon={<FileText className="h-4 w-4" />}
-        badge={
-          hasResume ? (
-            <span className="rounded-full border border-success/30 bg-success/10 px-2 py-0.5 text-[11px] font-medium text-success">
-              Uploaded
-            </span>
-          ) : undefined
-        }
-      >
-        <ResumeUpload
-          hasExisting={hasResume}
-          existingRole={profile?.current_role as string | null}
-          existingDnaScore={dnaScore}
-        />
-      </SectionCard>
-
-      {/* ── Product-Co Readiness — slim 1-line strip with summary ─ */}
-      {hasResume && dnaScore !== null && (
-        <Link
-          href="#profile-details"
-          id="readiness"
-          className="press tap-target-sm flex items-center gap-3 rounded-xl border border-border bg-card px-4 py-3 transition hover:border-primary/30 focus-ring"
-        >
-          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary-soft text-primary-soft-foreground">
-            <span className="text-sm font-bold tabular-nums">{dnaScore}</span>
-          </div>
-          <div className="min-w-0 flex-1">
-            <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-              Product-Co Readiness
-            </p>
-            <p className="truncate text-sm font-medium">{dnaScoreLabel(dnaScore)}</p>
-          </div>
-          <ChevronRightIcon aria-hidden className="h-4 w-4 shrink-0 text-muted-foreground/50" />
-        </Link>
-      )}
-
-      {/* ── Resume score panel ─────────────────────────────────── */}
-      {hasResume && (
-        <ResumeScorePanel
-          score={resumeScore}
-          breakdown={(profile as { resume_score_breakdown?: ResumeScorePanelData["breakdown"] } | null)?.resume_score_breakdown ?? null}
-          tips={(profile as { resume_tips?: ResumeScorePanelData["tips"] } | null)?.resume_tips ?? null}
-          scoredAt={(profile as { resume_score_at?: string | null } | null)?.resume_score_at ?? null}
-        />
-      )}
-
-      {/* ── ATS & Recruiter Signal ─────────────────────────────── */}
-      {hasResume && resumeScore !== null && (
-        <AtsSignalPanel score={resumeScore} />
-      )}
-
-      {/* ── Career Trajectory ─────────────────────────────────── */}
-      {hasResume && dnaScore !== null && (
-        <CareerTrajectoryPanel
-          yearsExp={(profile?.years_experience as number | null) ?? null}
-          seniority={(profile?.seniority as string | null) ?? null}
-          dnaScore={dnaScore}
-          techStack={techStack}
-          currentRole={(profile?.current_role as string | null) ?? null}
-          currentLpa={(profile?.current_lpa as number | null) ?? null}
-          targetLpa={(profile?.target_lpa as number | null) ?? null}
-        />
-      )}
-
-      {/* ── Enhancement history (Phase R4) ─────────────────────── */}
-      {hasResume && (
-        <EnhancementHistoryPanel userId={user.id} />
-      )}
-
-      {/* ── Resume version history (collapsed by default in panel) */}
-      {hasResume && (
-        <div id="resume-history" className="scroll-mt-20">
-          <ResumeVersionsPanel versions={versions} />
-        </div>
-      )}
-
-      {/* ── Profile details ─────────────────────────────────────── */}
-      <div id="profile-details" className="scroll-mt-20">
+      {/* First-time path: no parsed resume, no parse in flight — show only
+          the upload card. Tabs would be empty noise here. */}
+      {!hasResume && !isParsing && (
         <SectionCard
-          title="Profile details"
-          subtitle="Pre-filled from your resume — edit to refine your matches"
-          icon={<User className="h-4 w-4" />}
+          title="Resume"
+          subtitle="Upload your PDF to get started"
+          icon={<FileText className="h-4 w-4" />}
         >
-          <SaveProfileForm
-            defaultValues={{
-              display_name: (profile?.display_name as string) ?? "",
-              current_role: (profile?.current_role as string) ?? "",
-              years_experience: String(profile?.years_experience ?? ""),
-              current_lpa: String(profile?.current_lpa ?? ""),
-              target_lpa: String(profile?.target_lpa ?? ""),
-              tech_stack: techStack.join(", "),
-              preferred_hubs: preferredHubs,
-              seniority: (profile?.seniority as string) ?? "",
-            }}
+          <ResumeUpload
+            hasExisting={false}
+            existingRole={null}
+            existingDnaScore={null}
           />
         </SectionCard>
-      </div>
+      )}
+
+      {/* hasResume path: tabbed nav. Each panel is rendered server-side; the
+          client-side tabs component just toggles visibility. */}
+      {hasResume && (
+        <ProfileTabs
+          panels={{
+            resume: (
+              <>
+                <SectionCard
+                  title="Resume"
+                  subtitle={isParsing ? "New parse in progress — current view shows your last parsed version" : "Upload a new version to replace"}
+                  icon={<FileText className="h-4 w-4" />}
+                  badge={
+                    <span className="rounded-full border border-success/30 bg-success/10 px-2 py-0.5 text-[11px] font-medium text-success">
+                      Uploaded
+                    </span>
+                  }
+                >
+                  <ResumeUpload
+                    hasExisting={true}
+                    existingRole={profile?.current_role as string | null}
+                    existingDnaScore={dnaScore}
+                  />
+                </SectionCard>
+
+                {dnaScore !== null && (
+                  <div className="flex items-center gap-3 rounded-xl border border-border bg-card px-4 py-3">
+                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary-soft text-primary-soft-foreground">
+                      <span className="text-sm font-bold tabular-nums">{dnaScore}</span>
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                        Product-Co Readiness
+                      </p>
+                      <p className="truncate text-sm font-medium">{dnaScoreLabel(dnaScore)}</p>
+                    </div>
+                  </div>
+                )}
+
+                <ResumeScorePanel
+                  score={resumeScore}
+                  breakdown={(profile as { resume_score_breakdown?: ResumeScorePanelData["breakdown"] } | null)?.resume_score_breakdown ?? null}
+                  tips={(profile as { resume_tips?: ResumeScorePanelData["tips"] } | null)?.resume_tips ?? null}
+                  scoredAt={(profile as { resume_score_at?: string | null } | null)?.resume_score_at ?? null}
+                />
+
+                {resumeScore !== null && <AtsSignalPanel score={resumeScore} />}
+              </>
+            ),
+            career: (
+              dnaScore !== null ? (
+                <CareerTrajectoryPanel
+                  yearsExp={(profile?.years_experience as number | null) ?? null}
+                  seniority={(profile?.seniority as string | null) ?? null}
+                  dnaScore={dnaScore}
+                  techStack={techStack}
+                  currentRole={(profile?.current_role as string | null) ?? null}
+                  currentLpa={(profile?.current_lpa as number | null) ?? null}
+                  targetLpa={(profile?.target_lpa as number | null) ?? null}
+                />
+              ) : (
+                <p className="rounded-xl border border-border bg-card p-6 text-center text-sm text-muted-foreground">
+                  Career trajectory unlocks once your readiness score is computed.
+                </p>
+              )
+            ),
+            details: (
+              <SectionCard
+                title="Profile details"
+                subtitle="Pre-filled from your resume — edit to refine your matches"
+                icon={<User className="h-4 w-4" />}
+              >
+                <SaveProfileForm
+                  defaultValues={{
+                    display_name: (profile?.display_name as string) ?? "",
+                    current_role: (profile?.current_role as string) ?? "",
+                    years_experience: String(profile?.years_experience ?? ""),
+                    current_lpa: String(profile?.current_lpa ?? ""),
+                    target_lpa: String(profile?.target_lpa ?? ""),
+                    tech_stack: techStack.join(", "),
+                    preferred_hubs: preferredHubs,
+                    seniority: (profile?.seniority as string) ?? "",
+                  }}
+                />
+              </SectionCard>
+            ),
+            history: (
+              <>
+                <EnhancementHistoryPanel userId={user.id} />
+                <ResumeVersionsPanel versions={versions} />
+              </>
+            ),
+          }}
+        />
+      )}
     </div>
   );
 }
