@@ -16,6 +16,7 @@ import { StickyApplyBar } from "./sticky-apply-bar";
 import { JobDescription } from "./job-description";
 import { FitCardPanel, type FitCardData } from "./fit-card";
 import { ScoreEvidence } from "./score-evidence";
+import { ScrollToFitCard } from "./scroll-to-fit-card";
 import { SmartMatchesBackLink } from "./smart-back";
 import { ApplyButton } from "@/components/apply-button";
 import { ApplyToolkit } from "./apply-toolkit";
@@ -294,15 +295,18 @@ export default async function JobDetailPage({ params }: { params: Promise<{ id: 
           score + verdict + cap chip; ScoreEvidence below renders only
           when there's substance (cap reason, missing skills, low conf). */}
       {match && match.fit_card && (
-        <FitCardPanel
-          data={match.fit_card}
-          evidence={{
-            confidence: match.confidence ?? null,
-            hardCapReason: match.hard_cap_reason ?? null,
-            techCoverage: match.tech_coverage,
-            feedbackAdjustment: match.feedback_adjustment ?? null,
-          }}
-        />
+        <>
+          <ScrollToFitCard />
+          <FitCardPanel
+            data={match.fit_card}
+            evidence={{
+              confidence: match.confidence ?? null,
+              hardCapReason: match.hard_cap_reason ?? null,
+              techCoverage: match.tech_coverage,
+              feedbackAdjustment: match.feedback_adjustment ?? null,
+            }}
+          />
+        </>
       )}
 
       {/* ── Apply Toolkit ─────────────────────────────────────── */}
@@ -428,36 +432,28 @@ export default async function JobDetailPage({ params }: { params: Promise<{ id: 
             </SectionCard>
           )}
 
-          {/* Trust badge */}
-          <SectionCard title="Source" subtitle="Where this listing came from">
-            <ul className="space-y-2 text-xs text-muted-foreground">
+          {/* Trust badge — single concise line. The three previous
+              bullets ("official only / no aggregators / refreshed daily")
+              were redundant ways of saying the same thing. */}
+          <div className="flex items-start gap-2 rounded-xl border border-border bg-card px-4 py-3 text-xs text-muted-foreground">
+            <CheckCircle2 className="mt-0.5 h-3.5 w-3.5 shrink-0 text-success" />
+            <div className="min-w-0 flex-1">
+              <p className="leading-relaxed">
+                Sourced directly from {company?.name ?? "the company"}&apos;s official careers page — refreshed daily.
+              </p>
               {company?.careers_url && (
-                <li>
-                  <a
-                    href={company.careers_url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex items-center gap-2 text-foreground/80 transition hover:text-foreground focus-ring rounded"
-                  >
-                    <ExternalLink className="h-3 w-3 shrink-0" />
-                    {company.name} official careers page
-                  </a>
-                </li>
+                <a
+                  href={company.careers_url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="mt-1.5 inline-flex items-center gap-1 text-foreground/80 transition hover:text-foreground focus-ring rounded"
+                >
+                  <ExternalLink className="h-3 w-3 shrink-0" />
+                  Open careers page
+                </a>
               )}
-              <li className="flex items-start gap-1.5">
-                <CheckCircle2 className="mt-0.5 h-3 w-3 shrink-0 text-success" />
-                Sourced from official career page only
-              </li>
-              <li className="flex items-start gap-1.5">
-                <CheckCircle2 className="mt-0.5 h-3 w-3 shrink-0 text-success" />
-                No aggregators or third-party boards
-              </li>
-              <li className="flex items-start gap-1.5">
-                <CheckCircle2 className="mt-0.5 h-3 w-3 shrink-0 text-success" />
-                Updated daily via automated crawler
-              </li>
-            </ul>
-          </SectionCard>
+            </div>
+          </div>
         </div>
       </div>
     </div>

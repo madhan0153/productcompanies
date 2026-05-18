@@ -117,10 +117,11 @@ export function FitCardPanel({
 
   return (
     <motion.section
+      id="fit-card"
       initial={reduce ? {} : { opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
-      className={`relative overflow-hidden rounded-xl border ${v.border} ${v.bg}`}
+      className={`relative overflow-hidden rounded-xl border ${v.border} ${v.bg} scroll-mt-4`}
       aria-label="Fit Card"
     >
       {/* Compact header — verdict + one-liner only. Score lives in the
