@@ -25,6 +25,7 @@ import { SkillCoverageCard, aggregateSkillCoverage } from "./skill-coverage-card
 import { RecommendedCompaniesCard, rankCompaniesForUser } from "./recommended-companies";
 import { ToolDiscoveryCard } from "./tool-discovery-card";
 import { TopMatchesMobile, type TopMatchCard } from "./top-matches-mobile";
+import { ContinueCard } from "./continue-card";
 
 export const metadata: Metadata = { title: "Dashboard" };
 
@@ -391,6 +392,9 @@ export default async function DashboardPage() {
           </div>
         )}
       </div>
+
+      {/* ── Continue where you left off (Sprint 6 session history) ─ */}
+      <ContinueCard />
 
       {/* ── Profile incompleteness banner (PR 1.2) ──────────────── */}
       {incompleteness.length > 0 && <IncompletenessBanner issues={incompleteness} />}

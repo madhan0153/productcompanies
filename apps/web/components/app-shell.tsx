@@ -15,6 +15,7 @@ import { cn } from "@/lib/utils";
 import { CommandPalette } from "@/components/command-palette";
 import { MobileBottomNav } from "@/components/mobile-bottom-nav";
 import { PwaInstallPrompt } from "@/components/pwa-install-prompt";
+import { RecordLastVisit } from "@/components/record-last-visit";
 
 const NAV = [
   { href: "/dashboard",    label: "Dashboard",    icon: LayoutDashboard },
@@ -277,6 +278,10 @@ export function AppShell({ user, navBadges, banner, children }: Props) {
 
       <MobileBottomNav badges={navBadges} />
       <PwaInstallPrompt />
+      {/* Sprint 6 — session history: pathname-scoped scroll restore +
+          recently-visited tracking for the dashboard "Continue" card.
+          Both client-only; never touches the network. */}
+      <RecordLastVisit />
     </div>
   );
 }

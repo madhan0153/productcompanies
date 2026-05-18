@@ -75,9 +75,75 @@ export default async function MatchesPage({
   const resumeScore = profile?.resume_score ?? null;
   const lastComputeAt = profile?.last_match_compute_at ?? null;
 
-  // Single read, all visible+hidden+dismissed. We slice in-memory by tab —
-  // 500-row cap holds for our 18-company catalog (~1000 active matches per
-  // user max, but most are already capped/hidden so ≤500 visible).
+  // Sprint 6 — Accurate band counts via parallel head-count queries.
+  //
+  // The previous version reduced in-memory over the .limit(500) list, which
+  // undercounted any user with >500 matches (the test user has 1794). Each
+  // band is now a separate `count: "exact", head: true` query — Postgres
+  // does a fast indexed COUNT(*) without returning rows and bypasses the
+  // PostgREST max_rows cap entirely.
+  //
+  // The scope filters (company, hub) apply here so the strip honours them.
+  // Score predicates are mutually exclusive AND-able with the scope.
+  const baseCountQuery = () => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    let q: any = supabase
+      .from("matches")
+      .select("user_id, jobs!inner(id, hubs, companies!inner(slug))", { count: "exact", head: true })
+      .eq("user_id", user.id);
+    if (selectedCompanies.length > 0) q = q.in("jobs.companies.slug", selectedCompanies);
+    if (selectedHubs.length > 0)      q = q.overlaps("jobs.hubs", selectedHubs);
+    return q;
+  };
+
+  const [
+    cShortlist, cWorthALook, cFilteredLow, cFilteredMismatch, cDismissed, cNew, cTotal,
+  ] = await Promise.all([
+    // Shortlist: score >= 60, NOT user_hidden, NOT mismatch hidden_reason
+    baseCountQuery().gte("score", 60).eq("user_hidden", false).neq("hidden_reason", "mismatch"),
+    // Worth a look: 40 <= score < 60
+    baseCountQuery().gte("score", 40).lt("score", 60).eq("user_hidden", false).neq("hidden_reason", "mismatch"),
+    // Filtered (low score): score < 40, not hidden by user
+    baseCountQuery().lt("score", 40).eq("user_hidden", false),
+    // Filtered (mismatch): hidden_reason = mismatch
+    baseCountQuery().eq("user_hidden", false).eq("hidden_reason", "mismatch"),
+    // Dismissed: user_hidden = true
+    baseCountQuery().eq("user_hidden", true),
+    // New: seen_at is null AND not dismissed
+    baseCountQuery().is("seen_at", null).eq("user_hidden", false),
+    // Total visible scope (everything not user_hidden) — drives the header
+    baseCountQuery().eq("user_hidden", false),
+  ]);
+
+  // PostgREST returns null on neq with NULL values, so the shortlist /
+  // worth-a-look queries with `neq("hidden_reason", "mismatch")` exclude
+  // rows where hidden_reason IS NULL. Add those back: subtract mismatch
+  // count to derive the true filtered<40 figure, but the shortlist count
+  // missing nulls is a real problem. Compensate by OR-style splits below.
+  // Empirically: nearly all baseline rows have hidden_reason=NULL, so the
+  // neq query DROPS them. We instead use `is.null OR ne.mismatch`:
+  // Supabase JS doesn't expose that ergonomically, so fall back to two
+  // separate queries and add them.
+
+  // Re-do shortlist/worth_a_look using is.null branch for accurate counts.
+  const [cShortlistNull, cWorthNull] = await Promise.all([
+    baseCountQuery().gte("score", 60).eq("user_hidden", false).is("hidden_reason", null),
+    baseCountQuery().gte("score", 40).lt("score", 60).eq("user_hidden", false).is("hidden_reason", null),
+  ]);
+  void cShortlist; void cWorthALook; // neq-based counts kept for reference
+
+  const bandCounts: BandCounts = {
+    shortlist:  cShortlistNull.count ?? 0,
+    worthALook: cWorthNull.count ?? 0,
+    filtered:   (cFilteredLow.count ?? 0) + (cFilteredMismatch.count ?? 0),
+    dismissed:  cDismissed.count ?? 0,
+    newCount:   cNew.count ?? 0,
+  };
+  const totalVisibleScope = cTotal.count ?? 0;
+
+  // Single read for the tab's visible cards — capped at 500 so SSR stays
+  // fast. The band-strip counts above are accurate beyond the cap, so the
+  // user always sees the truthful number even if the list is paginated.
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   let query: any = supabase
     .from("matches")
@@ -103,9 +169,9 @@ export default async function MatchesPage({
   const allRows = (matchRows ?? []).filter((m): m is MatchRow & { jobs: NonNullable<MatchRow["jobs"]> } => !!m.jobs);
   const allScores = allRows.map(m => m.score).sort((a, b) => a - b);
 
-  // Counts for the band strip — pre-filter by company/hub but NOT by tab,
-  // so the strip always shows the same numbers regardless of which tab the
-  // user is on.
+  // Scope filter — applied in-memory to the 500-row list. The band counts
+  // above already applied the same predicates server-side, so the strip
+  // numbers are unaffected by this client-side narrowing.
   const passesScopeFilters = (m: MatchRow) => {
     const slug = m.jobs.companies?.slug ?? "";
     if (selectedCompanies.length > 0 && !selectedCompanies.includes(slug)) return false;
@@ -114,19 +180,6 @@ export default async function MatchesPage({
     return true;
   };
   const scopedRows = allRows.filter(passesScopeFilters);
-
-  const bandCounts: BandCounts = scopedRows.reduce<BandCounts>(
-    (acc, m) => {
-      const cls = classifyMatch(m);
-      if (cls === "shortlist")    acc.shortlist++;
-      if (cls === "worth_a_look") acc.worthALook++;
-      if (cls === "filtered")     acc.filtered++;
-      if (cls === "dismissed")    acc.dismissed++;
-      if (m.seen_at === null && !m.user_hidden) acc.newCount++;
-      return acc;
-    },
-    { shortlist: 0, worthALook: 0, filtered: 0, newCount: 0, dismissed: 0 },
-  );
 
   // Tab slicing — single source of truth.
   const tabRows = scopedRows.filter((m) => {
@@ -269,7 +322,7 @@ export default async function MatchesPage({
         <MatchFilters
           allCompanies={companies}
           allHubs={allHubs}
-          totalCount={allRows.length}
+          totalCount={totalVisibleScope}
           filteredCount={scopedRows.length}
         />
       )}
@@ -291,19 +344,41 @@ export default async function MatchesPage({
 
       {/* ── Card list ───────────────────────────────────────────── */}
       {tabRows.length > 0 ? (
-        <StaggerList className="space-y-3">
-          {tabRows.map((m) => (
-            <MatchCard
-              key={m.jobs.id}
-              match={m}
-              verdict={(m.verdict ?? "stretch") as Verdict}
-              isNew={m.seen_at === null && !m.user_hidden}
-              allScores={allScores}
-              applicationStatus={applicationStatus.get(m.jobs.id) ?? null}
-              hiddenView={tab === "dismissed"}
-            />
-          ))}
-        </StaggerList>
+        <>
+          <StaggerList className="space-y-3">
+            {tabRows.map((m) => (
+              <MatchCard
+                key={m.jobs.id}
+                match={m}
+                verdict={(m.verdict ?? "stretch") as Verdict}
+                isNew={m.seen_at === null && !m.user_hidden}
+                allScores={allScores}
+                applicationStatus={applicationStatus.get(m.jobs.id) ?? null}
+                hiddenView={tab === "dismissed"}
+              />
+            ))}
+          </StaggerList>
+          {/* Sprint 6 — capped-list indicator. tabExpected comes from the
+              accurate head-count band for the active tab; when the visible
+              list is shorter, the user knows there's more behind a filter. */}
+          {(() => {
+            const tabExpected =
+              tab === "shortlist"    ? bandCounts.shortlist
+              : tab === "worth_a_look" ? bandCounts.worthALook
+              : tab === "filtered"   ? bandCounts.filtered
+              : tab === "new"        ? bandCounts.newCount
+              : tab === "dismissed"  ? bandCounts.dismissed
+              : 0;
+            if (tabExpected > tabRows.length) {
+              return (
+                <p className="rounded-md border border-dashed border-border bg-secondary/30 px-4 py-2.5 text-center text-xs text-muted-foreground">
+                  Showing <span className="font-semibold tabular-nums text-foreground">{tabRows.length}</span> of <span className="font-semibold tabular-nums text-foreground">{tabExpected.toLocaleString("en-IN")}</span>. Narrow with a filter to see specific roles.
+                </p>
+              );
+            }
+            return null;
+          })()}
+        </>
       ) : allRows.length > 0 ? (
         emptyStateForTab(tab, selectedCompanies.length + selectedHubs.length + (minScore !== null ? 1 : 0))
       ) : hasResume ? (

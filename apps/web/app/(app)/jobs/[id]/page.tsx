@@ -16,7 +16,6 @@ import { StickyApplyBar } from "./sticky-apply-bar";
 import { JobDescription } from "./job-description";
 import { PrepBrief } from "./prep-brief";
 import { FitCardPanel, type FitCardData } from "./fit-card";
-import { ScoreEvidence } from "./score-evidence";
 import { ApplyButton } from "@/components/apply-button";
 import { ApplyToolkit } from "./apply-toolkit";
 import { RecruiterView } from "@/components/recruiter-view";
@@ -294,8 +293,20 @@ export default async function JobDetailPage({ params }: { params: Promise<{ id: 
       </div>
 
       {/* ── Fit Card ──────────────────────────────────────────── */}
+      {/* Sprint 6 — embeds Score Evidence as the "Evidence" tab inside the
+          Fit Card. The standalone ScoreEvidence panel is gone; the same
+          data flows in via the `evidence` prop. */}
       {match && match.fit_card ? (
-        <FitCardPanel data={match.fit_card} score={match.score} />
+        <FitCardPanel
+          data={match.fit_card}
+          score={match.score}
+          evidence={{
+            confidence: match.confidence ?? null,
+            hardCapReason: match.hard_cap_reason ?? null,
+            techCoverage: match.tech_coverage,
+            feedbackAdjustment: match.feedback_adjustment ?? null,
+          }}
+        />
       ) : match && match.reasoning ? (
         <SectionCard
           title="Match snapshot"
@@ -305,17 +316,6 @@ export default async function JobDetailPage({ params }: { params: Promise<{ id: 
           <p className="text-sm leading-relaxed text-muted-foreground">{match.reasoning}</p>
         </SectionCard>
       ) : null}
-
-      {/* ── Sprint 6: Score evidence (tech coverage, confidence, cap reason) ── */}
-      {match && (
-        <ScoreEvidence
-          score={match.score}
-          confidence={match.confidence}
-          hardCapReason={match.hard_cap_reason}
-          techCoverage={match.tech_coverage}
-          feedbackAdjustment={match.feedback_adjustment}
-        />
-      )}
 
       {/* ── Apply Toolkit ─────────────────────────────────────── */}
       <ApplyToolkit
