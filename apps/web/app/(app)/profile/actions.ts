@@ -14,6 +14,14 @@ import { computeDnaBreakdown } from "@/lib/matching/dna-breakdown";
 import { snapshotCurrentResume } from "@/lib/matching/resume-versions";
 import { embed, buildResumeEmbedText } from "@/lib/llm/embed";
 import { enqueueUserRecompute } from "@/lib/queue/recompute";
+import {
+  assertNoSupabaseError,
+  createDurableJob,
+  failDurableJob,
+  findActiveJob,
+  supersedeActiveJobs,
+  transitionDurableJob,
+} from "@/lib/jobs/state";
 import type { ParsedResume } from "@/lib/llm/prompts/resume-parse";
 import type { SeniorityLevel } from "@/lib/supabase/types";
 import type { Json } from "@/lib/supabase/types";
@@ -63,6 +71,14 @@ async function fetchTop30Demand(admin: ReturnType<typeof createSupabaseAdminClie
     }
   }
   return [...demand.entries()].sort((a, b) => b[1] - a[1]).slice(0, 30).map(([c]) => c);
+}
+
+async function removeUploadedResume(
+  admin: ReturnType<typeof createSupabaseAdminClient>,
+  path: string,
+): Promise<void> {
+  const { error } = await admin.storage.from("resumes").remove([path]);
+  assertNoSupabaseError(error, "Could not remove uploaded resume");
 }
 
 export async function refreshResumeScore(): Promise<{ ok: true; score: number } | { ok: false; error: string }> {
@@ -161,6 +177,15 @@ export type UploadResult =
   | { ok: true; processing: true; startedAt: string }
   | { ok: false; error: string; retryable?: boolean };
 
+type PriorResumeProfile = {
+  resume_storage_path: string | null;
+  resume_parsed: unknown;
+  product_dna_score: number | null;
+  dna_breakdown: unknown | null;
+  resume_signature: string | null;
+  active_resume_version_id: string | null;
+};
+
 function friendlyParseError(err: unknown): { message: string; retryable: boolean } {
   if (err instanceof LlmRunError) {
     switch (err.detail.kind) {
@@ -197,8 +222,9 @@ export async function uploadAndParseResume(formData: FormData): Promise<UploadRe
   const admin = createSupabaseAdminClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return { ok: false, error: "Not authenticated" };
+  const userId = user.id;
 
-  const consents = await getUserConsents(user.id);
+  const consents = await getUserConsents(userId);
   if (!consents.matching) {
     return { ok: false, error: "Enable AI Matching consent in Settings → Privacy to use this feature." };
   }
@@ -214,7 +240,14 @@ export async function uploadAndParseResume(formData: FormData): Promise<UploadRe
     return { ok: false, error: "PDF is too small to be a real resume — re-export and try again." };
   }
 
-  const path = `${user.id}/${crypto.randomUUID()}.pdf`;
+  const activeParseJob = await findActiveJob(admin, { userId, type: "resume_parse" });
+  if (activeParseJob) {
+    return { ok: false, error: "Resume parsing is already in progress. Please wait for it to finish." };
+  }
+
+  const resumeVersionId = crypto.randomUUID();
+  const jobId = crypto.randomUUID();
+  const path = `${userId}/${resumeVersionId}.pdf`;
   const bytes = await file.arrayBuffer();
   const head = new Uint8Array(bytes.slice(0, 5));
   const headStr = String.fromCharCode(...head);
@@ -226,33 +259,53 @@ export async function uploadAndParseResume(formData: FormData): Promise<UploadRe
     .upload(path, bytes, { contentType: "application/pdf", upsert: false });
   if (storageError) return { ok: false, error: `Storage error: ${storageError.message}` };
 
-  // Snapshot the prior parsed profile BEFORE the upload row gets touched so
-  // a re-upload doesn't lose the previous version (revert remains possible).
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { data: priorProfile } = await (supabase
-    .from("profiles")
-    .select("resume_storage_path, resume_parsed, product_dna_score, dna_breakdown, resume_signature")
-    .eq("id", user.id)
-    .maybeSingle() as any) as { data: {
-      resume_storage_path: string | null;
-      resume_parsed: unknown;
-      product_dna_score: number | null;
-      dna_breakdown: unknown | null;
-      resume_signature: string | null;
-    } | null };
-
-  // Mark parsing in flight + store the new PDF path. We intentionally do NOT
-  // overwrite resume_parsed yet — the previous parse stays visible to the UI
-  // until the new parse completes. resume_parse_error is cleared so a fresh
-  // upload after a failure can succeed.
   const startedAt = new Date().toISOString();
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  await (admin.from("profiles") as any).upsert({
-    id: user.id,
-    resume_storage_path: path,
-    resume_parsing_at:   startedAt,
-    resume_parse_error:  null,
-  });
+  let priorProfile: PriorResumeProfile | null = null;
+
+  try {
+    const { data, error } = await (admin
+      .from("profiles")
+      .select("resume_storage_path, resume_parsed, product_dna_score, dna_breakdown, resume_signature, active_resume_version_id")
+      .eq("id", userId)
+      .maybeSingle() as any) as { data: PriorResumeProfile | null; error: { message: string } | null };
+    assertNoSupabaseError(error, "Could not read existing resume profile");
+    priorProfile = data;
+
+    await supersedeActiveJobs(admin, {
+      userId,
+      type: "match_compute",
+      errorMessage: "A newer resume upload superseded this match computation.",
+    });
+
+    await createDurableJob(admin, {
+      id: jobId,
+      userId,
+      type: "resume_parse",
+      resumeVersionId,
+      source: "resume_upload",
+      payload: { storage_path: path },
+    });
+
+    const { error: queueError } = await (admin.from("profiles") as any).upsert({
+      id: userId,
+      pending_resume_version_id: resumeVersionId,
+      resume_parsing_at: startedAt,
+      resume_parse_error: null,
+    });
+    assertNoSupabaseError(queueError, "Could not mark resume parsing as queued");
+  } catch (err) {
+    try {
+      await removeUploadedResume(admin, path);
+    } catch {
+      // Best effort cleanup; the user should see the original queue failure.
+    }
+    try {
+      await failDurableJob(admin, jobId, "queue_failed", err instanceof Error ? err.message : "Could not queue resume parsing.");
+    } catch {
+      // The job row may not exist yet.
+    }
+    return { ok: false, error: "Could not start resume processing. Please retry." };
+  }
 
   // Bust the client + server route cache for /profile immediately. Without
   // this, a user who uploads then navigates to /matches and back gets the
@@ -265,94 +318,153 @@ export async function uploadAndParseResume(formData: FormData): Promise<UploadRe
   const base64 = Buffer.from(bytes).toString("base64");
 
   after(async () => {
-    let parsed;
+    await transitionDurableJob(admin, jobId, "running", { incrementAttempts: true });
+
+    async function failProcessing(errorCode: string, message: string): Promise<void> {
+      try {
+        await removeUploadedResume(admin, path);
+      } catch (cleanupErr) {
+        console.warn("[resume-parse] cleanup failed", cleanupErr instanceof Error ? cleanupErr.message : "unknown");
+      }
+      const { error } = await (admin.from("profiles") as any).update({
+        resume_parsing_at: null,
+        resume_parse_error: message,
+        pending_resume_version_id: null,
+      })
+        .eq("id", userId)
+        .eq("pending_resume_version_id", resumeVersionId);
+      const durableMessage = error
+        ? `${message} Support detail: profile failure state could not be saved.`
+        : message;
+      if (error) {
+        console.warn("[resume-parse] failure-state write failed", error.message);
+      }
+      await failDurableJob(admin, jobId, errorCode, durableMessage);
+    }
+
+    let parsed: ParsedResume;
     try {
       parsed = await parseResumePdf(base64);
     } catch (err) {
-      // Clean up the orphan upload + record the failure so the client poll
-      // can surface a friendly message.
-      console.error("[resume-parse] failure", err instanceof LlmRunError ? err.detail : err);
-      await admin.storage.from("resumes").remove([path]);
       const { message } = friendlyParseError(err);
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      await (admin.from("profiles") as any).update({
-        resume_parsing_at:  null,
-        resume_parse_error: message,
-        // Roll the path back to whatever was there before, so the UI doesn't
-        // think a resume exists when the parse never landed.
-        resume_storage_path: priorProfile?.resume_storage_path ?? null,
-      }).eq("id", user.id);
+      console.warn("[resume-parse] failed", err instanceof LlmRunError ? err.detail.kind : "parse_error");
+      await failProcessing("parse_failed", message);
       return;
     }
 
-    if (priorProfile?.resume_parsed) {
-      await snapshotCurrentResume(admin, {
-        userId:              user.id,
-        resume_parsed:       priorProfile.resume_parsed,
-        resume_storage_path: priorProfile.resume_storage_path,
-        product_dna_score:   priorProfile.product_dna_score,
-        dna_breakdown:       priorProfile.dna_breakdown,
-        resume_signature:    priorProfile.resume_signature,
-        source:              "overwrite",
-      });
-    }
-    if (priorProfile?.resume_storage_path && priorProfile.resume_storage_path !== path) {
-      await admin.storage.from("resumes").remove([priorProfile.resume_storage_path]);
-    }
-
-    const dnaBreakdown    = computeDnaBreakdown(parsed);
-    const resumeSignature = computeResumeSignature(parsed);
-
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    await (admin.from("profiles") as any).update({
-      resume_parsed: parsed as unknown as Json,
-      display_name: parsed.name || undefined,
-      current_role: parsed.current_role || null,
-      role_function: parsed.role_function || null,
-      target_role_functions: parsed.target_role_functions ?? [],
-      years_experience: Math.round(parsed.total_years_experience) || null,
-      current_lpa: parsed.estimated_current_lpa ?? null,
-      tech_stack: parsed.tech_stack ?? [],
-      preferred_hubs: (parsed.preferred_hubs ?? []).filter((h: string) => INDIA_HUBS.includes(h)),
-      product_dna_score: dnaBreakdown.total,
-      dna_breakdown: dnaBreakdown as unknown as Json,
-      resume_signature: resumeSignature,
-      resume_parsing_at: null,
-      resume_parse_error: null,
-    }).eq("id", user.id);
-
     try {
-      const top30 = await fetchTop30Demand(admin);
-      const score = computeResumeScore({
-        resume: parsed,
-        top30Demand: top30,
-        userTargets: parsed.target_role_functions ?? [],
-      });
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      await (admin.from("profiles") as any).update({
-        resume_score: score.score,
-        resume_score_breakdown: score.breakdown as unknown as Json,
-        resume_tips: score.tips as unknown as Json,
-        resume_score_at: new Date().toISOString(),
-      }).eq("id", user.id);
-    } catch (err) {
-      console.warn("[resume-score] post-upload compute failed", err);
-    }
-
-    try {
-      const resumeEmbedding = await embed(buildResumeEmbedText(parsed));
-      if (resumeEmbedding.length > 0) {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        await (admin.from("profiles") as any).update({
-          resume_embedding: resumeEmbedding,
-          resume_embedding_at: new Date().toISOString(),
-        }).eq("id", user.id);
+      const { data: currentProfile, error: currentError } = await (admin
+        .from("profiles")
+        .select("pending_resume_version_id")
+        .eq("id", userId)
+        .maybeSingle() as any) as { data: { pending_resume_version_id: string | null } | null; error: { message: string } | null };
+      assertNoSupabaseError(currentError, "Could not verify pending resume version");
+      if (currentProfile?.pending_resume_version_id !== resumeVersionId) {
+        await removeUploadedResume(admin, path);
+        await transitionDurableJob(admin, jobId, "superseded", {
+          errorCode: "superseded",
+          errorMessage: "A newer resume upload superseded this parse.",
+        });
+        return;
       }
-    } catch (err) {
-      console.warn("[resume-embed] post-upload embed failed", err);
-    }
 
-    enqueueUserRecompute(user.id, { forceFull: true, source: "resume_upload" });
+      const dnaBreakdown = computeDnaBreakdown(parsed);
+      const resumeSignature = computeResumeSignature(parsed);
+      const resumeEmbedding = await embed(buildResumeEmbedText(parsed));
+      if (resumeEmbedding.length === 0) {
+        throw new Error("Resume embedding returned no vector.");
+      }
+
+      let resumeScorePatch: Record<string, unknown> = {};
+      try {
+        const top30 = await fetchTop30Demand(admin);
+        const score = computeResumeScore({
+          resume: parsed,
+          top30Demand: top30,
+          userTargets: parsed.target_role_functions ?? [],
+        });
+        resumeScorePatch = {
+          resume_score: score.score,
+          resume_score_breakdown: score.breakdown as unknown as Json,
+          resume_tips: score.tips as unknown as Json,
+          resume_score_at: new Date().toISOString(),
+        };
+      } catch (err) {
+        console.warn("[resume-score] post-upload compute failed", err instanceof Error ? err.message : "unknown");
+      }
+
+      if (priorProfile?.resume_parsed) {
+        await snapshotCurrentResume(admin, {
+          userId,
+          resume_parsed: priorProfile.resume_parsed,
+          resume_storage_path: priorProfile.resume_storage_path,
+          product_dna_score: priorProfile.product_dna_score,
+          dna_breakdown: priorProfile.dna_breakdown,
+          resume_signature: priorProfile.resume_signature,
+          source: "overwrite",
+        });
+      }
+
+      const promotedAt = new Date().toISOString();
+      const promoteQuery = (admin.from("profiles") as any).update({
+        resume_storage_path: path,
+        resume_parsed: parsed as unknown as Json,
+        resume_parsed_version_id: resumeVersionId,
+        active_resume_version_id: resumeVersionId,
+        pending_resume_version_id: null,
+        display_name: parsed.name || undefined,
+        current_role: parsed.current_role || null,
+        role_function: parsed.role_function || null,
+        target_role_functions: parsed.target_role_functions ?? [],
+        years_experience: Math.round(parsed.total_years_experience) || null,
+        current_lpa: parsed.estimated_current_lpa ?? null,
+        tech_stack: parsed.tech_stack ?? [],
+        preferred_hubs: (parsed.preferred_hubs ?? []).filter((h: string) => INDIA_HUBS.includes(h)),
+        product_dna_score: dnaBreakdown.total,
+        dna_breakdown: dnaBreakdown as unknown as Json,
+        resume_signature: resumeSignature,
+        resume_parsing_at: null,
+        resume_parse_error: null,
+        resume_embedding: resumeEmbedding,
+        resume_embedding_at: promotedAt,
+        resume_embedding_version_id: resumeVersionId,
+        ...resumeScorePatch,
+      })
+        .eq("id", userId)
+        .eq("pending_resume_version_id", resumeVersionId)
+        .select("id")
+        .maybeSingle();
+      const promoteResult = await promoteQuery as { data: { id: string } | null; error: { message: string } | null };
+      const { data: promoted, error: promoteError } = promoteResult;
+      assertNoSupabaseError(promoteError, "Could not promote parsed resume");
+      if (!promoted) {
+        await removeUploadedResume(admin, path);
+        await transitionDurableJob(admin, jobId, "superseded", {
+          errorCode: "superseded",
+          errorMessage: "A newer resume upload superseded this parse.",
+        });
+        return;
+      }
+
+      if (priorProfile?.resume_storage_path && priorProfile.resume_storage_path !== path) {
+        try {
+          await removeUploadedResume(admin, priorProfile.resume_storage_path);
+        } catch (cleanupErr) {
+          console.warn("[resume-parse] old resume cleanup failed", cleanupErr instanceof Error ? cleanupErr.message : "unknown");
+        }
+      }
+
+      await transitionDurableJob(admin, jobId, "succeeded");
+      enqueueUserRecompute(userId, {
+        forceFull: true,
+        source: "resume_upload",
+        resumeVersionId,
+      });
+    } catch (err) {
+      console.warn("[resume-parse] post-processing failed", err instanceof Error ? err.message : "unknown");
+      await failProcessing("post_processing_failed", "Resume processing failed after parsing. Please re-upload your PDF.");
+      return;
+    }
 
     revalidatePath("/profile");
     revalidatePath("/dashboard");
@@ -384,7 +496,7 @@ export async function getParseStatus(): Promise<ParseStatus> {
   const { data } = await supabase
     .from("profiles")
     .select(
-      "resume_parsing_at, resume_parse_error, resume_parsed, current_role, years_experience, product_dna_score, tech_stack",
+      "resume_parsing_at, resume_parse_error, resume_parsed, current_role, years_experience, product_dna_score, tech_stack, pending_resume_version_id, active_resume_version_id, resume_parsed_version_id",
     )
     .eq("id", user.id)
     .maybeSingle();
@@ -399,6 +511,9 @@ export async function getParseStatus(): Promise<ParseStatus> {
     years_experience:   number | null;
     product_dna_score:  number | null;
     tech_stack:         string[] | null;
+    pending_resume_version_id: string | null;
+    active_resume_version_id: string | null;
+    resume_parsed_version_id: string | null;
   };
   const row = data as unknown as ProfileRow;
 
@@ -409,11 +524,18 @@ export async function getParseStatus(): Promise<ParseStatus> {
       const timeoutError = "Resume parsing timed out. Please re-upload your PDF.";
       // Clear stale "in progress" state so the UI can recover instead of
       // being pinned to an endless spinner when background execution dies.
+      const admin = createSupabaseAdminClient();
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      await (createSupabaseAdminClient().from("profiles") as any).update({
+      const { error } = await (admin.from("profiles") as any).update({
         resume_parsing_at: null,
         resume_parse_error: timeoutError,
+        pending_resume_version_id: null,
       }).eq("id", user.id);
+      assertNoSupabaseError(error, "Could not clear stale resume parsing state");
+      const activeParse = await findActiveJob(admin, { userId: user.id, type: "resume_parse" });
+      if (activeParse) {
+        await failDurableJob(admin, activeParse.id, "timeout", timeoutError);
+      }
       return { state: "failed", error: timeoutError };
     }
     return { state: "parsing", startedAt: row.resume_parsing_at };
@@ -421,7 +543,12 @@ export async function getParseStatus(): Promise<ParseStatus> {
   if (row.resume_parse_error) {
     return { state: "failed", error: row.resume_parse_error };
   }
-  if (row.resume_parsed) {
+  if (
+    row.resume_parsed &&
+    row.active_resume_version_id &&
+    row.resume_parsed_version_id === row.active_resume_version_id &&
+    !row.pending_resume_version_id
+  ) {
     return {
       state: "done",
       dnaScore: row.product_dna_score ?? 0,

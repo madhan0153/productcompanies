@@ -26,6 +26,7 @@ setup("authenticate", async ({ page }) => {
   }
 
   const email = process.env.E2E_TEST_EMAIL ?? "e2e-test@prodmatch.ai";
+  const baseUrl = process.env.PLAYWRIGHT_BASE_URL ?? "http://localhost:3000";
 
   // Admin client — service role bypasses RLS, not persisted in browser
   const admin = createClient(supabaseUrl, serviceKey, {
@@ -47,6 +48,9 @@ setup("authenticate", async ({ page }) => {
   const { data: linkData, error: linkErr } = await admin.auth.admin.generateLink({
     type: "magiclink",
     email,
+    options: {
+      redirectTo: `${baseUrl}/auth/callback`,
+    },
   });
   if (linkErr || !linkData.properties?.action_link) {
     throw new Error(`Failed to generate magic link: ${linkErr?.message}`);

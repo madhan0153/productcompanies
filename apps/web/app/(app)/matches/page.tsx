@@ -7,6 +7,8 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { createSupabaseAdminClient } from "@/lib/supabase/admin";
+import { getResumeReadinessForCompute } from "@/lib/resume/readiness";
 import { StaggerList } from "@/components/stagger-list";
 import { EmptyState } from "@/components/empty-state";
 import type { Verdict, Json } from "@/lib/supabase/types";
@@ -45,6 +47,7 @@ export default async function MatchesPage({
   searchParams: Promise<{ c?: string; h?: string; min_score?: string; show?: string; tab?: string }>;
 }) {
   const supabase = await createSupabaseServerClient();
+  const admin = createSupabaseAdminClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect("/auth/login");
 
@@ -70,6 +73,8 @@ export default async function MatchesPage({
     .maybeSingle() as any) as { data: { resume_storage_path: string | null; resume_score: number | null; last_match_compute_at: string | null } | null };
 
   const hasResume = !!profile?.resume_storage_path;
+  const resumeReadiness = await getResumeReadinessForCompute(admin, user.id);
+  const canCompute = resumeReadiness.ready;
   const resumeScore = profile?.resume_score ?? null;
   const lastComputeAt = profile?.last_match_compute_at ?? null;
 
@@ -190,7 +195,7 @@ export default async function MatchesPage({
 
   return (
     <MatchNavProvider>
-    <ComputeProvider hasResume={hasResume}>
+    <ComputeProvider hasResume={canCompute}>
     <div className="space-y-4 pb-6">
 
       {/* Session-history beacon */}
