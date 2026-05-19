@@ -53,7 +53,7 @@ export function ComputeProvider({
   const [phase, setPhase] = useState<Phase>("idle");
   const [progress, setProgress] = useState(0);
   const [error, setError] = useState<string | null>(null);
-  const baselineRef = useRef<string | null>(null);
+  const startedAtRef = useRef<string | null>(null);
   const router = useRouter();
 
   const isRunning = phase === "running";
@@ -68,14 +68,21 @@ export function ComputeProvider({
     return () => clearInterval(tick);
   }, [isRunning]);
 
-  // Poll last_match_compute_at until it ticks forward.
+  // Poll last_match_compute_at until it reaches this request's start time.
+  // This avoids a race where a fast compute finishes before the first poll
+  // and gets mistaken for the initial baseline.
   useEffect(() => {
     if (!isRunning) return;
     const pollStart = Date.now();
     const interval = setInterval(async () => {
       const ts = await getLastMatchComputeAt();
-      if (baselineRef.current === null) { baselineRef.current = ts ?? "0"; return; }
-      if (ts && ts !== baselineRef.current) {
+      const startedAt = startedAtRef.current;
+      const computedAfterStart = Boolean(
+        ts &&
+        startedAt &&
+        new Date(ts).getTime() >= new Date(startedAt).getTime(),
+      );
+      if (computedAfterStart) {
         clearInterval(interval);
         setProgress(100);
         setPhase("done");
@@ -94,7 +101,7 @@ export function ComputeProvider({
 
   const trigger = () => {
     setError(null);
-    baselineRef.current = null;
+    startedAtRef.current = null;
     startPending(async () => {
       const r: ComputeMatchesResult = await computeMatches();
       if (!r.ok) {
@@ -102,6 +109,7 @@ export function ComputeProvider({
         toast.error("Could not start compute", { description: r.error });
         return;
       }
+      startedAtRef.current = r.startedAt;
       setPhase("running");
       toast("Recomputing matches", { description: "Running in the background — results auto-refresh when ready." });
     });

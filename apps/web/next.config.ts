@@ -46,7 +46,7 @@ const securityHeaders = [
         supabaseOrigin,
         supabaseWs,
         "https://generativelanguage.googleapis.com",
-        "https://o*.ingest.sentry.io",
+        "https://*.ingest.sentry.io",
         "https://vitals.vercel-insights.com",
       ].filter(Boolean).join(" "),
       "font-src 'self' data:",
