@@ -336,6 +336,10 @@ alter table public.profiles add column if not exists resume_score_at        time
 -- timeouts that surfaced as "unexpected response from server".
 alter table public.profiles add column if not exists resume_parsing_at  timestamptz;
 alter table public.profiles add column if not exists resume_parse_error text;
+alter table public.profiles add column if not exists active_resume_version_id    uuid;
+alter table public.profiles add column if not exists pending_resume_version_id   uuid;
+alter table public.profiles add column if not exists resume_parsed_version_id    uuid;
+alter table public.profiles add column if not exists resume_embedding_version_id uuid;
 
 
 -- ─────────────────────────────────────────────────────────────────────────────
@@ -362,6 +366,7 @@ create index if not exists idx_jobs_no_embedding
 -- by the dashboard "you last checked N days ago" banner.
 alter table public.matches  add column if not exists seen_at                timestamptz;
 alter table public.profiles add column if not exists last_match_compute_at  timestamptz;
+alter table public.profiles add column if not exists matches_resume_version_id uuid;
 
 -- Partial index — most matches are seen; only unseen rows hit "show=new".
 create index if not exists idx_matches_user_unseen
@@ -422,6 +427,69 @@ alter table public.matches add column if not exists fit_card_jd_signature      t
 -- the "Hidden" tab + "Restore" affordance.
 create index if not exists idx_matches_user_hidden
   on public.matches(user_id) where user_hidden = true;
+
+-- Durable background job state for resume parsing and match computation.
+-- Actual execution can move from next/server after() to a queue later without
+-- changing the user-visible state model.
+create table if not exists public.background_jobs (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references auth.users(id) on delete cascade,
+  job_type text not null check (job_type in ('resume_parse', 'match_compute')),
+  status text not null default 'queued' check (status in ('queued', 'running', 'succeeded', 'failed', 'cancelled', 'superseded')),
+  resume_version_id uuid,
+  source text,
+  idempotency_key text,
+  attempts integer not null default 0,
+  payload jsonb not null default '{}'::jsonb,
+  error_code text,
+  error_message text,
+  queued_at timestamptz not null default now(),
+  started_at timestamptz,
+  finished_at timestamptz,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+create index if not exists idx_background_jobs_user_type_created
+  on public.background_jobs(user_id, job_type, created_at desc);
+
+create index if not exists idx_background_jobs_active
+  on public.background_jobs(user_id, job_type, status)
+  where status in ('queued', 'running');
+
+create unique index if not exists uniq_background_jobs_active_resume_parse
+  on public.background_jobs(user_id, job_type)
+  where job_type = 'resume_parse' and status in ('queued', 'running');
+
+create unique index if not exists uniq_background_jobs_active_match_compute
+  on public.background_jobs(user_id, job_type, resume_version_id)
+  where job_type = 'match_compute' and status in ('queued', 'running');
+
+-- Backfill existing parsed resumes with a durable active version so Phase 1
+-- readiness checks do not strand existing users.
+with versioned_profiles as (
+  select
+    id,
+    coalesce(active_resume_version_id, gen_random_uuid()) as version_id
+  from public.profiles
+  where resume_storage_path is not null
+    and resume_parsed is not null
+    and active_resume_version_id is null
+)
+update public.profiles p
+set
+  active_resume_version_id = v.version_id,
+  resume_parsed_version_id = coalesce(p.resume_parsed_version_id, v.version_id),
+  resume_embedding_version_id = case
+    when p.resume_embedding_at is not null then coalesce(p.resume_embedding_version_id, v.version_id)
+    else p.resume_embedding_version_id
+  end,
+  matches_resume_version_id = case
+    when p.last_match_compute_at is not null then coalesce(p.matches_resume_version_id, v.version_id)
+    else p.matches_resume_version_id
+  end
+from versioned_profiles v
+where p.id = v.id;
 
 
 -- ─────────────────────────────────────────────────────────────────────────────
@@ -811,7 +879,7 @@ declare
   tables text[] := array[
     'companies', 'jobs', 'profiles',
     'applications', 'stories', 'offers',
-    'digest_subscriptions'
+    'digest_subscriptions', 'background_jobs'
   ];
 begin
   foreach t in array tables loop
@@ -841,6 +909,7 @@ alter table public.offers                 enable row level security;
 alter table public.digest_subscriptions   enable row level security;
 alter table public.crawl_runs             enable row level security;
 alter table public.dpdp_events            enable row level security;
+alter table public.background_jobs        enable row level security;
 
 -- companies: public read for authenticated users; writes via service role only
 drop policy if exists "companies_read_authed" on public.companies;
@@ -910,6 +979,13 @@ begin
     );
   end loop;
 end $$;
+
+drop policy if exists "background_jobs_select_own" on public.background_jobs;
+create policy "background_jobs_select_own" on public.background_jobs for select
+  to authenticated using (user_id = (select auth.uid()));
+
+grant select on public.background_jobs to authenticated;
+grant all on public.background_jobs to service_role;
 
 -- interview_notes: scoped via parent application
 drop policy if exists "interview_notes_select_own" on public.interview_notes;

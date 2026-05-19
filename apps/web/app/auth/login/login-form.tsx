@@ -2,7 +2,8 @@
 
 import { motion, useReducedMotion } from "framer-motion";
 import { Mail, Loader2 } from "lucide-react";
-import { use, useState, useTransition } from "react";
+import { use, useEffect, useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
 import { signInWithEmail } from "./actions";
 import { createSupabaseBrowserClient } from "@/lib/supabase/browser";
 
@@ -25,6 +26,31 @@ export function LoginForm({ searchParams }: Props) {
   const [googlePending, setGooglePending] = useState(false);
   const [googleError, setGoogleError] = useState<string | null>(null);
   const reduce = useReducedMotion();
+  const router = useRouter();
+
+  useEffect(() => {
+    const hash = new URLSearchParams(window.location.hash.replace(/^#/, ""));
+    const accessToken = hash.get("access_token");
+    const refreshToken = hash.get("refresh_token");
+    if (!accessToken || !refreshToken) return;
+
+    let cancelled = false;
+    const supabase = createSupabaseBrowserClient();
+    supabase.auth
+      .setSession({ access_token: accessToken, refresh_token: refreshToken })
+      .then(({ error }) => {
+        if (cancelled) return;
+        if (error) {
+          setGoogleError("Could not complete sign in. Please request a new link.");
+          return;
+        }
+        router.replace(params.next ?? "/dashboard");
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [params.next, router]);
 
   const card = {
     initial: reduce ? {} : { opacity: 0, y: 16 },

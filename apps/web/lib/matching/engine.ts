@@ -32,6 +32,7 @@ import {
   type CompPercentileTable,
 } from "@/lib/insights/comp-percentiles";
 import { buildFeedbackModel, feedbackDelta, type FeedbackModel } from "./feedback";
+import { assertNoSupabaseError } from "@/lib/jobs/state";
 
 // Sprint 6 — Jobs with quality_score below this threshold are excluded from
 // the user's match feed entirely. The crawler already declined to LLM-parse
@@ -93,6 +94,9 @@ interface ProfileRow {
   resume_embedding: number[] | null;
   resume_embedding_at: string | null;
   last_match_compute_at: string | null;
+  active_resume_version_id: string | null;
+  resume_parsed_version_id: string | null;
+  resume_embedding_version_id: string | null;
   /** Sprint 1 Item 6 — content-hash of parsed resume. Drives Fit-Card cache. */
   resume_signature: string | null;
 }
@@ -256,6 +260,10 @@ async function fetchAllActiveJobs(
 export interface ComputeOptions {
   /** Force full recompute regardless of last_match_compute_at. */
   forceFull?: boolean;
+  /** Resume version this compute was queued for. Superseded jobs must not stamp results. */
+  resumeVersionId?: string | null;
+  /** Durable job id, used to detect cancellation/supersession before final writes. */
+  jobId?: string | null;
 }
 
 export async function computeMatchesForUser(
@@ -270,7 +278,7 @@ export async function computeMatchesForUser(
   const { data: profileRow } = await (admin
     .from("profiles")
     .select(
-      "years_experience, preferred_hubs, target_lpa, current_lpa, tech_stack, seniority, target_role_functions, resume_parsed, resume_embedding, resume_embedding_at, last_match_compute_at, resume_signature",
+      "years_experience, preferred_hubs, target_lpa, current_lpa, tech_stack, seniority, target_role_functions, resume_parsed, resume_embedding, resume_embedding_at, last_match_compute_at, active_resume_version_id, resume_parsed_version_id, resume_embedding_version_id, resume_signature",
     )
     .eq("id", userId)
     .maybeSingle() as any) as { data: Record<string, unknown> | null };
@@ -289,8 +297,26 @@ export async function computeMatchesForUser(
     resume_embedding:      (profileRow.resume_embedding as number[] | null) ?? null,
     resume_embedding_at:   (profileRow.resume_embedding_at as string | null) ?? null,
     last_match_compute_at: (profileRow.last_match_compute_at as string | null) ?? null,
+    active_resume_version_id:    (profileRow.active_resume_version_id as string | null) ?? null,
+    resume_parsed_version_id:    (profileRow.resume_parsed_version_id as string | null) ?? null,
+    resume_embedding_version_id: (profileRow.resume_embedding_version_id as string | null) ?? null,
     resume_signature:      (profileRow.resume_signature as string | null) ?? null,
   };
+
+  if (opts.resumeVersionId) {
+    if (
+      profile.active_resume_version_id !== opts.resumeVersionId ||
+      profile.resume_parsed_version_id !== opts.resumeVersionId ||
+      profile.resume_embedding_version_id !== opts.resumeVersionId
+    ) {
+      throw new Error("Resume is not ready for this match computation.");
+    }
+  }
+  await assertComputeJobIsCurrent(admin, {
+    userId,
+    resumeVersionId: opts.resumeVersionId,
+    jobId: opts.jobId,
+  });
 
   if (profile.target_role_functions.length === 0 && profile.resume_parsed?.target_role_functions?.length) {
     profile.target_role_functions = profile.resume_parsed.target_role_functions;
@@ -435,22 +461,24 @@ export async function computeMatchesForUser(
   if (orphanIds.length > 0) {
     // Chunk to keep IN clauses short.
     for (let i = 0; i < orphanIds.length; i += 200) {
-      await admin
+      const { error } = await admin
         .from("matches")
         .delete()
         .eq("user_id", userId)
         .in("job_id", orphanIds.slice(i, i + 200));
+      assertNoSupabaseError(error as { message: string } | null, "Could not delete inactive matches");
     }
   }
   // (b) Drop matches whose latest scoring flagged hard-mismatch.
   if (hardMismatchScored.length > 0) {
     const ids = hardMismatchScored.map((s) => s.job.id);
     for (let i = 0; i < ids.length; i += 200) {
-      await admin
+      const { error } = await admin
         .from("matches")
         .delete()
         .eq("user_id", userId)
         .in("job_id", ids.slice(i, i + 200));
+      assertNoSupabaseError(error as { message: string } | null, "Could not delete hard-mismatch matches");
     }
   }
 
@@ -659,8 +687,27 @@ export async function computeMatchesForUser(
   }
 
   // 9. Stamp last_match_compute_at on the profile.
+  await assertComputeJobIsCurrent(admin, {
+    userId,
+    resumeVersionId: opts.resumeVersionId,
+    jobId: opts.jobId,
+  });
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  await (admin.from("profiles") as any).update({ last_match_compute_at: now }).eq("id", userId);
+  let stampQuery = (admin.from("profiles") as any)
+    .update({
+      last_match_compute_at: now,
+      matches_resume_version_id: opts.resumeVersionId ?? profile.active_resume_version_id,
+    })
+    .eq("id", userId);
+  if (opts.resumeVersionId) {
+    stampQuery = stampQuery.eq("active_resume_version_id", opts.resumeVersionId);
+  }
+  const { data: stamped, error: stampError } = await stampQuery.select("id").maybeSingle() as {
+    data: { id: string } | null;
+    error: { message: string } | null;
+  };
+  assertNoSupabaseError(stampError, "Could not stamp match compute completion");
+  if (!stamped) throw new Error("Resume changed before match computation could be stamped.");
 
   return {
     total:          validMatches.length,
@@ -672,6 +719,39 @@ export async function computeMatchesForUser(
     mode,
     duration_ms:    Date.now() - t0,
   };
+}
+
+async function assertComputeJobIsCurrent(
+  admin: ReturnType<typeof createSupabaseAdminClient>,
+  input: {
+    userId: string;
+    resumeVersionId?: string | null;
+    jobId?: string | null;
+  },
+): Promise<void> {
+  if (input.resumeVersionId) {
+    const { data, error } = await (admin
+      .from("profiles")
+      .select("active_resume_version_id")
+      .eq("id", input.userId)
+      .maybeSingle() as any) as { data: { active_resume_version_id: string | null } | null; error: { message: string } | null };
+    assertNoSupabaseError(error, "Could not verify active resume version");
+    if (data?.active_resume_version_id !== input.resumeVersionId) {
+      throw new Error("Resume changed before match computation finished.");
+    }
+  }
+
+  if (input.jobId) {
+    const { data, error } = await (admin
+      .from("background_jobs")
+      .select("status")
+      .eq("id", input.jobId)
+      .maybeSingle() as any) as { data: { status: string } | null; error: { message: string } | null };
+    assertNoSupabaseError(error, "Could not verify match compute job status");
+    if (!data || data.status === "cancelled" || data.status === "superseded" || data.status === "failed") {
+      throw new Error("Match computation was superseded before it finished.");
+    }
+  }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -759,9 +839,10 @@ async function batchUpsert<T extends Record<string, unknown>>(
   const BATCH = 200;
   for (let i = 0; i < rows.length; i += BATCH) {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    await admin.from("matches").upsert(rows.slice(i, i + BATCH) as any, {
+    const { error } = await admin.from("matches").upsert(rows.slice(i, i + BATCH) as any, {
       onConflict: "user_id,job_id",
     });
+    assertNoSupabaseError(error as { message: string } | null, "Could not upsert matches");
   }
 }
 

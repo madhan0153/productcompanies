@@ -1,29 +1,12 @@
 "use server";
 
 import { redirect } from "next/navigation";
-import { revalidatePath } from "next/cache";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { getUserConsents } from "@/lib/dpdp/consent";
 import { enqueueUserRecompute } from "@/lib/queue/recompute";
-
-// Sprint 2 Item 5 — async match compute.
-//
-// Pre-Sprint-2 this was a synchronous server action: the client awaited the
-// 30-90s compute, the matches page set `maxDuration = 300`, and users on
-// flaky networks stared at a spinner-of-death. Now:
-//
-//   1. The action validates consent + resume, returns immediately with
-//      { ok: true, queued: true }. No heavy work in the request path.
-//   2. The actual compute runs in next/server's `after()` callback —
-//      executes AFTER the HTTP response is flushed.
-//   3. The client polls getLastMatchComputeAt() until the timestamp moves,
-//      then router.refresh() pulls the new matches.
-//
-// Limits: `after()` runs in the same Vercel function invocation, so the
-// platform maxDuration still applies. For a hobby/pro plan that's 60s,
-// which fits the typical 5-25s compute window. The real queue (Inngest /
-// Trigger.dev) is on the Sprint 3 plan.
+import { createDurableJob, assertNoSupabaseError } from "@/lib/jobs/state";
+import { getResumeReadinessForCompute } from "@/lib/resume/readiness";
 
 export type ComputeMatchesResult =
   | { ok: true; queued: true; startedAt: string }
@@ -38,32 +21,39 @@ export async function computeMatches(): Promise<ComputeMatchesResult> {
   if (!consents.matching) {
     return {
       ok: false,
-      error: "Enable AI Matching consent in Settings → Privacy to use this feature.",
+      error: "Enable AI Matching consent in Settings -> Privacy to use this feature.",
     };
   }
 
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("resume_storage_path")
-    .eq("id", user.id)
-    .maybeSingle();
-
-  if (!profile?.resume_storage_path) {
-    return { ok: false, error: "Upload your resume first to compute matches." };
+  const admin = createSupabaseAdminClient();
+  const readiness = await getResumeReadinessForCompute(admin, user.id);
+  if (!readiness.ready || !readiness.activeResumeVersionId) {
+    return { ok: false, error: readiness.message };
   }
 
   const startedAt = new Date().toISOString();
+  let job;
+  try {
+    job = await createDurableJob(admin, {
+      userId: user.id,
+      type: "match_compute",
+      resumeVersionId: readiness.activeResumeVersionId,
+      source: "user_button",
+    });
+  } catch {
+    return { ok: false, error: "A match computation is already running for this resume." };
+  }
 
-  // Sprint 4 Item 13 — dispatch via the queue facade. Today this runs in
-  // next/server's after(); swapping to Inngest later is a one-file change
-  // (see lib/queue/recompute.ts).
-  enqueueUserRecompute(user.id, { forceFull: true, source: "user_button" });
+  enqueueUserRecompute(user.id, {
+    forceFull: true,
+    source: "user_button",
+    resumeVersionId: readiness.activeResumeVersionId,
+    jobId: job.id,
+  });
 
   return { ok: true, queued: true, startedAt };
 }
 
-// Tiny status-poll endpoint the client uses to detect when the background
-// compute has finished. Cheap — one row, one column.
 export async function getLastMatchComputeAt(): Promise<string | null> {
   const supabase = await createSupabaseServerClient();
   const { data: { user } } = await supabase.auth.getUser();
@@ -77,9 +67,6 @@ export async function getLastMatchComputeAt(): Promise<string | null> {
   return data?.last_match_compute_at ?? null;
 }
 
-// Mark all currently-unseen matches as seen for this user. Called from the
-// matches page after the initial render so the "New" pills disappear next
-// load (the user has now seen them). Idempotent.
 export async function markMatchesSeen(): Promise<void> {
   const supabase = await createSupabaseServerClient();
   const { data: { user } } = await supabase.auth.getUser();
@@ -87,13 +74,12 @@ export async function markMatchesSeen(): Promise<void> {
 
   const admin = createSupabaseAdminClient();
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  await (admin.from("matches") as any)
+  const { error } = await (admin.from("matches") as any)
     .update({ seen_at: new Date().toISOString() })
     .eq("user_id", user.id)
     .is("seen_at", null);
+  assertNoSupabaseError(error, "Could not mark matches as seen");
 }
 
-// Dismiss / restore flow removed — accidental dismisses were eroding trust.
-// All matches stay visible; users use tabs and filters to focus the list.
-// The `user_hidden` column remains on the schema (used as a negative-feedback
-// signal by the matching engine) but no UI surface writes to it now.
+// Dismiss / restore flow removed. All matches stay visible; users use tabs and
+// filters to focus the list. The `user_hidden` column remains for feedback.

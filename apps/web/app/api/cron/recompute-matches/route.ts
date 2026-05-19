@@ -53,7 +53,10 @@ interface UserResult {
 export async function POST(req: NextRequest) {
   const cronSecret = serverEnv.CRON_SECRET;
   const authHeader = req.headers.get("authorization");
-  if (cronSecret && authHeader !== `Bearer ${cronSecret}`) {
+  if (!cronSecret) {
+    return NextResponse.json({ error: "Cron secret is not configured" }, { status: 503 });
+  }
+  if (authHeader !== `Bearer ${cronSecret}`) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
@@ -107,8 +110,10 @@ export async function POST(req: NextRequest) {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     let profileQuery = (admin
       .from("profiles")
-      .select("id, resume_storage_path, resume_embedding_at, last_match_compute_at")
-      .not("resume_embedding_at", "is", null) as any);
+      .select("id, resume_storage_path, resume_parsed_version_id, resume_embedding_at, resume_embedding_version_id, active_resume_version_id, pending_resume_version_id, resume_parse_error, last_match_compute_at")
+      .not("resume_embedding_at", "is", null)
+      .is("pending_resume_version_id", null)
+      .is("resume_parse_error", null) as any);
     profileQuery = targetUserId
       ? profileQuery.eq("id", targetUserId).limit(1)
       : profileQuery.order("last_match_compute_at", { ascending: true, nullsFirst: true }).limit(BATCH_SIZE * 4);
@@ -117,12 +122,20 @@ export async function POST(req: NextRequest) {
           id: string;
           resume_storage_path: string | null;
           resume_embedding_at: string | null;
+          resume_parsed_version_id: string | null;
+          resume_embedding_version_id: string | null;
+          active_resume_version_id: string | null;
+          pending_resume_version_id: string | null;
+          resume_parse_error: string | null;
           last_match_compute_at: string | null;
         }> | null;
       };
 
     const eligibleAll = (profiles ?? [])
       .filter((p) => p.resume_storage_path)
+      .filter((p) => p.active_resume_version_id)
+      .filter((p) => p.resume_parsed_version_id === p.active_resume_version_id)
+      .filter((p) => p.resume_embedding_version_id === p.active_resume_version_id)
       .filter((p) => consentedIds.has(p.id))
       .filter((p) => targetUserId === null || p.id === targetUserId);
 
@@ -150,6 +163,7 @@ export async function POST(req: NextRequest) {
         const r = await runUserRecomputeBlocking(p.id, {
           source: targetUserId ? "cron_single_user" : "cron_daily",
           forceFull: Boolean(targetUserId),
+          resumeVersionId: p.active_resume_version_id,
         });
         if (r.ok) {
           results.push({ user_id: p.id, ok: true, mode: r.mode, total: r.total, new_matches: r.new_matches, with_fit_card: r.with_fit_card, duration_ms: r.duration_ms });
@@ -176,6 +190,7 @@ export async function POST(req: NextRequest) {
         const r = await runUserRecomputeBlocking(p.id, {
           source: targetUserId ? "cron_single_user_retry" : "cron_retry",
           forceFull: Boolean(targetUserId),
+          resumeVersionId: p.active_resume_version_id,
         });
         if (r.ok) {
           const idx = results.findIndex((res) => res.user_id === p.id);
