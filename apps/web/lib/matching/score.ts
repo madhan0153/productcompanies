@@ -76,8 +76,9 @@ const ROLE_ADJACENCY: Record<string, string[]> = {
   backend:                ["backend", "fullstack"],
   frontend:               ["frontend", "fullstack"],
   fullstack:              ["fullstack", "backend", "frontend"],
-  data_engineering:       ["data_engineering", "ml_ai"],
-  ml_ai:                  ["ml_ai", "data_engineering"],
+  data_analytics:         ["data_analytics", "data_engineering", "ml_ai"],
+  data_engineering:       ["data_engineering", "data_analytics", "ml_ai"],
+  ml_ai:                  ["ml_ai", "data_analytics", "data_engineering"],
   devops_platform:        ["devops_platform", "backend"],
   mobile:                 ["mobile"],
   engineering_management: ["engineering_management", "backend", "frontend", "fullstack", "qa_sdet", "devops_platform"],
@@ -100,6 +101,45 @@ export function scoreRoleFunction(
   const adjacent = candidateFunctions.flatMap((f) => ROLE_ADJACENCY[f] ?? []);
   if (adjacent.includes(jobFunction)) return 10;
   return 0;
+}
+
+function normalizeYearsValue(v: number | null | undefined): number | null {
+  if (typeof v !== "number" || !Number.isFinite(v)) return null;
+  return v > 0 ? v : null;
+}
+
+function inferYearsFloorFromTitleAndSeniority(
+  title: string | null | undefined,
+  seniority: string | null | undefined,
+): number | null {
+  const t = (title ?? "").toLowerCase();
+  const s = (seniority ?? "").toLowerCase();
+  if (/\b(intern|internship|graduate|university|campus|trainee)\b/.test(t) || s === "intern") return 0;
+  if (/\b(entry|new grad|fresher|associate|junior)\b/.test(t) || s === "junior") return 0;
+  if (/\b(?:ii|2)\b/.test(t) || s === "mid") return 2;
+  if (/\b(?:iii|3|senior|lead)\b/.test(t) || s === "senior" || s === "lead") return 5;
+  if (/\b(staff|principal|architect)\b/.test(t) || s === "staff" || s === "principal") return 8;
+  if (/\b(manager|director|head|vp)\b/.test(t) || s === "manager" || s === "director" || s === "vp") return 6;
+  return null;
+}
+
+function effectiveExperienceFloor(input: {
+  title?: string | null;
+  seniority?: string | null;
+  jdMinYears?: number | null;
+  crawlerMinYears?: number | null;
+}): number | null {
+  return normalizeYearsValue(input.jdMinYears)
+    ?? normalizeYearsValue(input.crawlerMinYears)
+    ?? inferYearsFloorFromTitleAndSeniority(input.title, input.seniority);
+}
+
+function effectiveExperienceCeiling(input: {
+  jdMaxYears?: number | null;
+  crawlerMaxYears?: number | null;
+}): number | null {
+  return normalizeYearsValue(input.jdMaxYears)
+    ?? normalizeYearsValue(input.crawlerMaxYears);
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -309,6 +349,39 @@ function expandSkillAliases(skill: string): string[] {
   return [...seen];
 }
 
+function expandedSkillSet(skills: string[]): Set<string> {
+  const out = new Set<string>();
+  for (const skill of skills) {
+    for (const expanded of expandSkillAliases(skill)) out.add(expanded);
+  }
+  return out;
+}
+
+const BROAD_REQUIREMENTS = new Set([
+  "analytics", "businessintelligence", "dataanalysis", "dataanalytics",
+  "dataengineering", "dataengineer", "datapipeline", "datapipelines",
+  "datawarehouse", "datawarehousing", "datamodeling", "datamodelling",
+  "etl", "elt", "etlelt", "reporting", "sql",
+]);
+
+function hasDirectSkillEvidence(resumeSkills: string[], jdSkill: string): boolean {
+  const resumeExpanded = expandedSkillSet(resumeSkills);
+  const jdExpanded = expandSkillAliases(jdSkill);
+  if (jdExpanded.some((s) => resumeExpanded.has(s))) return true;
+
+  // Broad requirements can be satisfied by same-domain evidence. Specific
+  // tools/frameworks cannot: ETL does not prove Spark, SQL does not prove dbt,
+  // and "data warehousing" does not prove SAP HANA.
+  if (!jdExpanded.some((s) => BROAD_REQUIREMENTS.has(s))) return false;
+
+  const resumeDomains = skillsToDomains(resumeSkills);
+  const jdDomains = skillsToDomains([jdSkill]);
+  for (const d of jdDomains) {
+    if (resumeDomains.has(d)) return true;
+  }
+  return false;
+}
+
 function skillsToDomains(skills: string[]): Set<string> {
   const domains = new Set<string>();
   for (const skill of skills) {
@@ -333,12 +406,7 @@ function skillsToDomains(skills: string[]): Set<string> {
  * unchanged into the analyser.
  */
 export function isDirectTechMatch(resumeSkills: string[], jdSkill: string): boolean {
-  const resumeDomains = skillsToDomains(resumeSkills);
-  const jdDomains = skillsToDomains([jdSkill]);
-  for (const d of jdDomains) {
-    if (resumeDomains.has(d)) return true;
-  }
-  return false;
+  return hasDirectSkillEvidence(resumeSkills, jdSkill);
 }
 
 /** Phase I: scoreTechV3 — must-haves are 4× nice-to-haves. Max 22.
@@ -357,9 +425,7 @@ export function scoreTechV3(
 ): number {
   const resumeDomains = skillsToDomains(resumeTech);
   const has = (skill: string): boolean => {
-    const dom = skillsToDomains([skill]);
-    for (const d of dom) if (resumeDomains.has(d)) return true;
-    return false;
+    return hasDirectSkillEvidence(resumeTech, skill);
   };
 
   if (!resumeTech.length) return 7;
@@ -564,7 +630,7 @@ type TitleRule = { pattern: RegExp; conflictsWith: Set<string> };
 
 const ENG_FUNCTIONS = new Set([
   "qa_sdet", "backend", "frontend", "fullstack",
-  "data_engineering", "ml_ai", "devops_platform", "mobile",
+  "data_analytics", "data_engineering", "ml_ai", "devops_platform", "mobile",
   "engineering_management", "security",
 ]);
 
@@ -580,7 +646,7 @@ const TITLE_HARD_MISMATCH: TitleRule[] = [
   // Trust & Safety / Risk / Fraud / Policy — non-eng managerial paths
   { pattern: /\b(trust\s*(?:and|&)?\s*safety|t&s|policy specialist|fraud (?:investigator|analyst|operations)|risk operations|content moderation|content review)\b/i, conflictsWith: ENG_FUNCTIONS },
   // Customer-facing / GTM / consulting / TAM / support
-  { pattern: /\b(customer success|customer engineer|technical account manager|solutions consultant|solution engineer(?:ing)?|implementation consultant|onboarding manager|success manager|premier support|application support|technical support|support engineer|product support|appeals specialist)\b/i, conflictsWith: ENG_FUNCTIONS },
+  { pattern: /\b(customer success|customer service|customer engineer|technical account manager|solutions consultant|solution engineer(?:ing)?|implementation consultant|onboarding manager|success manager|premier support|application support|technical support|customer support|support analyst|support engineer|product support|appeals specialist)\b/i, conflictsWith: ENG_FUNCTIONS },
   // Recruiting / HR / People Ops / Talent
   { pattern: /\b(recruiter|recruiting|talent (?:acquisition|partner)|people operations?|people partner|hr business partner|hrbp|comp(?:ensation)? analyst)\b/i, conflictsWith: ALL_TECH_FUNCTIONS },
   // Finance / Accounting / Tax / Audit / Legal / FinOps
@@ -624,7 +690,8 @@ export function titleHardMismatch(
 
 const TITLE_FUNCTION_PATTERNS: Array<{ pattern: RegExp; fn: string }> = [
   // Highly specific / multi-token signatures first
-  { pattern: /\b(data\s+engineer(?:ing)?|analytics engineer|etl developer|big data engineer|cloud data engineer|data platform|business intelligence engineer|bi engineer|business intel engineer)\b/i, fn: "data_engineering" },
+  { pattern: /\b(business intelligence engineer|business intel engineer|bi engineer|business intelligence analyst|bi analyst|data analyst|analytics analyst|business analyst|data analytics)\b/i, fn: "data_analytics" },
+  { pattern: /\b(data\s+engineer(?:ing)?|analytics engineer|etl developer|big data engineer|cloud data engineer|data platform)\b/i, fn: "data_engineering" },
   { pattern: /\b(machine learning engineer|ml engineer|ai engineer|deep learning|nlp engineer|computer vision|generative ai|genai|llm engineer|ai platform engineer)\b/i, fn: "ml_ai" },
   { pattern: /\b(data scientist|research scientist|applied scientist|quantitative researcher|decision scientist|ml scientist)\b/i, fn: "ml_ai" },
   { pattern: /\b(devops|sre|site reliability|platform engineer|infrastructure engineer|cloud engineer|build engineer|release engineer|reliability engineer|systems development engineer|system development engineer)\b/i, fn: "devops_platform" },
@@ -711,6 +778,7 @@ export type HardCapReason =
   | "no_stack"         // zero direct + zero adjacent must-have hits
   | "adjacent_only"    // matches exist but only via adjacency, no direct
   | "senior_no_exp"    // JD asks for senior+, candidate has <2 yrs pro exp
+  | "mid_no_exp"       // mid-level role, candidate has <2 yrs pro exp
   ;
 
 const CAPS: Record<HardCapReason, number> = {
@@ -718,6 +786,7 @@ const CAPS: Record<HardCapReason, number> = {
   no_stack:      50,
   adjacent_only: 70,
   senior_no_exp: 45,
+  mid_no_exp:    55,
 };
 
 const SENIOR_PLUS = new Set([
@@ -766,6 +835,15 @@ export function applyHardCaps(input: {
     SENIOR_PLUS.has(input.jdSeniority.toLowerCase())
   ) {
     triggered.push("senior_no_exp");
+  }
+
+  if (
+    input.resumeYears !== null &&
+    input.resumeYears < 2 &&
+    input.jdSeniority &&
+    input.jdSeniority.toLowerCase() === "mid"
+  ) {
+    triggered.push("mid_no_exp");
   }
 
   if (triggered.length === 0) {
@@ -843,11 +921,20 @@ export function computeRulesScore(
     semantic_cosine?: number | null;
   },
 ): RulesScore {
-  // Use JD-parsed years when available; otherwise fall back to crawler regex.
-  const yMin = job.jd_min_years ?? job.min_experience_years;
-  const yMax = job.jd_max_years ?? job.max_experience_years;
-
   const jdSeniority = job.jd_seniority_signal ?? job.seniority;
+  // Treat 0/0 parser output as unknown unless the title/level says entry.
+  // This keeps mid/senior roles with missing years from outranking true
+  // junior fits for early-career candidates.
+  const yMin = effectiveExperienceFloor({
+    title: job.title,
+    seniority: jdSeniority,
+    jdMinYears: job.jd_min_years,
+    crawlerMinYears: job.min_experience_years,
+  });
+  const yMax = effectiveExperienceCeiling({
+    jdMaxYears: job.jd_max_years,
+    crawlerMaxYears: job.max_experience_years,
+  });
   const effectiveRoleFunction =
     job.role_function ?? inferRoleFunctionFromTitle(job.title ?? null);
 

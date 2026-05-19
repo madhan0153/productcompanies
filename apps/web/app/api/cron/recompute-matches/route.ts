@@ -105,12 +105,14 @@ export async function POST(req: NextRequest) {
     // batch always works on the most stale users. nullsFirst = brand-new
     // profiles get their first compute promptly.
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data: profiles } = await (admin
+    let profileQuery = (admin
       .from("profiles")
       .select("id, resume_storage_path, resume_embedding_at, last_match_compute_at")
-      .not("resume_embedding_at", "is", null)
-      .order("last_match_compute_at", { ascending: true, nullsFirst: true })
-      .limit(targetUserId ? 1 : BATCH_SIZE * 4) as any) as {
+      .not("resume_embedding_at", "is", null) as any);
+    profileQuery = targetUserId
+      ? profileQuery.eq("id", targetUserId).limit(1)
+      : profileQuery.order("last_match_compute_at", { ascending: true, nullsFirst: true }).limit(BATCH_SIZE * 4);
+    const { data: profiles } = await profileQuery as {
         data: Array<{
           id: string;
           resume_storage_path: string | null;
@@ -145,7 +147,10 @@ export async function POST(req: NextRequest) {
         }
         const p = workQueue.shift();
         if (!p) return;
-        const r = await runUserRecomputeBlocking(p.id, { source: "cron_daily" });
+        const r = await runUserRecomputeBlocking(p.id, {
+          source: targetUserId ? "cron_single_user" : "cron_daily",
+          forceFull: Boolean(targetUserId),
+        });
         if (r.ok) {
           results.push({ user_id: p.id, ok: true, mode: r.mode, total: r.total, new_matches: r.new_matches, with_fit_card: r.with_fit_card, duration_ms: r.duration_ms });
           processed++;
@@ -168,7 +173,10 @@ export async function POST(req: NextRequest) {
       const failedIds = new Set(results.filter((r) => !r.ok).map((r) => r.user_id));
       for (const p of batch.filter((p) => failedIds.has(p.id))) {
         if (Date.now() - startedAt > WALL_CLOCK_BUDGET_MS) break;
-        const r = await runUserRecomputeBlocking(p.id, { source: "cron_retry" });
+        const r = await runUserRecomputeBlocking(p.id, {
+          source: targetUserId ? "cron_single_user_retry" : "cron_retry",
+          forceFull: Boolean(targetUserId),
+        });
         if (r.ok) {
           const idx = results.findIndex((res) => res.user_id === p.id);
           if (idx >= 0) results[idx] = { user_id: p.id, ok: true, mode: r.mode, total: r.total, new_matches: r.new_matches, with_fit_card: r.with_fit_card, duration_ms: r.duration_ms };

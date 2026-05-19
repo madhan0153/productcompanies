@@ -21,7 +21,7 @@
 //   - profiles.last_match_compute_at stamped on success
 
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
-import { computeRulesScore } from "./score";
+import { computeRulesScore, inferRoleFunctionFromTitle } from "./score";
 import { generateFitCard, type FitCard, type Verdict } from "@/lib/llm/prompts/fit-card";
 import { cosineSimilarity } from "@/lib/llm/embed";
 import type { ParsedResume } from "@/lib/llm/prompts/resume-parse";
@@ -64,6 +64,7 @@ interface JobRow {
   company_id: string | null;
   company_name: string;
   role_function: string | null;
+  role_function_jd: string | null;
   must_have_skills: string[];
   nice_to_have_skills: string[];
   jd_min_years: number | null;
@@ -118,11 +119,75 @@ function deterministicVerdict(
   experienceScore: number,
 ): Verdict {
   if (hardMismatch) return "mismatch";
-  if (roleScore > 0 && roleScore < 21 && score >= 55) return "off_target";
+  if (roleScore > 0 && roleScore <= 3 && score >= 55) return "off_target";
   if (experienceScore <= 2) return "underqualified";
   if (score >= 75) return "strong_fit";
   if (score >= 55) return "stretch";
   return "underqualified";
+}
+
+const VERDICT_SCORE_CAP: Record<Verdict, number> = {
+  strong_fit:     100,
+  stretch:        74,
+  underqualified: 49,
+  off_target:     44,
+  mismatch:       0,
+};
+
+function capScoreForVerdict(score: number, verdict: Verdict | null): number {
+  if (!verdict) return Math.max(0, Math.min(100, Math.round(score)));
+  return Math.max(0, Math.min(100, VERDICT_SCORE_CAP[verdict], Math.round(score)));
+}
+
+function isLowEvidenceJob(job: JobRow): boolean {
+  const descLen = job.description.trim().length;
+  const structuredSignals =
+    job.must_have_skills.length +
+    job.nice_to_have_skills.length +
+    job.tech_stack.length +
+    (job.jd_summary ? 1 : 0) +
+    (job.role_function_jd && job.role_function_jd !== "other" ? 1 : 0);
+  return job.quality_score < 60
+    || job.jd_parsed_at === null
+    || (descLen < 200 && structuredSignals < 2)
+    || /job description provided is empty|provided is empty|lacks specific details/i.test(job.jd_summary ?? "");
+}
+
+function hasRoleSignalConflict(job: JobRow): boolean {
+  const titleFunction = inferRoleFunctionFromTitle(job.title);
+  const jdFunction = job.role_function_jd;
+  if (!titleFunction || !jdFunction) return false;
+  if (jdFunction === "other") return true;
+  return titleFunction !== jdFunction;
+}
+
+function calibrateEnterpriseMatch(input: {
+  job: JobRow;
+  rules: ReturnType<typeof computeRulesScore>;
+  score: number;
+  verdict: Verdict;
+}): { score: number; verdict: Verdict; hidden_reason: string | null } {
+  if (input.rules.hardMismatch) {
+    return { score: 0, verdict: "mismatch", hidden_reason: input.rules.hardMismatchReason ?? "mismatch" };
+  }
+
+  let score = Math.round(Math.max(0, Math.min(100, input.score)));
+  let verdict = input.verdict;
+  let hidden_reason: string | null = null;
+
+  if (hasRoleSignalConflict(input.job)) {
+    score = Math.min(score, 39);
+    verdict = "mismatch";
+    hidden_reason = "role_signal_conflict";
+  } else if (isLowEvidenceJob(input.job)) {
+    score = Math.min(score, 39);
+    if (verdict === "strong_fit") verdict = "stretch";
+    hidden_reason = "low_quality_jd";
+  }
+
+  score = capScoreForVerdict(score, verdict);
+  if (verdict === "mismatch") hidden_reason = hidden_reason ?? "mismatch";
+  return { score, verdict, hidden_reason };
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -138,7 +203,7 @@ async function fetchAllActiveJobs(
     const { data: rows } = await (admin
       .from("jobs")
       .select(
-        "id, title, description, hubs, min_experience_years, max_experience_years, comp_lpa_min, comp_lpa_max, tech_stack, seniority, location, company_id, role_function, must_have_skills, nice_to_have_skills, jd_min_years, jd_max_years, jd_seniority_signal, jd_summary, is_likely_ghost, jd_parsed_at, embedding, embedding_at, signature, quality_score, companies(name)",
+        "id, title, description, hubs, min_experience_years, max_experience_years, comp_lpa_min, comp_lpa_max, tech_stack, seniority, location, company_id, role_function, role_function_jd, must_have_skills, nice_to_have_skills, jd_min_years, jd_max_years, jd_seniority_signal, jd_summary, is_likely_ghost, jd_parsed_at, embedding, embedding_at, signature, quality_score, companies(name)",
       )
       .eq("is_active", true)
       // Sprint 6 — read-side quality enforcement. Legacy rows default to 100
@@ -164,6 +229,7 @@ async function fetchAllActiveJobs(
         company_id:           (r.company_id as string | null) ?? null,
         company_name:         ((r.companies as Record<string, unknown>)?.name as string) ?? "",
         role_function:        (r.role_function as string | null) ?? null,
+        role_function_jd:     (r.role_function_jd as string | null) ?? null,
         must_have_skills:     (r.must_have_skills as string[] | null) ?? [],
         nice_to_have_skills:  (r.nice_to_have_skills as string[] | null) ?? [],
         jd_min_years:         r.jd_min_years as number | null,
@@ -279,6 +345,7 @@ export async function computeMatchesForUser(
         rules: undefined,
         score: existing.score,
         verdict: existing.verdict,
+        hidden_reason: existing.hidden_reason,
         existing,
         rescored: false,
         cosine: null,
@@ -302,7 +369,7 @@ export async function computeMatchesForUser(
       {
         title:                 job.title,
         description:           job.description,
-        role_function:         job.role_function,
+        role_function:         job.role_function ?? (job.role_function_jd === "other" ? null : job.role_function_jd),
         semantic_cosine:       cosine,
         min_experience_years:  job.min_experience_years,
         max_experience_years:  job.max_experience_years,
@@ -329,12 +396,20 @@ export async function computeMatchesForUser(
       must_have_skills: job.must_have_skills,
     });
     const finalScore = Math.max(0, Math.min(100, rules.total + feedback_adjustment));
+    const baselineVerdict = deterministicVerdict(finalScore, rules.hardMismatch, rules.breakdown.role, rules.breakdown.experience);
+    const calibrated = calibrateEnterpriseMatch({
+      job,
+      rules,
+      score: finalScore,
+      verdict: baselineVerdict,
+    });
 
     return {
       job,
       rules,
-      score: finalScore,
-      verdict: deterministicVerdict(finalScore, rules.hardMismatch, rules.breakdown.role, rules.breakdown.experience),
+      score: calibrated.score,
+      verdict: calibrated.verdict,
+      hidden_reason: calibrated.hidden_reason,
       existing,
       rescored: true,
       cosine,
@@ -385,15 +460,15 @@ export async function computeMatchesForUser(
   const rescored = validMatches.filter((s) => s.rescored);
   let newMatchCount = 0;
 
-  const baselineRows: BaselineUpsertRow[] = rescored.map(({ job, rules, score, verdict, existing, feedback_adjustment }) => {
+  const baselineRows: BaselineUpsertRow[] = rescored.map(({ job, rules, score, verdict, hidden_reason, existing, feedback_adjustment }) => {
     // First-seen rows OR significant score change → seen_at=NULL ("new").
     // Fit-card-only updates without score movement → keep existing seen_at.
     const isNew = !existing || Math.abs((existing.score ?? 0) - score) >= 3;
     if (isNew) newMatchCount++;
-    const hidden_reason =
+    const rowHiddenReason =
       rules?.hardMismatch ? "mismatch"
       : job.is_likely_ghost ? "ghost"
-      : null;
+      : hidden_reason;
     // Sprint 1 Item 3 — persist the per-dimension breakdown so the UI can
     // surface "Why this score?" without recomputing. Null only when we
     // reused an existing score (no rules object was computed this run).
@@ -415,7 +490,7 @@ export async function computeMatchesForUser(
       verdict,
       fit_card:      existing?.fit_card ?? null,
       fit_card_at:   existing?.fit_card_at ?? null,
-      hidden_reason,
+      hidden_reason: rowHiddenReason,
       score_breakdown,
       confidence,
       hard_cap_reason: hardCapReason,
@@ -458,6 +533,8 @@ export async function computeMatchesForUser(
     // Sprint 1 Item 4 — never burn Gemini quota on user-dismissed roles.
     const topRanked = validMatches
       .filter((s) => !s.job.is_likely_ghost)
+      .filter((s) => !s.hidden_reason)
+      .filter((s) => s.score >= 50)
       .filter((s) => s.job.jd_parsed_at !== null)
       .filter((s) => s.existing?.user_hidden !== true)
       .slice(0, topK);
@@ -546,10 +623,11 @@ export async function computeMatchesForUser(
               marketComp,
             });
 
+            const cardScore = capScoreForVerdict(score, card.verdict);
             fitCardRows.push({
               user_id:       userId,
               job_id:        job.id,
-              score,
+              score:         cardScore,
               verdict:       card.verdict,
               fit_card:      card as unknown as Json,
               fit_card_at:   new Date().toISOString(),
@@ -620,6 +698,7 @@ type ScoredJob = {
   rules: ReturnType<typeof computeRulesScore> | undefined;
   score: number;
   verdict: Verdict | null;
+  hidden_reason: string | null;
   existing: ExistingMatch | undefined;
   rescored: boolean;
   cosine: number | null;
