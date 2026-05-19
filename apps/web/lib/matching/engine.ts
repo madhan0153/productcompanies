@@ -118,7 +118,7 @@ function deterministicVerdict(
   experienceScore: number,
 ): Verdict {
   if (hardMismatch) return "mismatch";
-  if (roleScore === 10 && score >= 55) return "off_target";
+  if (roleScore > 0 && roleScore < 21 && score >= 55) return "off_target";
   if (experienceScore <= 2) return "underqualified";
   if (score >= 75) return "strong_fit";
   if (score >= 55) return "stretch";

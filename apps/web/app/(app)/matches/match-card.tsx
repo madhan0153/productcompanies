@@ -31,6 +31,7 @@ import {
 } from "lucide-react";
 import type { Verdict, Json } from "@/lib/supabase/types";
 import { CompanyLogo } from "@/components/company-logo";
+import { getScoreBand } from "@/lib/matching/bands";
 
 type VerdictMeta = {
   label: string;
@@ -143,6 +144,7 @@ export function MatchCard({
   const job = match.jobs;
   const company = job.companies;
   const meta = VERDICT_META[verdict];
+  const scoreBand = getScoreBand(match.score);
 
   const card = (match.fit_card as FitCardLite | null) ?? null;
   // Tightly clamp the optional insight to a single line of high signal.
@@ -193,7 +195,7 @@ export function MatchCard({
             <span className="truncate text-xs font-medium text-muted-foreground">{company?.name}</span>
             <span className={`inline-flex items-center gap-1 rounded-full border px-1.5 py-0.5 text-[10px] font-semibold ${meta.tone} ${meta.borderTone} ${meta.bgTone}`}>
               {meta.icon}
-              {meta.short}
+              {scoreBand.band === "plausible" ? "Plausible" : meta.short}
             </span>
             {isNew && (
               <span className="rounded-full border border-success/30 bg-success/10 px-1.5 py-0.5 text-[10px] font-semibold text-success">

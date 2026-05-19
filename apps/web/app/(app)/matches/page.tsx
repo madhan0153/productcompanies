@@ -89,18 +89,18 @@ export default async function MatchesPage({
   };
 
   const [
-    cShortlist, cWorthALook, cFilteredLow, cFilteredMismatch,
+    cShortlist, cWorthALook, cFilteredLow, cFilteredHidden,
   ] = await Promise.all([
     baseCountQuery().gte("score", 60).is("hidden_reason", null),
     baseCountQuery().gte("score", 40).lt("score", 60).is("hidden_reason", null),
-    baseCountQuery().lt("score", 40),
-    baseCountQuery().eq("hidden_reason", "mismatch"),
+    baseCountQuery().lt("score", 40).is("hidden_reason", null),
+    baseCountQuery().not("hidden_reason", "is", null),
   ]);
 
   const bandCounts: BandCounts = {
     shortlist:  cShortlist.count ?? 0,
     worthALook: cWorthALook.count ?? 0,
-    filtered:   (cFilteredLow.count ?? 0) + (cFilteredMismatch.count ?? 0),
+    filtered:   (cFilteredLow.count ?? 0) + (cFilteredHidden.count ?? 0),
   };
 
   // Single read for the tab's visible cards — capped at 500 so SSR stays
@@ -333,7 +333,7 @@ function emptyStateForTab(tab: MatchTab, activeFilterCount: number): React.React
     return (
       <EmptyState
         icon={<Activity className="h-5 w-5" />}
-        title="Your shortlist is empty"
+        title="No priority matches yet"
         body="Nothing scored ≥60 yet. Check Explore for partial fits, or set your preferred hubs / strengthen your resume to lift more roles."
         actions={[
           { label: "See Explore matches", href: "/matches?tab=worth_a_look", variant: "primary" },
@@ -347,15 +347,15 @@ function emptyStateForTab(tab: MatchTab, activeFilterCount: number): React.React
       <EmptyState
         icon={<Eye className="h-5 w-5" />}
         title="Nothing in Explore"
-        body="No matches between 40 and 60. Most of your matches are likely either strong fits or low match."
+        body="No matches between 40 and 60. Most roles are likely either priority candidates or filtered out."
       />
     );
   }
   return (
     <EmptyState
       icon={<Eye className="h-5 w-5" />}
-      title="No low-match roles"
-      body="Switch to Shortlist or Explore to see your matched roles."
+      title="No filtered roles"
+      body="Switch to Priority or Explore to see your matched roles."
     />
   );
 }

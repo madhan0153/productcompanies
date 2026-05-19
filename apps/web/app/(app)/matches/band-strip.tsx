@@ -22,9 +22,9 @@ const TILE_META: Record<
   MatchTab,
   { label: string; activeTone: string; activeBg: string; activeBorder: string }
 > = {
-  shortlist:    { label: "Shortlist",  activeTone: "text-success",    activeBg: "bg-success/10",   activeBorder: "border-success" },
+  shortlist:    { label: "Priority",   activeTone: "text-success",    activeBg: "bg-success/10",   activeBorder: "border-success" },
   worth_a_look: { label: "Explore",    activeTone: "text-warning",    activeBg: "bg-warning/10",   activeBorder: "border-warning" },
-  filtered:     { label: "Low Match",  activeTone: "text-foreground", activeBg: "bg-secondary",    activeBorder: "border-foreground/40" },
+  filtered:     { label: "Filtered",   activeTone: "text-foreground", activeBg: "bg-secondary",    activeBorder: "border-foreground/40" },
 };
 
 interface BandStripProps {

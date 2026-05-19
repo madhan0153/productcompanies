@@ -164,13 +164,24 @@ const TECH_DOMAINS: Record<string, string[]> = {
   backend_fw:       ["spring", "django", "fastapi", "flask", "nodejs", "express", "nestjs", "rails", "laravel", "fiber", "gin", "actix"],
   frontend_fw:      ["react", "vue", "angular", "nextjs", "svelte", "nuxt", "remix"],
   mobile:           ["swift", "kotlin", "reactnative", "flutter", "android", "ios", "xamarin"],
-  database_sql:     ["postgresql", "mysql", "mssql", "oracle", "sqlite", "mariadb"],
+  database_sql:     ["postgresql", "postgres", "mysql", "mssql", "oracle", "sqlite", "mariadb", "azure sql"],
   database_nosql:   ["mongodb", "dynamodb", "cassandra", "couchdb", "firestore"],
   cache_queue:      ["redis", "memcached", "rabbitmq", "kafka", "sqs", "pubsub", "nats"],
   search:           ["elasticsearch", "opensearch", "solr", "meilisearch", "typesense"],
   cloud:            ["aws", "gcp", "azure", "cloudrun", "lambda", "ec2", "s3", "gke", "eks"],
   container:        ["docker", "kubernetes", "helm", "terraform", "pulumi", "ansible"],
-  data_stack:       ["spark", "kafka", "airflow", "dbt", "flink", "hadoop", "hive", "beam", "presto", "trino"],
+  data_stack:       [
+    "data engineering", "data engineer", "data pipeline", "data pipelines",
+    "pipeline", "pipelines", "etl", "elt", "etl/elt", "etl pipelines",
+    "data quality", "dq", "data warehouse", "data warehousing",
+    "data modeling", "data modelling", "star schema", "snowflake schema",
+    "spark", "pyspark", "spark structured streaming", "databricks",
+    "azure databricks", "delta lake", "deltalake", "delta live tables",
+    "azure data factory", "data factory", "adf", "adls", "adls gen2",
+    "data lake", "medallion architecture", "unity catalog",
+    "kafka", "event hubs", "airflow", "dbt", "flink", "hadoop", "hive",
+    "beam", "presto", "trino", "snowflake", "redshift", "bigquery",
+  ],
   ml_stack:         ["pytorch", "tensorflow", "sklearn", "mlflow", "kubeflow", "langchain", "huggingface", "xgboost", "lightgbm"],
   observability:    ["datadog", "grafana", "prometheus", "newrelic", "splunk", "kibana", "sentry", "opentelemetry"],
 };
@@ -179,17 +190,66 @@ function normSkill(s: string): string {
   return s.toLowerCase().replace(/[^a-z0-9#+.]/g, "").trim();
 }
 
+const SKILL_ALIASES: Record<string, string[]> = {
+  adf: ["azuredatafactory", "datafactory"],
+  adls: ["adlsgen2", "azuredatalakestorage", "datalake"],
+  azuredatabricks: ["databricks", "spark", "pyspark"],
+  bigdata: ["dataengineering", "spark"],
+  databricks: ["azuredatabricks", "spark", "pyspark"],
+  dataengineering: ["dataengineer", "datapipeline", "datapipelines", "etl", "elt"],
+  dataengineer: ["dataengineering"],
+  datapipeline: ["dataengineering", "datapipelines", "etl", "elt"],
+  datapipelines: ["dataengineering", "datapipeline", "etl", "elt"],
+  dataquality: ["dq"],
+  datawarehouse: ["datawarehousing", "datamodeling"],
+  datawarehousing: ["datawarehouse", "datamodeling"],
+  datamodeling: ["datamodelling", "datawarehouse", "datawarehousing"],
+  datamodelling: ["datamodeling"],
+  deltalake: ["delta", "databricks"],
+  deltalivetables: ["deltalake", "databricks"],
+  dq: ["dataquality"],
+  etl: ["elt", "etlelt", "datapipeline", "datapipelines", "dataengineering"],
+  elt: ["etl", "etlelt", "datapipeline", "datapipelines", "dataengineering"],
+  etlelt: ["etl", "elt"],
+  eventhubs: ["kafka", "streaming"],
+  medallionarchitecture: ["datalake", "datawarehouse", "databricks"],
+  pipeline: ["datapipeline", "datapipelines"],
+  pipelines: ["datapipeline", "datapipelines"],
+  pyspark: ["spark", "databricks"],
+  spark: ["pyspark", "databricks"],
+  sparkstructuredstreaming: ["spark", "streaming", "eventhubs", "kafka"],
+  starschema: ["datawarehouse", "datawarehousing", "datamodeling"],
+  snowflakeschema: ["datawarehouse", "datawarehousing", "datamodeling"],
+  unitycatalog: ["databricks", "datagovernance"],
+};
+
+function expandSkillAliases(skill: string): string[] {
+  const seen = new Set<string>();
+  const queue = [normSkill(skill)];
+  for (let i = 0; i < queue.length; i++) {
+    const current = queue[i];
+    if (!current || seen.has(current)) continue;
+    seen.add(current);
+    for (const next of SKILL_ALIASES[current] ?? []) {
+      const n = normSkill(next);
+      if (n && !seen.has(n)) queue.push(n);
+    }
+  }
+  return [...seen];
+}
+
 function skillsToDomains(skills: string[]): Set<string> {
   const domains = new Set<string>();
   for (const skill of skills) {
-    const n = normSkill(skill);
-    for (const [domain, keywords] of Object.entries(TECH_DOMAINS)) {
-      if (keywords.some((k) => n === normSkill(k) || n.includes(normSkill(k)))) {
-        domains.add(domain);
+    const expanded = expandSkillAliases(skill);
+    for (const n of expanded) {
+      for (const [domain, keywords] of Object.entries(TECH_DOMAINS)) {
+        if (keywords.some((k) => n === normSkill(k) || n.includes(normSkill(k)))) {
+          domains.add(domain);
+        }
       }
+      domains.add(n);
     }
-    // Raw normalised token as fallback for unlisted tools
-    domains.add(n);
   }
   return domains;
 }
@@ -298,8 +358,13 @@ const JD_TECH_KEYWORDS: string[] = [
   "bigquery", "snowflake", "redshift", "clickhouse",
   // Data engineering — modern stack
   "databricks", "pyspark", "delta lake", "deltalake",
-  "azure data factory", "adf", "adls", "synapse", "fabric",
-  "data factory", "data lake", "data warehouse",
+  "delta live tables", "unity catalog", "spark structured streaming",
+  "azure data factory", "adf", "adls", "adls gen2", "synapse", "fabric",
+  "data factory", "data lake", "data warehouse", "data warehousing",
+  "data modeling", "data modelling", "data engineering", "data engineer",
+  "data pipeline", "data pipelines", "etl", "elt", "etl/elt",
+  "etl pipelines", "data quality", "medallion architecture",
+  "star schema", "snowflake schema",
   // Streaming
   "kafka", "kinesis", "pub/sub", "pubsub", "rabbitmq", "sqs", "event hubs",
   // Batch / orchestration
@@ -430,17 +495,19 @@ const TITLE_HARD_MISMATCH: TitleRule[] = [
   // Sales / business / commercial — never hits an engineering candidate
   { pattern: /\b(sales|account executive|account manager|mid[- ]market account|business development|territory|partner manager|relationship manager|named account|cloud account|enterprise account|strategic account)\b/i, conflictsWith: ALL_TECH_FUNCTIONS },
   // Operations / facilities / warehouse / shift / vendor / procurement / admin
-  { pattern: /\b(facilities|facility|warehouse|shift\s*incharge|vendor operations?|procurement|buyer|admin in[- ]?charge|operations? manager|operations? specialist|operations? lead|business operations|fleet|logistics|supply chain|store manager)\b/i, conflictsWith: ALL_TECH_FUNCTIONS },
+  { pattern: /\b(facilities|facility|warehouse|shift\s*incharge|vendor operations?|procurement|buyer|admin in[- ]?charge|operations? manager|operations? specialist|operations? lead|business operations|fleet|logistics|supply chain|store manager|area manager|category manager|vendor manager|whs manager|recommerce manager|assurance manager)\b/i, conflictsWith: ALL_TECH_FUNCTIONS },
   // Trust & Safety / Risk / Fraud / Policy — non-eng managerial paths
   { pattern: /\b(trust\s*(?:and|&)?\s*safety|t&s|policy specialist|fraud (?:investigator|analyst|operations)|risk operations|content moderation|content review)\b/i, conflictsWith: ENG_FUNCTIONS },
   // Customer-facing / GTM / consulting / TAM / support
-  { pattern: /\b(customer success|customer engineer|technical account manager|solutions consultant|implementation consultant|onboarding manager|success manager|premier support|application support|technical support|support engineer)\b/i, conflictsWith: ENG_FUNCTIONS },
+  { pattern: /\b(customer success|customer engineer|technical account manager|solutions consultant|solution engineer(?:ing)?|implementation consultant|onboarding manager|success manager|premier support|application support|technical support|support engineer|product support|appeals specialist)\b/i, conflictsWith: ENG_FUNCTIONS },
   // Recruiting / HR / People Ops / Talent
   { pattern: /\b(recruiter|recruiting|talent (?:acquisition|partner)|people operations?|people partner|hr business partner|hrbp|comp(?:ensation)? analyst)\b/i, conflictsWith: ALL_TECH_FUNCTIONS },
   // Finance / Accounting / Tax / Audit / Legal / FinOps
   { pattern: /\b(financial analyst|finance manager|accountant|accounting|tax (?:analyst|manager)|auditor?|treasur(?:y|er)|payroll|legal counsel|compliance officer|finops)\b/i, conflictsWith: ALL_TECH_FUNCTIONS },
   // Marketing / Comms / PR / Content / Brand / Growth-Manager
   { pattern: /\b(marketing manager|brand manager|growth manager|growth marketer|marketing analyst|marketing data scientist|business and marketing|seo|sem|content marketing|copywriter|pr manager|public relations|communications manager|community manager|business systems analyst|business analyst|apps specialist|measurement implementation)\b/i, conflictsWith: ALL_TECH_FUNCTIONS },
+  // Academic / lab research roles should not leak into pure engineering feeds.
+  { pattern: /\b(research sciences? intern|research intern|post[\s-]?doc|postdoctoral|researcher\b|research scientist)\b/i, conflictsWith: new Set(["qa_sdet", "backend", "frontend", "fullstack", "data_engineering", "devops_platform", "mobile", "security"]) },
   // Program management / TPM / consulting / corp dev (engineering-management
   // candidates may genuinely target TPM, but pure engineers shouldn't).
   { pattern: /\b(technical program manager|tpm\b|program manager(?!\s*,?\s*engineering)|scaled delivery manager|digital transformation|corporate development|business systems|gtech|premier?\s+support)\b/i, conflictsWith: ENG_FUNCTIONS },
@@ -476,7 +543,7 @@ export function titleHardMismatch(
 
 const TITLE_FUNCTION_PATTERNS: Array<{ pattern: RegExp; fn: string }> = [
   // Highly specific / multi-token signatures first
-  { pattern: /\b(data\s+engineer(?:ing)?|analytics engineer|etl developer|big data engineer)\b/i, fn: "data_engineering" },
+  { pattern: /\b(data\s+engineer(?:ing)?|analytics engineer|etl developer|big data engineer|cloud data engineer|data platform|business intelligence engineer|bi engineer|business intel engineer)\b/i, fn: "data_engineering" },
   { pattern: /\b(machine learning engineer|ml engineer|ai engineer|deep learning|nlp engineer|computer vision)\b/i, fn: "ml_ai" },
   { pattern: /\b(data scientist|research scientist|applied scientist|quantitative researcher)\b/i, fn: "ml_ai" },
   { pattern: /\b(devops|sre|site reliability|platform engineer|infrastructure engineer|cloud engineer|build engineer|release engineer|reliability engineer)\b/i, fn: "devops_platform" },

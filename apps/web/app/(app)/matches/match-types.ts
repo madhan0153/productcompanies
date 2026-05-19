@@ -5,11 +5,11 @@
 export type MatchTab = "shortlist" | "worth_a_look" | "filtered";
 
 export interface BandCounts {
-  /** score >= 60, hidden_reason IS NULL */
+  /** score >= 60, hidden_reason IS NULL. Plausible-or-better, not necessarily strong. */
   shortlist: number;
   /** 40 <= score < 60, hidden_reason IS NULL */
   worthALook: number;
-  /** score < 40 OR hidden_reason = mismatch */
+  /** score < 40 OR hidden_reason is set */
   filtered: number;
 }
 
@@ -19,7 +19,7 @@ export function classifyMatch(m: {
   hidden_reason: string | null;
   seen_at: string | null;
 }): MatchTab | null {
-  if (m.hidden_reason === "mismatch") return "filtered";
+  if (m.hidden_reason !== null) return "filtered";
   if (m.score >= 60) return "shortlist";
   if (m.score >= 40) return "worth_a_look";
   return "filtered";
