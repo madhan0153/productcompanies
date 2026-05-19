@@ -4,7 +4,7 @@ import Link from "next/link";
 import {
   ExternalLink, MapPin, Briefcase, Calendar,
   CheckCircle2, AlertCircle, TrendingUp, Target,
-  ChevronRight, ShieldCheck, FileText, Eye,
+  ChevronRight, ShieldCheck,
 } from "lucide-react";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { CompanyLogo } from "@/components/company-logo";
@@ -281,20 +281,6 @@ export default async function JobDetailPage({ params }: { params: Promise<{ id: 
           </div>
 
           <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-border pt-3 sm:mt-4 sm:pt-4">
-            <a
-              href="#apply"
-              className="press tap-target-sm inline-flex items-center gap-1.5 rounded-full border border-border bg-card/40 px-3 py-1.5 text-xs font-semibold text-muted-foreground transition hover:border-foreground/30 hover:text-foreground focus-ring"
-            >
-              <FileText className="h-3.5 w-3.5" aria-hidden />
-              Tailored Resume
-            </a>
-            <a
-              href="#apply"
-              className="press tap-target-sm inline-flex items-center gap-1.5 rounded-full border border-border bg-card/40 px-3 py-1.5 text-xs font-semibold text-muted-foreground transition hover:border-foreground/30 hover:text-foreground focus-ring"
-            >
-              <Eye className="h-3.5 w-3.5" aria-hidden />
-              Recruiter View
-            </a>
             <JobActions jobId={job.id} existingApp={application} applyUrl={job.apply_url} />
           </div>
         </div>

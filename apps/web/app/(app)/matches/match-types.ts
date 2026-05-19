@@ -2,7 +2,7 @@
 // NO "use client" — imported by both the server page.tsx and the client
 // band-strip.tsx. Must stay free of all React hooks and browser APIs.
 
-export type MatchTab = "shortlist" | "worth_a_look" | "filtered" | "new";
+export type MatchTab = "shortlist" | "worth_a_look" | "filtered";
 
 export interface BandCounts {
   /** score >= 60, hidden_reason IS NULL */
@@ -11,8 +11,6 @@ export interface BandCounts {
   worthALook: number;
   /** score < 40 OR hidden_reason = mismatch */
   filtered: number;
-  /** seen_at IS NULL across visible scope */
-  newCount: number;
 }
 
 /** Server-side tab classification — used by page.tsx to slice loaded rows. */

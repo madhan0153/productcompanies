@@ -269,7 +269,7 @@ export function ResumeUpload({ hasExisting, existingRole, existingDnaScore }: Pr
               onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") inputRef.current?.click(); }}
               aria-label="Upload resume PDF"
               className={[
-                "flex cursor-pointer flex-col items-center justify-center gap-4 rounded-xl border-2 border-dashed py-10 transition sm:py-12",
+                "flex cursor-pointer flex-col items-center justify-center gap-3 rounded-xl border-2 border-dashed py-6 transition",
                 dragging
                   ? "border-primary bg-primary-soft"
                   : "border-border hover:border-primary/40 hover:bg-secondary/40",
@@ -282,20 +282,20 @@ export function ResumeUpload({ hasExisting, existingRole, existingDnaScore }: Pr
                 className="sr-only"
                 onChange={(e) => { const f = e.target.files?.[0]; if (f) onFile(f); }}
               />
-              <div className={`flex h-14 w-14 items-center justify-center rounded-xl transition ${
+              <div className={`flex h-10 w-10 items-center justify-center rounded-lg transition ${
                 dragging ? "bg-primary text-primary-foreground" : "bg-secondary text-muted-foreground"
               }`}>
-                <Upload className="h-6 w-6" />
+                <Upload className="h-5 w-5" />
               </div>
               <div className="text-center">
                 <p className="text-sm font-semibold">
                   {hasExisting ? "Replace your resume" : "Upload your resume"}
                 </p>
-                <p className="mt-1 text-xs text-muted-foreground">
-                  Drag & drop or click to browse · PDF only · max 5 MB
+                <p className="mt-0.5 text-xs text-muted-foreground">
+                  Drag & drop or click · PDF only · max 5 MB
                 </p>
               </div>
-              <div className="flex items-center gap-4 text-xs text-muted-foreground">
+              <div className="flex items-center gap-3 text-xs text-muted-foreground">
                 <span className="flex items-center gap-1"><Brain className="h-3 w-3 text-primary" /> AI-parsed</span>
                 <span className="flex items-center gap-1"><Sparkles className="h-3 w-3 text-primary" /> Readiness scored</span>
               </div>

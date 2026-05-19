@@ -5,12 +5,16 @@
 // Optimistic tab switching: the active pill switches instantly on click
 // (setOptimisticTab) while the router.push transition loads the new
 // server-rendered content. This eliminates the perceived lag between
-// Shortlist → Maybe → Filtered tab changes.
+// Shortlist → Explore → Low Match tab changes.
+//
+// navPending is also pushed into MatchNavCtx so MatchCardArea can show
+// a loading quote overlay while the server re-renders.
 
 import { useTransition, useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
 import type { MatchTab, BandCounts } from "./match-types";
+import { useMatchNav } from "./match-transition-context";
 
 export type { MatchTab, BandCounts };
 
@@ -18,10 +22,9 @@ const TILE_META: Record<
   MatchTab,
   { label: string; activeTone: string; activeBg: string; activeBorder: string }
 > = {
-  shortlist:    { label: "Shortlist", activeTone: "text-success",    activeBg: "bg-success/10",   activeBorder: "border-success" },
-  worth_a_look: { label: "Maybe",     activeTone: "text-warning",    activeBg: "bg-warning/10",   activeBorder: "border-warning" },
-  filtered:     { label: "Filtered",  activeTone: "text-foreground", activeBg: "bg-secondary",    activeBorder: "border-foreground/40" },
-  new:          { label: "New",       activeTone: "text-primary",    activeBg: "bg-primary-soft", activeBorder: "border-primary" },
+  shortlist:    { label: "Shortlist",  activeTone: "text-success",    activeBg: "bg-success/10",   activeBorder: "border-success" },
+  worth_a_look: { label: "Explore",    activeTone: "text-warning",    activeBg: "bg-warning/10",   activeBorder: "border-warning" },
+  filtered:     { label: "Low Match",  activeTone: "text-foreground", activeBg: "bg-secondary",    activeBorder: "border-foreground/40" },
 };
 
 interface BandStripProps {
@@ -42,13 +45,17 @@ export function BandStrip({
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const reduce = useReducedMotion();
+  const { setNavPending } = useMatchNav();
 
   // Optimistic: switch the active pill immediately on click; sync back from
   // server when navigation completes (isPending drops to false).
   const [optimisticTab, setOptimisticTab] = useState<MatchTab>(active);
   useEffect(() => {
-    if (!isPending) setOptimisticTab(active);
-  }, [active, isPending]);
+    if (!isPending) {
+      setOptimisticTab(active);
+      setNavPending(false);
+    }
+  }, [active, isPending, setNavPending]);
 
   const buildHref = (nextTab: MatchTab): string => {
     const sp = new URLSearchParams();
@@ -61,18 +68,17 @@ export function BandStrip({
   };
 
   const order: MatchTab[] = ["shortlist", "worth_a_look", "filtered"];
-  const tail: MatchTab[]  = counts.newCount > 0 ? ["new"] : [];
 
   const countFor: Record<MatchTab, number> = {
     shortlist:    counts.shortlist,
     worth_a_look: counts.worthALook,
     filtered:     counts.filtered,
-    new:          counts.newCount,
   };
 
   const handleClick = (tab: MatchTab) => {
     if (tab === optimisticTab) return;
     setOptimisticTab(tab);
+    setNavPending(true);
     startTransition(() => { router.push(buildHref(tab)); });
   };
 
@@ -85,7 +91,7 @@ export function BandStrip({
         role="tablist"
         className="no-scrollbar flex gap-1.5 overflow-x-auto pb-0.5 sm:flex-wrap sm:overflow-visible"
       >
-        {[...order, ...tail].map((tab) => {
+        {order.map((tab) => {
           const meta     = TILE_META[tab];
           const isActive = tab === optimisticTab;
           const count    = countFor[tab];

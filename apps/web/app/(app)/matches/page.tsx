@@ -16,6 +16,8 @@ import { MatchCard, type MatchCardData } from "./match-card";
 import { BandStrip } from "./band-strip";
 import { classifyMatch, type MatchTab, type BandCounts } from "./match-types";
 import { MatchesURLBeacon } from "./matches-url-beacon";
+import { MatchNavProvider } from "./match-transition-context";
+import { MatchCardArea } from "./match-card-area";
 
 export const metadata: Metadata = { title: "Matches" };
 export const maxDuration = 60;
@@ -51,16 +53,12 @@ export default async function MatchesPage({
   const selectedHubs = (params.h ?? "").split(",").filter(Boolean);
   const minScore = params.min_score ? parseInt(params.min_score, 10) : null;
 
-  // Tabs spine. Back-compat with the legacy ?show= param. Dismiss was
-  // removed in this refinement pass — older ?show=hidden / ?tab=dismissed
-  // URLs gracefully fall back to the shortlist.
+  // Tabs spine. Back-compat with the legacy ?show= param.
   const legacyShow = params.show;
-  const requestedTab = (params.tab as MatchTab | "dismissed" | undefined) ??
-    (legacyShow === "new"    ? "new"
-    : legacyShow === "all"    ? "filtered"
-    : undefined);
+  const requestedTab = (params.tab as MatchTab | undefined) ??
+    (legacyShow === "all" ? "filtered" : undefined);
   const tab: MatchTab =
-    requestedTab === "new" || requestedTab === "filtered" || requestedTab === "worth_a_look" || requestedTab === "shortlist"
+    requestedTab === "filtered" || requestedTab === "worth_a_look" || requestedTab === "shortlist"
       ? requestedTab
       : "shortlist";
 
@@ -91,23 +89,19 @@ export default async function MatchesPage({
   };
 
   const [
-    cShortlist, cWorthALook, cFilteredLow, cFilteredMismatch, cNew, cTotal,
+    cShortlist, cWorthALook, cFilteredLow, cFilteredMismatch,
   ] = await Promise.all([
     baseCountQuery().gte("score", 60).is("hidden_reason", null),
     baseCountQuery().gte("score", 40).lt("score", 60).is("hidden_reason", null),
     baseCountQuery().lt("score", 40),
     baseCountQuery().eq("hidden_reason", "mismatch"),
-    baseCountQuery().is("seen_at", null),
-    baseCountQuery(),
   ]);
 
   const bandCounts: BandCounts = {
     shortlist:  cShortlist.count ?? 0,
     worthALook: cWorthALook.count ?? 0,
     filtered:   (cFilteredLow.count ?? 0) + (cFilteredMismatch.count ?? 0),
-    newCount:   cNew.count ?? 0,
   };
-  const totalVisibleScope = cTotal.count ?? 0;
 
   // Single read for the tab's visible cards — capped at 500 so SSR stays
   // fast. The band-strip counts above are accurate beyond the cap, so the
@@ -155,8 +149,7 @@ export default async function MatchesPage({
     if (tab === "shortlist")    return cls === "shortlist";
     if (tab === "worth_a_look") return cls === "worth_a_look";
     if (tab === "filtered")     return cls === "filtered";
-    if (tab === "new")          return m.seen_at === null;
-    return true;
+    return false;
   });
 
   // Sprint 6 — fold in application status for the cards in view.
@@ -193,23 +186,10 @@ export default async function MatchesPage({
   ).values()].sort((a, b) => a.name.localeCompare(b.name));
   const allHubs = [...new Set(allRows.flatMap((m) => m.jobs.hubs ?? []))].sort();
 
-  const newCount       = scopedRows.filter((m) => m.seen_at === null).length;
-  const computeAgo     = lastComputeAt ? humanAgo(lastComputeAt) : null;
-
-  // URL builder for the band strip — preserves company/hub/min_score filters
-  // across tab changes so a user filtered by Apple+Hyderabad doesn't lose
-  // them when they hop to "Worth a look".
-  const buildHref = (nextTab: MatchTab): string => {
-    const sp = new URLSearchParams();
-    if (selectedCompanies.length > 0) sp.set("c", selectedCompanies.join(","));
-    if (selectedHubs.length > 0)      sp.set("h", selectedHubs.join(","));
-    if (minScore !== null)            sp.set("min_score", String(minScore));
-    if (nextTab !== "shortlist")      sp.set("tab", nextTab);
-    const qs = sp.toString();
-    return qs ? `/matches?${qs}` : "/matches";
-  };
+  const computeAgo = lastComputeAt ? humanAgo(lastComputeAt) : null;
 
   return (
+    <MatchNavProvider>
     <ComputeProvider hasResume={hasResume}>
     <div className="space-y-4 pb-6">
 
@@ -223,12 +203,7 @@ export default async function MatchesPage({
           {computeAgo ? (
             <div className="mt-0.5 flex items-center gap-1.5 text-[11px] text-muted-foreground">
               <Activity className="h-3 w-3 text-success" />
-              <span>
-                Computed {computeAgo}
-                {newCount > 0 && tab !== "new" && (
-                  <> · <Link href={buildHref("new")} className="font-medium text-success hover:underline focus-ring rounded">{newCount} new</Link></>
-                )}
-              </span>
+              <span>Computed {computeAgo}</span>
             </div>
           ) : allRows.length === 0 ? (
             <p className="mt-0.5 text-[11px] text-muted-foreground">Compute your first matches</p>
@@ -272,8 +247,6 @@ export default async function MatchesPage({
         <MatchFilters
           allCompanies={companies}
           allHubs={allHubs}
-          totalCount={totalVisibleScope}
-          filteredCount={scopedRows.length}
         />
       )}
 
@@ -295,51 +268,49 @@ export default async function MatchesPage({
       )}
 
       {/* ── Card list ───────────────────────────────────────────── */}
-      {tabRows.length > 0 ? (
-        <>
-          <StaggerList key={tab} className="space-y-3">
-            {tabRows.map((m) => (
-              <MatchCard
-                key={m.jobs.id}
-                match={m}
-                verdict={(m.verdict ?? "stretch") as Verdict}
-                isNew={m.seen_at === null}
-                allScores={allScores}
-                applicationStatus={applicationStatus.get(m.jobs.id) ?? null}
-              />
-            ))}
-          </StaggerList>
-          {/* Sprint 6 — capped-list indicator. tabExpected comes from the
-              accurate head-count band for the active tab; when the visible
-              list is shorter, the user knows there's more behind a filter. */}
-          {(() => {
-            const tabExpected =
-              tab === "shortlist"    ? bandCounts.shortlist
-              : tab === "worth_a_look" ? bandCounts.worthALook
-              : tab === "filtered"   ? bandCounts.filtered
-              : tab === "new"        ? bandCounts.newCount
-              : 0;
-            if (tabExpected > tabRows.length) {
-              return (
-                <p className="rounded-md border border-dashed border-border bg-secondary/30 px-4 py-2.5 text-center text-xs text-muted-foreground">
-                  Showing <span className="font-semibold tabular-nums text-foreground">{tabRows.length}</span> of <span className="font-semibold tabular-nums text-foreground">{tabExpected.toLocaleString("en-IN")}</span>. Narrow with a filter to see specific roles.
-                </p>
-              );
-            }
-            return null;
-          })()}
-        </>
-      ) : allRows.length > 0 ? (
-        emptyStateForTab(tab, selectedCompanies.length + selectedHubs.length + (minScore !== null ? 1 : 0))
-      ) : hasResume ? (
-        <EmptyState
-          icon={<Activity className="h-5 w-5" />}
-          title="No matches computed yet"
-          body="Click 'Compute matches' above. We rank every active role across 18 product companies, drop hard mismatches, and write a Fit Card for the top 25."
-        />
-      ) : null}
+      <MatchCardArea>
+        {tabRows.length > 0 ? (
+          <>
+            <StaggerList key={tab} className="space-y-3">
+              {tabRows.map((m) => (
+                <MatchCard
+                  key={m.jobs.id}
+                  match={m}
+                  verdict={(m.verdict ?? "stretch") as Verdict}
+                  isNew={m.seen_at === null}
+                  allScores={allScores}
+                  applicationStatus={applicationStatus.get(m.jobs.id) ?? null}
+                />
+              ))}
+            </StaggerList>
+            {(() => {
+              const tabExpected =
+                tab === "shortlist"    ? bandCounts.shortlist
+                : tab === "worth_a_look" ? bandCounts.worthALook
+                : bandCounts.filtered;
+              if (tabExpected > tabRows.length) {
+                return (
+                  <p className="rounded-md border border-dashed border-border bg-secondary/30 px-4 py-2.5 text-center text-xs text-muted-foreground">
+                    Showing top <span className="font-semibold tabular-nums text-foreground">{tabRows.length}</span> — apply a company or hub filter to narrow results.
+                  </p>
+                );
+              }
+              return null;
+            })()}
+          </>
+        ) : allRows.length > 0 ? (
+          emptyStateForTab(tab, selectedCompanies.length + selectedHubs.length + (minScore !== null ? 1 : 0))
+        ) : hasResume ? (
+          <EmptyState
+            icon={<Activity className="h-5 w-5" />}
+            title="No matches computed yet"
+            body="Click 'Compute matches' above. We rank every active role across 18 product companies, drop hard mismatches, and write a Fit Card for the top 25."
+          />
+        ) : null}
+      </MatchCardArea>
     </div>
     </ComputeProvider>
+    </MatchNavProvider>
   );
 }
 
@@ -363,9 +334,9 @@ function emptyStateForTab(tab: MatchTab, activeFilterCount: number): React.React
       <EmptyState
         icon={<Activity className="h-5 w-5" />}
         title="Your shortlist is empty"
-        body="Nothing scored ≥60 yet. Check 'Maybe' for partial fits, or set your preferred hubs / strengthen your resume to lift more roles."
+        body="Nothing scored ≥60 yet. Check Explore for partial fits, or set your preferred hubs / strengthen your resume to lift more roles."
         actions={[
-          { label: "See Maybe matches", href: "/matches?tab=worth_a_look", variant: "primary" },
+          { label: "See Explore matches", href: "/matches?tab=worth_a_look", variant: "primary" },
           { label: "Edit profile", href: "/profile", variant: "ghost" },
         ]}
       />
@@ -375,25 +346,16 @@ function emptyStateForTab(tab: MatchTab, activeFilterCount: number): React.React
     return (
       <EmptyState
         icon={<Eye className="h-5 w-5" />}
-        title="Nothing in this range"
-        body="No matches between 40 and 60. Likely most of your matches are either strong fits or capped."
-      />
-    );
-  }
-  if (tab === "new") {
-    return (
-      <EmptyState
-        icon={<Activity className="h-5 w-5" />}
-        title="No new matches yet"
-        body="The catalog refreshes daily. Anything new since your last visit will surface here."
+        title="Nothing in Explore"
+        body="No matches between 40 and 60. Most of your matches are likely either strong fits or low match."
       />
     );
   }
   return (
     <EmptyState
       icon={<Eye className="h-5 w-5" />}
-      title="Nothing here"
-      body="Switch tabs above to see your shortlist or worth-a-look roles."
+      title="No low-match roles"
+      body="Switch to Shortlist or Explore to see your matched roles."
     />
   );
 }

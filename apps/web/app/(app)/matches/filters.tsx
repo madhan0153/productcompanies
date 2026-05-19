@@ -13,8 +13,6 @@ type FilterState = {
 type Props = {
   allCompanies: { slug: string; name: string }[];
   allHubs: string[];
-  totalCount: number;
-  filteredCount: number;
 };
 
 const SCORE_OPTIONS = [
@@ -25,7 +23,7 @@ const SCORE_OPTIONS = [
 
 // URL state lives in `c` (companies, csv), `h` (hubs, csv), `min_score` (number).
 // Filters compose: pick Hyderabad + Razorpay + 75+ all at once.
-export function MatchFilters({ allCompanies, allHubs, totalCount, filteredCount }: Props) {
+export function MatchFilters({ allCompanies, allHubs }: Props) {
   const router = useRouter();
   const params = useSearchParams();
   const [pending, start] = useTransition();
@@ -101,9 +99,6 @@ export function MatchFilters({ allCompanies, allHubs, totalCount, filteredCount 
           </button>
         )}
 
-        <span className="ml-auto text-xs text-muted-foreground tabular-nums">
-          {filteredCount} of {totalCount}
-        </span>
       </div>
 
       {open && (

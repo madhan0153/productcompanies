@@ -12,13 +12,13 @@ import {
   useTransition, useState, useEffect, useRef,
   createContext, useContext,
 } from "react";
-import { Loader2, Sparkles, AlertCircle, CheckCircle2, X } from "lucide-react";
+import { Loader2, Sparkles, AlertCircle, CheckCircle2, X, RefreshCw } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { computeMatches, getLastMatchComputeAt, type ComputeMatchesResult } from "./actions";
 
 const POLL_INTERVAL_MS  = 5_000;
-const POLL_BUDGET_MS    = 120_000;
+const POLL_BUDGET_MS    = 300_000; // 5 min — compute can take 2–4 min on cold paths
 const PROGRESS_DURATION = 35_000; // visual fill caps at 95% until done
 
 type Phase = "idle" | "starting" | "running" | "done" | "timeout";
@@ -149,6 +149,7 @@ export function ComputeTrigger() {
 
 export function ComputeStatusBanner() {
   const { phase, progress, error, dismiss } = useCompute();
+  const router = useRouter();
 
   if (phase === "running") {
     return (
@@ -179,17 +180,37 @@ export function ComputeStatusBanner() {
     );
   }
 
-  if ((phase === "timeout" || phase === "idle") && error) {
-    const isTimeout = phase === "timeout";
+  // Timeout: compute is still running but we've polled for 5 min without a
+  // change. Show a calm "still computing" card — not an error — with a manual
+  // Refresh button. The job almost certainly succeeded; the user just needs
+  // to reload.
+  if (phase === "timeout") {
     return (
-      <div className={`flex items-start gap-3 rounded-xl border p-4 ${
-        isTimeout ? "border-warning/30 bg-warning/5" : "border-destructive/30 bg-destructive/5"
-      }`}>
-        <AlertCircle className={`mt-0.5 h-4 w-4 shrink-0 ${isTimeout ? "text-warning" : "text-destructive"}`} />
+      <div className="flex items-start gap-3 rounded-xl border border-border bg-secondary/40 p-4">
+        <Loader2 className="mt-0.5 h-4 w-4 shrink-0 animate-spin text-muted-foreground" />
         <div className="min-w-0 flex-1">
-          <p className={`text-sm font-medium ${isTimeout ? "text-warning" : "text-destructive"}`}>
-            {isTimeout ? "Still running in the background" : "Could not start compute"}
+          <p className="text-sm font-medium">Still computing in the background</p>
+          <p className="mt-0.5 text-xs leading-relaxed text-muted-foreground">
+            This can take a few minutes for large catalogs. Click Refresh to see your updated matches.
           </p>
+        </div>
+        <button
+          onClick={() => { dismiss(); router.refresh(); }}
+          aria-label="Refresh matches"
+          className="shrink-0 inline-flex items-center gap-1.5 rounded-md border border-border bg-card px-3 py-1.5 text-xs font-medium text-foreground transition hover:bg-secondary focus-ring"
+        >
+          <RefreshCw className="h-3 w-3" /> Refresh
+        </button>
+      </div>
+    );
+  }
+
+  if (phase === "idle" && error) {
+    return (
+      <div className="flex items-start gap-3 rounded-xl border border-destructive/30 bg-destructive/5 p-4">
+        <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-destructive" />
+        <div className="min-w-0 flex-1">
+          <p className="text-sm font-medium text-destructive">Could not start compute</p>
           <p className="mt-0.5 text-xs leading-relaxed text-muted-foreground">{error}</p>
         </div>
         <button
