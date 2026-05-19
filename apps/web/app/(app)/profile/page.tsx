@@ -76,16 +76,17 @@ export default async function ProfilePage() {
 
       {/* First-time path: no parsed resume, no parse in flight — show only
           the upload card. Tabs would be empty noise here. */}
-      {!hasResume && !isParsing && (
+      {!hasResume && (
         <SectionCard
           title="Resume"
-          subtitle="Upload your PDF to get started"
+          subtitle={isParsing ? "Parse in progress — you can keep this tab open while we finish." : "Upload your PDF to get started"}
           icon={<FileText className="h-4 w-4" />}
         >
           <ResumeUpload
             hasExisting={false}
             existingRole={null}
             existingDnaScore={null}
+            isParsing={isParsing}
           />
         </SectionCard>
       )}
@@ -111,6 +112,7 @@ export default async function ProfilePage() {
                     hasExisting={true}
                     existingRole={profile?.current_role as string | null}
                     existingDnaScore={dnaScore}
+                    isParsing={isParsing}
                   />
                 </SectionCard>
 
