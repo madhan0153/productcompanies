@@ -131,13 +131,13 @@ export function CommandPalette({ open, onClose }: Props) {
             aria-hidden
           />
 
-          {/* Panel */}
+          {/* Panel — full-width at top on mobile, centered + rounded on sm+ */}
           <motion.div
-            initial={reduce ? {} : { opacity: 0, scale: 0.97, y: -10 }}
-            animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={reduce ? {} : { opacity: 0, scale: 0.97, y: -10 }}
+            initial={reduce ? {} : { opacity: 0, y: -8 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={reduce ? {} : { opacity: 0, y: -8 }}
             transition={{ duration: 0.16, ease: [0.22, 1, 0.36, 1] }}
-            className="fixed left-1/2 top-[16vh] z-50 w-full max-w-xl -translate-x-1/2 overflow-hidden rounded-2xl border border-border/80 bg-card shadow-2xl shadow-background/60"
+            className="fixed inset-x-0 top-14 z-50 overflow-hidden rounded-b-2xl border-b border-border/80 bg-card shadow-2xl shadow-background/60 sm:inset-x-auto sm:left-1/2 sm:top-[16vh] sm:w-full sm:max-w-xl sm:-translate-x-1/2 sm:rounded-2xl sm:border sm:border-border/80"
             role="dialog"
             aria-label="Command palette"
             aria-modal="true"
@@ -171,7 +171,7 @@ export function CommandPalette({ open, onClose }: Props) {
             </div>
 
             {/* Results */}
-            <div ref={listRef} className="max-h-[22rem] overflow-y-auto py-1.5" role="listbox">
+            <div ref={listRef} className="max-h-[55vh] overflow-y-auto py-1.5 sm:max-h-[22rem]" role="listbox">
               {filtered.length === 0 ? (
                 <p className="px-4 py-8 text-center text-sm text-muted-foreground">
                   No results for &ldquo;{query}&rdquo;
@@ -220,8 +220,8 @@ export function CommandPalette({ open, onClose }: Props) {
               )}
             </div>
 
-            {/* Footer hints */}
-            <div className="flex items-center gap-4 border-t border-border/40 px-4 py-2 text-[10px] text-muted-foreground/40">
+            {/* Footer hints — keyboard-only hints, hidden on mobile */}
+            <div className="hidden items-center gap-4 border-t border-border/40 px-4 py-2 text-[10px] text-muted-foreground/40 sm:flex">
               <span><kbd className="font-mono">↑↓</kbd> navigate</span>
               <span><kbd className="font-mono">↵</kbd> open</span>
               <span><kbd className="font-mono">esc</kbd> dismiss</span>

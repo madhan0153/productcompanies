@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useState, useTransition, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Sparkles, FileDown, Eye, Loader2, RefreshCw,
@@ -53,6 +53,15 @@ export function ApplyToolkit({
   initialTailor,
 }: Props) {
   const [tab, setTab] = useState<Tab>("tailor");
+
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const sub = (e as CustomEvent<string>).detail;
+      if (sub === "tailor" || sub === "recruiter") setTab(sub as Tab);
+    };
+    window.addEventListener("toolkit:tab", handler);
+    return () => window.removeEventListener("toolkit:tab", handler);
+  }, []);
 
   if (!hasResume) {
     return (

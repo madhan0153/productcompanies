@@ -26,6 +26,7 @@ import type { ParsedResume } from "@/lib/llm/prompts/resume-parse";
 import type { TailoredResumeContent } from "@/lib/llm/prompts/tailor-resume";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { JobDetailTabs, type JobTabId } from "./job-detail-tabs";
+import { HeroToolkitButtons } from "./hero-toolkit-buttons";
 
 export const dynamic = "force-dynamic";
 
@@ -282,6 +283,7 @@ export default async function JobDetailPage({ params }: { params: Promise<{ id: 
 
           <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-border pt-3 sm:mt-4 sm:pt-4">
             <JobActions jobId={job.id} existingApp={application} applyUrl={job.apply_url} />
+            <HeroToolkitButtons />
           </div>
         </div>
 
