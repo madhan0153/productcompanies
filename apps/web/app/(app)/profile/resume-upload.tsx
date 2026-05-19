@@ -13,6 +13,7 @@ type Props = {
   hasExisting: boolean;
   existingRole?: string | null;
   existingDnaScore?: number | null;
+  isParsing?: boolean;
 };
 
 // Simulated AI processing steps shown during upload
@@ -30,7 +31,7 @@ type DisplayResult =
   | { ok: true; dnaScore: number; role: string; years: number; techCount: number }
   | { ok: false; error: string; retryable?: boolean };
 
-export function ResumeUpload({ hasExisting, existingRole, existingDnaScore }: Props) {
+export function ResumeUpload({ hasExisting, existingRole, existingDnaScore, isParsing = false }: Props) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [dragging, setDragging] = useState(false);
   const [fileName, setFileName] = useState<string | null>(null);
@@ -62,6 +63,10 @@ export function ResumeUpload({ hasExisting, existingRole, existingDnaScore }: Pr
   }
 
   function onFile(file: File) {
+    if (isParsing) {
+      setResult({ ok: false, error: "Resume parsing is already in progress. Please wait for it to finish." });
+      return;
+    }
     if (file.type !== "application/pdf") {
       setResult({ ok: false, error: "Only PDF files are supported." });
       return;
@@ -255,7 +260,7 @@ export function ResumeUpload({ hasExisting, existingRole, existingDnaScore }: Pr
             transition={{ duration: 0.2 }}
           >
             <div
-              onClick={() => inputRef.current?.click()}
+              onClick={() => { if (!isParsing) inputRef.current?.click(); }}
               onDragOver={(e) => { e.preventDefault(); setDragging(true); }}
               onDragLeave={() => setDragging(false)}
               onDrop={(e) => {
@@ -266,10 +271,11 @@ export function ResumeUpload({ hasExisting, existingRole, existingDnaScore }: Pr
               }}
               role="button"
               tabIndex={0}
-              onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") inputRef.current?.click(); }}
+              onKeyDown={(e) => { if (!isParsing && (e.key === "Enter" || e.key === " ")) inputRef.current?.click(); }}
               aria-label="Upload resume PDF"
               className={[
-                "flex cursor-pointer flex-col items-center justify-center gap-3 rounded-xl border-2 border-dashed py-6 transition",
+                "flex flex-col items-center justify-center gap-3 rounded-xl border-2 border-dashed py-6 transition",
+                isParsing ? "cursor-not-allowed opacity-70" : "cursor-pointer",
                 dragging
                   ? "border-primary bg-primary-soft"
                   : "border-border hover:border-primary/40 hover:bg-secondary/40",
@@ -289,10 +295,10 @@ export function ResumeUpload({ hasExisting, existingRole, existingDnaScore }: Pr
               </div>
               <div className="text-center">
                 <p className="text-sm font-semibold">
-                  {hasExisting ? "Replace your resume" : "Upload your resume"}
+                  {isParsing ? "Resume parse in progress…" : hasExisting ? "Replace your resume" : "Upload your resume"}
                 </p>
                 <p className="mt-0.5 text-xs text-muted-foreground">
-                  Drag & drop or click · PDF only · max 5 MB
+                  {isParsing ? "Please wait — we'll refresh this page automatically once parsing completes." : "Drag & drop or click · PDF only · max 5 MB"}
                 </p>
               </div>
               <div className="flex items-center gap-3 text-xs text-muted-foreground">

@@ -403,6 +403,19 @@ export async function getParseStatus(): Promise<ParseStatus> {
   const row = data as unknown as ProfileRow;
 
   if (row.resume_parsing_at) {
+    const startedMs = new Date(row.resume_parsing_at).getTime();
+    const isStale = Number.isFinite(startedMs) && (Date.now() - startedMs) > 10 * 60 * 1000;
+    if (isStale) {
+      const timeoutError = "Resume parsing timed out. Please re-upload your PDF.";
+      // Clear stale "in progress" state so the UI can recover instead of
+      // being pinned to an endless spinner when background execution dies.
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      await (createSupabaseAdminClient().from("profiles") as any).update({
+        resume_parsing_at: null,
+        resume_parse_error: timeoutError,
+      }).eq("id", user.id);
+      return { state: "failed", error: timeoutError };
+    }
     return { state: "parsing", startedAt: row.resume_parsing_at };
   }
   if (row.resume_parse_error) {
