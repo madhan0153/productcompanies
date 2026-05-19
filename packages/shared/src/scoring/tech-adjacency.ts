@@ -34,8 +34,12 @@ const RAW_ADJACENCY: Array<[string, string]> = [
   ["react",        "nextjs"],
   ["react",        "remix"],
   ["svelte",       "sveltekit"],
+  ["tailwind",     "tailwindcss"],
+  ["redux",        "react"],
 
   // ── Backend frameworks ↔ languages ──
+  ["javascript",   "nodejs"],
+  ["typescript",   "nodejs"],
   ["nodejs",       "express"],
   ["nodejs",       "nestjs"],
   ["nodejs",       "fastify"],
@@ -50,6 +54,9 @@ const RAW_ADJACENCY: Array<[string, string]> = [
   ["csharp",       "dotnet"],
   ["ruby",         "rails"],
   ["php",          "laravel"],
+  ["java",         "microservices"],
+  ["go",           "microservices"],
+  ["python",       "microservices"],
 
   // ── Data engineering — close cousins ──
   ["spark",        "pyspark"],
@@ -85,14 +92,22 @@ const RAW_ADJACENCY: Array<[string, string]> = [
   ["aws",          "azure"],
   ["gcp",          "azure"],
   ["lambda",       "cloudrun"],
+  ["lambda",       "serverless"],
   ["s3",           "gcs"],
   ["ec2",          "compute"],
+  ["azure",        "aks"],
 
   // ── DevOps / infra ──
+  ["devops",       "cicd"],
+  ["cicd",         "githubactions"],
+  ["cicd",         "gitlabci"],
   ["docker",       "kubernetes"],
+  ["k8s",          "kubernetes"],
   ["kubernetes",   "helm"],
+  ["kubernetes",   "aks"],
   ["terraform",    "pulumi"],
   ["terraform",    "ansible"],
+  ["terraform",    "infrastructureascode"],
   ["jenkins",      "githubactions"],
   ["jenkins",      "gitlabci"],
   ["jenkins",      "circleci"],
@@ -101,15 +116,28 @@ const RAW_ADJACENCY: Array<[string, string]> = [
   ["datadog",      "newrelic"],
   ["prometheus",   "grafana"],
   ["sentry",       "datadog"],
+  ["opentelemetry", "prometheus"],
+  ["observability", "monitoring"],
 
   // ── ML / AI ──
+  ["machinelearning", "ml"],
+  ["machinelearning", "deeplearning"],
+  ["machinelearning", "nlp"],
+  ["machinelearning", "computervision"],
   ["pytorch",      "tensorflow"],
+  ["pytorch",      "deeplearning"],
+  ["tensorflow",   "deeplearning"],
   ["sklearn",      "xgboost"],
   ["sklearn",      "lightgbm"],
   ["huggingface",  "langchain"],
   ["langchain",    "llamaindex"],
+  ["llm",          "rag"],
+  ["llm",          "generativeai"],
 
   // ── Testing ──
+  ["testautomation", "selenium"],
+  ["testautomation", "playwright"],
+  ["testautomation", "cypress"],
   ["selenium",     "playwright"],
   ["selenium",     "cypress"],
   ["pytest",       "unittest"],
@@ -117,6 +145,13 @@ const RAW_ADJACENCY: Array<[string, string]> = [
   ["jest",         "vitest"],
   ["jest",         "mocha"],
   ["postman",      "restassured"],
+  ["apitesting",   "postman"],
+
+  ["security",     "appsec"],
+  ["security",     "cloudsecurity"],
+  ["security",     "iam"],
+  ["appsec",       "owasp"],
+  ["pentest",      "penetrationtesting"],
 
   // ── Mobile ──
   ["android",      "kotlin"],
