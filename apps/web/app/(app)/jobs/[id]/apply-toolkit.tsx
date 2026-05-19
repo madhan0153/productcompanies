@@ -417,3 +417,70 @@ function EmptyStateGenerate({
     </div>
   );
 }
+
+// ── Standalone panels — rendered directly as top-level tabs ───────────────────
+
+export function TailorPanel({
+  jobId, hasResume, matchingConsent, initialTailor,
+}: {
+  jobId: string;
+  hasResume: boolean;
+  matchingConsent: boolean;
+  initialTailor: CachedTailor | null;
+}) {
+  if (!hasResume) {
+    return (
+      <ToolkitGate
+        icon={<Sparkles className="h-4 w-4" />}
+        title="Upload your resume to unlock Tailor Resume"
+        body="Generates a JD-targeted .docx using your resume + the role's must-haves. Cached — re-runs are instant."
+        actionLabel="Upload resume"
+        actionHref="/profile"
+      />
+    );
+  }
+  if (!matchingConsent) {
+    return (
+      <ToolkitGate
+        icon={<ShieldCheck className="h-4 w-4" />}
+        title="Enable AI Matching to tailor your resume"
+        body="Enable matching consent in Settings → Privacy to use this feature."
+        actionLabel="Open privacy settings"
+        actionHref="/settings/privacy"
+      />
+    );
+  }
+  return <TailorTab jobId={jobId} initial={initialTailor} />;
+}
+
+export function RecruiterPanel({
+  hasResume, matchingConsent, recruiterView,
+}: {
+  hasResume: boolean;
+  matchingConsent: boolean;
+  recruiterView: React.ReactNode;
+}) {
+  if (!hasResume) {
+    return (
+      <ToolkitGate
+        icon={<Sparkles className="h-4 w-4" />}
+        title="Upload your resume to unlock Recruiter View"
+        body="Shows how your resume looks to an ATS for this specific role."
+        actionLabel="Upload resume"
+        actionHref="/profile"
+      />
+    );
+  }
+  if (!matchingConsent) {
+    return (
+      <ToolkitGate
+        icon={<ShieldCheck className="h-4 w-4" />}
+        title="Enable AI Matching for Recruiter View"
+        body="Enable matching consent in Settings → Privacy to use this feature."
+        actionLabel="Open privacy settings"
+        actionHref="/settings/privacy"
+      />
+    );
+  }
+  return <>{recruiterView}</>;
+}

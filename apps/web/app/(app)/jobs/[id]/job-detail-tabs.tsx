@@ -5,20 +5,21 @@
 // State lives in URL hash (#fit, #apply, #job) — back/forward + share work.
 
 import { useEffect, useState } from "react";
-import { Compass, Sparkles, FileText } from "lucide-react";
+import { Compass, FileDown, Eye, FileText } from "lucide-react";
 
-export type JobTabId = "fit" | "apply" | "job";
+export type JobTabId = "fit" | "tailor" | "recruiter" | "job";
 
 const TABS: Array<{ id: JobTabId; label: string; icon: React.ComponentType<{ className?: string }> }> = [
-  { id: "fit",   label: "Fit",   icon: Compass },
-  { id: "apply", label: "Apply", icon: Sparkles },
-  { id: "job",   label: "Job",   icon: FileText },
+  { id: "fit",       label: "Fit",           icon: Compass },
+  { id: "tailor",    label: "Tailor resume",  icon: FileDown },
+  { id: "recruiter", label: "Recruiter view", icon: Eye },
+  { id: "job",       label: "Job",           icon: FileText },
 ];
 
 function parseHash(): JobTabId | null {
   if (typeof window === "undefined") return null;
   const h = window.location.hash.replace(/^#/, "") as JobTabId;
-  if (h === "fit" || h === "apply" || h === "job") return h;
+  if (h === "fit" || h === "tailor" || h === "recruiter" || h === "job") return h;
   return null;
 }
 

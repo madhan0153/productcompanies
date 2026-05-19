@@ -18,7 +18,7 @@ import { JobDescription } from "./job-description";
 import { FitCardPanel, type FitCardData } from "./fit-card";
 import { ScoreEvidence } from "./score-evidence";
 import { SmartMatchesBackLink } from "./smart-back";
-import { ApplyToolkit } from "./apply-toolkit";
+import { TailorPanel, RecruiterPanel } from "./apply-toolkit";
 import { RecruiterView } from "@/components/recruiter-view";
 import { computeAtsView } from "@/lib/matching/ats-view";
 import { getUserConsents } from "@/lib/dpdp/consent";
@@ -26,7 +26,6 @@ import type { ParsedResume } from "@/lib/llm/prompts/resume-parse";
 import type { TailoredResumeContent } from "@/lib/llm/prompts/tailor-resume";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { JobDetailTabs, type JobTabId } from "./job-detail-tabs";
-import { HeroToolkitButtons } from "./hero-toolkit-buttons";
 
 export const dynamic = "force-dynamic";
 
@@ -185,8 +184,8 @@ export default async function JobDetailPage({ params }: { params: Promise<{ id: 
     initialTailorUrl = signed?.signedUrl ?? null;
   }
 
-  // Fit tab is the default when a match exists (USP-first). Apply otherwise.
-  const initialTab: JobTabId = match ? "fit" : "apply";
+  // Fit tab is the default when a match exists (USP-first). Tailor otherwise.
+  const initialTab: JobTabId = match ? "fit" : "tailor";
 
   return (
     <div className="space-y-5 pb-6">
@@ -283,7 +282,6 @@ export default async function JobDetailPage({ params }: { params: Promise<{ id: 
 
           <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-border pt-3 sm:mt-4 sm:pt-4">
             <JobActions jobId={job.id} existingApp={application} applyUrl={job.apply_url} />
-            <HeroToolkitButtons />
           </div>
         </div>
 
@@ -370,12 +368,23 @@ export default async function JobDetailPage({ params }: { params: Promise<{ id: 
               </>
             ),
 
-            // ── Apply tab ──────────────────────────────────────────────
-            apply: (
-              <ApplyToolkit
+            // ── Tailor resume tab ──────────────────────────────────────
+            tailor: (
+              <TailorPanel
                 jobId={job.id}
-                jobTitle={job.title}
-                companyName={company?.name ?? "this company"}
+                hasResume={hasResume}
+                matchingConsent={consents.matching === true}
+                initialTailor={tailoredRow && initialTailorUrl ? {
+                  content: tailoredRow.content,
+                  download_url: initialTailorUrl,
+                  generated_at: tailoredRow.generated_at,
+                } : null}
+              />
+            ),
+
+            // ── Recruiter view tab ─────────────────────────────────────
+            recruiter: (
+              <RecruiterPanel
                 hasResume={hasResume}
                 matchingConsent={consents.matching === true}
                 recruiterView={
@@ -383,15 +392,10 @@ export default async function JobDetailPage({ params }: { params: Promise<{ id: 
                     ? <RecruiterView view={atsView} />
                     : (
                       <div className="rounded-xl border border-dashed border-border bg-secondary/30 p-5 text-center text-xs text-muted-foreground">
-                        The recruiter view needs your parsed resume and a parsed JD. Upload your resume on /profile, then return here.
+                        Upload your resume on /profile and return here to see the ATS view for this role.
                       </div>
                     )
                 }
-                initialTailor={tailoredRow && initialTailorUrl ? {
-                  content: tailoredRow.content,
-                  download_url: initialTailorUrl,
-                  generated_at: tailoredRow.generated_at,
-                } : null}
               />
             ),
 
