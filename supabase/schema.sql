@@ -893,6 +893,36 @@ create table if not exists public.dpdp_events (
 create index if not exists idx_dpdp_events_user on public.dpdp_events(user_id, created_at desc);
 
 
+-- LLM DEAD-KEY STATE (persists across Vercel cold starts)
+-- ----------------------------------------------------------------------------
+-- The OpenAI-compatible provider router in packages/shared/src/llm tracks
+-- dead (provider × model × key × capability) combos in-memory to skip them
+-- in O(1) on subsequent calls. Vercel serverless containers reset this map
+-- on every cold start, which causes wasted 429 round-trips. This table
+-- persists the dead-state so cold starts hydrate from it.
+--
+-- Service-role only — no user data, no PII. Reason column is truncated to
+-- 500 chars and the writer in apps/web strips any resume / key references
+-- before insert.
+create table if not exists public.llm_dead_keys (
+  combo_key    text primary key,                  -- "providerId|capability|model|keyIndex"
+  provider_id  text not null,
+  model        text not null,
+  key_index    integer not null,
+  capability   text not null,                     -- 'text_json' | 'pdf_json' | 'embedding'
+  failure_kind text not null,                     -- 'auth' | 'quota' | 'rate_limited' | 'unsupported'
+  dead_until   timestamptz not null,
+  detected_at  timestamptz not null default now(),
+  reason       text
+);
+
+create index if not exists idx_llm_dead_keys_dead_until
+  on public.llm_dead_keys(dead_until);
+
+alter table public.llm_dead_keys enable row level security;
+-- Intentionally no public policies — service-role only.
+
+
 -- -----------------------------------------------------------------------------
 -- 5. updated_at TRIGGERS  (drop-then-create for idempotency)
 -- -----------------------------------------------------------------------------

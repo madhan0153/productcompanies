@@ -7,6 +7,7 @@ export * from "./llm/jd-parse";
 export * from "./llm/operations";
 export * from "./llm/provider-router";
 export * from "./llm/providers-preset";
+export * from "./llm/dead-key-store";
 export * from "./roles/taxonomy";
 export * from "./roles/taxonomy-benchmarks";
 export * from "./scoring";

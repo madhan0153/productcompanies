@@ -97,13 +97,11 @@ test("scoreFleet aggregates and sorts lowest-grade first", () => {
   // microsoft (drift) sorts first.
   assert.equal(perCompany[0].company.slug, "microsoft");
   assert.equal(perCompany[1].company.slug, "google");
-  // adaptiveCoverage is computed over html-dom crawlers only.
+  // adaptiveCoverage + fixtureCoverage are computed over html-dom crawlers only.
   assert.ok(overall.adaptiveCoverage > 0);
   assert.ok(overall.adaptiveCoverage <= 1);
-  // fixtureCoverage tracks committed __fixtures__ — only google has one in
-  // the initial pass, so it must be < 1 across the 4 html-dom crawlers.
   assert.ok(overall.fixtureCoverage > 0);
-  assert.ok(overall.fixtureCoverage < 1, "not all html-dom crawlers have fixtures yet");
+  assert.ok(overall.fixtureCoverage <= 1);
   assert.ok(overall.companiesAtRisk >= 1);
   assert.equal(overall.byKind.htmlDom, 4);
   assert.ok(overall.byKind.api >= 12);

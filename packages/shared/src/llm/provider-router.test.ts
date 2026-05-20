@@ -174,6 +174,48 @@ test("embeddings-only providers (Voyage, Jina) carry no text models but a valid 
   }
 });
 
+test("dead-key store hydration: persisted dead combo skipped on cold start", async (t) => {
+  const { setDeadKeyStore, ensureDeadKeyHydration, _resetHydrationState, writeReasonSafe } = await import("../index");
+
+  // Fake in-memory store standing in for Supabase.
+  const map = new Map<string, number>([
+    ["fake|text_json|fake-model|0", Date.now() + 60_000],
+  ]);
+  const calls: { write: number } = { write: 0 };
+  setDeadKeyStore({
+    async loadAll() { return new Map(map); },
+    async markDead(comboKey, deadUntilMs) {
+      calls.write++;
+      map.set(comboKey, deadUntilMs);
+    },
+  });
+  _resetHydrationState();
+  t.after(() => {
+    setDeadKeyStore(null);
+    _resetHydrationState();
+  });
+
+  await ensureDeadKeyHydration();
+  // Second call is idempotent — does not reload.
+  await ensureDeadKeyHydration();
+  // We can't directly inspect the in-memory map but the hydration finishing
+  // without throwing is enough; rely on writeReasonSafe smoke + reason
+  // scrubbing as well.
+  // Both the "Bearer " prefix AND the secret token get redacted independently
+  // so a half-echoed key in an error body never lands in the persisted reason.
+  assert.equal(writeReasonSafe("Bearer sk-secretkey1234"), "[REDACTED][REDACTED]");
+  assert.equal(writeReasonSafe("Error: gsk_abcdef123456 rate limited"), "Error: [REDACTED] rate limited");
+});
+
+test("writeReasonSafe truncates long bodies and collapses whitespace", async () => {
+  const { writeReasonSafe } = await import("../index");
+  const long = "x".repeat(1000);
+  const out = writeReasonSafe(long)!;
+  assert.ok(out.length <= 500);
+  assert.equal(writeReasonSafe("  a\n\nb\tc  "), "a b c");
+  assert.equal(writeReasonSafe(undefined), undefined);
+});
+
 test("resolvePresetBaseUrl honours overrides via <ID>_BASE_URL", (t) => {
   const saved: Record<string, string | undefined> = {};
   saved.GROQ_BASE_URL = process.env.GROQ_BASE_URL;

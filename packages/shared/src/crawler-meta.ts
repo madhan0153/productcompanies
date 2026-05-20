@@ -57,7 +57,7 @@ export const CRAWLER_META: readonly CrawlerMeta[] = [
   { slug: "microsoft",  name: "Microsoft",  kind: "api",        adaptive: true,  hasFixture: true  },
   { slug: "meta",       name: "Meta",       kind: "api",        adaptive: true,  hasFixture: true  },
   { slug: "amazon",     name: "Amazon",     kind: "api",        adaptive: true,  hasFixture: true  },
-  { slug: "apple",      name: "Apple",      kind: "html-dom",   adaptive: true,  hasFixture: false },
+  { slug: "apple",      name: "Apple",      kind: "html-dom",   adaptive: true,  hasFixture: true  },
   { slug: "atlassian",  name: "Atlassian",  kind: "api",        adaptive: true,  hasFixture: true  },
   { slug: "nvidia",     name: "Nvidia",     kind: "api",        adaptive: true,  hasFixture: true  },
   { slug: "oracle",     name: "Oracle",     kind: "api",        adaptive: true,  hasFixture: true  },
@@ -65,11 +65,11 @@ export const CRAWLER_META: readonly CrawlerMeta[] = [
   { slug: "sap-labs",   name: "SAP Labs",   kind: "html-regex", adaptive: true,  hasFixture: false },
   { slug: "razorpay",   name: "Razorpay",   kind: "api",        adaptive: true,  hasFixture: true  },
   { slug: "phonepe",    name: "PhonePe",    kind: "api",        adaptive: true,  hasFixture: true  },
-  { slug: "zerodha",    name: "Zerodha",    kind: "html-dom",   adaptive: true,  hasFixture: false },
+  { slug: "zerodha",    name: "Zerodha",    kind: "html-dom",   adaptive: true,  hasFixture: true  },
   { slug: "cred",       name: "CRED",       kind: "api",        adaptive: true,  hasFixture: true  },
   { slug: "groww",      name: "Groww",      kind: "api",        adaptive: true,  hasFixture: true  },
   { slug: "swiggy",     name: "Swiggy",     kind: "api",        adaptive: true,  hasFixture: true  },
-  { slug: "zomato",     name: "Zomato",     kind: "html-dom",   adaptive: true,  hasFixture: false },
+  { slug: "zomato",     name: "Zomato",     kind: "html-dom",   adaptive: true,  hasFixture: true  },
   { slug: "flipkart",   name: "Flipkart",   kind: "api",        adaptive: true,  hasFixture: true  },
 ] as const;
 

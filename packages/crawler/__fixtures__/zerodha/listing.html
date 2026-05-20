@@ -1,0 +1,40 @@
+<!--
+  Synthetic Zerodha careers listing snapshot.
+
+  Structure mirrors what packages/crawler/companies/zerodha.ts expects:
+    a[href*="/careers/"] anchors deeper than /careers/ index.
+    Filtered out: tail slugs in NAV_WORDS = careers/about/team/culture/etc.
+
+  All names, titles, and IDs are fabricated. No PII. Replace with a real
+  capture via:  pnpm capture-fixture --slug=zerodha
+-->
+<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"><title>Fixture</title></head>
+<body>
+<main>
+  <section class="positions">
+    <h2>Open positions</h2>
+    <ul>
+      <li><a href="https://zerodha.com/careers/backend-engineer-trading">Backend Engineer, Trading Systems</a></li>
+      <li><a href="https://zerodha.com/careers/senior-frontend-engineer">Senior Frontend Engineer</a></li>
+      <li><a href="https://zerodha.com/careers/data-engineer">Data Engineer</a></li>
+      <li><a href="https://zerodha.com/careers/sre-platform">Site Reliability Engineer, Platform</a></li>
+      <li><a href="https://zerodha.com/careers/ios-developer">iOS Developer</a></li>
+      <li><a href="https://zerodha.com/careers/qa-engineer">QA Engineer</a></li>
+
+      <!-- Decoy nav links the parser must reject (tail in NAV_WORDS). -->
+      <li><a href="https://zerodha.com/careers/">All careers</a></li>
+      <li><a href="https://zerodha.com/careers/about">About</a></li>
+      <li><a href="https://zerodha.com/careers/team">Team</a></li>
+      <li><a href="https://zerodha.com/careers/culture">Culture</a></li>
+      <li><a href="https://zerodha.com/careers/perks">Perks</a></li>
+      <li><a href="https://zerodha.com/careers/process">Process</a></li>
+
+      <!-- Decoy: title too short. -->
+      <li><a href="https://zerodha.com/careers/xy">XY</a></li>
+    </ul>
+  </section>
+</main>
+</body>
+</html>
