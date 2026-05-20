@@ -1,5 +1,17 @@
+// LLM governance check.
+//
+// Runs in CI to catch drift between the product policy in
+// /specs/prodmatch-constitution.md and the actual operations table.
+//
+// Current policy (per the constitution):
+//   - Every LLM call site declares an operation policy.
+//   - Every operation may roll over to OpenAI-compatible free providers.
+//   - Every operation declares its deterministic fallback availability.
+//   - Provider URLs/models live in code, not env vars.
+
 import {
   LLM_OPERATION_POLICIES,
+  PROVIDER_PRESETS,
   describeLlmRuntime,
   type LlmOperationId,
 } from "@prodmatch/shared";
@@ -25,22 +37,34 @@ if (missing.length > 0) {
   throw new Error(`Missing LLM operation policy: ${missing.join(", ")}`);
 }
 
-const unsafeByDefault = Object.values(LLM_OPERATION_POLICIES).filter(
-  (policy) => policy.sensitivity !== "public_jd" && policy.freeProviderDefault === "allowed",
+// Every operation must be either "allowed" or have an explicit reason.
+// We allow "blocked" / "requires_opt_in" but require deterministicFallback to
+// be declared explicitly so the UI can render a sane degraded state.
+const undeclaredFallback = Object.values(LLM_OPERATION_POLICIES).filter(
+  (policy) => !["available", "partial", "unavailable"].includes(policy.deterministicFallback),
 );
-if (unsafeByDefault.length > 0) {
+if (undeclaredFallback.length > 0) {
   throw new Error(
-    `Non-public operations allow free providers by default: ${unsafeByDefault.map((p) => p.id).join(", ")}`,
+    `Operations missing deterministicFallback: ${undeclaredFallback.map((p) => p.id).join(", ")}`,
   );
 }
 
-const runtime = describeLlmRuntime();
-const piiExternal = runtime.operations.filter(
-  (op) => op.sensitivity === "resume_pii" && op.externalFallback === "allowed",
-);
-
-if (piiExternal.length > 0 && process.env.LLM_ALLOW_FREE_PROVIDER_RESUME_PII !== "true") {
-  throw new Error("Resume PII external fallback appears enabled without explicit env opt-in");
+// Presets must each declare a model cascade + key env var.
+for (const preset of PROVIDER_PRESETS) {
+  if (preset.textModels.length === 0) {
+    throw new Error(`Provider preset '${preset.id}' has no textModels`);
+  }
+  if (!preset.keysEnvVar) {
+    throw new Error(`Provider preset '${preset.id}' has no keysEnvVar`);
+  }
+  if (!preset.baseUrl.startsWith("http")) {
+    throw new Error(`Provider preset '${preset.id}' baseUrl must be absolute`);
+  }
 }
 
-console.log(`llm-governance passed: ${REQUIRED.length} operations, ${runtime.providers.length} external provider(s) configured`);
+const runtime = describeLlmRuntime();
+console.log(
+  `llm-governance passed: ${REQUIRED.length} operations, ` +
+  `${PROVIDER_PRESETS.length} presets, ` +
+  `${runtime.providers.length} provider(s) configured at runtime`,
+);

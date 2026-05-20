@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { AlertTriangle, BrainCircuit, Database, FileText, Lock, Route } from "lucide-react";
+import { AlertTriangle, BrainCircuit, Database, FileText, Lock, Route, CheckCircle2, XCircle } from "lucide-react";
 import { describeLlmRuntime } from "@prodmatch/shared";
 
 export const metadata: Metadata = { title: "Admin · AI Ops" };
@@ -9,9 +9,11 @@ export const runtime = "nodejs";
 export default async function AdminAiOpsPage() {
   const runtime = describeLlmRuntime();
   const geminiKeys = (process.env.GEMINI_API_KEY ?? "").split(",").map((k) => k.trim()).filter(Boolean).length;
-  const piiOptIn = /^(1|true|yes|on)$/i.test(process.env.LLM_ALLOW_FREE_PROVIDER_RESUME_PII ?? "");
-  const derivedOptIn = /^(1|true|yes|on)$/i.test(process.env.LLM_ALLOW_FREE_PROVIDER_DERIVED_RESUME ?? "");
+  const killSwitch = /^(1|true|yes|on)$/i.test(process.env.LLM_FORCE_BLOCK_FREE_PROVIDERS ?? "");
   const deterministic = !/^(0|false|no|off)$/i.test(process.env.LLM_ENABLE_DETERMINISTIC_FALLBACKS ?? "true");
+
+  const configuredCount = runtime.providers.length;
+  const totalPresets = runtime.presets.length;
 
   return (
     <div className="mx-auto max-w-6xl space-y-6 px-4 py-6 sm:px-6 sm:py-8">
@@ -20,7 +22,7 @@ export default async function AdminAiOpsPage() {
           <BrainCircuit className="h-5 w-5 text-primary" /> AI Operations
         </h1>
         <p className="text-sm text-muted-foreground">
-          Provider routing, privacy gates, deterministic fallbacks and LLM dependency health.
+          Hardcoded provider chain. Operators configure API keys only &mdash; URLs, models and capabilities live in code.
         </p>
       </header>
 
@@ -30,21 +32,21 @@ export default async function AdminAiOpsPage() {
           label="Gemini keys"
           value={String(geminiKeys)}
           tone={geminiKeys > 0 ? "ok" : "warn"}
-          sub={geminiKeys > 0 ? "Primary multimodal route" : "External/deterministic fallback only"}
+          sub={geminiKeys > 0 ? "Primary multimodal route" : "Fallback chain only"}
         />
         <StatusCard
           icon={<Database className="h-4 w-4" />}
-          label="Free providers"
-          value={String(runtime.providers.length)}
-          tone={runtime.providers.length > 0 ? "ok" : "warn"}
-          sub={runtime.providers.length > 0 ? "OpenAI-compatible chain configured" : "Set LLM_PROVIDER_CHAIN"}
+          label="Free providers configured"
+          value={`${configuredCount} / ${totalPresets}`}
+          tone={configuredCount > 0 ? "ok" : "warn"}
+          sub={configuredCount > 0 ? "Auto-detected via env keys" : "Set at least one provider key"}
         />
         <StatusCard
           icon={<Lock className="h-4 w-4" />}
-          label="Resume PII fallback"
-          value={piiOptIn ? "On" : "Off"}
-          tone={piiOptIn ? "warn" : "ok"}
-          sub={piiOptIn ? "External resume routing enabled" : "Raw resumes stay on Gemini only"}
+          label="Kill switch"
+          value={killSwitch ? "ON" : "OFF"}
+          tone={killSwitch ? "warn" : "ok"}
+          sub={killSwitch ? "LLM_FORCE_BLOCK_FREE_PROVIDERS=true" : "External chain enabled"}
         />
         <StatusCard
           icon={<FileText className="h-4 w-4" />}
@@ -56,35 +58,114 @@ export default async function AdminAiOpsPage() {
       </section>
 
       <section className="space-y-2">
-        <SectionTitle title="Provider Chain" subtitle="Secrets are never displayed; only key counts and capabilities." />
-        {runtime.providers.length === 0 ? (
-          <EmptyPanel text="No external providers configured. Gemini plus deterministic fallback will be used." />
-        ) : (
+        <SectionTitle
+          title="Provider Presets"
+          subtitle="All baseUrls, model cascades, and capabilities are hardcoded. Set the listed env var to enable a preset."
+        />
+        <div className="overflow-hidden rounded-2xl border border-border bg-card/40">
+          <div className="divide-y divide-border/50">
+            {runtime.presets.map((preset) => {
+              const detail = runtime.providers.find((p) => p.id === preset.id);
+              return (
+                <div key={preset.id} className="grid grid-cols-1 gap-2 px-4 py-3 text-sm md:grid-cols-[1fr_1fr_1fr_auto] md:items-center">
+                  <div className="flex items-center gap-2">
+                    {preset.configured ? (
+                      <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-400" />
+                    ) : (
+                      <XCircle className="h-4 w-4 shrink-0 text-muted-foreground" />
+                    )}
+                    <div>
+                      <p className="font-medium">{preset.label}</p>
+                      <p className="text-[11px] text-muted-foreground">{preset.id}</p>
+                    </div>
+                  </div>
+                  <div className="text-xs text-muted-foreground">
+                    Env var:{" "}
+                    <code className="rounded bg-background/60 px-1.5 py-0.5 text-[11px] text-foreground">
+                      {preset.keysEnvVar}
+                    </code>
+                  </div>
+                  <div className="text-xs text-muted-foreground">
+                    {detail ? (
+                      <>
+                        <span className="text-foreground tabular-nums">{detail.keyCount}</span> key
+                        {detail.keyCount === 1 ? "" : "s"} ·{" "}
+                        <span className="text-foreground tabular-nums">{detail.textModels.length}</span> model
+                        {detail.textModels.length === 1 ? "" : "s"}
+                      </>
+                    ) : (
+                      <span>not configured</span>
+                    )}
+                  </div>
+                  <div className="text-xs">
+                    {preset.configured ? (
+                      <span className="rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2 py-0.5 text-[10px] font-semibold text-emerald-300">
+                        IN CHAIN
+                      </span>
+                    ) : (
+                      <span className="rounded-full border border-border bg-background/40 px-2 py-0.5 text-[10px] font-semibold text-muted-foreground">
+                        idle
+                      </span>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      </section>
+
+      {runtime.providers.length > 0 && (
+        <section className="space-y-2">
+          <SectionTitle
+            title="Active Model Cascade"
+            subtitle="Order tried per provider. Each (model × key) has its own dead-key tracker."
+          />
           <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
             {runtime.providers.map((p) => (
               <div key={p.id} className="rounded-2xl border border-border bg-card/40 p-4">
                 <div className="flex items-start justify-between gap-3">
                   <div>
-                    <p className="font-semibold">{p.id}</p>
+                    <p className="font-semibold">{p.label}</p>
                     <p className="break-all text-[11px] text-muted-foreground">{p.baseUrl}</p>
                   </div>
                   <span className="rounded-full border border-primary/30 bg-primary/10 px-2 py-1 text-[10px] font-semibold text-primary">
                     {p.keyCount} key{p.keyCount === 1 ? "" : "s"}
                   </span>
                 </div>
-                <div className="mt-3 grid grid-cols-1 gap-2 text-xs sm:grid-cols-2">
-                  <MiniStat label="Text model" value={p.textModel ?? "not set"} />
-                  <MiniStat label="Embedding model" value={p.embeddingModel ?? "not set"} />
-                  <MiniStat label="PDF support" value={p.supportsPdf ? "declared" : "no"} />
+                <div className="mt-3 space-y-1.5">
+                  <p className="text-[10px] uppercase tracking-wider text-muted-foreground">Text model cascade</p>
+                  <ol className="space-y-1">
+                    {p.textModels.map((m, idx) => (
+                      <li key={m} className="flex items-center gap-2 text-xs">
+                        <span className="inline-flex h-5 w-5 shrink-0 items-center justify-center rounded border border-border bg-background/60 text-[10px] tabular-nums text-muted-foreground">
+                          {idx + 1}
+                        </span>
+                        <code className="truncate rounded bg-background/40 px-1.5 py-0.5 text-[11px]">{m}</code>
+                      </li>
+                    ))}
+                  </ol>
+                  {p.embeddingModel && (
+                    <div className="pt-2">
+                      <p className="text-[10px] uppercase tracking-wider text-muted-foreground">Embedding</p>
+                      <code className="text-[11px]">{p.embeddingModel}</code>
+                    </div>
+                  )}
+                  {p.supportsPdf && (
+                    <p className="pt-1 text-[10px] text-emerald-400">Supports PDF input</p>
+                  )}
                 </div>
               </div>
             ))}
           </div>
-        )}
-      </section>
+        </section>
+      )}
 
       <section className="space-y-2">
-        <SectionTitle title="Operation Policy" subtitle="What can leave Gemini, and what has deterministic backup." />
+        <SectionTitle
+          title="Operation Policy"
+          subtitle="All operations roll over to the free provider chain when Gemini exhausts."
+        />
         <div className="overflow-hidden rounded-2xl border border-border bg-card/40">
           <div className="divide-y divide-border/50">
             {runtime.operations.map((op) => (
@@ -93,7 +174,7 @@ export default async function AdminAiOpsPage() {
                   <p className="font-medium">{op.label}</p>
                   <p className="text-[11px] text-muted-foreground">{op.id}</p>
                 </div>
-                <Badge value={op.sensitivity} tone={op.sensitivity === "public_jd" ? "ok" : op.sensitivity === "resume_pii" ? "warn" : "neutral"} />
+                <Badge value={op.sensitivity.replaceAll("_", " ")} tone={op.sensitivity === "public_jd" ? "ok" : op.sensitivity === "resume_pii" ? "warn" : "neutral"} />
                 <Badge value={op.externalFallback.replaceAll("_", " ")} tone={op.externalFallback === "allowed" ? "ok" : "neutral"} />
                 <Badge value={`deterministic: ${op.deterministicFallback}`} tone={op.deterministicFallback === "available" ? "ok" : "neutral"} />
               </div>
@@ -102,16 +183,17 @@ export default async function AdminAiOpsPage() {
         </div>
       </section>
 
-      {derivedOptIn || piiOptIn ? (
-        <div className="rounded-2xl border border-amber-500/30 bg-amber-500/10 p-4 text-sm text-amber-100">
-          <p className="flex items-center gap-2 font-medium">
-            <AlertTriangle className="h-4 w-4" /> External resume fallback is enabled
-          </p>
-          <p className="mt-1 text-xs text-amber-100/80">
-            Keep provider terms, data retention and DPDP disclosures reviewed. This page intentionally shows no keys or resume data.
-          </p>
-        </div>
-      ) : null}
+      <div className="rounded-2xl border border-amber-500/30 bg-amber-500/10 p-4 text-sm text-amber-100">
+        <p className="flex items-center gap-2 font-medium">
+          <AlertTriangle className="h-4 w-4" /> Policy
+        </p>
+        <p className="mt-1 text-xs text-amber-100/80">
+          The product owner has accepted that resume PDFs and derived resume facts may flow through any configured
+          provider when Gemini is exhausted. Candidates already consent to sharing their resume with employers; routing
+          through inference providers is a derived processor use. Set <code>LLM_FORCE_BLOCK_FREE_PROVIDERS=true</code>{" "}
+          if you ever need an emergency stop. No keys or resume content are displayed on this page.
+        </p>
+      </div>
     </div>
   );
 }
@@ -143,23 +225,6 @@ function SectionTitle({ title, subtitle }: { title: string; subtitle: string }) 
     <div>
       <p className="text-sm font-semibold">{title}</p>
       <p className="text-[11px] text-muted-foreground">{subtitle}</p>
-    </div>
-  );
-}
-
-function EmptyPanel({ text }: { text: string }) {
-  return (
-    <div className="rounded-2xl border border-border bg-card/40 p-4 text-sm text-muted-foreground">
-      {text}
-    </div>
-  );
-}
-
-function MiniStat({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="rounded-lg border border-border/50 bg-background/40 px-3 py-2">
-      <p className="text-[10px] uppercase tracking-wider text-muted-foreground">{label}</p>
-      <p className="truncate text-xs font-medium">{value}</p>
     </div>
   );
 }
