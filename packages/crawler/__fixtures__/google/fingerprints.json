@@ -1,0 +1,42 @@
+{
+  "version": 1,
+  "slug": "google",
+  "capturedAt": "2026-05-20T00:00:00.000Z",
+  "source": "https://www.google.com/about/careers/applications/jobs/results?location=India",
+  "signatures": {
+    "job_card": [
+      {
+        "tag": "li",
+        "classes": ["lLd3Je"],
+        "attrs": { "data-test": "card" },
+        "textShape": "w w9 wp w w wp w w9 w9 w9 w9 w9 w9p w9",
+        "depth": 4,
+        "siblingIndex": 0,
+        "childTagCounts": { "div": 1, "a": 1 },
+        "ancestorChain": ["ul", "main", "body", "html"]
+      },
+      {
+        "tag": "li",
+        "classes": ["lLd3Je"],
+        "attrs": { "data-test": "card" },
+        "textShape": "w w9 wp w w wp w w9 w9 w9 w9 w9 w9p w9",
+        "depth": 4,
+        "siblingIndex": 1,
+        "childTagCounts": { "div": 1, "a": 1 },
+        "ancestorChain": ["ul", "main", "body", "html"]
+      }
+    ],
+    "job_title": [
+      {
+        "tag": "h3",
+        "classes": ["QJPWVe"],
+        "attrs": {},
+        "textShape": "w w w wp w w",
+        "depth": 6,
+        "siblingIndex": 0,
+        "childTagCounts": {},
+        "ancestorChain": ["div", "li", "ul", "main"]
+      }
+    ]
+  }
+}

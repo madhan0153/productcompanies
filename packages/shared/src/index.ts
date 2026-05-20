@@ -6,3 +6,4 @@ export * from "./llm/jd-parse";
 export * from "./roles/taxonomy";
 export * from "./roles/taxonomy-benchmarks";
 export * from "./scoring";
+export * from "./crawler-meta";
