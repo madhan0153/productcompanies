@@ -20,6 +20,7 @@
     "test:crawler": "node --import tsx --test packages/crawler/__tests__/*.test.ts",
     "test:resilience": "node --import tsx --test apps/web/__tests__/admin/crawler-resilience.test.ts",
     "test:resume-mapper": "node --import tsx --test apps/web/__tests__/resume/json-mapper.test.ts",
+    "test:matching-bench": "node --import tsx --test apps/web/__tests__/matching/banding-benchmark.test.ts",
     "test:llm-runtime": "node --import tsx --test packages/shared/src/llm/*.test.ts",
     "capture-fixture": "tsx packages/crawler/capture-fixture.ts",
     "crawl": "pnpm --filter crawler start"
