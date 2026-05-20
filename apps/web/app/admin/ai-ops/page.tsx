@@ -14,6 +14,7 @@ export default async function AdminAiOpsPage() {
 
   const configuredCount = runtime.providers.length;
   const totalPresets = runtime.presets.length;
+  const partialCount = runtime.presets.filter((p) => p.state === "partial").length;
 
   return (
     <div className="mx-auto max-w-6xl space-y-6 px-4 py-6 sm:px-6 sm:py-8">
@@ -39,7 +40,11 @@ export default async function AdminAiOpsPage() {
           label="Free providers configured"
           value={`${configuredCount} / ${totalPresets}`}
           tone={configuredCount > 0 ? "ok" : "warn"}
-          sub={configuredCount > 0 ? "Auto-detected via env keys" : "Set at least one provider key"}
+          sub={
+            partialCount > 0
+              ? `${partialCount} partial — see below`
+              : configuredCount > 0 ? "Auto-detected via env keys" : "Set at least one provider key"
+          }
         />
         <StatusCard
           icon={<Lock className="h-4 w-4" />}
@@ -66,47 +71,64 @@ export default async function AdminAiOpsPage() {
           <div className="divide-y divide-border/50">
             {runtime.presets.map((preset) => {
               const detail = runtime.providers.find((p) => p.id === preset.id);
+              const stateIcon =
+                preset.state === "active" ? <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-400" /> :
+                preset.state === "partial" ? <AlertTriangle className="h-4 w-4 shrink-0 text-amber-400" /> :
+                <XCircle className="h-4 w-4 shrink-0 text-muted-foreground" />;
+              const stateBadge =
+                preset.state === "active" ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-300" :
+                preset.state === "partial" ? "border-amber-500/30 bg-amber-500/10 text-amber-300" :
+                "border-border bg-background/40 text-muted-foreground";
+              const stateLabel =
+                preset.state === "active" ? "IN CHAIN" :
+                preset.state === "partial" ? "PARTIAL" :
+                "idle";
               return (
-                <div key={preset.id} className="grid grid-cols-1 gap-2 px-4 py-3 text-sm md:grid-cols-[1fr_1fr_1fr_auto] md:items-center">
+                <div key={preset.id} className="grid grid-cols-1 gap-2 px-4 py-3 text-sm md:grid-cols-[1fr_1.4fr_1fr_auto] md:items-center">
                   <div className="flex items-center gap-2">
-                    {preset.configured ? (
-                      <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-400" />
-                    ) : (
-                      <XCircle className="h-4 w-4 shrink-0 text-muted-foreground" />
-                    )}
+                    {stateIcon}
                     <div>
                       <p className="font-medium">{preset.label}</p>
-                      <p className="text-[11px] text-muted-foreground">{preset.id}</p>
+                      <p className="text-[11px] text-muted-foreground">
+                        {preset.id}
+                        {preset.embeddingsOnly ? " · embeddings only" : ""}
+                      </p>
                     </div>
                   </div>
                   <div className="text-xs text-muted-foreground">
-                    Env var:{" "}
-                    <code className="rounded bg-background/60 px-1.5 py-0.5 text-[11px] text-foreground">
-                      {preset.keysEnvVar}
-                    </code>
+                    {preset.requiredEnvVars.map((v) => {
+                      const missing = preset.missingEnvVars.includes(v);
+                      return (
+                        <code
+                          key={v}
+                          className={`mr-1.5 rounded px-1.5 py-0.5 text-[11px] ${
+                            missing
+                              ? "bg-amber-500/10 text-amber-300 line-through decoration-amber-400/60"
+                              : "bg-background/60 text-foreground"
+                          }`}
+                        >
+                          {v}
+                        </code>
+                      );
+                    })}
                   </div>
                   <div className="text-xs text-muted-foreground">
                     {detail ? (
                       <>
                         <span className="text-foreground tabular-nums">{detail.keyCount}</span> key
                         {detail.keyCount === 1 ? "" : "s"} ·{" "}
-                        <span className="text-foreground tabular-nums">{detail.textModels.length}</span> model
-                        {detail.textModels.length === 1 ? "" : "s"}
+                        <span className="text-foreground tabular-nums">{detail.textModels.length}</span> text · {detail.embeddingModel ? "1" : "0"} embed
                       </>
+                    ) : preset.state === "partial" ? (
+                      <span>missing: {preset.missingEnvVars.join(", ")}</span>
                     ) : (
                       <span>not configured</span>
                     )}
                   </div>
                   <div className="text-xs">
-                    {preset.configured ? (
-                      <span className="rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2 py-0.5 text-[10px] font-semibold text-emerald-300">
-                        IN CHAIN
-                      </span>
-                    ) : (
-                      <span className="rounded-full border border-border bg-background/40 px-2 py-0.5 text-[10px] font-semibold text-muted-foreground">
-                        idle
-                      </span>
-                    )}
+                    <span className={`rounded-full border px-2 py-0.5 text-[10px] font-semibold ${stateBadge}`}>
+                      {stateLabel}
+                    </span>
                   </div>
                 </div>
               );
