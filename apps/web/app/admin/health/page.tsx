@@ -9,12 +9,10 @@
 // notFound() so the page's existence isn't leaked.
 
 import type { Metadata } from "next";
-import { notFound } from "next/navigation";
 import {
-  Activity, ShieldAlert, Database, Briefcase, Users, FileCheck,
+  Activity, Database, Briefcase, Users, FileCheck,
   Sparkles, BarChart3, CheckCircle2, AlertCircle, XCircle,
 } from "lucide-react";
-import { requireAdmin } from "@/lib/admin/auth";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 
 export const metadata: Metadata = { title: "Admin · Health" };
@@ -37,9 +35,7 @@ type CrawlRunRow = {
 type CompanyRow = { id: string; name: string; slug: string };
 
 export default async function AdminHealthPage() {
-  const gate = await requireAdmin();
-  if (!gate.isAdmin) notFound();
-
+  // Auth gate handled in /admin/layout.tsx — non-admins never reach here.
   const admin = createSupabaseAdminClient();
 
   const since7d  = new Date(Date.now() - 7  * 24 * 3_600_000).toISOString();
@@ -152,19 +148,12 @@ export default async function AdminHealthPage() {
 
   return (
     <div className="mx-auto max-w-6xl space-y-6 px-6 py-8">
-      <header className="flex flex-wrap items-start justify-between gap-4">
-        <div>
-          <div className="inline-flex items-center gap-2 rounded-full border border-border bg-card/40 px-2.5 py-1 text-[11px] font-medium uppercase tracking-wider text-primary">
-            <ShieldAlert className="h-3 w-3" /> Admin
-          </div>
-          <h1 className="mt-2 text-2xl font-semibold tracking-tight">Health</h1>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Live operator view. Crawler status, catalog volume, user engagement. Last refreshed {new Date().toLocaleTimeString()}.
-          </p>
-        </div>
-        <span className="rounded-md border border-border bg-card/40 px-2.5 py-1 text-xs text-muted-foreground">
-          signed in as {gate.email}
-        </span>
+      <header className="space-y-1">
+        <h1 className="text-xl font-semibold tracking-tight sm:text-2xl">Operations</h1>
+        <p className="text-sm text-muted-foreground">
+          Live operator view. Crawler status, catalog volume, user engagement.
+          Refreshed {new Date().toLocaleTimeString()}.
+        </p>
       </header>
 
       {/* ── Headline stats ─────────────────────────────────────────────── */}

@@ -5,16 +5,14 @@
 // of recent crawl run statuses. Mobile-first: stacked cards on narrow
 // viewports, grid on desktop. Reduced-motion-safe.
 //
-// Auth: ADMIN_EMAILS allowlist. Non-admins get notFound().
+// Auth: the parent /admin/layout.tsx gates non-admins via notFound().
 
 import type { Metadata } from "next";
-import { notFound } from "next/navigation";
 import {
-  ShieldAlert, Fingerprint,
-  FileCheck, AlertTriangle, Clock, CheckCircle2, XCircle,
-  AlertCircle, Activity, Layers,
+  Fingerprint, FileCheck, AlertTriangle, Clock, CheckCircle2, XCircle,
+  AlertCircle, Activity, Layers, TrendingUp,
 } from "lucide-react";
-import { requireAdmin } from "@/lib/admin/auth";
+import { CompanyLogo } from "@/components/company-logo";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import {
   scoreFleet,
@@ -28,15 +26,14 @@ export const metadata: Metadata = { title: "Admin · Crawler Intelligence" };
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
-export default async function CrawlerIntelPage() {
-  const gate = await requireAdmin();
-  if (!gate.isAdmin) notFound();
+type CompanyRowWithLogo = CompanyRow & { logo_url: string | null };
 
+export default async function CrawlerIntelPage() {
   const admin = createSupabaseAdminClient();
   const since14d = new Date(Date.now() - 14 * 24 * 3_600_000).toISOString();
 
   const [{ data: companies }, { data: recentRuns }] = await Promise.all([
-    admin.from("companies").select("id, name, slug").order("name") as any,
+    admin.from("companies").select("id, name, slug, logo_url").order("name") as any,
     admin
       .from("crawl_runs")
       .select("company_id, status, finished_at, started_at, jobs_new, jobs_updated, jobs_marked_stale, error")
@@ -44,39 +41,37 @@ export default async function CrawlerIntelPage() {
       .order("started_at", { ascending: false }) as any,
   ]);
 
+  const companiesWithLogos = (companies ?? []) as CompanyRowWithLogo[];
+  const logoBySlug = new Map(companiesWithLogos.map((c) => [c.slug, c.logo_url]));
+
   const runsByCompany = new Map<string, CrawlRunRow[]>();
-  for (const r of recentRuns ?? []) {
+  for (const r of (recentRuns ?? []) as CrawlRunRow[]) {
     if (!runsByCompany.has(r.company_id)) runsByCompany.set(r.company_id, []);
     runsByCompany.get(r.company_id)!.push(r);
   }
 
   const { overall, perCompany } = scoreFleet(
-    (companies ?? []) as CompanyRow[],
+    companiesWithLogos.map((c) => ({ id: c.id, name: c.name, slug: c.slug })),
     runsByCompany,
   );
 
+  const dailySeries = buildDailySeries((recentRuns ?? []) as CrawlRunRow[], 14);
+
   return (
-    <div className="mx-auto max-w-5xl space-y-6 px-4 py-6 sm:px-6 sm:py-8">
-      {/* Header */}
+    <div className="mx-auto max-w-6xl space-y-6 px-4 py-6 sm:px-6 sm:py-8">
       <header className="space-y-1">
-        <div className="inline-flex items-center gap-2 rounded-full border border-border bg-card/40 px-2.5 py-1 text-[11px] font-medium uppercase tracking-wider text-primary">
-          <ShieldAlert className="h-3 w-3" /> Admin
-        </div>
-        <h1 className="text-xl font-semibold tracking-tight sm:text-2xl">
-          Crawler Intelligence
-        </h1>
+        <h1 className="text-xl font-semibold tracking-tight sm:text-2xl">Crawler Intelligence</h1>
         <p className="text-sm text-muted-foreground">
-          Adaptive resilience view &mdash; Scrapling-inspired selector health, drift detection, and fixture coverage.
+          Adaptive resilience view. Scrapling-inspired selector health, drift detection, and fixture coverage.
         </p>
       </header>
 
-      {/* Fleet summary */}
       <FleetSummary overall={overall} total={perCompany.length} />
 
-      {/* Drift watchlist — companies with grade D or C first */}
+      <FleetTrend series={dailySeries} />
+
       <DriftWatchlist items={perCompany.filter((c) => c.driftFlag || c.staleFlag)} />
 
-      {/* Per-company cards */}
       <section className="space-y-3">
         <h2 className="flex items-center gap-2 text-sm font-semibold">
           <Layers className="h-4 w-4 text-primary" />
@@ -84,11 +79,90 @@ export default async function CrawlerIntelPage() {
         </h2>
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {perCompany.map((c) => (
-            <CompanyCard key={c.company.id} r={c} />
+            <CompanyCard
+              key={c.company.id}
+              r={c}
+              logoUrl={logoBySlug.get(c.company.slug) ?? null}
+            />
           ))}
         </div>
       </section>
     </div>
+  );
+}
+
+// ── 14-day trend ──────────────────────────────────────────────────────────
+
+function buildDailySeries(runs: CrawlRunRow[], days: number) {
+  const buckets: { date: string; total: number; success: number; failed: number; partial: number }[] = [];
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  for (let i = days - 1; i >= 0; i--) {
+    const d = new Date(today);
+    d.setDate(today.getDate() - i);
+    buckets.push({ date: d.toISOString().slice(0, 10), total: 0, success: 0, failed: 0, partial: 0 });
+  }
+  const byDate = new Map(buckets.map((b) => [b.date, b]));
+  for (const r of runs) {
+    const date = r.started_at.slice(0, 10);
+    const b = byDate.get(date);
+    if (!b) continue;
+    b.total++;
+    if (r.status === "success") b.success++;
+    else if (r.status === "failed") b.failed++;
+    else if (r.status === "partial") b.partial++;
+  }
+  return buckets;
+}
+
+function FleetTrend({ series }: { series: ReturnType<typeof buildDailySeries> }) {
+  const max = Math.max(1, ...series.map((s) => s.total));
+  const totalRuns = series.reduce((s, x) => s + x.total, 0);
+  const successRuns = series.reduce((s, x) => s + x.success, 0);
+  const rate = totalRuns === 0 ? 0 : Math.round((successRuns / totalRuns) * 100);
+
+  return (
+    <section className="rounded-2xl border border-border bg-card/40 p-4">
+      <div className="mb-3 flex items-end justify-between gap-2">
+        <div>
+          <p className="flex items-center gap-2 text-sm font-semibold">
+            <TrendingUp className="h-4 w-4 text-primary" /> 14-day trend
+          </p>
+          <p className="text-[11px] text-muted-foreground">
+            Total crawl runs across all 18 crawlers, color-coded by status.
+          </p>
+        </div>
+        <div className="text-right">
+          <p className="text-lg font-semibold tabular-nums">{totalRuns}</p>
+          <p className="text-[10px] text-muted-foreground">{rate}% success</p>
+        </div>
+      </div>
+      <div className="flex h-16 items-end gap-1">
+        {series.map((s) => (
+          <div
+            key={s.date}
+            className="relative flex-1"
+            title={`${s.date} - ${s.total} runs - ${s.success} success - ${s.failed} failed`}
+          >
+            <div className="flex h-full w-full flex-col-reverse overflow-hidden rounded-sm bg-background/40">
+              {s.success > 0 && (
+                <div className="bg-emerald-500/70" style={{ height: `${(s.success / max) * 100}%` }} />
+              )}
+              {s.partial > 0 && (
+                <div className="bg-amber-500/70" style={{ height: `${(s.partial / max) * 100}%` }} />
+              )}
+              {s.failed > 0 && (
+                <div className="bg-rose-500/70" style={{ height: `${(s.failed / max) * 100}%` }} />
+              )}
+            </div>
+          </div>
+        ))}
+      </div>
+      <div className="mt-1.5 flex justify-between text-[10px] text-muted-foreground">
+        <span>{series[0]?.date.slice(5)}</span>
+        <span>{series[series.length - 1]?.date.slice(5)}</span>
+      </div>
+    </section>
   );
 }
 
@@ -189,18 +263,21 @@ function DriftWatchlist({ items }: { items: CompanyResilience[] }) {
 
 // ── Company card ───────────────────────────────────────────────────────────
 
-function CompanyCard({ r }: { r: CompanyResilience }) {
+function CompanyCard({ r, logoUrl }: { r: CompanyResilience; logoUrl: string | null }) {
   const gradeColor = gradeTone(r.grade);
   const statusMeta = STATUS_META[r.latestStatus];
-  const when = r.latestAt ? timeAgo(new Date(r.latestAt)) : "—";
+  const when = r.latestAt ? timeAgo(new Date(r.latestAt)) : "no data";
 
   return (
-    <div className="flex flex-col gap-3 rounded-2xl border border-border bg-card/40 p-4">
-      {/* Top row: name + grade */}
+    <div className="flex flex-col gap-3 rounded-2xl border border-border bg-card/40 p-4 transition-colors hover:border-primary/30 motion-reduce:transition-none">
+      {/* Top row: logo + name + grade */}
       <div className="flex items-start justify-between gap-2">
-        <div className="min-w-0">
-          <p className="truncate font-medium">{r.company.name}</p>
-          <p className="text-[11px] text-muted-foreground">{r.company.slug}</p>
+        <div className="flex min-w-0 items-center gap-2.5">
+          <CompanyLogo name={r.company.name} logoUrl={logoUrl} size={32} />
+          <div className="min-w-0">
+            <p className="truncate text-sm font-semibold">{r.company.name}</p>
+            <p className="text-[10px] text-muted-foreground">{r.company.slug}</p>
+          </div>
         </div>
         <div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-sm font-bold ${gradeColor}`}>
           {r.grade}
