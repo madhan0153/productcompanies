@@ -1,7 +1,10 @@
 import { chromium } from "playwright";
 import type { CompanyConfig, CrawlContext } from "./_types.js";
 import type { RawJob } from "@prodmatch/shared";
+import type { ElementHandle, Page } from "playwright";
 import { sleep, enrichDescriptions } from "./_types.js";
+import { resolveAdaptive, type AdaptiveTelemetry } from "../lib/adaptive.js";
+import { loadReferenceSignatures } from "../lib/fixture-store.js";
 
 // Zomato (now part of "Eternal") publishes openings via Zoho Recruit:
 //   https://eternal.zohorecruit.in/jobs/Careers
@@ -19,6 +22,17 @@ import { sleep, enrichDescriptions } from "./_types.js";
 //   .cw-filter-joblist-right    — type + posted date
 
 const PORTAL_URL = "https://eternal.zohorecruit.in/jobs/Careers";
+
+const CARD_LABEL = "job_card";
+const CARD_SELECTOR = ".cw-filter-joblist";
+
+interface ZomatoRaw {
+  title: string;
+  href: string;
+  right: string;
+  fullTitle: string;
+  location: string;
+}
 
 export const zomatoConfig: CompanyConfig = {
   slug: "zomato",
@@ -40,6 +54,20 @@ export const zomatoConfig: CompanyConfig = {
       log(`failed to launch dedicated browser: ${(err as Error).message}`, "error");
       return [];
     }
+
+    // Adaptive reference signatures — empty until a fixture is captured.
+    const cardReference = loadReferenceSignatures("zomato", CARD_LABEL);
+
+    const onTelemetry = (e: AdaptiveTelemetry) => {
+      if (e.kind === "fallback_hit") {
+        log(
+          `[adaptive] ${e.label}: CSS failed; recovered ${e.count} via fingerprint match (mean confidence ${e.meanConfidence.toFixed(2)})`,
+          "warn",
+        );
+      } else if (e.kind === "miss") {
+        log(`[adaptive] ${e.label}: no recovery (${e.reason})`, "warn");
+      }
+    };
 
     try {
       const browserCtx = await browser.newContext({
@@ -79,19 +107,24 @@ export const zomatoConfig: CompanyConfig = {
         } catch { break; }
       }
 
-      const rawJobs = await page.$$eval(".cw-filter-joblist", (rows) =>
-        rows.map((row) => {
-          const link = row.querySelector(".cw-3-title") as HTMLAnchorElement | null;
-          const title = (link?.textContent ?? "").trim();
-          const href = link?.href ?? "";
-          const right = (row.querySelector(".cw-filter-joblist-right")?.textContent ?? "").trim();
-          // The title sometimes embeds the location: "Senior PM, Bangalore, ZR_1_JOB"
-          const parts = title.split(",").map((s) => s.trim());
-          const cleanTitle = parts[0] ?? title;
-          const location = parts.length > 1 ? parts[1] : "Gurugram";
-          return { title: cleanTitle, href, right, fullTitle: title, location };
-        }).filter((r) => r.title.length > 3 && r.href.length > 10),
-      );
+      // Happy path.
+      let rawJobs = await extractZomatoJobs(page, CARD_SELECTOR);
+
+      // Drift fallback: Zoho Recruit ships CSS-module class renames quarterly.
+      // The fingerprint match recovers when .cw-filter-joblist breaks.
+      if (rawJobs.length === 0 && cardReference.length > 0) {
+        const matches = await resolveAdaptive(page, {
+          slug: "zomato",
+          label: CARD_LABEL,
+          selector: CARD_SELECTOR,
+          reference: cardReference,
+          onTelemetry,
+        });
+        if (matches.length > 0) {
+          rawJobs = await extractZomatoFromHandles(matches.map((m) => m.handle));
+          for (const m of matches) await m.handle.dispose();
+        }
+      }
 
       log(`Found ${rawJobs.length} listings on Zoho Recruit`);
 
@@ -138,3 +171,39 @@ export const zomatoConfig: CompanyConfig = {
     }
   },
 };
+
+// ── Extraction helpers ─────────────────────────────────────────────────────
+
+async function extractZomatoJobs(page: Page, selector: string): Promise<ZomatoRaw[]> {
+  return page.$$eval(selector, (rows) =>
+    rows.map((row) => {
+      const link = row.querySelector(".cw-3-title") as HTMLAnchorElement | null;
+      const title = (link?.textContent ?? "").trim();
+      const href = link?.href ?? "";
+      const right = (row.querySelector(".cw-filter-joblist-right")?.textContent ?? "").trim();
+      const parts = title.split(",").map((s) => s.trim());
+      const cleanTitle = parts[0] ?? title;
+      const location = parts.length > 1 ? parts[1] : "Gurugram";
+      return { title: cleanTitle, href, right, fullTitle: title, location };
+    }).filter((r) => r.title.length > 3 && r.href.length > 10),
+  );
+}
+
+async function extractZomatoFromHandles(handles: ElementHandle[]): Promise<ZomatoRaw[]> {
+  const out: ZomatoRaw[] = [];
+  for (const h of handles) {
+    const row = await h.evaluate((el) => {
+      const root = el as HTMLElement;
+      const link = root.querySelector(".cw-3-title") as HTMLAnchorElement | null;
+      const title = (link?.textContent ?? "").trim();
+      const href = link?.href ?? "";
+      const right = (root.querySelector(".cw-filter-joblist-right")?.textContent ?? "").trim();
+      const parts = title.split(",").map((s) => s.trim());
+      const cleanTitle = parts[0] ?? title;
+      const location = parts.length > 1 ? parts[1] : "Gurugram";
+      return { title: cleanTitle, href, right, fullTitle: title, location };
+    });
+    if (row.title.length > 3 && row.href.length > 10) out.push(row);
+  }
+  return out;
+}
