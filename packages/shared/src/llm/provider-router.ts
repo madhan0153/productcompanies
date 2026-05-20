@@ -25,6 +25,11 @@ import {
   resolvePresetBaseUrl,
   type ProviderPreset,
 } from "./providers-preset";
+import {
+  getDeadKeyStore,
+  writeReasonSafe,
+  type DeadKeyMetadata,
+} from "./dead-key-store";
 
 interface ProviderConfig {
   id: string;
@@ -97,8 +102,65 @@ function isDead(key: string): boolean {
   return true;
 }
 
-function markDead(key: string, ms: number): void {
-  deadUntil.set(key, Date.now() + ms);
+function markDead(key: string, ms: number, metadata?: DeadKeyMetadata): void {
+  const until = Date.now() + ms;
+  deadUntil.set(key, until);
+  // Write-through to the persistent store, if one is configured. Failures
+  // are silently ignored — the in-memory map remains authoritative for the
+  // current process. We catch synchronously so a missing store callback
+  // never blocks the hot path.
+  const store = getDeadKeyStore();
+  if (store && metadata) {
+    void store.markDead(key, until, metadata).catch(() => { /* best effort */ });
+  }
+}
+
+// ── Hydration from persistent store ────────────────────────────────────────
+//
+// On Vercel cold start, the in-memory deadUntil Map is empty. The first
+// request that reaches the router awaits this once-per-process hydration
+// to pull persisted state out of Supabase. Subsequent requests skip it.
+
+let _hydrated = false;
+let _hydratePromise: Promise<void> | null = null;
+
+/**
+ * Pull dead-key state from the configured store (if any) into the in-memory
+ * Map. Idempotent: only runs once per process; subsequent calls await the
+ * same promise. Failures don't throw — the router still works in
+ * in-memory-only mode if the store is unreachable.
+ */
+export async function ensureDeadKeyHydration(): Promise<void> {
+  if (_hydrated) return;
+  if (_hydratePromise) {
+    await _hydratePromise;
+    return;
+  }
+  const store = getDeadKeyStore();
+  if (!store) {
+    _hydrated = true;
+    return;
+  }
+  _hydratePromise = (async () => {
+    try {
+      const all = await store.loadAll();
+      const now = Date.now();
+      for (const [key, until] of all) {
+        if (until > now) deadUntil.set(key, until);
+      }
+    } catch {
+      // best-effort
+    } finally {
+      _hydrated = true;
+    }
+  })();
+  await _hydratePromise;
+}
+
+/** Reset hydration state — used by tests. Don't call from app code. */
+export function _resetHydrationState(): void {
+  _hydrated = false;
+  _hydratePromise = null;
 }
 
 function classifyProviderFailure(status: number, body: string): ProviderFailureKind {
@@ -287,6 +349,7 @@ export async function runOpenAiCompatibleJson(
   operation: LlmOperationId,
   request: GeminiLikeGenerateRequest,
 ): Promise<string> {
+  await ensureDeadKeyHydration();
   const policy = getLlmOperationPolicy(operation);
   const providers = providersFor(operation, policy.capability);
   if (providers.length === 0) {
@@ -338,16 +401,26 @@ export async function runOpenAiCompatibleJson(
           const raw = getErrorText(err);
           const kind = classifyProviderFailure(status, raw);
           const logKey = `${provider.id}|${model}|${keyIdx}|${kind}`;
+          // Build metadata once per error path so write-through to the store
+          // captures the same shape regardless of kind.
+          const meta = (failureKind: DeadKeyMetadata["failureKind"]): DeadKeyMetadata => ({
+            providerId: provider.id,
+            model,
+            keyIndex: keyIdx,
+            capability: policy.capability,
+            failureKind,
+            reason: writeReasonSafe(raw),
+          });
           if (kind === "auth") {
-            markDead(deadKey, 24 * 60 * 60_000);
+            markDead(deadKey, 24 * 60 * 60_000, meta("auth"));
             logProviderStateOnce(logKey, `[llm-provider] ${provider.id} key #${keyIdx} (${maskKey(key)}) disabled for auth`);
           } else if (kind === "quota") {
-            markDead(deadKey, 24 * 60 * 60_000);
+            markDead(deadKey, 24 * 60 * 60_000, meta("quota"));
             logProviderStateOnce(logKey, `[llm-provider] ${provider.id} key #${keyIdx} (${maskKey(key)}) exhausted for ${model}`);
           } else if (kind === "rate_limited") {
-            markDead(deadKey, 60_000);
+            markDead(deadKey, 60_000, meta("rate_limited"));
           } else if (kind === "unsupported") {
-            markDead(deadKey, 6 * 60 * 60_000);
+            markDead(deadKey, 6 * 60 * 60_000, meta("unsupported"));
             logProviderStateOnce(logKey, `[llm-provider] ${provider.id} model ${model} unsupported for ${operation}`);
           }
         }
@@ -362,6 +435,7 @@ export async function runOpenAiCompatibleEmbedding(
   operation: Extract<LlmOperationId, "job_embedding" | "resume_embedding">,
   texts: string[],
 ): Promise<number[][] | null> {
+  await ensureDeadKeyHydration();
   const providers = providersFor(operation, "embedding");
   if (providers.length === 0) return null;
 
@@ -393,9 +467,18 @@ export async function runOpenAiCompatibleEmbedding(
         const status = getStatus(err);
         const raw = getErrorText(err);
         const kind = classifyProviderFailure(status, raw);
-        if (kind === "auth" || kind === "quota") markDead(deadKey, 24 * 60 * 60_000);
-        else if (kind === "rate_limited") markDead(deadKey, 60_000);
-        else if (kind === "unsupported") markDead(deadKey, 6 * 60 * 60_000);
+        const meta = (failureKind: DeadKeyMetadata["failureKind"]): DeadKeyMetadata => ({
+          providerId: provider.id,
+          model: provider.embeddingModel!,
+          keyIndex: keyIdx,
+          capability: "embedding",
+          failureKind,
+          reason: writeReasonSafe(raw),
+        });
+        if (kind === "auth") markDead(deadKey, 24 * 60 * 60_000, meta("auth"));
+        else if (kind === "quota") markDead(deadKey, 24 * 60 * 60_000, meta("quota"));
+        else if (kind === "rate_limited") markDead(deadKey, 60_000, meta("rate_limited"));
+        else if (kind === "unsupported") markDead(deadKey, 6 * 60 * 60_000, meta("unsupported"));
       }
     }
   }

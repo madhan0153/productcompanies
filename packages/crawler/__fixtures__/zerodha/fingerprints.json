@@ -1,0 +1,30 @@
+{
+  "version": 1,
+  "slug": "zerodha",
+  "capturedAt": "2026-05-21T00:00:00.000Z",
+  "source": "https://zerodha.com/careers/",
+  "signatures": {
+    "job_link": [
+      {
+        "tag": "a",
+        "classes": [],
+        "attrs": {},
+        "textShape": "w w wp w w",
+        "depth": 6,
+        "siblingIndex": 0,
+        "childTagCounts": {},
+        "ancestorChain": ["li", "ul", "section", "main"]
+      },
+      {
+        "tag": "a",
+        "classes": [],
+        "attrs": {},
+        "textShape": "w w w",
+        "depth": 6,
+        "siblingIndex": 1,
+        "childTagCounts": {},
+        "ancestorChain": ["li", "ul", "section", "main"]
+      }
+    ]
+  }
+}

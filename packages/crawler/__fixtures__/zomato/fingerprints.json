@@ -1,0 +1,30 @@
+{
+  "version": 1,
+  "slug": "zomato",
+  "capturedAt": "2026-05-21T00:00:00.000Z",
+  "source": "https://eternal.zohorecruit.in/jobs/Careers",
+  "signatures": {
+    "job_card": [
+      {
+        "tag": "div",
+        "classes": ["cw-filter-joblist"],
+        "attrs": {},
+        "textShape": "w w wp w wp w w w w9 w9p w w w wp w9",
+        "depth": 4,
+        "siblingIndex": 0,
+        "childTagCounts": { "a": 1, "div": 1 },
+        "ancestorChain": ["div", "main", "body", "html"]
+      },
+      {
+        "tag": "div",
+        "classes": ["cw-filter-joblist"],
+        "attrs": {},
+        "textShape": "w w wp w wp w w w w9 w9p w w w wp w9",
+        "depth": 4,
+        "siblingIndex": 1,
+        "childTagCounts": { "a": 1, "div": 1 },
+        "ancestorChain": ["div", "main", "body", "html"]
+      }
+    ]
+  }
+}

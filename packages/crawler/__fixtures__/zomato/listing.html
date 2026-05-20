@@ -1,0 +1,70 @@
+<!--
+  Synthetic Zomato (Eternal / Zoho Recruit) careers listing snapshot.
+
+  Structure mirrors what packages/crawler/companies/zomato.ts expects:
+    .cw-filter-joblist            — one element per job
+    .cw-3-title                   — anchor with title + href to /Careers/{id}/
+    .cw-filter-joblist-right      — type + posted date
+
+  All names, titles, and IDs are fabricated. No PII. Replace with a real
+  capture via:  pnpm capture-fixture --slug=zomato
+-->
+<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"><title>Fixture</title></head>
+<body>
+<main>
+  <div class="cw-joblist">
+    <div class="cw-filter-joblist">
+      <a class="cw-3-title" href="https://eternal.zohorecruit.in/jobs/Careers/9000100/Senior-Software-Engineer-Bengaluru/">
+        Senior Software Engineer, Bangalore, ZR_9000100
+      </a>
+      <div class="cw-filter-joblist-right">
+        <span>Full Time</span>
+        <span>Posted 2 days ago</span>
+      </div>
+    </div>
+
+    <div class="cw-filter-joblist">
+      <a class="cw-3-title" href="https://eternal.zohorecruit.in/jobs/Careers/9000101/Staff-Backend-Engineer/">
+        Staff Backend Engineer, Gurugram, ZR_9000101
+      </a>
+      <div class="cw-filter-joblist-right">
+        <span>Full Time</span>
+        <span>Posted 4 days ago</span>
+      </div>
+    </div>
+
+    <div class="cw-filter-joblist">
+      <a class="cw-3-title" href="https://eternal.zohorecruit.in/jobs/Careers/9000102/Engineering-Manager-Platform/">
+        Engineering Manager, Platform, Bangalore, ZR_9000102
+      </a>
+      <div class="cw-filter-joblist-right">
+        <span>Full Time</span>
+        <span>Posted 1 day ago</span>
+      </div>
+    </div>
+
+    <div class="cw-filter-joblist">
+      <a class="cw-3-title" href="https://eternal.zohorecruit.in/jobs/Careers/9000103/Senior-Data-Engineer/">
+        Senior Data Engineer, Gurugram, ZR_9000103
+      </a>
+      <div class="cw-filter-joblist-right">
+        <span>Full Time</span>
+        <span>Posted 7 days ago</span>
+      </div>
+    </div>
+
+    <div class="cw-filter-joblist">
+      <a class="cw-3-title" href="https://eternal.zohorecruit.in/jobs/Careers/9000104/Site-Reliability-Engineer/">
+        Site Reliability Engineer, Bangalore, ZR_9000104
+      </a>
+      <div class="cw-filter-joblist-right">
+        <span>Full Time</span>
+        <span>Posted 3 days ago</span>
+      </div>
+    </div>
+  </div>
+</main>
+</body>
+</html>

@@ -1,0 +1,87 @@
+<!--
+  Synthetic Apple careers listing snapshot.
+
+  Structure mirrors the real markup the live crawler targets (see
+  packages/crawler/companies/apple.ts):
+
+    Card:     a.link-inline[href*='/details/']  (title + ID + href)
+    Row:      [class*='job-list-item']           (wraps each card)
+    Location: [class*='job-title-location'] span:last-child
+
+  All names, titles, and IDs here are fabricated. No PII. Five rows are
+  enough to exercise pagination skip, "See full..." filter, and
+  location extraction. Replace with a real capture via:
+
+    pnpm capture-fixture --slug=apple
+-->
+<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"><title>Fixture</title></head>
+<body>
+<main>
+  <ul class="job-list">
+    <li class="job-list-item">
+      <a class="link-inline" href="https://jobs.apple.com/en-in/details/200500001/software-engineer">
+        Software Engineer
+      </a>
+      <div class="job-title-location">
+        <span>India</span>
+        <span>Bengaluru, Karnataka, India</span>
+      </div>
+    </li>
+
+    <li class="job-list-item">
+      <a class="link-inline" href="https://jobs.apple.com/en-in/details/200500002/senior-machine-learning-engineer">
+        Senior Machine Learning Engineer
+      </a>
+      <div class="job-title-location">
+        <span>India</span>
+        <span>Hyderabad, Telangana, India</span>
+      </div>
+    </li>
+
+    <li class="job-list-item">
+      <a class="link-inline" href="https://jobs.apple.com/en-in/details/200500003/staff-ios-developer">
+        Staff iOS Developer
+      </a>
+      <div class="job-title-location">
+        <span>India</span>
+        <span>Bengaluru, Karnataka, India</span>
+      </div>
+    </li>
+
+    <li class="job-list-item">
+      <a class="link-inline" href="https://jobs.apple.com/en-in/details/200500004/manager-engineering-platform">
+        Engineering Manager, Platform
+      </a>
+      <div class="job-title-location">
+        <span>India</span>
+        <span>Pune, Maharashtra, India</span>
+      </div>
+    </li>
+
+    <li class="job-list-item">
+      <a class="link-inline" href="https://jobs.apple.com/en-in/details/200500005/data-engineer-ii">
+        Data Engineer II
+      </a>
+      <div class="job-title-location">
+        <span>India</span>
+        <span>Bengaluru, Karnataka, India</span>
+      </div>
+    </li>
+
+    <!-- Decoy rows the parser must reject. -->
+    <li class="job-list-item">
+      <a class="link-inline" href="https://jobs.apple.com/en-in/search">
+        See full role description
+      </a>
+    </li>
+    <li>
+      <a class="link-inline" href="https://jobs.apple.com/en-in/where-we-hire">
+        Where we're hiring
+      </a>
+    </li>
+  </ul>
+</main>
+</body>
+</html>
