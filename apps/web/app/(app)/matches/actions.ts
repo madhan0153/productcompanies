@@ -7,6 +7,7 @@ import { getUserConsents } from "@/lib/dpdp/consent";
 import { enqueueUserRecompute } from "@/lib/queue/recompute";
 import { createDurableJob, assertNoSupabaseError, countRecentJobs, findLatestJob } from "@/lib/jobs/state";
 import { getResumeReadinessForCompute } from "@/lib/resume/readiness";
+import { checkRateLimit, userActionKey } from "@/lib/security/rate-limit";
 
 export type ComputeMatchesResult =
   | { ok: true; queued: true; startedAt: string; jobId: string }
@@ -43,6 +44,18 @@ export async function computeMatches(): Promise<ComputeMatchesResult> {
   });
   if (recentComputeCount >= 10) {
     return { ok: false, error: "Compute retry limit reached. Please try again in about an hour." };
+  }
+
+  const computeLimit = checkRateLimit({
+    key: userActionKey(user.id, "match-compute"),
+    limit: 5,
+    windowMs: 10 * 60 * 1000,
+  });
+  if (!computeLimit.ok) {
+    return {
+      ok: false,
+      error: `Too many match recomputes. Please try again in ${computeLimit.retryAfterSeconds} seconds.`,
+    };
   }
 
   const startedAt = new Date().toISOString();

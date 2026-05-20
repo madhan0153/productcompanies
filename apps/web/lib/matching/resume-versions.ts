@@ -10,6 +10,7 @@
 // are deleted in a fire-and-forget tail call from snapshotCurrentProfile.
 
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { logEvent } from "@/lib/observability/log";
 
 const RETENTION_LIMIT = 5;
 
@@ -49,7 +50,10 @@ export async function snapshotCurrentResume(
       source:              input.source ?? "overwrite",
     }).select("id").maybeSingle() as { data: { id: string } | null; error: { message: string } | null };
     if (error) {
-      console.warn("[resume-snapshot] insert failed:", error.message);
+      logEvent("warn", "resume_snapshot_insert_failed", {
+        user_id: input.userId.slice(0, 8),
+        error: "supabase_error",
+      });
       return null;
     }
 
@@ -74,7 +78,10 @@ export async function snapshotCurrentResume(
 
     return data?.id ?? null;
   } catch (err) {
-    console.warn("[resume-snapshot] unexpected error:", err);
+    logEvent("warn", "resume_snapshot_unexpected_error", {
+      user_id: input.userId.slice(0, 8),
+      error: err instanceof Error ? err.name : "unknown",
+    });
     return null;
   }
 }

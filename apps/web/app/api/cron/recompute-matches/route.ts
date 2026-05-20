@@ -18,8 +18,8 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
-import { serverEnv } from "@/lib/env";
 import { runUserRecomputeBlocking } from "@/lib/queue/recompute";
+import { requireCronAuth } from "@/lib/security/cron";
 
 export const runtime = "nodejs";
 export const maxDuration = 300;
@@ -51,14 +51,8 @@ interface UserResult {
 }
 
 export async function POST(req: NextRequest) {
-  const cronSecret = serverEnv.CRON_SECRET;
-  const authHeader = req.headers.get("authorization");
-  if (!cronSecret) {
-    return NextResponse.json({ error: "Cron secret is not configured" }, { status: 503 });
-  }
-  if (authHeader !== `Bearer ${cronSecret}`) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
+  const authFailure = requireCronAuth(req);
+  if (authFailure) return authFailure;
 
   const startedAt = Date.now();
   const admin = createSupabaseAdminClient();

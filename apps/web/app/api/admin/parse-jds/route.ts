@@ -15,12 +15,13 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
-import { serverEnv } from "@/lib/env";
 import { parseJobDescription } from "@/lib/llm/prompts/jd-parse";
 import { detectGhost } from "@/lib/matching/ghost";
 import { LlmRunError } from "@/lib/llm/gemini";
 import { embed, buildJobEmbedText } from "@/lib/llm/embed";
 import type { Json, SeniorityLevel } from "@/lib/supabase/types";
+import { requireCronAuth } from "@/lib/security/cron";
+import { logEvent } from "@/lib/observability/log";
 
 export const runtime = "nodejs";
 export const maxDuration = 300;
@@ -41,11 +42,8 @@ type JobRow = {
 };
 
 export async function POST(req: NextRequest) {
-  const cronSecret = serverEnv.CRON_SECRET;
-  const authHeader = req.headers.get("authorization");
-  if (cronSecret && authHeader !== `Bearer ${cronSecret}`) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
+  const authFailure = requireCronAuth(req);
+  if (authFailure) return authFailure;
 
   const admin = createSupabaseAdminClient();
   const startedAt = Date.now();
@@ -127,8 +125,10 @@ export async function POST(req: NextRequest) {
         }));
       } catch (embedErr) {
         if (errors.length < 5) {
-          const m = embedErr instanceof Error ? embedErr.message.split("\n")[0] : String(embedErr);
-          console.warn(`[parse-jds] embed failed for ${job.id}: ${m}`);
+          logEvent("warn", "admin_parse_jd_embed_failed", {
+            job_id: job.id,
+            error: embedErr instanceof Error ? embedErr.name : "unknown",
+          });
         }
       }
 

@@ -1,9 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { sendWeeklyDigest } from "@/lib/email";
-import { serverEnv, clientEnv } from "@/lib/env";
+import { clientEnv } from "@/lib/env";
 import { createHmac } from "crypto";
 import type { DpdpEventType } from "@/lib/supabase/types";
+import { requireCronAuth, requireCronSecret } from "@/lib/security/cron";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 300; // 5 min — Vercel Pro limit
@@ -20,12 +21,6 @@ type MatchRow = {
   } | null;
 };
 
-type SubRow = {
-  user_id: string;
-  auth_email: string | null;
-  display_name: string | null;
-};
-
 function nextMondayIST(): string {
   const d = new Date();
   const daysUntilMonday = (8 - d.getDay()) % 7 || 7;
@@ -35,18 +30,14 @@ function nextMondayIST(): string {
 }
 
 function buildUnsubscribeUrl(userId: string): string {
-  const secret = serverEnv.CRON_SECRET ?? "dev-secret";
+  const secret = requireCronSecret();
   const token = createHmac("sha256", secret).update(userId).digest("hex");
   return `${clientEnv.NEXT_PUBLIC_APP_URL}/unsubscribe?uid=${userId}&token=${token}`;
 }
 
 export async function POST(req: NextRequest) {
-  // Verify Vercel Cron secret (Authorization: Bearer <CRON_SECRET>)
-  const authHeader = req.headers.get("authorization");
-  const cronSecret = serverEnv.CRON_SECRET;
-  if (cronSecret && authHeader !== `Bearer ${cronSecret}`) {
-    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-  }
+  const authFailure = requireCronAuth(req);
+  if (authFailure) return authFailure;
 
   const admin = createSupabaseAdminClient();
   const now = new Date().toISOString();
@@ -172,7 +163,7 @@ export async function POST(req: NextRequest) {
 
       sent++;
     } catch (err) {
-      errors.push(`${uid}: ${err instanceof Error ? err.message : String(err)}`);
+      errors.push(`${uid}: ${err instanceof Error ? err.name : "unknown"}`);
     }
   }
 

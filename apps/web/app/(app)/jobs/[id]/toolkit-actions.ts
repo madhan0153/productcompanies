@@ -30,6 +30,8 @@ import {
 import {
   buildCompPercentileTable, lookupCompBracket, type CompBracket,
 } from "@/lib/insights/comp-percentiles";
+import { logEvent } from "@/lib/observability/log";
+import { checkRateLimit, userActionKey } from "@/lib/security/rate-limit";
 import type { ParsedResume } from "@/lib/llm/prompts/resume-parse";
 import type { Json } from "@/lib/supabase/types";
 
@@ -187,6 +189,18 @@ export async function generateTailoredResumeAction(
   if (!opts.force && isFreshCache && existing) {
     content = existing.content;
   } else {
+    const tailorLimit = checkRateLimit({
+      key: userActionKey(user.id, "toolkit-tailor"),
+      limit: 5,
+      windowMs: 60 * 60 * 1000,
+    });
+    if (!tailorLimit.ok) {
+      return {
+        ok: false,
+        error: `Too many tailored resume generations. Please try again in ${Math.ceil(tailorLimit.retryAfterSeconds / 60)} minute(s).`,
+      };
+    }
+
     // Pull the fit-card row to surface pre-approved tweaks into the prompt.
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { data: match } = await (admin
@@ -216,7 +230,11 @@ export async function generateTailoredResumeAction(
         candidate_email: candidateEmail,
       });
     } catch (err) {
-      console.warn("[toolkit.tailor] LLM failed:", err instanceof Error ? err.message : String(err));
+      logEvent("warn", "toolkit_tailor_llm_failed", {
+        user_id: user.id.slice(0, 8),
+        job_id: jobId,
+        error: err instanceof Error ? err.name : "unknown",
+      });
       return { ok: false, error: friendlyLlmError(err) };
     }
   }
@@ -323,6 +341,18 @@ export async function generateNegotiationMemoAction(
     };
   }
 
+  const memoLimit = checkRateLimit({
+    key: userActionKey(user.id, "toolkit-memo"),
+    limit: 8,
+    windowMs: 60 * 60 * 1000,
+  });
+  if (!memoLimit.ok) {
+    return {
+      ok: false,
+      error: `Too many negotiation memo generations. Please try again in ${Math.ceil(memoLimit.retryAfterSeconds / 60)} minute(s).`,
+    };
+  }
+
   // ── Build comp bracket from live catalog (same path as engine) ────────
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { data: catalogJobs } = await (admin
@@ -354,7 +384,11 @@ export async function generateNegotiationMemoAction(
       market_comp: marketComp,
     });
   } catch (err) {
-    console.warn("[toolkit.memo] LLM failed:", err instanceof Error ? err.message : String(err));
+    logEvent("warn", "toolkit_memo_llm_failed", {
+      user_id: user.id.slice(0, 8),
+      job_id: jobId,
+      error: err instanceof Error ? err.name : "unknown",
+    });
     return { ok: false, error: friendlyLlmError(err) };
   }
 

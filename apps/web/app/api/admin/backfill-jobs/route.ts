@@ -9,6 +9,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { runWithRetry, SchemaType, type Schema } from "@/lib/llm/gemini";
+import { requireCronAuth } from "@/lib/security/cron";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -71,12 +72,8 @@ Return only the role_function field.`;
 }
 
 export async function POST(req: NextRequest) {
-  // Auth check
-  const secret = process.env.CRON_SECRET;
-  const auth = req.headers.get("authorization");
-  if (!secret || auth !== `Bearer ${secret}`) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
+  const authFailure = requireCronAuth(req);
+  if (authFailure) return authFailure;
 
   const admin = createSupabaseAdminClient();
 

@@ -13,6 +13,8 @@
     "lint": "pnpm --filter web lint",
     "typecheck": "pnpm -r typecheck",
     "test:role-benchmarks": "tsx packages/shared/src/roles/taxonomy-benchmarks.ts",
+    "test:security": "tsx apps/web/scripts/security-smoke.ts",
+    "test:crawler-invariants": "tsx packages/crawler/source-invariants.ts",
     "crawl": "pnpm --filter crawler start"
   },
   "devDependencies": {

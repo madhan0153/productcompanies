@@ -11,9 +11,11 @@ export default function AppError({
   reset: () => void;
 }) {
   useEffect(() => {
-    // Log to Sentry in production
     if (process.env.NODE_ENV === "production") {
-      console.error("[AppError]", error);
+      console.error("[AppError]", {
+        name: error.name,
+        digest: error.digest,
+      });
     }
   }, [error]);
 
@@ -25,7 +27,7 @@ export default function AppError({
       <div className="space-y-1">
         <h2 className="text-lg font-semibold">Something went wrong</h2>
         <p className="max-w-sm text-sm text-muted-foreground">
-          {error.message || "An unexpected error occurred. Please try again."}
+          An unexpected error occurred. Please try again.
         </p>
         {error.digest && (
           <p className="text-xs text-muted-foreground/60">Error ID: {error.digest}</p>
