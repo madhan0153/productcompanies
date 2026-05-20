@@ -16,12 +16,15 @@ import { embed, buildResumeEmbedText } from "@/lib/llm/embed";
 import { enqueueUserRecompute } from "@/lib/queue/recompute";
 import {
   assertNoSupabaseError,
+  countRecentJobs,
   createDurableJob,
   failDurableJob,
   findActiveJob,
   supersedeActiveJobs,
   transitionDurableJob,
 } from "@/lib/jobs/state";
+import { logEvent } from "@/lib/observability/log";
+import { validateResumePdf } from "@/lib/security/pdf";
 import type { ParsedResume } from "@/lib/llm/prompts/resume-parse";
 import type { SeniorityLevel } from "@/lib/supabase/types";
 import type { Json } from "@/lib/supabase/types";
@@ -245,19 +248,39 @@ export async function uploadAndParseResume(formData: FormData): Promise<UploadRe
     return { ok: false, error: "Resume parsing is already in progress. Please wait for it to finish." };
   }
 
+  const recentUploadCount = await countRecentJobs(admin, {
+    userId,
+    type: "resume_parse",
+    sinceIso: new Date(Date.now() - 60 * 60 * 1000).toISOString(),
+  });
+  if (recentUploadCount >= 6) {
+    return { ok: false, error: "Resume upload limit reached. Please try again in about an hour.", retryable: true };
+  }
+
   const resumeVersionId = crypto.randomUUID();
   const jobId = crypto.randomUUID();
   const path = `${userId}/${resumeVersionId}.pdf`;
   const bytes = await file.arrayBuffer();
-  const head = new Uint8Array(bytes.slice(0, 5));
-  const headStr = String.fromCharCode(...head);
-  if (!headStr.startsWith("%PDF-")) {
-    return { ok: false, error: "File doesn't look like a real PDF. Re-export from your resume tool and try again." };
+  const validation = validateResumePdf(bytes, file.type);
+  if (!validation.ok) {
+    logEvent("warn", "resume_pdf_rejected", {
+      user_id: userId.slice(0, 8),
+      code: validation.code,
+      size_bytes: file.size,
+    });
+    return { ok: false, error: validation.message, retryable: true };
   }
+  const pdfHash = createHash("sha256").update(Buffer.from(bytes)).digest("hex");
   const { error: storageError } = await admin.storage
     .from("resumes")
     .upload(path, bytes, { contentType: "application/pdf", upsert: false });
-  if (storageError) return { ok: false, error: `Storage error: ${storageError.message}` };
+  if (storageError) {
+    logEvent("warn", "resume_upload_storage_failed", {
+      user_id: userId.slice(0, 8),
+      code: storageError.name ?? "storage_error",
+    });
+    return { ok: false, error: "Could not save your resume securely. Please retry.", retryable: true };
+  }
 
   const startedAt = new Date().toISOString();
   let priorProfile: PriorResumeProfile | null = null;
@@ -283,7 +306,8 @@ export async function uploadAndParseResume(formData: FormData): Promise<UploadRe
       type: "resume_parse",
       resumeVersionId,
       source: "resume_upload",
-      payload: { storage_path: path },
+      idempotencyKey: `resume_parse:${userId}:${pdfHash}`,
+      payload: { storage_path: path, page_count: validation.pageCount },
     });
 
     const { error: queueError } = await (admin.from("profiles") as any).upsert({
@@ -324,7 +348,11 @@ export async function uploadAndParseResume(formData: FormData): Promise<UploadRe
       try {
         await removeUploadedResume(admin, path);
       } catch (cleanupErr) {
-        console.warn("[resume-parse] cleanup failed", cleanupErr instanceof Error ? cleanupErr.message : "unknown");
+        logEvent("warn", "resume_parse_cleanup_failed", {
+          user_id: userId.slice(0, 8),
+          resume_version_id: resumeVersionId,
+          error: cleanupErr instanceof Error ? cleanupErr.name : "unknown",
+        });
       }
       const { error } = await (admin.from("profiles") as any).update({
         resume_parsing_at: null,
@@ -337,7 +365,10 @@ export async function uploadAndParseResume(formData: FormData): Promise<UploadRe
         ? `${message} Support detail: profile failure state could not be saved.`
         : message;
       if (error) {
-        console.warn("[resume-parse] failure-state write failed", error.message);
+        logEvent("warn", "resume_parse_failure_state_write_failed", {
+          user_id: userId.slice(0, 8),
+          resume_version_id: resumeVersionId,
+        });
       }
       await failDurableJob(admin, jobId, errorCode, durableMessage);
     }
@@ -347,7 +378,11 @@ export async function uploadAndParseResume(formData: FormData): Promise<UploadRe
       parsed = await parseResumePdf(base64);
     } catch (err) {
       const { message } = friendlyParseError(err);
-      console.warn("[resume-parse] failed", err instanceof LlmRunError ? err.detail.kind : "parse_error");
+      logEvent("warn", "resume_parse_failed", {
+        user_id: userId.slice(0, 8),
+        resume_version_id: resumeVersionId,
+        error: err instanceof LlmRunError ? err.detail.kind : "parse_error",
+      });
       await failProcessing("parse_failed", message);
       return;
     }
@@ -390,7 +425,11 @@ export async function uploadAndParseResume(formData: FormData): Promise<UploadRe
           resume_score_at: new Date().toISOString(),
         };
       } catch (err) {
-        console.warn("[resume-score] post-upload compute failed", err instanceof Error ? err.message : "unknown");
+        logEvent("warn", "resume_score_post_upload_failed", {
+          user_id: userId.slice(0, 8),
+          resume_version_id: resumeVersionId,
+          error: err instanceof Error ? err.name : "unknown",
+        });
       }
 
       if (priorProfile?.resume_parsed) {
@@ -450,7 +489,11 @@ export async function uploadAndParseResume(formData: FormData): Promise<UploadRe
         try {
           await removeUploadedResume(admin, priorProfile.resume_storage_path);
         } catch (cleanupErr) {
-          console.warn("[resume-parse] old resume cleanup failed", cleanupErr instanceof Error ? cleanupErr.message : "unknown");
+          logEvent("warn", "resume_old_file_cleanup_failed", {
+            user_id: userId.slice(0, 8),
+            resume_version_id: resumeVersionId,
+            error: cleanupErr instanceof Error ? cleanupErr.name : "unknown",
+          });
         }
       }
 
@@ -461,7 +504,11 @@ export async function uploadAndParseResume(formData: FormData): Promise<UploadRe
         resumeVersionId,
       });
     } catch (err) {
-      console.warn("[resume-parse] post-processing failed", err instanceof Error ? err.message : "unknown");
+      logEvent("warn", "resume_parse_post_processing_failed", {
+        user_id: userId.slice(0, 8),
+        resume_version_id: resumeVersionId,
+        error: err instanceof Error ? err.name : "unknown",
+      });
       await failProcessing("post_processing_failed", "Resume processing failed after parsing. Please re-upload your PDF.");
       return;
     }

@@ -13,6 +13,7 @@ import {
   failDurableJob,
   transitionDurableJob,
 } from "@/lib/jobs/state";
+import { logEvent } from "@/lib/observability/log";
 
 interface EnqueueOptions {
   /** Force a full recompute, for example after resume upload. */
@@ -40,6 +41,7 @@ async function runTrackedRecompute(
         type: "match_compute",
         resumeVersionId: opts.resumeVersionId ?? null,
         source,
+        idempotencyKey: opts.resumeVersionId ? `match_compute:${userId}:${opts.resumeVersionId}` : null,
       });
       jobId = job.id;
     }
@@ -75,15 +77,22 @@ export function enqueueUserRecompute(userId: string, opts: EnqueueOptions = {}):
     const t0 = Date.now();
     try {
       const r = await runTrackedRecompute(userId, opts);
-      console.log(
-        `[queue.recompute] user=${userId.slice(0, 8)} source=${source} ` +
-        `mode=${r.mode} total=${r.total} new=${r.new_matches} fc=${r.with_fit_card} ${r.duration_ms}ms`,
-      );
+      logEvent("info", "match_compute_finished", {
+        user_id: userId.slice(0, 8),
+        source,
+        mode: r.mode,
+        total: r.total,
+        new_matches: r.new_matches,
+        fit_cards: r.with_fit_card,
+        duration_ms: r.duration_ms,
+      });
     } catch (err) {
-      console.warn(
-        `[queue.recompute] user=${userId.slice(0, 8)} source=${source} failed after ${Date.now() - t0}ms: ` +
-        (err instanceof Error ? err.message : String(err)),
-      );
+      logEvent("warn", "match_compute_failed", {
+        user_id: userId.slice(0, 8),
+        source,
+        duration_ms: Date.now() - t0,
+        error: err instanceof Error ? err.name : "unknown",
+      });
     }
   });
 }

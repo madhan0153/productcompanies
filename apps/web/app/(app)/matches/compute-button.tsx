@@ -1,13 +1,5 @@
 "use client";
 
-// Compute flow split into 3 composable pieces:
-//   ComputeProvider  — context, state, polling (wraps the page)
-//   ComputeTrigger   — compact pill button for the header
-//   ComputeStatusBanner — full-width card shown below the header while running / on timeout
-//
-// This separates the running/error UI from the header row so it never
-// overlaps or overflows the sticky band strip on mobile.
-
 import {
   useTransition, useState, useEffect, useRef,
   createContext, useContext,
@@ -15,13 +7,13 @@ import {
 import { Loader2, Sparkles, AlertCircle, CheckCircle2, X, RefreshCw } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { computeMatches, getLastMatchComputeAt, type ComputeMatchesResult } from "./actions";
+import { computeMatches, getMatchComputeStatus, type ComputeMatchesResult } from "./actions";
 
-const POLL_INTERVAL_MS  = 5_000;
-const POLL_BUDGET_MS    = 300_000; // 5 min — compute can take 2–4 min on cold paths
-const PROGRESS_DURATION = 35_000; // visual fill caps at 95% until done
+const POLL_INTERVAL_MS = 5_000;
+const POLL_BUDGET_MS = 300_000;
+const PROGRESS_DURATION = 35_000;
 
-type Phase = "idle" | "starting" | "running" | "done" | "timeout";
+type Phase = "idle" | "starting" | "running" | "done" | "failed" | "timeout";
 
 type ComputeCtx = {
   phase: Phase;
@@ -30,6 +22,7 @@ type ComputeCtx = {
   trigger: () => void;
   dismiss: () => void;
   hasResume: boolean;
+  disabledReason: string;
 };
 
 const Ctx = createContext<ComputeCtx | null>(null);
@@ -40,13 +33,13 @@ function useCompute() {
   return c;
 }
 
-// ─── Provider ─────────────────────────────────────────────────────────────────
-
 export function ComputeProvider({
   hasResume,
+  disabledReason = "Upload and finish parsing a resume before computing matches.",
   children,
 }: {
   hasResume: boolean;
+  disabledReason?: string;
   children: React.ReactNode;
 }) {
   const [pending, startPending] = useTransition();
@@ -54,13 +47,16 @@ export function ComputeProvider({
   const [progress, setProgress] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const startedAtRef = useRef<string | null>(null);
+  const jobIdRef = useRef<string | null>(null);
   const router = useRouter();
 
   const isRunning = phase === "running";
 
-  // Smooth visual fill while running.
   useEffect(() => {
-    if (!isRunning) { setProgress(0); return; }
+    if (!isRunning) {
+      setProgress(0);
+      return;
+    }
     const t0 = Date.now();
     const tick = setInterval(() => {
       setProgress(Math.round(Math.min((Date.now() - t0) / PROGRESS_DURATION, 0.95) * 100));
@@ -68,25 +64,23 @@ export function ComputeProvider({
     return () => clearInterval(tick);
   }, [isRunning]);
 
-  // Poll last_match_compute_at until it reaches this request's start time.
-  // This avoids a race where a fast compute finishes before the first poll
-  // and gets mistaken for the initial baseline.
   useEffect(() => {
     if (!isRunning) return;
     const pollStart = Date.now();
     const interval = setInterval(async () => {
-      const ts = await getLastMatchComputeAt();
-      const startedAt = startedAtRef.current;
-      const computedAfterStart = Boolean(
-        ts &&
-        startedAt &&
-        new Date(ts).getTime() >= new Date(startedAt).getTime(),
-      );
-      if (computedAfterStart) {
+      const status = await getMatchComputeStatus(jobIdRef.current);
+      if (status.state === "failed") {
+        clearInterval(interval);
+        setError(status.error);
+        setPhase("failed");
+        router.refresh();
+        return;
+      }
+      if (status.state === "succeeded") {
         clearInterval(interval);
         setProgress(100);
         setPhase("done");
-        toast.success("Matches refreshed", { description: "Top roles re-ranked from the latest catalog." });
+        toast.success("Matches refreshed", { description: "Top roles re-ranked from your current resume." });
         router.refresh();
         return;
       }
@@ -100,8 +94,14 @@ export function ComputeProvider({
   }, [isRunning, router]);
 
   const trigger = () => {
+    if (!hasResume) {
+      setError(disabledReason);
+      toast.error("Compute is not available yet", { description: disabledReason });
+      return;
+    }
     setError(null);
     startedAtRef.current = null;
+    jobIdRef.current = null;
     startPending(async () => {
       const r: ComputeMatchesResult = await computeMatches();
       if (!r.ok) {
@@ -110,27 +110,29 @@ export function ComputeProvider({
         return;
       }
       startedAtRef.current = r.startedAt;
+      jobIdRef.current = r.jobId;
       setPhase("running");
-      toast("Recomputing matches", { description: "Running in the background — results auto-refresh when ready." });
+      toast("Recomputing matches", { description: "Running in the background. Results auto-refresh when ready." });
     });
   };
 
-  const dismiss = () => { setPhase("idle"); setError(null); };
+  const dismiss = () => {
+    setPhase("idle");
+    setError(null);
+    jobIdRef.current = null;
+  };
 
-  // pending=true while the server action is in flight (the "starting" phase).
   const effectivePhase: Phase = pending ? "starting" : phase;
 
   return (
-    <Ctx.Provider value={{ phase: effectivePhase, progress, error, trigger, dismiss, hasResume }}>
+    <Ctx.Provider value={{ phase: effectivePhase, progress, error, trigger, dismiss, hasResume, disabledReason }}>
       {children}
     </Ctx.Provider>
   );
 }
 
-// ─── Trigger — compact pill button, lives in the page header ──────────────────
-
 export function ComputeTrigger() {
-  const { phase, progress, trigger, hasResume } = useCompute();
+  const { phase, progress, trigger, hasResume, disabledReason } = useCompute();
   const busy = phase === "starting" || phase === "running";
 
   return (
@@ -138,14 +140,17 @@ export function ComputeTrigger() {
       onClick={trigger}
       disabled={busy || !hasResume}
       aria-label="Compute my matches"
+      title={!hasResume ? disabledReason : "Compute matches from the current resume"}
       className="press tap-target-sm inline-flex items-center gap-1.5 rounded-full border border-primary/30 bg-primary-soft px-3 py-1.5 text-xs font-semibold text-primary transition hover:bg-primary/15 disabled:cursor-not-allowed disabled:opacity-50 focus-ring"
     >
       {phase === "starting" ? (
-        <><Loader2 className="h-3 w-3 animate-spin" /> Queueing…</>
+        <><Loader2 className="h-3 w-3 animate-spin" /> Queueing...</>
       ) : phase === "running" ? (
         <><Loader2 className="h-3 w-3 animate-spin" /> {progress}%</>
       ) : phase === "done" ? (
         <><CheckCircle2 className="h-3 w-3 text-success" /> Updated</>
+      ) : phase === "failed" ? (
+        <><AlertCircle className="h-3 w-3 text-destructive" /> Retry</>
       ) : (
         <><Sparkles className="h-3 w-3" /> Compute</>
       )}
@@ -153,10 +158,8 @@ export function ComputeTrigger() {
   );
 }
 
-// ─── Status banner — full-width card below the header ─────────────────────────
-
 export function ComputeStatusBanner() {
-  const { phase, progress, error, dismiss } = useCompute();
+  const { phase, progress, error, dismiss, trigger, hasResume } = useCompute();
   const router = useRouter();
 
   if (phase === "running") {
@@ -167,7 +170,7 @@ export function ComputeStatusBanner() {
           <div className="min-w-0 flex-1">
             <p className="text-sm font-semibold text-primary">Computing your matches</p>
             <p className="text-[11px] leading-relaxed text-muted-foreground">
-              Running in the background — keep scrolling. Results auto-refresh when ready.
+              Running in the background. Keep scrolling; results auto-refresh when ready.
             </p>
           </div>
           <span className="shrink-0 text-sm font-bold tabular-nums text-primary">{progress}%</span>
@@ -188,27 +191,53 @@ export function ComputeStatusBanner() {
     );
   }
 
-  // Timeout: compute is still running but we've polled for 5 min without a
-  // change. Show a calm "still computing" card — not an error — with a manual
-  // Refresh button. The job almost certainly succeeded; the user just needs
-  // to reload.
   if (phase === "timeout") {
     return (
-      <div className="flex items-start gap-3 rounded-xl border border-border bg-secondary/40 p-4">
+      <div className="flex flex-col gap-3 rounded-xl border border-border bg-secondary/40 p-4 sm:flex-row sm:items-start">
         <Loader2 className="mt-0.5 h-4 w-4 shrink-0 animate-spin text-muted-foreground" />
         <div className="min-w-0 flex-1">
           <p className="text-sm font-medium">Still computing in the background</p>
           <p className="mt-0.5 text-xs leading-relaxed text-muted-foreground">
-            This can take a few minutes for large catalogs. Click Refresh to see your updated matches.
+            This can take a few minutes for large catalogs. Refresh to see the latest status.
           </p>
         </div>
         <button
           onClick={() => { dismiss(); router.refresh(); }}
           aria-label="Refresh matches"
-          className="shrink-0 inline-flex items-center gap-1.5 rounded-md border border-border bg-card px-3 py-1.5 text-xs font-medium text-foreground transition hover:bg-secondary focus-ring"
+          className="tap-target-sm inline-flex items-center justify-center gap-1.5 rounded-md border border-border bg-card px-3 text-xs font-medium text-foreground transition hover:bg-secondary focus-ring"
         >
           <RefreshCw className="h-3 w-3" /> Refresh
         </button>
+      </div>
+    );
+  }
+
+  if (phase === "failed") {
+    return (
+      <div className="flex flex-col gap-3 rounded-xl border border-destructive/30 bg-destructive/5 p-4 sm:flex-row sm:items-start">
+        <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-destructive" />
+        <div className="min-w-0 flex-1">
+          <p className="text-sm font-medium text-destructive">Compute failed</p>
+          <p className="mt-0.5 text-xs leading-relaxed text-muted-foreground">
+            {error ?? "We could not refresh matches. Please retry when your connection is stable."}
+          </p>
+        </div>
+        <div className="flex gap-2 sm:justify-end">
+          <button
+            onClick={trigger}
+            disabled={!hasResume}
+            className="tap-target-sm inline-flex items-center justify-center gap-1.5 rounded-md bg-primary px-3 text-xs font-semibold text-primary-foreground transition hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50 focus-ring"
+          >
+            <RefreshCw className="h-3 w-3" /> Retry
+          </button>
+          <button
+            onClick={dismiss}
+            aria-label="Dismiss"
+            className="tap-target-sm inline-flex items-center justify-center rounded-md border border-border bg-card px-3 text-xs font-medium text-foreground transition hover:bg-secondary focus-ring"
+          >
+            Dismiss
+          </button>
+        </div>
       </div>
     );
   }

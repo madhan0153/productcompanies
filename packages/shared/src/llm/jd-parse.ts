@@ -15,8 +15,10 @@
 //   • Few-shot examples in the prompt to anchor the lite model
 
 import { runWithRetry, SchemaType, type Schema, type RetryOptions } from "./gemini";
+import { CANONICAL_ROLE_FUNCTIONS, normalizeRoleFunction } from "../roles/taxonomy";
 
 export const ROLE_FUNCTIONS = [
+  ...CANONICAL_ROLE_FUNCTIONS,
   "backend",
   "frontend",
   "fullstack",
@@ -39,7 +41,7 @@ export const ROLE_FUNCTIONS = [
   "research",
   "other",
 ] as const;
-export type RoleFunctionJd = (typeof ROLE_FUNCTIONS)[number];
+export type RoleFunctionJd = (typeof CANONICAL_ROLE_FUNCTIONS)[number];
 
 export interface ParsedJD {
   must_have_skills: string[];
@@ -217,7 +219,6 @@ const validSeniorities = new Set([
   "intern", "junior", "mid", "senior",
   "staff", "principal", "lead", "manager", "director", "vp",
 ]);
-const validRoleFunctions = new Set<string>(ROLE_FUNCTIONS);
 
 const lc = (s: unknown): string => String(s ?? "").trim().toLowerCase();
 
@@ -288,10 +289,7 @@ ${input.description.slice(0, 12000)}`;
     ? workMode
     : null;
 
-  const roleFn = lc(raw.role_function_jd);
-  const roleFnOut: RoleFunctionJd | null = validRoleFunctions.has(roleFn)
-    ? (roleFn as RoleFunctionJd)
-    : null;
+  const roleFnOut = normalizeRoleFunction(lc(raw.role_function_jd));
 
   const teamCtxRaw = String(raw.team_context ?? "").trim();
   const teamCtxOut = teamCtxRaw.length > 0 && teamCtxRaw.length <= 240 ? teamCtxRaw : null;

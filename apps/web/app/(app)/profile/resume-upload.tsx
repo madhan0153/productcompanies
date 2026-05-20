@@ -44,6 +44,10 @@ export function ResumeUpload({ hasExisting, existingRole, existingDnaScore, isPa
   const reduce = useReducedMotion();
   const router = useRouter();
 
+  function resetFileInput() {
+    if (inputRef.current) inputRef.current.value = "";
+  }
+
   function startStepAnimation() {
     setCurrentStep(0);
     if (reduce) return;
@@ -65,10 +69,12 @@ export function ResumeUpload({ hasExisting, existingRole, existingDnaScore, isPa
   function onFile(file: File) {
     if (isParsing) {
       setResult({ ok: false, error: "Resume parsing is already in progress. Please wait for it to finish." });
+      resetFileInput();
       return;
     }
     if (file.type !== "application/pdf") {
       setResult({ ok: false, error: "Only PDF files are supported." });
+      resetFileInput();
       return;
     }
     setFileName(file.name);
@@ -90,10 +96,12 @@ export function ResumeUpload({ hasExisting, existingRole, existingDnaScore, isPa
           router.refresh();
         } else {
           setCurrentStep(-1);
+          resetFileInput();
           setResult({ ok: false, error: r.error, retryable: r.retryable });
         }
       } catch (err) {
         setCurrentStep(-1);
+        resetFileInput();
         const isUnexpected = err instanceof Error
           && /unexpected response|failed to fetch|network|aborted/i.test(err.message);
         setResult({
@@ -146,12 +154,14 @@ export function ResumeUpload({ hasExisting, existingRole, existingDnaScore, isPa
       if (status.state === "failed") {
         setCurrentStep(-1);
         setPollingStartedAt(null);
+        resetFileInput();
         setResult({ ok: false, error: status.error, retryable: true });
         return;
       }
       if (Date.now() - startMs > HARD_CAP_MS) {
         setCurrentStep(-1);
         setPollingStartedAt(null);
+        resetFileInput();
         setResult({
           ok: false,
           error: "Parsing is taking unusually long. Refresh the page in a minute to see if it finished, or re-upload.",
@@ -348,7 +358,18 @@ export function ResumeUpload({ hasExisting, existingRole, existingDnaScore, isPa
                   </a>
                 </>
               ) : (
-                <p>{result.error}</p>
+                <>
+                  <p>{result.error}</p>
+                  {result.retryable && (
+                    <button
+                      type="button"
+                      onClick={() => inputRef.current?.click()}
+                      className="tap-target-sm mt-3 inline-flex items-center gap-1.5 rounded-md border border-destructive/30 bg-destructive/10 px-3 text-xs font-semibold text-destructive transition hover:bg-destructive/15 focus-ring"
+                    >
+                      <Upload className="h-3 w-3" /> Choose PDF again
+                    </button>
+                  )}
+                </>
               )}
             </div>
           </motion.div>

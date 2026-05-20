@@ -162,3 +162,49 @@ export async function findActiveJob(
   assertNoSupabaseError(error, "Could not read active background job");
   return data;
 }
+
+export async function findLatestJob(
+  admin: AdminClient,
+  input: {
+    userId: string;
+    type: DurableJobType;
+    resumeVersionId?: string | null;
+  },
+): Promise<DurableJob | null> {
+  let query = admin
+    .from("background_jobs")
+    .select("id, user_id, job_type, status, resume_version_id, source, error_code, error_message, queued_at, started_at, finished_at")
+    .eq("user_id", input.userId)
+    .eq("job_type", input.type)
+    .order("created_at", { ascending: false })
+    .limit(1);
+
+  if (input.resumeVersionId !== undefined) {
+    query = input.resumeVersionId === null
+      ? query.is("resume_version_id", null)
+      : query.eq("resume_version_id", input.resumeVersionId);
+  }
+
+  const { data, error } = await query.maybeSingle() as { data: DurableJob | null; error: SupabaseError };
+  assertNoSupabaseError(error, "Could not read latest background job");
+  return data;
+}
+
+export async function countRecentJobs(
+  admin: AdminClient,
+  input: {
+    userId: string;
+    type: DurableJobType;
+    sinceIso: string;
+  },
+): Promise<number> {
+  const { count, error } = await admin
+    .from("background_jobs")
+    .select("id", { count: "exact", head: true })
+    .eq("user_id", input.userId)
+    .eq("job_type", input.type)
+    .gte("created_at", input.sinceIso);
+
+  assertNoSupabaseError(error as SupabaseError, "Could not read recent background job count");
+  return count ?? 0;
+}

@@ -457,6 +457,14 @@ create index if not exists idx_background_jobs_active
   on public.background_jobs(user_id, job_type, status)
   where status in ('queued', 'running');
 
+create index if not exists idx_background_jobs_queue_drain
+  on public.background_jobs(job_type, status, queued_at)
+  where status = 'queued';
+
+create index if not exists idx_background_jobs_dead_letter
+  on public.background_jobs(user_id, job_type, finished_at desc)
+  where status = 'failed';
+
 create unique index if not exists uniq_background_jobs_active_resume_parse
   on public.background_jobs(user_id, job_type)
   where job_type = 'resume_parse' and status in ('queued', 'running');
@@ -464,6 +472,10 @@ create unique index if not exists uniq_background_jobs_active_resume_parse
 create unique index if not exists uniq_background_jobs_active_match_compute
   on public.background_jobs(user_id, job_type, resume_version_id)
   where job_type = 'match_compute' and status in ('queued', 'running');
+
+create unique index if not exists uniq_background_jobs_active_idempotency
+  on public.background_jobs(idempotency_key)
+  where idempotency_key is not null and status in ('queued', 'running');
 
 -- Backfill existing parsed resumes with a durable active version so Phase 1
 -- readiness checks do not strand existing users.
