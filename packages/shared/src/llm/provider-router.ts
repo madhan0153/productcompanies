@@ -1,3 +1,17 @@
+// Privacy-aware OpenAI-compatible provider router.
+//
+// All baseUrls, model cascades and capabilities are hardcoded in
+// `providers-preset.ts`. The operator configures **only API keys** in env.
+// A preset is auto-included whenever its `keysEnvVar` is set; the router
+// then rolls through (provider × model × key) combinations on rate-limit /
+// quota / unsupported errors and remembers dead combos process-wide.
+//
+// Single kill-switch:
+//   LLM_FORCE_BLOCK_FREE_PROVIDERS=true   blocks the entire chain regardless
+//                                          of operation policy. Use this if
+//                                          you ever need an emergency stop
+//                                          on third-party LLM usage.
+
 import {
   getLlmOperationPolicy,
   LLM_OPERATION_POLICIES,
@@ -5,15 +19,19 @@ import {
   type LlmOperationId,
   type LlmSensitivity,
 } from "./operations";
-
-type ProviderKind = "openai_compatible";
+import {
+  PROVIDER_PRESETS,
+  readPresetKeys,
+  resolvePresetBaseUrl,
+  type ProviderPreset,
+} from "./providers-preset";
 
 interface ProviderConfig {
   id: string;
-  kind: ProviderKind;
+  label: string;
   baseUrl: string;
   apiKeys: string[];
-  textModel: string | null;
+  textModels: string[];
   embeddingModel: string | null;
   supportsJson: boolean;
   supportsPdf: boolean;
@@ -49,6 +67,8 @@ interface OpenAiEmbeddingResponse {
   data?: Array<{ embedding?: unknown }>;
 }
 
+// Dead (provider × model × key × capability) combos. Reset on process exit;
+// Vercel's per-invocation memory keeps this small.
 const deadUntil = new Map<string, number>();
 const loggedProviderStates = new Set<string>();
 
@@ -58,20 +78,12 @@ function envBool(name: string, fallback = false): boolean {
   return /^(1|true|yes|on)$/i.test(raw.trim());
 }
 
-function splitCsv(raw: string | undefined): string[] {
-  return (raw ?? "").split(",").map((v) => v.trim()).filter(Boolean);
-}
-
-function providerEnvId(id: string): string {
-  return id.toUpperCase().replace(/[^A-Z0-9]+/g, "_");
-}
-
 function maskKey(key: string): string {
   if (key.length <= 6) return "***";
   return `...${key.slice(-6)}`;
 }
 
-function providerDeadKey(providerId: string, model: string, keyIdx: number, capability: LlmCapability): string {
+function deadComboKey(providerId: string, model: string, keyIdx: number, capability: LlmCapability): string {
   return `${providerId}|${capability}|${model}|${keyIdx}`;
 }
 
@@ -109,53 +121,58 @@ export function resetLlmProviderRuntimeState(): void {
   loggedProviderStates.clear();
 }
 
-export function getConfiguredOpenAiProviders(): ProviderConfig[] {
-  const chain = splitCsv(process.env.LLM_PROVIDER_CHAIN);
-  const ids = chain.length > 0 ? chain.filter((id) => id.toLowerCase() !== "gemini") : [];
-
-  if (ids.length === 0 && (process.env.FREE_LLM_API_BASE_URL || process.env.FREE_LLM_API_KEYS)) {
-    ids.push("freellmapi");
-  }
-
-  return ids.map((id) => {
-    const envId = providerEnvId(id);
-    const fallbackPrefix = id.toLowerCase() === "freellmapi" ? "FREE_LLM_API" : `LLM_PROVIDER_${envId}`;
-    const baseUrl = process.env[`LLM_PROVIDER_${envId}_BASE_URL`] ?? process.env[`${fallbackPrefix}_BASE_URL`] ?? "";
-    const apiKeys = splitCsv(process.env[`LLM_PROVIDER_${envId}_API_KEYS`] ?? process.env[`${fallbackPrefix}_KEYS`]);
-    const textModel = process.env[`LLM_PROVIDER_${envId}_TEXT_MODEL`]
-      ?? process.env[`${fallbackPrefix}_MODEL`]
-      ?? null;
-    const embeddingModel = process.env[`LLM_PROVIDER_${envId}_EMBEDDING_MODEL`]
-      ?? process.env[`${fallbackPrefix}_EMBEDDING_MODEL`]
-      ?? null;
-
-    return {
-      id,
-      kind: "openai_compatible" as const,
-      baseUrl: baseUrl.replace(/\/+$/, ""),
-      apiKeys,
-      textModel,
-      embeddingModel,
-      supportsJson: envBool(`LLM_PROVIDER_${envId}_SUPPORTS_JSON`, true),
-      supportsPdf: envBool(`LLM_PROVIDER_${envId}_SUPPORTS_PDF`, false),
-    };
-  }).filter((p) => p.baseUrl && p.apiKeys.length > 0 && (p.textModel || p.embeddingModel));
+/** Convert a preset to a runtime ProviderConfig if its env keys are set. */
+function presetToConfig(preset: ProviderPreset): ProviderConfig | null {
+  const apiKeys = readPresetKeys(preset);
+  if (apiKeys.length === 0) return null;
+  return {
+    id: preset.id,
+    label: preset.label,
+    baseUrl: resolvePresetBaseUrl(preset),
+    apiKeys,
+    textModels: [...preset.textModels],
+    embeddingModel: preset.embeddingModel,
+    supportsJson: preset.supportsJson,
+    supportsPdf: preset.supportsPdf,
+  };
 }
 
+/**
+ * All providers eligible for this run. The kill-switch
+ * `LLM_FORCE_BLOCK_FREE_PROVIDERS=true` short-circuits the whole chain.
+ */
+export function getConfiguredOpenAiProviders(): ProviderConfig[] {
+  if (envBool("LLM_FORCE_BLOCK_FREE_PROVIDERS", false)) return [];
+  return PROVIDER_PRESETS
+    .map(presetToConfig)
+    .filter((p): p is ProviderConfig => p !== null);
+}
+
+/**
+ * Per-operation policy gate. Every operation defaults to "allowed" (see
+ * /specs/prodmatch-constitution.md). The `requires_opt_in` and `blocked`
+ * branches are kept for future granular control but are not exercised by
+ * the current policy set.
+ */
 function operationAllowsExternalProvider(operation: LlmOperationId): boolean {
   const policy = getLlmOperationPolicy(operation);
-  if (policy.freeProviderDefault === "allowed") return true;
-  if (policy.sensitivity === "resume_pii") return envBool("LLM_ALLOW_FREE_PROVIDER_RESUME_PII", false);
-  if (policy.sensitivity === "derived_resume_facts") return envBool("LLM_ALLOW_FREE_PROVIDER_DERIVED_RESUME", false);
-  return false;
+  if (policy.freeProviderDefault === "blocked") return false;
+  if (policy.freeProviderDefault === "requires_opt_in") {
+    // Backwards-compatible env opt-in still works for ops who later flip
+    // their policy back to `requires_opt_in` in operations.ts.
+    if (policy.sensitivity === "resume_pii") return envBool("LLM_ALLOW_FREE_PROVIDER_RESUME_PII", false);
+    if (policy.sensitivity === "derived_resume_facts") return envBool("LLM_ALLOW_FREE_PROVIDER_DERIVED_RESUME", false);
+    return false;
+  }
+  return true; // "allowed"
 }
 
 function providersFor(operation: LlmOperationId, capability: LlmCapability): ProviderConfig[] {
   if (!operationAllowsExternalProvider(operation)) return [];
   return getConfiguredOpenAiProviders().filter((p) => {
     if (capability === "embedding") return Boolean(p.embeddingModel);
-    if (capability === "pdf_json") return Boolean(p.textModel && p.supportsPdf);
-    return Boolean(p.textModel);
+    if (capability === "pdf_json") return p.textModels.length > 0 && p.supportsPdf;
+    return p.textModels.length > 0;
   });
 }
 
@@ -251,6 +268,14 @@ export function createExternalGenerativeModel(operation: LlmOperationId): {
   };
 }
 
+/**
+ * Try every (provider × textModel × key) combination until one succeeds.
+ *   - auth / quota errors → mark combo dead for 24h.
+ *   - rate-limited        → mark combo dead for 60s.
+ *   - unsupported         → mark combo dead for 6h.
+ * Skips already-dead combos in O(1). Logs at most one diagnostic line per
+ * (combo × outcome) per process.
+ */
 export async function runOpenAiCompatibleJson(
   operation: LlmOperationId,
   request: GeminiLikeGenerateRequest,
@@ -265,56 +290,59 @@ export async function runOpenAiCompatibleJson(
   let lastError: unknown = null;
 
   for (const provider of providers) {
-    if (!provider.textModel) continue;
     if (files.length > 0 && !provider.supportsPdf) continue;
 
-    for (let attempt = 0; attempt < provider.apiKeys.length; attempt++) {
-      const keyIdx = attempt % provider.apiKeys.length;
-      const key = provider.apiKeys[keyIdx];
-      const deadKey = providerDeadKey(provider.id, provider.textModel, keyIdx, policy.capability);
-      if (isDead(deadKey)) continue;
+    // Inner cascade: try each model in this provider, then each key against
+    // that model. A 429 on (model A × key 0) doesn't preclude (model B × key 0)
+    // because each pinned model has its own quota counter at most providers.
+    for (const model of provider.textModels) {
+      for (let keyIdx = 0; keyIdx < provider.apiKeys.length; keyIdx++) {
+        const key = provider.apiKeys[keyIdx];
+        const deadKey = deadComboKey(provider.id, model, keyIdx, policy.capability);
+        if (isDead(deadKey)) continue;
 
-      try {
-        const json = await postJson(`${provider.baseUrl}/chat/completions`, key, {
-          model: provider.textModel,
-          messages: buildOpenAiMessages({
-            system,
-            userText,
-            files,
-            includeFiles: provider.supportsPdf,
-          }),
-          temperature: request.generationConfig?.temperature ?? 0.2,
-          max_tokens: request.generationConfig?.maxOutputTokens,
-          ...(provider.supportsJson && request.generationConfig?.responseMimeType === "application/json"
-            ? { response_format: { type: "json_object" } }
-            : {}),
-        });
-        const content = (json as OpenAiChatResponse).choices?.[0]?.message?.content;
-        if (typeof content !== "string" || content.trim().length === 0) {
-          throw new Error("External provider returned empty content");
-        }
-        logProviderStateOnce(
-          `${provider.id}|${provider.textModel}|${keyIdx}|ok`,
-          `[llm-provider] ${provider.id} key #${keyIdx} (${maskKey(key)}) first call ok -> model=${provider.textModel}`,
-        );
-        return content;
-      } catch (err) {
-        lastError = err;
-        const status = getStatus(err);
-        const raw = getErrorText(err);
-        const kind = classifyProviderFailure(status, raw);
-        const logKey = `${provider.id}|${provider.textModel}|${keyIdx}|${kind}`;
-        if (kind === "auth") {
-          markDead(deadKey, 24 * 60 * 60_000);
-          logProviderStateOnce(logKey, `[llm-provider] ${provider.id} key #${keyIdx} (${maskKey(key)}) disabled for auth`);
-        } else if (kind === "quota") {
-          markDead(deadKey, 24 * 60 * 60_000);
-          logProviderStateOnce(logKey, `[llm-provider] ${provider.id} key #${keyIdx} (${maskKey(key)}) exhausted for ${provider.textModel}`);
-        } else if (kind === "rate_limited") {
-          markDead(deadKey, 60_000);
-        } else if (kind === "unsupported") {
-          markDead(deadKey, 6 * 60 * 60_000);
-          logProviderStateOnce(logKey, `[llm-provider] ${provider.id} model ${provider.textModel} unsupported for ${operation}`);
+        try {
+          const json = await postJson(`${provider.baseUrl}/chat/completions`, key, {
+            model,
+            messages: buildOpenAiMessages({
+              system,
+              userText,
+              files,
+              includeFiles: provider.supportsPdf,
+            }),
+            temperature: request.generationConfig?.temperature ?? 0.2,
+            max_tokens: request.generationConfig?.maxOutputTokens,
+            ...(provider.supportsJson && request.generationConfig?.responseMimeType === "application/json"
+              ? { response_format: { type: "json_object" } }
+              : {}),
+          });
+          const content = (json as OpenAiChatResponse).choices?.[0]?.message?.content;
+          if (typeof content !== "string" || content.trim().length === 0) {
+            throw new Error("External provider returned empty content");
+          }
+          logProviderStateOnce(
+            `${provider.id}|${model}|${keyIdx}|ok`,
+            `[llm-provider] ${provider.id} key #${keyIdx} (${maskKey(key)}) model=${model} first call ok`,
+          );
+          return content;
+        } catch (err) {
+          lastError = err;
+          const status = getStatus(err);
+          const raw = getErrorText(err);
+          const kind = classifyProviderFailure(status, raw);
+          const logKey = `${provider.id}|${model}|${keyIdx}|${kind}`;
+          if (kind === "auth") {
+            markDead(deadKey, 24 * 60 * 60_000);
+            logProviderStateOnce(logKey, `[llm-provider] ${provider.id} key #${keyIdx} (${maskKey(key)}) disabled for auth`);
+          } else if (kind === "quota") {
+            markDead(deadKey, 24 * 60 * 60_000);
+            logProviderStateOnce(logKey, `[llm-provider] ${provider.id} key #${keyIdx} (${maskKey(key)}) exhausted for ${model}`);
+          } else if (kind === "rate_limited") {
+            markDead(deadKey, 60_000);
+          } else if (kind === "unsupported") {
+            markDead(deadKey, 6 * 60 * 60_000);
+            logProviderStateOnce(logKey, `[llm-provider] ${provider.id} model ${model} unsupported for ${operation}`);
+          }
         }
       }
     }
@@ -334,10 +362,9 @@ export async function runOpenAiCompatibleEmbedding(
   for (const provider of providers) {
     if (!provider.embeddingModel) continue;
 
-    for (let attempt = 0; attempt < provider.apiKeys.length; attempt++) {
-      const keyIdx = attempt % provider.apiKeys.length;
+    for (let keyIdx = 0; keyIdx < provider.apiKeys.length; keyIdx++) {
       const key = provider.apiKeys[keyIdx];
-      const deadKey = providerDeadKey(provider.id, provider.embeddingModel, keyIdx, "embedding");
+      const deadKey = deadComboKey(provider.id, provider.embeddingModel, keyIdx, "embedding");
       if (isDead(deadKey)) continue;
 
       try {
@@ -351,7 +378,7 @@ export async function runOpenAiCompatibleEmbedding(
         if (vectors.length !== texts.length) throw new Error("Embedding count mismatch");
         logProviderStateOnce(
           `${provider.id}|${provider.embeddingModel}|${keyIdx}|embedding-ok`,
-          `[llm-provider] ${provider.id} key #${keyIdx} (${maskKey(key)}) embedding call ok -> model=${provider.embeddingModel}`,
+          `[llm-provider] ${provider.id} key #${keyIdx} (${maskKey(key)}) embedding model=${provider.embeddingModel} first call ok`,
         );
         return vectors;
       } catch (err) {
@@ -377,11 +404,19 @@ export function shouldUseDeterministicFallback(): boolean {
 export function describeLlmRuntime(): {
   providers: Array<{
     id: string;
+    label: string;
     baseUrl: string;
     keyCount: number;
-    textModel: string | null;
+    textModels: string[];
     embeddingModel: string | null;
     supportsPdf: boolean;
+    keysEnvVar: string;
+  }>;
+  presets: Array<{
+    id: string;
+    label: string;
+    keysEnvVar: string;
+    configured: boolean;
   }>;
   operations: Array<{
     id: string;
@@ -392,15 +427,30 @@ export function describeLlmRuntime(): {
     deterministicFallback: string;
   }>;
 } {
-  const providers = getConfiguredOpenAiProviders();
+  const configured = new Set(getConfiguredOpenAiProviders().map((p) => p.id));
+  const providers = PROVIDER_PRESETS
+    .filter((p) => configured.has(p.id))
+    .map((preset) => {
+      const cfg = presetToConfig(preset)!;
+      return {
+        id: cfg.id,
+        label: cfg.label,
+        baseUrl: cfg.baseUrl,
+        keyCount: cfg.apiKeys.length,
+        textModels: cfg.textModels,
+        embeddingModel: cfg.embeddingModel,
+        supportsPdf: cfg.supportsPdf,
+        keysEnvVar: preset.keysEnvVar,
+      };
+    });
+
   return {
-    providers: providers.map((p) => ({
+    providers,
+    presets: PROVIDER_PRESETS.map((p) => ({
       id: p.id,
-      baseUrl: p.baseUrl,
-      keyCount: p.apiKeys.length,
-      textModel: p.textModel,
-      embeddingModel: p.embeddingModel,
-      supportsPdf: p.supportsPdf,
+      label: p.label,
+      keysEnvVar: p.keysEnvVar,
+      configured: configured.has(p.id),
     })),
     operations: Object.values(LLM_OPERATION_POLICIES).map((policy) => ({
       id: policy.id,
