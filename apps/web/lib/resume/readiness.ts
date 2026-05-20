@@ -1,5 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { findActiveJob, type DurableJob } from "@/lib/jobs/state";
+import { findActiveJob, findLatestJob, type DurableJob } from "@/lib/jobs/state";
 
 type AdminClient = SupabaseClient;
 
@@ -32,7 +32,31 @@ type ProfileReadinessRow = {
   resume_embedding: number[] | null;
   resume_embedding_version_id: string | null;
   matches_resume_version_id: string | null;
+  last_match_compute_at: string | null;
 };
+
+export type ResumeStatusKind = "missing" | "parsing" | "failed" | "ready";
+export type MatchStatusKind = "blocked" | "computing" | "failed" | "stale" | "up_to_date" | "not_computed";
+
+export interface ResumeMatchStatus {
+  resume: {
+    kind: ResumeStatusKind;
+    title: string;
+    message: string;
+  };
+  matches: {
+    kind: MatchStatusKind;
+    title: string;
+    message: string;
+  };
+  canCompute: boolean;
+  activeResumeVersionId: string | null;
+  matchesResumeVersionId: string | null;
+  lastMatchComputeAt: string | null;
+  latestParseJob: DurableJob | null;
+  latestComputeJob: DurableJob | null;
+  activeComputeJob: DurableJob | null;
+}
 
 export async function getResumeReadinessForCompute(
   admin: AdminClient,
@@ -51,6 +75,7 @@ export async function getResumeReadinessForCompute(
       "resume_embedding",
       "resume_embedding_version_id",
       "matches_resume_version_id",
+      "last_match_compute_at",
     ].join(", "))
     .eq("id", userId)
     .maybeSingle() as { data: ProfileReadinessRow | null; error: { message: string } | null };
@@ -129,5 +154,112 @@ export async function getResumeReadinessForCompute(
     ready: true,
     code: "ready",
     message: "Resume is ready for matching.",
+  };
+}
+
+export async function getResumeMatchStatus(
+  admin: AdminClient,
+  userId: string,
+): Promise<ResumeMatchStatus> {
+  const readiness = await getResumeReadinessForCompute(admin, userId);
+  const { data, error } = await admin
+    .from("profiles")
+    .select("last_match_compute_at")
+    .eq("id", userId)
+    .maybeSingle() as { data: { last_match_compute_at: string | null } | null; error: { message: string } | null };
+  if (error) throw new Error(`Could not read match status: ${error.message}`);
+
+  const latestParseJob = await findLatestJob(admin, { userId, type: "resume_parse" });
+  const latestComputeJob = await findLatestJob(admin, {
+    userId,
+    type: "match_compute",
+    resumeVersionId: readiness.activeResumeVersionId,
+  });
+
+  const resume = (() => {
+    switch (readiness.code) {
+      case "missing_resume":
+        return {
+          kind: "missing" as const,
+          title: "Resume required",
+          message: "Upload a PDF resume before computing matches.",
+        };
+      case "parse_running":
+        return {
+          kind: "parsing" as const,
+          title: "Resume is being processed",
+          message: "Matching unlocks as soon as parsing and embeddings finish.",
+        };
+      case "parse_failed":
+      case "parsed_not_current":
+      case "embedding_not_current":
+        return {
+          kind: "failed" as const,
+          title: "Resume is not ready",
+          message: readiness.message,
+        };
+      case "compute_running":
+      case "ready":
+        return {
+          kind: "ready" as const,
+          title: "Resume ready",
+          message: "Your current resume is parsed and ready for matching.",
+        };
+    }
+  })();
+
+  let matches: ResumeMatchStatus["matches"];
+  if (!readiness.ready && readiness.code !== "compute_running") {
+    matches = {
+      kind: "blocked",
+      title: "Matches paused",
+      message: "Fix the resume status above before computing matches.",
+    };
+  } else if (readiness.activeComputeJob) {
+    matches = {
+      kind: "computing",
+      title: "Matches computing",
+      message: "A recompute is running for the current resume. Results update automatically after it finishes.",
+    };
+  } else if (latestComputeJob?.status === "failed") {
+    matches = {
+      kind: "failed",
+      title: "Last compute failed",
+      message: latestComputeJob.error_message ?? "Compute could not finish. You can retry when the resume is ready.",
+    };
+  } else if (
+    readiness.activeResumeVersionId &&
+    readiness.matchesResumeVersionId &&
+    readiness.matchesResumeVersionId !== readiness.activeResumeVersionId
+  ) {
+    matches = {
+      kind: "stale",
+      title: "Matches are from an older resume",
+      message: "Your resume was replaced after these matches were computed. Recompute to refresh rankings.",
+    };
+  } else if (readiness.activeResumeVersionId && readiness.matchesResumeVersionId === readiness.activeResumeVersionId) {
+    matches = {
+      kind: "up_to_date",
+      title: "Matches up to date",
+      message: "Rankings were computed from your current resume version.",
+    };
+  } else {
+    matches = {
+      kind: "not_computed",
+      title: "Matches not computed yet",
+      message: "Run Compute to rank active jobs against your current resume.",
+    };
+  }
+
+  return {
+    resume,
+    matches,
+    canCompute: readiness.ready,
+    activeResumeVersionId: readiness.activeResumeVersionId,
+    matchesResumeVersionId: readiness.matchesResumeVersionId,
+    lastMatchComputeAt: data?.last_match_compute_at ?? null,
+    latestParseJob,
+    latestComputeJob,
+    activeComputeJob: readiness.activeComputeJob,
   };
 }

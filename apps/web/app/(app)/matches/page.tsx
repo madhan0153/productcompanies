@@ -1,14 +1,15 @@
-import type { Metadata } from "next";
+﻿import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import {
-  ChevronRight, Eye,
+  Eye,
   ArrowUpRight, Activity,
   AlertCircle,
+  CheckCircle2,
 } from "lucide-react";
 import Link from "next/link";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
-import { getResumeReadinessForCompute } from "@/lib/resume/readiness";
+import { getResumeMatchStatus } from "@/lib/resume/readiness";
 import { StaggerList } from "@/components/stagger-list";
 import { EmptyState } from "@/components/empty-state";
 import type { Verdict, Json } from "@/lib/supabase/types";
@@ -24,22 +25,22 @@ import { MatchCardArea } from "./match-card-area";
 export const metadata: Metadata = { title: "Matches" };
 export const maxDuration = 60;
 
-// ─────────────────────────────────────────────────────────────────────────────
+// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 // Types
-// ─────────────────────────────────────────────────────────────────────────────
+// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 type MatchRow = MatchCardData & {
   verdict: Verdict | null;
   fit_card_at: string | null;
   computed_at: string;
   seen_at: string | null;
-  /** Phase G derived field — kept for routing/cap reads. */
+  /** Phase G derived field â€” kept for routing/cap reads. */
   hidden_reason: string | null;
 };
 
-// ─────────────────────────────────────────────────────────────────────────────
+// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 // Page
-// ─────────────────────────────────────────────────────────────────────────────
+// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 export default async function MatchesPage({
   searchParams,
@@ -73,15 +74,15 @@ export default async function MatchesPage({
     .maybeSingle() as any) as { data: { resume_storage_path: string | null; resume_score: number | null; last_match_compute_at: string | null } | null };
 
   const hasResume = !!profile?.resume_storage_path;
-  const resumeReadiness = await getResumeReadinessForCompute(admin, user.id);
-  const canCompute = resumeReadiness.ready;
+  const status = await getResumeMatchStatus(admin, user.id);
+  const canCompute = status.canCompute;
   const resumeScore = profile?.resume_score ?? null;
   const lastComputeAt = profile?.last_match_compute_at ?? null;
 
-  // Accurate band counts via parallel head-count queries — each is a fast
+  // Accurate band counts via parallel head-count queries â€” each is a fast
   // indexed COUNT(*) that bypasses the PostgREST max_rows cap. Scope filters
   // (company, hub) apply server-side so the strip honours them.
-  // Dismiss was removed — there is no longer a user_hidden filter.
+  // Dismiss was removed â€” there is no longer a user_hidden filter.
   const baseCountQuery = () => {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     let q: any = supabase
@@ -108,7 +109,7 @@ export default async function MatchesPage({
     filtered:   (cFilteredLow.count ?? 0) + (cFilteredHidden.count ?? 0),
   };
 
-  // Single read for the tab's visible cards — capped at 500 so SSR stays
+  // Single read for the tab's visible cards â€” capped at 500 so SSR stays
   // fast. The band-strip counts above are accurate beyond the cap, so the
   // user always sees the truthful number even if the list is paginated.
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -136,7 +137,7 @@ export default async function MatchesPage({
   const allRows = (matchRows ?? []).filter((m): m is MatchRow & { jobs: NonNullable<MatchRow["jobs"]> } => !!m.jobs);
   const allScores = allRows.map(m => m.score).sort((a, b) => a - b);
 
-  // Scope filter — applied in-memory to the 500-row list. The band counts
+  // Scope filter â€” applied in-memory to the 500-row list. The band counts
   // above already applied the same predicates server-side, so the strip
   // numbers are unaffected by this client-side narrowing.
   const passesScopeFilters = (m: MatchRow) => {
@@ -148,7 +149,7 @@ export default async function MatchesPage({
   };
   const scopedRows = allRows.filter(passesScopeFilters);
 
-  // Tab slicing — single source of truth.
+  // Tab slicing â€” single source of truth.
   const tabRows = scopedRows.filter((m) => {
     const cls = classifyMatch(m);
     if (tab === "shortlist")    return cls === "shortlist";
@@ -157,7 +158,7 @@ export default async function MatchesPage({
     return false;
   });
 
-  // Sprint 6 — fold in application status for the cards in view.
+  // Sprint 6 â€” fold in application status for the cards in view.
   const visibleJobIds = tabRows.map((m) => m.jobs.id);
   const applicationStatus = new Map<string, string>();
   if (visibleJobIds.length > 0) {
@@ -170,7 +171,7 @@ export default async function MatchesPage({
     for (const a of apps ?? []) applicationStatus.set(a.job_id, a.status);
   }
 
-  // Mark unseen items in this tab as seen (fire-and-forget — same as before).
+  // Mark unseen items in this tab as seen (fire-and-forget â€” same as before).
   const unseenInTab = tabRows.filter((m) => m.seen_at === null).map((m) => m.jobs.id);
   if (unseenInTab.length > 0) {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -181,7 +182,7 @@ export default async function MatchesPage({
       .is("seen_at", null);
   }
 
-  // Filter chip data — companies/hubs derived from the full scope, not the
+  // Filter chip data â€” companies/hubs derived from the full scope, not the
   // tab slice, so users can switch companies even while in "Filtered".
   const companies = [...new Map(
     allRows
@@ -195,13 +196,13 @@ export default async function MatchesPage({
 
   return (
     <MatchNavProvider>
-    <ComputeProvider hasResume={canCompute}>
+    <ComputeProvider hasResume={canCompute} disabledReason={status.matches.message}>
     <div className="space-y-4 pb-6">
 
       {/* Session-history beacon */}
       <MatchesURLBeacon />
 
-      {/* ── Header ──────────────────────────────────────────────── */}
+      {/* â”€â”€ Header â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
       <div className="flex items-center justify-between gap-3">
         <div className="min-w-0">
           <h1 className="text-xl font-semibold tracking-tight sm:text-2xl">Matches</h1>
@@ -217,26 +218,12 @@ export default async function MatchesPage({
         <ComputeTrigger />
       </div>
 
-      {/* ── Compute status banner — full-width, only when running/error ─ */}
+      {/* â”€â”€ Compute status banner â€” full-width, only when running/error â”€ */}
       <ComputeStatusBanner />
+      <MatchStatusPanel status={status} />
 
-      {/* ── No-resume prompt — only when there's actually no resume ─ */}
-      {!hasResume && (
-        <div className="rounded-xl border border-primary/30 bg-primary-soft p-4">
-          <h2 className="text-sm font-semibold">Start with your resume</h2>
-          <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
-            Upload your PDF — we&apos;ll parse it, score your resume against live demand from 18 product companies, and rank every active role with a structured Fit Card.
-          </p>
-          <Link
-            href="/profile"
-            className="press mt-3 inline-flex h-9 items-center gap-2 rounded-md bg-primary px-3 text-xs font-semibold text-primary-foreground transition hover:bg-primary/90 focus-ring"
-          >
-            Upload resume <ArrowUpRight className="h-3 w-3" />
-          </Link>
-        </div>
-      )}
 
-      {/* ── Band strip — sticky tab spine, right under title ─────── */}
+      {/* â”€â”€ Band strip â€” sticky tab spine, right under title â”€â”€â”€â”€â”€â”€â”€ */}
       {allRows.length > 0 && (
         <BandStrip
           counts={bandCounts}
@@ -247,7 +234,7 @@ export default async function MatchesPage({
         />
       )}
 
-      {/* ── Filters (company/hub/min-score) ─────────────────────── */}
+      {/* â”€â”€ Filters (company/hub/min-score) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
       {allRows.length > 0 && (
         <MatchFilters
           allCompanies={companies}
@@ -255,24 +242,24 @@ export default async function MatchesPage({
         />
       )}
 
-      {/* ── Resume score strip — only when score < 60 (where the
-          weak-resume → weak-matches connection actually matters).
+      {/* â”€â”€ Resume score strip â€” only when score < 60 (where the
+          weak-resume â†’ weak-matches connection actually matters).
           Strong/Application-ready scores hide entirely. */}
       {hasResume && resumeScore !== null && resumeScore < 60 && (
         <ResumeScoreStrip score={resumeScore} />
       )}
 
-      {/* ── Filtered tab inline note ────────────────────────────── */}
+      {/* â”€â”€ Filtered tab inline note â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
       {tab === "filtered" && tabRows.length > 0 && (
         <div className="flex items-start gap-2.5 rounded-md border border-dashed border-border bg-secondary/40 px-4 py-3 text-sm">
           <AlertCircle className="mt-0.5 h-3.5 w-3.5 shrink-0 text-muted-foreground" />
           <p className="text-muted-foreground">
-            These roles scored below 40, hit a hard cap, or were classified as a mismatch. Most users skip them — but if you want to see why each was filtered, open the Fit Card on any row.
+            These roles scored below 40, hit a hard cap, or were classified as a mismatch. Most users skip them â€” but if you want to see why each was filtered, open the Fit Card on any row.
           </p>
         </div>
       )}
 
-      {/* ── Card list ───────────────────────────────────────────── */}
+      {/* â”€â”€ Card list â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
       <MatchCardArea>
         {tabRows.length > 0 ? (
           <>
@@ -296,7 +283,7 @@ export default async function MatchesPage({
               if (tabExpected > tabRows.length) {
                 return (
                   <p className="rounded-md border border-dashed border-border bg-secondary/30 px-4 py-2.5 text-center text-xs text-muted-foreground">
-                    Showing top <span className="font-semibold tabular-nums text-foreground">{tabRows.length}</span> — apply a company or hub filter to narrow results.
+                    Showing top <span className="font-semibold tabular-nums text-foreground">{tabRows.length}</span> â€” apply a company or hub filter to narrow results.
                   </p>
                 );
               }
@@ -319,9 +306,75 @@ export default async function MatchesPage({
   );
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Empty states per tab — keeps the user oriented when a slice is empty.
-// ─────────────────────────────────────────────────────────────────────────────
+// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// Empty states per tab â€” keeps the user oriented when a slice is empty.
+// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+
+function MatchStatusPanel({
+  status,
+}: {
+  status: Awaited<ReturnType<typeof getResumeMatchStatus>>;
+}) {
+  const matchTone = {
+    blocked: "border-border bg-secondary/40",
+    computing: "border-primary/25 bg-primary-soft",
+    failed: "border-destructive/30 bg-destructive/5",
+    stale: "border-warning/30 bg-warning/5",
+    up_to_date: "border-success/25 bg-success/5",
+    not_computed: "border-primary/25 bg-primary-soft",
+  }[status.matches.kind];
+  const icon = (() => {
+    if (status.matches.kind === "up_to_date") return <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-success" />;
+    if (status.matches.kind === "failed") return <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-destructive" />;
+    if (status.matches.kind === "stale") return <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-warning" />;
+    return <Activity className="mt-0.5 h-4 w-4 shrink-0 text-primary" />;
+  })();
+
+  return (
+    <section
+      aria-live="polite"
+      className={`flex flex-col gap-3 rounded-xl border p-4 sm:flex-row sm:items-start sm:justify-between ${matchTone}`}
+    >
+      <div className="flex min-w-0 gap-3">
+        {icon}
+        <div className="min-w-0">
+          <div className="flex flex-wrap items-center gap-2">
+            <p className="text-sm font-semibold">{status.matches.title}</p>
+            <span className="rounded-full border border-border bg-card px-2 py-0.5 text-[10px] font-medium text-muted-foreground">
+              {status.resume.title}
+            </span>
+          </div>
+          <p className="mt-1 text-xs leading-relaxed text-muted-foreground">{status.matches.message}</p>
+          <p className="mt-0.5 text-[11px] leading-relaxed text-muted-foreground">{status.resume.message}</p>
+        </div>
+      </div>
+      <div className="flex shrink-0 gap-2 sm:justify-end">
+        {status.resume.kind === "missing" || status.resume.kind === "failed" ? (
+          <Link
+            href="/profile"
+            className="tap-target-sm inline-flex items-center justify-center gap-1.5 rounded-md bg-primary px-3 text-xs font-semibold text-primary-foreground transition hover:bg-primary/90 focus-ring"
+          >
+            {status.resume.kind === "missing" ? "Upload resume" : "Retry upload"}
+            <ArrowUpRight className="h-3 w-3" />
+          </Link>
+        ) : status.canCompute && status.matches.kind !== "up_to_date" && status.matches.kind !== "computing" ? (
+          <ComputeTrigger />
+        ) : status.matches.kind === "computing" ? (
+          <span className="inline-flex min-h-9 items-center gap-1.5 rounded-md border border-primary/20 bg-card px-3 text-xs font-medium text-primary">
+            <Activity className="h-3 w-3" /> Running
+          </span>
+        ) : (
+          <Link
+            href="/profile"
+            className="tap-target-sm inline-flex items-center justify-center gap-1.5 rounded-md border border-border bg-card px-3 text-xs font-medium text-foreground transition hover:bg-secondary focus-ring"
+          >
+            View resume
+          </Link>
+        )}
+      </div>
+    </section>
+  );
+}
 
 function emptyStateForTab(tab: MatchTab, activeFilterCount: number): React.ReactNode {
   if (activeFilterCount > 0) {
@@ -329,7 +382,7 @@ function emptyStateForTab(tab: MatchTab, activeFilterCount: number): React.React
       <EmptyState
         icon={<Eye className="h-5 w-5" />}
         title="No matches in this slice"
-        body="Try clearing or widening a filter — there may be roles you'd qualify for hiding behind the current selection."
+        body="Try clearing or widening a filter â€” there may be roles you'd qualify for hiding behind the current selection."
         actions={[{ label: "Clear filters", href: `/matches?tab=${tab}`, variant: "primary" }]}
       />
     );
@@ -339,7 +392,7 @@ function emptyStateForTab(tab: MatchTab, activeFilterCount: number): React.React
       <EmptyState
         icon={<Activity className="h-5 w-5" />}
         title="No priority matches yet"
-        body="Nothing scored ≥60 yet. Check Explore for partial fits, or set your preferred hubs / strengthen your resume to lift more roles."
+        body="Nothing scored â‰¥60 yet. Check Explore for partial fits, or set your preferred hubs / strengthen your resume to lift more roles."
         actions={[
           { label: "See Explore matches", href: "/matches?tab=worth_a_look", variant: "primary" },
           { label: "Edit profile", href: "/profile", variant: "ghost" },
@@ -365,11 +418,11 @@ function emptyStateForTab(tab: MatchTab, activeFilterCount: number): React.React
   );
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Resume Score Strip — compact 1-line alert. Only renders for score < 60.
+// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// Resume Score Strip â€” compact 1-line alert. Only renders for score < 60.
 // Above 60 the resume isn't the bottleneck, so the strip stays hidden and
 // the matches page is purely about matches.
-// ─────────────────────────────────────────────────────────────────────────────
+// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 function ResumeScoreStrip({ score }: { score: number }) {
   const tone = score < 40 ? "destructive" : "warning";
@@ -390,7 +443,7 @@ function ResumeScoreStrip({ score }: { score: number }) {
         </span>
         <span className="truncate">
           Resume score: <strong className={tones.text}>{grade}</strong>{" "}
-          <span className="text-muted-foreground">— this is capping your matches</span>
+          <span className="text-muted-foreground">â€” this is capping your matches</span>
         </span>
       </div>
       <ArrowUpRight className="h-3.5 w-3.5 shrink-0 text-muted-foreground transition group-hover:text-foreground" />
@@ -398,9 +451,9 @@ function ResumeScoreStrip({ score }: { score: number }) {
   );
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
+// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 // Helpers
-// ─────────────────────────────────────────────────────────────────────────────
+// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 function humanAgo(iso: string): string {
   const diff = Date.now() - new Date(iso).getTime();

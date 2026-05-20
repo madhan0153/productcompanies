@@ -45,48 +45,23 @@
 //     not need to affect ranking. The 5 freed points redistributed to the
 //     four substantive dimensions.
 
-import { analyzeTechCoverage, type TechCoverage } from "@prodmatch/shared";
+import {
+  analyzeTechCoverage,
+  CANONICAL_ROLE_FUNCTIONS,
+  ROLE_ADJACENCY,
+  normalizeRoleFunction,
+  normalizeRoleFunctions,
+  type CanonicalRoleFunction,
+  type TechCoverage,
+} from "@prodmatch/shared";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Role function taxonomy
 // ─────────────────────────────────────────────────────────────────────────────
 
-export const ROLE_FUNCTIONS = [
-  "qa_sdet",
-  "backend",
-  "frontend",
-  "fullstack",
-  "data_engineering",
-  "ml_ai",
-  "devops_platform",
-  "mobile",
-  "engineering_management",
-  "product_management",
-  "design",
-  "security",
-  "other",
-] as const;
+export const ROLE_FUNCTIONS = CANONICAL_ROLE_FUNCTIONS;
 
-export type RoleFunction = (typeof ROLE_FUNCTIONS)[number];
-
-// Which job functions are acceptable for each candidate function.
-// First entry = exact match (40 pts), rest = adjacent (22 pts).
-const ROLE_ADJACENCY: Record<string, string[]> = {
-  qa_sdet:                ["qa_sdet"],
-  backend:                ["backend", "fullstack"],
-  frontend:               ["frontend", "fullstack"],
-  fullstack:              ["fullstack", "backend", "frontend"],
-  data_analytics:         ["data_analytics", "data_engineering", "ml_ai"],
-  data_engineering:       ["data_engineering", "data_analytics", "ml_ai"],
-  ml_ai:                  ["ml_ai", "data_analytics", "data_engineering"],
-  devops_platform:        ["devops_platform", "backend"],
-  mobile:                 ["mobile"],
-  engineering_management: ["engineering_management", "backend", "frontend", "fullstack", "qa_sdet", "devops_platform"],
-  product_management:     ["product_management"],
-  design:                 ["design"],
-  security:               ["security", "devops_platform"],
-  other:                  ["other"],
-};
+export type RoleFunction = CanonicalRoleFunction;
 
 /** Score 0–18 based on whether the job's function matches candidate's targets.
  *  Phase I: weight reduced from 40 → 18 so semantic alignment can dominate
@@ -96,10 +71,12 @@ export function scoreRoleFunction(
   candidateFunctions: string[], // target_role_functions from profile
   jobFunction: string | null,
 ): number {
-  if (!jobFunction || !candidateFunctions.length) return 7;
-  if (candidateFunctions.includes(jobFunction)) return 18;
-  const adjacent = candidateFunctions.flatMap((f) => ROLE_ADJACENCY[f] ?? []);
-  if (adjacent.includes(jobFunction)) return 10;
+  const normalizedJob = normalizeRoleFunction(jobFunction);
+  const normalizedCandidates = normalizeRoleFunctions(candidateFunctions);
+  if (!normalizedJob || !normalizedCandidates.length) return 7;
+  if (normalizedCandidates.includes(normalizedJob)) return 18;
+  const adjacent = normalizedCandidates.flatMap((f) => ROLE_ADJACENCY[f] ?? []);
+  if (adjacent.includes(normalizedJob)) return 10;
   return 0;
 }
 
@@ -631,7 +608,7 @@ type TitleRule = { pattern: RegExp; conflictsWith: Set<string> };
 const ENG_FUNCTIONS = new Set([
   "qa_sdet", "backend", "frontend", "fullstack",
   "data_analytics", "data_engineering", "ml_ai", "devops_platform", "mobile",
-  "engineering_management", "security",
+  "engineering_management", "cybersecurity",
 ]);
 
 const ALL_TECH_FUNCTIONS = new Set([
@@ -654,7 +631,7 @@ const TITLE_HARD_MISMATCH: TitleRule[] = [
   // Marketing / Comms / PR / Content / Brand / Growth-Manager
   { pattern: /\b(marketing manager|brand manager|growth manager|growth marketer|marketing analyst|marketing data scientist|business and marketing|seo|sem|content marketing|copywriter|pr manager|public relations|communications manager|community manager|business systems analyst|business analyst|apps specialist|measurement implementation)\b/i, conflictsWith: ALL_TECH_FUNCTIONS },
   // Academic / lab research roles should not leak into pure engineering feeds.
-  { pattern: /\b(research sciences? intern|research intern|post[\s-]?doc|postdoctoral|researcher\b|research scientist)\b/i, conflictsWith: new Set(["qa_sdet", "backend", "frontend", "fullstack", "data_engineering", "devops_platform", "mobile", "security"]) },
+  { pattern: /\b(research sciences? intern|research intern|post[\s-]?doc|postdoctoral|researcher\b|research scientist)\b/i, conflictsWith: new Set(["qa_sdet", "backend", "frontend", "fullstack", "data_engineering", "devops_platform", "mobile", "cybersecurity"]) },
   // Program management / TPM / consulting / corp dev (engineering-management
   // candidates may genuinely target TPM, but pure engineers shouldn't).
   { pattern: /\b(technical program manager|tpm\b|program manager(?!\s*,?\s*engineering)|scaled delivery manager|digital transformation|corporate development|business systems|gtech|premier?\s+support)\b/i, conflictsWith: ENG_FUNCTIONS },
@@ -667,10 +644,11 @@ export function titleHardMismatch(
   title: string,
   targetFunctions: string[],
 ): boolean {
-  if (!title || targetFunctions.length === 0) return false;
+  const normalizedTargets = normalizeRoleFunctions(targetFunctions);
+  if (!title || normalizedTargets.length === 0) return false;
   for (const rule of TITLE_HARD_MISMATCH) {
     if (!rule.pattern.test(title)) continue;
-    if (targetFunctions.some((f) => rule.conflictsWith.has(f))) return true;
+    if (normalizedTargets.some((f) => rule.conflictsWith.has(f))) return true;
   }
   return false;
 }
@@ -695,7 +673,7 @@ const TITLE_FUNCTION_PATTERNS: Array<{ pattern: RegExp; fn: string }> = [
   { pattern: /\b(machine learning engineer|ml engineer|ai engineer|deep learning|nlp engineer|computer vision|generative ai|genai|llm engineer|ai platform engineer)\b/i, fn: "ml_ai" },
   { pattern: /\b(data scientist|research scientist|applied scientist|quantitative researcher|decision scientist|ml scientist)\b/i, fn: "ml_ai" },
   { pattern: /\b(devops|sre|site reliability|platform engineer|infrastructure engineer|cloud engineer|build engineer|release engineer|reliability engineer|systems development engineer|system development engineer)\b/i, fn: "devops_platform" },
-  { pattern: /\b(security engineer|application security|appsec|product security|cloud security|security operations engineer|penetration tester|cyber.{0,15}engineer|red team|blue team)\b/i, fn: "security" },
+  { pattern: /\b(security engineer|application security|appsec|product security|cloud security|security operations engineer|penetration tester|cyber.{0,15}engineer|red team|blue team)\b/i, fn: "cybersecurity" },
   { pattern: /\b(android (?:engineer|developer)|ios (?:engineer|developer)|mobile (?:engineer|developer)|react native|flutter (?:engineer|developer)|swiftui|jetpack compose)\b/i, fn: "mobile" },
   { pattern: /\b(qa engineer|quality engineer|sdet|test (?:automation|engineer)|automation engineer|quality assurance|software development engineer in test|automation tester)\b/i, fn: "qa_sdet" },
   { pattern: /\b(frontend (?:engineer|developer)|front-end|ui engineer|ui developer|ux engineer|web (?:engineer|developer)|react developer|angular developer|javascript developer|typescript developer)\b/i, fn: "frontend" },
@@ -936,7 +914,7 @@ export function computeRulesScore(
     crawlerMaxYears: job.max_experience_years,
   });
   const effectiveRoleFunction =
-    job.role_function ?? inferRoleFunctionFromTitle(job.title ?? null);
+    normalizeRoleFunction(job.role_function) ?? inferRoleFunctionFromTitle(job.title ?? null);
 
   const cosine = job.semantic_cosine ?? null;
 
@@ -989,7 +967,7 @@ export function computeRulesScore(
   // (b) Effective role function is a known mismatch
   else if (
     role === 0 &&
-    profile.target_role_functions.length > 0 &&
+    normalizeRoleFunctions(profile.target_role_functions).length > 0 &&
     effectiveRoleFunction !== null &&
     effectiveRoleFunction !== "other"
   ) {
