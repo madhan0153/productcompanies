@@ -81,10 +81,10 @@ export async function requestErasure(formData: FormData) {
   const t0 = Date.now();
 
   // Helper: stamp an audit row with the current progress + any error.
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
   async function audit(progress: ErasureProgress, extra: Record<string, unknown> = {}) {
     try {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
       await (admin.from("dpdp_events") as any).insert({
         user_id: uid,
         event: (progress === "completed" ? "erasure_completed" : "erasure_requested") as DpdpEventType,

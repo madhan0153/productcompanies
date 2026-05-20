@@ -20,9 +20,6 @@ test.describe("Dashboard (authenticated)", () => {
 
   test("shows at least four stat cards", async ({ page }) => {
     // Each stat card contains a numeric value — look for the card wrappers
-    const cards = page.locator('[data-testid="stat-card"], .rounded-2xl').filter({
-      hasText: /matches|applications|companies|score/i,
-    });
     // At least 1 stat section visible (could be 0 data but structure exists)
     await expect(page.locator("main")).toBeVisible();
   });

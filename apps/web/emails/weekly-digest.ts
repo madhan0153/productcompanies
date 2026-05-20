@@ -15,7 +15,7 @@ function scoreColor(score: number): string {
   return "#71717a";
 }
 
-function matchCard(m: DigestMatch, appUrl: string): string {
+function matchCard(m: DigestMatch): string {
   const sc = scoreColor(m.score);
   return `
   <div style="margin-bottom:16px;padding:16px;border:1px solid #e4e4e7;border-radius:12px;background:#fafafa;">
@@ -50,7 +50,7 @@ export function weeklyDigestHtml({
   const body = `
     <h1>Your weekly match digest</h1>
     <p>Hi ${name || "there"}, here are your top ${matches.length} new match${matches.length !== 1 ? "es" : ""} this week.</p>
-    ${matches.map((m) => matchCard(m, appUrl)).join("")}
+    ${matches.map((m) => matchCard(m)).join("")}
     <hr />
     <p style="text-align:center;">
       <a class="btn" href="${appUrl}/matches">View all matches →</a>

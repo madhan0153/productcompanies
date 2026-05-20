@@ -22,7 +22,7 @@ async function main() {
 
   // SELECT * to avoid failing on columns the cloned DB doesn't have yet
   // (Phase I migration may not be applied).
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
   const { data: prof } = await supabase.from("profiles").select("*").eq("id", user.id).maybeSingle() as any;
   if (!prof) { console.error("no profile"); process.exit(1); }
   const resumeParsed: ParsedResume | null = (prof.resume_parsed as ParsedResume | null) ?? null;
@@ -37,10 +37,10 @@ async function main() {
   console.log(`  ${resumeEmb.length}-dim`);
 
   // Pull active jobs (paged)
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
   const all: any[] = [];
   for (let from = 0; ; from += 1000) {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
     const { data } = await supabase.from("jobs").select("*, companies(name, slug)").eq("is_active", true).range(from, from + 999) as any;
     const rows = data ?? [];
     all.push(...rows);

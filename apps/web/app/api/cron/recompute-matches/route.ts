@@ -68,7 +68,7 @@ export async function POST(req: NextRequest) {
   // ── Cron lock (skipped for single-user ad-hoc calls) ───────────────────
   let lockHolder: string | null = null;
   if (!targetUserId) {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
     const { data: held } = await (admin.rpc as any)("acquire_cron_lock", {
       lock_name:   LOCK_NAME,
       ttl_seconds: LOCK_TTL_SECONDS,
@@ -101,7 +101,7 @@ export async function POST(req: NextRequest) {
     // Sprint 4 Item 13: order by oldest last_match_compute_at first so the
     // batch always works on the most stale users. nullsFirst = brand-new
     // profiles get their first compute promptly.
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
     let profileQuery = (admin
       .from("profiles")
       .select("id, resume_storage_path, resume_parsed_version_id, resume_embedding_at, resume_embedding_version_id, active_resume_version_id, pending_resume_version_id, resume_parse_error, last_match_compute_at")
@@ -211,7 +211,7 @@ export async function POST(req: NextRequest) {
     });
   } finally {
     if (lockHolder) {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
       await (admin.rpc as any)("release_cron_lock", {
         lock_name:        LOCK_NAME,
         expected_holder:  lockHolder,

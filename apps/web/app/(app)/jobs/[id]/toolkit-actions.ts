@@ -75,7 +75,7 @@ async function preflight(jobId: string) {
 
   const admin = createSupabaseAdminClient();
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
   const { data: profile } = await (supabase
     .from("profiles")
     .select("display_name, current_role, years_experience, current_lpa, target_lpa, preferred_hubs, resume_parsed, resume_signature, seniority")
@@ -98,7 +98,7 @@ async function preflight(jobId: string) {
     return { ok: false as const, error: "Upload your resume first." };
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
   const { data: job } = await (supabase
     .from("jobs")
     .select("id, title, location, role_function, seniority, jd_summary, must_have_skills, nice_to_have_skills, responsibilities, signature, comp_lpa_min, comp_lpa_max, companies(name)")
@@ -145,7 +145,7 @@ export async function generateTailoredResumeAction(
   const { user, admin, profile, job, candidateEmail } = pre;
 
   // ── Cache check ────────────────────────────────────────────────────────
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
   const { data: existing } = await (admin
     .from("tailored_resumes")
     .select("id, content, docx_storage_path, resume_signature, job_signature, generated_at")
@@ -202,7 +202,7 @@ export async function generateTailoredResumeAction(
     }
 
     // Pull the fit-card row to surface pre-approved tweaks into the prompt.
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
     const { data: match } = await (admin
       .from("matches")
       .select("fit_card")
@@ -257,7 +257,7 @@ export async function generateTailoredResumeAction(
     await admin.storage.from(STORAGE_BUCKET).remove([existing.docx_storage_path]).catch(() => {});
   }
   const nowIso = new Date().toISOString();
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
   await (admin.from("tailored_resumes") as any).upsert({
     user_id:           user.id,
     job_id:            jobId,
@@ -303,7 +303,7 @@ export async function generateNegotiationMemoAction(
   const { user, admin, profile, job } = pre;
 
   // ── Cache check ────────────────────────────────────────────────────────
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
   const { data: existing } = await (admin
     .from("negotiation_memos")
     .select("id, content, market_comp, resume_signature, job_signature, candidate_target_lpa, candidate_current_lpa, generated_at")
@@ -354,7 +354,7 @@ export async function generateNegotiationMemoAction(
   }
 
   // ── Build comp bracket from live catalog (same path as engine) ────────
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
   const { data: catalogJobs } = await (admin
     .from("jobs")
     .select("seniority, role_function, comp_lpa_min, comp_lpa_max")
@@ -393,7 +393,7 @@ export async function generateNegotiationMemoAction(
   }
 
   const nowIso = new Date().toISOString();
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
   await (admin.from("negotiation_memos") as any).upsert({
     user_id:                user.id,
     job_id:                 jobId,
@@ -426,7 +426,7 @@ export async function getTailoredResumeDownloadUrl(
   if (!user) return { ok: false, error: "Not signed in." };
 
   const admin = createSupabaseAdminClient();
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
   const { data } = await (admin
     .from("tailored_resumes")
     .select("docx_storage_path")

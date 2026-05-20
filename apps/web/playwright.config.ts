@@ -1,4 +1,4 @@
-import { defineConfig, devices } from "@playwright/test";
+import { defineConfig, devices, type Project } from "@playwright/test";
 
 /**
  * Run tests against a local dev server by default.
@@ -7,6 +7,57 @@ import { defineConfig, devices } from "@playwright/test";
  */
 const BASE_URL = process.env.PLAYWRIGHT_BASE_URL ?? "http://localhost:3000";
 const IS_CI = !!process.env.CI;
+const HAS_AUTH_E2E_ENV = Boolean(
+  process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.SUPABASE_SERVICE_ROLE_KEY,
+);
+
+if (process.env.E2E_AUTH_REQUIRED === "1" && !HAS_AUTH_E2E_ENV) {
+  throw new Error(
+    "E2E_AUTH_REQUIRED=1 requires NEXT_PUBLIC_SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY",
+  );
+}
+
+const projects: Project[] = [
+  // Public routes — no service-role e2e env needed.
+  {
+    name: "public",
+    testMatch: /(public|health|auth)\.spec\.ts/,
+    use: { ...devices["Desktop Chrome"] },
+  },
+  {
+    name: "mobile-public",
+    testMatch: /(public|health|auth)\.spec\.ts/,
+    use: { ...devices["Pixel 5"] },
+  },
+];
+
+if (HAS_AUTH_E2E_ENV) {
+  projects.push(
+    {
+      name: "setup",
+      testMatch: /global-setup\.ts/,
+      use: { ...devices["Desktop Chrome"] },
+    },
+    {
+      name: "authenticated",
+      testMatch: /(dashboard|golden-path|applications|privacy)\.spec\.ts/,
+      use: {
+        ...devices["Desktop Chrome"],
+        storageState: "./e2e/.auth/user.json",
+      },
+      dependencies: ["setup"],
+    },
+    {
+      name: "mobile-authenticated",
+      testMatch: /(dashboard|golden-path|applications|privacy)\.spec\.ts/,
+      use: {
+        ...devices["Pixel 5"],
+        storageState: "./e2e/.auth/user.json",
+      },
+      dependencies: ["setup"],
+    },
+  );
+}
 
 export default defineConfig({
   testDir: "./e2e",
@@ -23,32 +74,7 @@ export default defineConfig({
     video: "on-first-retry",
   },
 
-  projects: [
-    // Step 1: authenticate once and save browser state
-    {
-      name: "setup",
-      testMatch: /global-setup\.ts/,
-      use: { ...devices["Desktop Chrome"] },
-    },
-
-    // Public routes — no auth needed
-    {
-      name: "public",
-      testMatch: /\.(public|health|auth)\.spec\.ts/,
-      use: { ...devices["Desktop Chrome"] },
-    },
-
-    // Authenticated routes — depend on setup to have run first
-    {
-      name: "authenticated",
-      testMatch: /\.(dashboard|golden-path|applications|privacy)\.spec\.ts/,
-      use: {
-        ...devices["Desktop Chrome"],
-        storageState: "./e2e/.auth/user.json",
-      },
-      dependencies: ["setup"],
-    },
-  ],
+  projects,
 
   // Start the dev server automatically in local mode
   webServer: IS_CI

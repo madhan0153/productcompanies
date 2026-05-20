@@ -154,7 +154,7 @@ async function main() {
           j.jd_seniority_signal = parsed.jd_seniority_signal;
           j.jd_summary = parsed.jd_summary;
           j.is_likely_ghost = ghost.is_likely_ghost;
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
           await (supabase.from("jobs") as any).update({
             must_have_skills: parsed.must_have_skills,
             nice_to_have_skills: parsed.nice_to_have_skills,
@@ -267,7 +267,7 @@ async function main() {
           jd_min_years: job.jd_min_years,
           jd_max_years: job.jd_max_years,
           work_mode: null,
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
           jd_seniority_signal: (job.jd_seniority_signal as any) ?? null,
           jd_summary: job.jd_summary ?? "",
           is_boilerplate: false,

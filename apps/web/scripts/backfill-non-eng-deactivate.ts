@@ -140,7 +140,7 @@ async function main() {
     const ids = toDeactivate.slice(i, i + CHUNK).map((r) => r.id);
     const { error } = await supabase
       .from("jobs")
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
       .update({ is_active: false } as any)
       .in("id", ids);
     if (error) {

@@ -111,7 +111,7 @@ export async function refreshResumeScore(): Promise<{ ok: true; score: number } 
   // (parsed content unchanged), so cached Fit Cards remain valid.
   const dna = computeDnaBreakdown(parsed);
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
   await (admin.from("profiles") as any).update({
     resume_score: result.score,
     resume_score_breakdown: result.breakdown as unknown as Json,
@@ -586,7 +586,7 @@ export async function getParseStatus(): Promise<ParseStatus> {
       // Clear stale "in progress" state so the UI can recover instead of
       // being pinned to an endless spinner when background execution dies.
       const admin = createSupabaseAdminClient();
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
       const { error } = await (admin.from("profiles") as any).update({
         resume_parsing_at: null,
         resume_parse_error: timeoutError,
@@ -640,7 +640,7 @@ export async function revertResumeToVersion(versionId: string): Promise<RevertRe
   if (!user) return { ok: false, error: "Not signed in." };
 
   // 1. Load the target snapshot (RLS scoped to user via select policy).
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
   const { data: snap, error: snapErr } = await (admin
     .from("resume_versions")
     .select("id, user_id, resume_parsed, resume_storage_path, product_dna_score, dna_breakdown, resume_signature")
@@ -659,7 +659,7 @@ export async function revertResumeToVersion(versionId: string): Promise<RevertRe
   if (!snap)    return { ok: false, error: "Snapshot not found." };
 
   // 2. Snapshot the CURRENT state before we overwrite it (so revert is undoable).
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
   const { data: current } = await (admin
     .from("profiles")
     .select("resume_parsed, resume_storage_path, product_dna_score, dna_breakdown, resume_signature")
@@ -689,7 +689,7 @@ export async function revertResumeToVersion(versionId: string): Promise<RevertRe
   //    re-upload). We still restore the parsed JSON + score so matching
   //    works; the user can re-upload the PDF later if they want it back.
   const restored = snap.resume_parsed;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
   const { error: updErr } = await (admin.from("profiles") as any).update({
     resume_parsed:         restored as unknown as Json,
     resume_storage_path:   snap.resume_storage_path,
@@ -727,7 +727,7 @@ export async function listResumeVersions(): Promise<ResumeVersionLite[]> {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return [];
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
   const { data } = await (supabase
     .from("resume_versions")
     .select("id, product_dna_score, source, created_at, resume_parsed")

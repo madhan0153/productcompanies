@@ -203,7 +203,7 @@ async function fetchAllActiveJobs(
 ): Promise<JobRow[]> {
   const all: JobRow[] = [];
   for (let from = 0; ; from += JOBS_PAGE_SIZE) {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
     const { data: rows } = await (admin
       .from("jobs")
       .select(
@@ -274,7 +274,7 @@ export async function computeMatchesForUser(
   const admin = createSupabaseAdminClient();
 
   // 1. Profile
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
   const { data: profileRow } = await (admin
     .from("profiles")
     .select(
@@ -339,7 +339,7 @@ export async function computeMatchesForUser(
 
   // For incremental: pull existing matches so we can re-use scores for
   // jobs whose embedding hasn't changed.
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
   const { data: existingMatchRows } = await (admin
     .from("matches")
     .select("job_id, score, verdict, fit_card, fit_card_at, hidden_reason, score_breakdown, fit_card_resume_signature, fit_card_jd_signature, user_hidden, computed_at, seen_at")
@@ -692,7 +692,7 @@ export async function computeMatchesForUser(
     resumeVersionId: opts.resumeVersionId,
     jobId: opts.jobId,
   });
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
   let stampQuery = (admin.from("profiles") as any)
     .update({
       last_match_compute_at: now,
@@ -838,7 +838,7 @@ async function batchUpsert<T extends Record<string, unknown>>(
 ) {
   const BATCH = 200;
   for (let i = 0; i < rows.length; i += BATCH) {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
     const { error } = await admin.from("matches").upsert(rows.slice(i, i + BATCH) as any, {
       onConflict: "user_id,job_id",
     });

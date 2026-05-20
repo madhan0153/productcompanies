@@ -160,7 +160,7 @@ export async function markMatchesSeen(): Promise<void> {
   if (!user) return;
 
   const admin = createSupabaseAdminClient();
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
   const { error } = await (admin.from("matches") as any)
     .update({ seen_at: new Date().toISOString() })
     .eq("user_id", user.id)

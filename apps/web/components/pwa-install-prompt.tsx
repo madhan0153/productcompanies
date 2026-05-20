@@ -38,7 +38,7 @@ export function PwaInstallPrompt() {
     if (typeof window === "undefined") return;
 
     // Already installed? PWA detection — match-media + iOS navigator quirk.
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
     const inStandalone = window.matchMedia("(display-mode: standalone)").matches || (window.navigator as any).standalone === true;
     if (inStandalone) return;
 

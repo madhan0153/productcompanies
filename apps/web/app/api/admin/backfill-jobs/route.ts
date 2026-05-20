@@ -102,7 +102,7 @@ export async function POST(req: NextRequest) {
         job.title as string,
         (job.description as string | null) ?? "",
       );
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
       await (admin.from("jobs") as any)
         .update({ role_function })
         .eq("id", job.id as string);

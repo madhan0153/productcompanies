@@ -66,7 +66,7 @@ export default async function MatchesPage({
       ? requestedTab
       : "shortlist";
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
   const { data: profile } = await (supabase
     .from("profiles")
     .select("resume_storage_path, resume_score, resume_score_at, last_match_compute_at")
@@ -84,7 +84,7 @@ export default async function MatchesPage({
   // (company, hub) apply server-side so the strip honours them.
   // Dismiss was removed â€” there is no longer a user_hidden filter.
   const baseCountQuery = () => {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
     let q: any = supabase
       .from("matches")
       .select("user_id, jobs!inner(id, hubs, companies!inner(slug))", { count: "exact", head: true })
@@ -112,7 +112,7 @@ export default async function MatchesPage({
   // Single read for the tab's visible cards â€” capped at 500 so SSR stays
   // fast. The band-strip counts above are accurate beyond the cap, so the
   // user always sees the truthful number even if the list is paginated.
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
   let query: any = supabase
     .from("matches")
     .select(`
@@ -162,7 +162,7 @@ export default async function MatchesPage({
   const visibleJobIds = tabRows.map((m) => m.jobs.id);
   const applicationStatus = new Map<string, string>();
   if (visibleJobIds.length > 0) {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
     const { data: apps } = await (supabase
       .from("applications")
       .select("job_id, status")
@@ -174,7 +174,7 @@ export default async function MatchesPage({
   // Mark unseen items in this tab as seen (fire-and-forget â€” same as before).
   const unseenInTab = tabRows.filter((m) => m.seen_at === null).map((m) => m.jobs.id);
   if (unseenInTab.length > 0) {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
     void (supabase.from("matches") as any)
       .update({ seen_at: new Date().toISOString() })
       .eq("user_id", user.id)

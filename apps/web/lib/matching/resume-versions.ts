@@ -39,7 +39,7 @@ export async function snapshotCurrentResume(
   input: SnapshotInput,
 ): Promise<string | null> {
   try {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
     const { data, error } = await (admin.from("resume_versions") as any).insert({
       user_id:             input.userId,
       resume_parsed:       input.resume_parsed,
@@ -59,7 +59,7 @@ export async function snapshotCurrentResume(
 
     // Retention: keep the latest RETENTION_LIMIT snapshots, drop the rest.
     // Fire-and-forget — failure here is purely cosmetic.
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
     const { data: keep } = await (admin
       .from("resume_versions")
       .select("id, created_at")
@@ -69,7 +69,7 @@ export async function snapshotCurrentResume(
 
     const keepIds = new Set((keep ?? []).map((r) => r.id));
     if (keepIds.size >= RETENTION_LIMIT) {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
       await (admin.from("resume_versions") as any)
         .delete()
         .eq("user_id", input.userId)

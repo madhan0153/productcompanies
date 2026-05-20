@@ -36,7 +36,7 @@ export async function submitConsents(formData: FormData) {
   // dispatch state. Keep them aligned: if you grant the consent, you're
   // subscribed; if you revoke it, you're off.
   const admin = createSupabaseAdminClient();
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
   await (admin.from("digest_subscriptions") as any).upsert({
     user_id: user.id,
     frequency: digestOn ? "weekly" : "off",

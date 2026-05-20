@@ -40,7 +40,7 @@ export async function getQuotaState(
   const admin = createSupabaseAdminClient();
   const since = new Date(Date.now() - WINDOW_DAYS * 86_400_000).toISOString();
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
   const { data, error } = await (admin
     .from("resume_intel_events")
     .select("created_at")

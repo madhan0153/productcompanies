@@ -33,7 +33,7 @@ export interface RecordEventInput {
 export async function recordResumeIntelEvent(input: RecordEventInput): Promise<void> {
   const admin = createSupabaseAdminClient();
   try {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
     await (admin.from("resume_intel_events") as any).insert({
       user_id:         input.user_id,
       kind:            input.kind,

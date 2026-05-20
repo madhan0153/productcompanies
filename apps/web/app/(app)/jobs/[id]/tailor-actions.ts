@@ -128,7 +128,7 @@ async function preflight(jobId: string) {
     return { ok: false as const, error: "Enable AI Matching consent to use the Apply Toolkit." };
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
   const { data: profileRow } = await (supabase
     .from("profiles")
     .select("display_name, role_function, resume_parsed, resume_signature, resume_storage_path, tech_stack, preferred_hubs")
@@ -158,7 +158,7 @@ async function preflight(jobId: string) {
   };
 
   const admin = createSupabaseAdminClient();
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
   const { data: job } = await (admin
     .from("jobs")
     .select("id, title, jd_summary, must_have_skills, nice_to_have_skills, role_function, seniority, signature, companies(name)")
@@ -198,7 +198,7 @@ export async function diagnoseTailored(
   const { user, admin, profile, job } = pre;
 
   // (1) Look for an existing row for this (user, job).
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
   const { data: existing } = await (admin
     .from("tailored_resumes")
     .select("id, status, mode, resume_signature, job_signature, diagnosis, rewrites")
@@ -360,7 +360,7 @@ export async function diagnoseTailored(
   // (5) Persist — upsert on (user_id, job_id). Reset prior content/docx so
   //     the review screen always starts from the current diagnosis.
   const now = new Date().toISOString();
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
   const { data: row, error: upsertErr } = await (admin.from("tailored_resumes") as any)
     .upsert({
       user_id:          user.id,
@@ -401,7 +401,7 @@ export async function applyTailoredDecisions(
   if (!pre.ok) return pre;
   const { user, admin } = pre;
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
   const { data: row } = await (admin
     .from("tailored_resumes")
     .select("id, status")
@@ -414,7 +414,7 @@ export async function applyTailoredDecisions(
     return { ok: false, error: "Already finalised. Re-run diagnosis to revise." };
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
   const { error } = await (admin.from("tailored_resumes") as any)
     .update({ decisions, updated_at: new Date().toISOString() })
     .eq("user_id", user.id)
@@ -437,7 +437,7 @@ export async function finaliseTailored(jobId: string): Promise<FinaliseTailoredR
   if (!pre.ok) return pre;
   const { user, admin, profile, job } = pre;
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
   const { data: row } = await (admin
     .from("tailored_resumes")
     .select("id, status, diagnosis, rewrites, decisions")
@@ -477,7 +477,7 @@ export async function finaliseTailored(jobId: string): Promise<FinaliseTailoredR
     });
   if (uploadErr) return { ok: false, error: `Storage error: ${uploadErr.message}` };
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
   const { error: updateErr } = await (admin.from("tailored_resumes") as any)
     .update({
       content,
@@ -522,7 +522,7 @@ export async function discardTailored(jobId: string): Promise<{ ok: true } | { o
   if (!pre.ok) return pre;
   const { user, admin } = pre;
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
   const { error } = await (admin.from("tailored_resumes") as any)
     .update({ status: "discarded", updated_at: new Date().toISOString() })
     .eq("user_id", user.id)
@@ -550,7 +550,7 @@ export async function getTailoredDownloadUrl(
   if (!pre.ok) return pre;
   const { user, admin } = pre;
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
   const { data: row } = await (admin
     .from("tailored_resumes")
     .select("docx_storage_path, status")

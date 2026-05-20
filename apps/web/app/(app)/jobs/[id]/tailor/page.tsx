@@ -28,7 +28,7 @@ export default async function TailorPage({ params }: { params: Promise<{ id: str
   const consents = await getUserConsents(user.id);
   const intelConsent = consents.resume_intelligence === true;
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
   const { data: profile } = await (supabase
     .from("profiles")
     .select("resume_storage_path, resume_signature, resume_parsed, role_function")
@@ -46,7 +46,7 @@ export default async function TailorPage({ params }: { params: Promise<{ id: str
 
   const admin = createSupabaseAdminClient();
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
   const { data: job } = await (admin
     .from("jobs")
     .select("id, title, must_have_skills, companies(name)")
@@ -56,7 +56,7 @@ export default async function TailorPage({ params }: { params: Promise<{ id: str
     };
   if (!job) notFound();
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
   const { data: row } = await (admin
     .from("tailored_resumes")
     .select("id, status, mode, diagnosis, rewrites, decisions")

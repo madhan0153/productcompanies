@@ -66,7 +66,7 @@ export async function buildFeedbackModel(
   };
 
   // (1) Dismissals — negative signal.
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
   const { data: dismissed } = await (admin
     .from("matches")
     .select("job_id")
@@ -74,7 +74,7 @@ export async function buildFeedbackModel(
     .eq("user_hidden", true) as any) as { data: Array<{ job_id: string }> | null };
 
   // (2) Saved / applied — positive signals at different strengths.
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
   const { data: actions } = await (admin
     .from("applications")
     .select("job_id, status")
@@ -101,7 +101,7 @@ export async function buildFeedbackModel(
   const PAGE = 200;
   for (let i = 0; i < jobIds.length; i += PAGE) {
     const slice = jobIds.slice(i, i + PAGE);
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
     const { data: rows } = await (admin
       .from("jobs")
       .select("id, company_id, role_function, seniority, hubs, must_have_skills")

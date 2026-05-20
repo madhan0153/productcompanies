@@ -134,7 +134,7 @@ export async function POST(req: NextRequest) {
 
       const { error: upErr } = await admin
         .from("jobs")
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
         .update({
           must_have_skills:    parsed.must_have_skills,
           nice_to_have_skills: parsed.nice_to_have_skills,

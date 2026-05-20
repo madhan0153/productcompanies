@@ -147,7 +147,7 @@ export default async function JobDetailPage({ params }: { params: Promise<{ id: 
   const consents = await getUserConsents(user.id);
   const admin = createSupabaseAdminClient();
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
   const [{ data: profileRow }, { data: tailoredRow }] = await Promise.all([
     supabase
       .from("profiles")

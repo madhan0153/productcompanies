@@ -66,9 +66,9 @@ export default async function AdminHealthPage() {
     { count: tailoredFinalised },
     intelEventsRecent,
   ] = await Promise.all([
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
     admin.from("companies").select("id, name, slug").order("name") as any,
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
     admin
       .from("crawl_runs")
       .select("company_id, status, finished_at, started_at, jobs_new, jobs_updated, jobs_marked_stale, error")
@@ -77,7 +77,7 @@ export default async function AdminHealthPage() {
     admin.from("jobs").select("id", { count: "exact", head: true }).eq("is_active", true),
     admin.from("jobs").select("id", { count: "exact", head: true }).eq("is_active", true).not("jd_parsed_at", "is", null),
     admin.from("jobs").select("id", { count: "exact", head: true }).eq("is_active", true).is("jd_parsed_at", null),
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
     admin
       .from("jobs")
       .select("apply_click_count")
@@ -97,7 +97,7 @@ export default async function AdminHealthPage() {
     admin.from("enhanced_resumes").select("id", { count: "exact", head: true }).eq("status", "finalised"),
     admin.from("enhanced_resumes").select("id", { count: "exact", head: true }).eq("status", "pending_review"),
     admin.from("tailored_resumes").select("id", { count: "exact", head: true }).eq("status", "finalised"),
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
     admin
       .from("resume_intel_events")
       .select("kind, scope, ok, latency_ms, created_at")
@@ -107,9 +107,6 @@ export default async function AdminHealthPage() {
   ]);
 
   // ── Crawl runs by company ────────────────────────────────────────────────
-  const companyById = new Map<string, CompanyRow>(
-    ((companies as CompanyRow[] | null) ?? []).map((c) => [c.id, c]),
-  );
   const runsByCompany = new Map<string, CrawlRunRow[]>();
   for (const r of (recentRuns as CrawlRunRow[] | null) ?? []) {
     if (!runsByCompany.has(r.company_id)) runsByCompany.set(r.company_id, []);

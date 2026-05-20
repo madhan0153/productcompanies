@@ -21,7 +21,7 @@ export async function GET(
   if (!user) return NextResponse.json({ error: "Not signed in." }, { status: 401 });
 
   const admin = createSupabaseAdminClient();
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
   const { data: row } = await (admin
     .from("tailored_resumes")
     .select("content, status")

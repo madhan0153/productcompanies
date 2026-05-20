@@ -3,7 +3,7 @@ import { redirect } from "next/navigation";
 import {
   Briefcase, Target, TrendingUp, Building2,
   ChevronRight, CheckCircle2,
-  Sparkles, BarChart3, Compass, Clock, AlertCircle,
+  BarChart3, Compass, Clock, AlertCircle,
 } from "lucide-react";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import Link from "next/link";
