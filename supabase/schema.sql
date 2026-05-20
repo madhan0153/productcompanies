@@ -120,6 +120,8 @@ begin
   return affected;
 end;
 $$;
+revoke all on function public.mark_stale_jobs(uuid, timestamptz) from public, anon, authenticated;
+grant execute on function public.mark_stale_jobs(uuid, timestamptz) to service_role;
 
 -- DPDP right-to-erasure. Service-role callable.
 -- Removes all PII rows for the user, anonymizes immutable audit refs, logs event.
@@ -150,6 +152,8 @@ begin
   -- after this function returns successfully.
 end;
 $$;
+revoke all on function public.request_user_erasure(uuid) from public, anon, authenticated;
+grant execute on function public.request_user_erasure(uuid) to service_role;
 
 
 -- -----------------------------------------------------------------------------
@@ -1322,6 +1326,8 @@ begin
           jsonb_build_object('scope', 'resume_intelligence', 'completed_at', now()));
 end;
 $$;
+revoke all on function public.request_user_erasure_r1(uuid) from public, anon, authenticated;
+grant execute on function public.request_user_erasure_r1(uuid) to service_role;
 
 comment on table public.enhanced_resumes is 'Per-user general resume enhancement runs. Pipeline: diagnosis → bullet rewrites → user decisions → render docx+pdf. Authenticity rule: rewrites must be derivable from the source resume.';
 comment on table public.resume_intel_events is 'Audit + cost telemetry for the resume intelligence pipeline. Stores structural facts only — never resume bullet text.';

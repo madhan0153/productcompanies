@@ -21,6 +21,7 @@
 import { NextResponse } from "next/server";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
+import { logEvent } from "@/lib/observability/log";
 import type { DpdpEventType } from "@/lib/supabase/types";
 
 export const dynamic = "force-dynamic";
@@ -135,7 +136,10 @@ export async function GET() {
         send("\n}\n");
         controller.close();
       } catch (err) {
-        console.warn("[export.stream] aborted:", err instanceof Error ? err.message : String(err));
+        logEvent("warn", "dpdp_export_stream_aborted", {
+          user_id: uid.slice(0, 8),
+          error: err instanceof Error ? err.name : "unknown",
+        });
         controller.error(err);
       }
     },

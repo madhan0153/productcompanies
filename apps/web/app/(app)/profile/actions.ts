@@ -25,6 +25,7 @@ import {
 } from "@/lib/jobs/state";
 import { logEvent } from "@/lib/observability/log";
 import { validateResumePdf } from "@/lib/security/pdf";
+import { checkRateLimit, userActionKey } from "@/lib/security/rate-limit";
 import type { ParsedResume } from "@/lib/llm/prompts/resume-parse";
 import type { SeniorityLevel } from "@/lib/supabase/types";
 import type { Json } from "@/lib/supabase/types";
@@ -255,6 +256,19 @@ export async function uploadAndParseResume(formData: FormData): Promise<UploadRe
   });
   if (recentUploadCount >= 6) {
     return { ok: false, error: "Resume upload limit reached. Please try again in about an hour.", retryable: true };
+  }
+
+  const uploadLimit = checkRateLimit({
+    key: userActionKey(userId, "resume-upload"),
+    limit: 3,
+    windowMs: 15 * 60 * 1000,
+  });
+  if (!uploadLimit.ok) {
+    return {
+      ok: false,
+      error: `Too many resume uploads. Please try again in ${Math.ceil(uploadLimit.retryAfterSeconds / 60)} minute(s).`,
+      retryable: true,
+    };
   }
 
   const resumeVersionId = crypto.randomUUID();

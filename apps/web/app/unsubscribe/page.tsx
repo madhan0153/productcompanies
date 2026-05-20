@@ -3,12 +3,17 @@ import Link from "next/link";
 import { CheckCircle2, XCircle } from "lucide-react";
 import { createHmac, timingSafeEqual } from "crypto";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
-import { serverEnv } from "@/lib/env";
+import { requireCronSecret } from "@/lib/security/cron";
 
 export const metadata: Metadata = { title: "Unsubscribe — ProdMatch.ai" };
 
 function verifyToken(uid: string, token: string): boolean {
-  const secret = serverEnv.CRON_SECRET ?? "dev-secret";
+  let secret: string;
+  try {
+    secret = requireCronSecret();
+  } catch {
+    return false;
+  }
   const expected = createHmac("sha256", secret).update(uid).digest("hex");
   try {
     return timingSafeEqual(Buffer.from(token, "hex"), Buffer.from(expected, "hex"));

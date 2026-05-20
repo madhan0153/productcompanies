@@ -5,6 +5,7 @@ import { revalidatePath } from "next/cache";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { sendErasureConfirmed } from "@/lib/email";
+import { logEvent } from "@/lib/observability/log";
 import type { DpdpEventType } from "@/lib/supabase/types";
 
 export async function requestDataExport() {
@@ -92,7 +93,10 @@ export async function requestErasure(formData: FormData) {
     } catch (err) {
       // Audit failure is never fatal — the erasure continues. Operator
       // sees the gap via metadata.progress on the next successful row.
-      console.warn("[erasure.audit] insert failed:", err instanceof Error ? err.message : String(err));
+      logEvent("warn", "erasure_audit_insert_failed", {
+        user_id: uid.slice(0, 8),
+        error: err instanceof Error ? err.name : "unknown",
+      });
     }
   }
 

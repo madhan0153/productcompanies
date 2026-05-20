@@ -42,6 +42,8 @@ import { computeAtsScorecard, type AtsScorecard } from "@/lib/matching/ats-score
 import { getQuotaState, resetsInHumanForm } from "@/lib/resume-intel/quota";
 import { recordResumeIntelEvent } from "@/lib/resume-intel/telemetry";
 import { renderTailoredResumeDocx } from "@/lib/docx/tailored-resume";
+import { logEvent } from "@/lib/observability/log";
+import { checkRateLimit, userActionKey } from "@/lib/security/rate-limit";
 import type { ParsedResume } from "@/lib/llm/prompts/resume-parse";
 import type { TailoredResumeContent } from "@/lib/llm/prompts/tailor-resume";
 
@@ -230,6 +232,18 @@ export async function diagnoseTailored(
     return { ok: true, id: existing.id, resumed: true };
   }
 
+  const diagnoseLimit = checkRateLimit({
+    key: userActionKey(user.id, "tailor-diagnose"),
+    limit: 5,
+    windowMs: 60 * 60 * 1000,
+  });
+  if (!diagnoseLimit.ok) {
+    return {
+      ok: false,
+      error: `Too many tailored diagnoses. Please try again in ${Math.ceil(diagnoseLimit.retryAfterSeconds / 60)} minute(s).`,
+    };
+  }
+
   // (2) Quota check (only the LLM-spending path).
   const quota = await getQuotaState(user.id, "tailored");
   if (quota.exhausted) {
@@ -254,8 +268,11 @@ export async function diagnoseTailored(
         extracted = await extractResumeContent(base64);
       }
     } catch (err) {
-      console.warn("[tailor] bullet-extraction failed, falling back to lean text:",
-        err instanceof Error ? err.message : String(err));
+      logEvent("warn", "tailor_bullet_extraction_failed", {
+        user_id: user.id.slice(0, 8),
+        job_id: jobId,
+        error: err instanceof Error ? err.name : "unknown",
+      });
     }
   }
 

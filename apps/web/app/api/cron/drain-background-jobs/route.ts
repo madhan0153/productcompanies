@@ -3,6 +3,7 @@ import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { runUserRecomputeBlocking } from "@/lib/queue/recompute";
 import { transitionDurableJob } from "@/lib/jobs/state";
 import { logEvent } from "@/lib/observability/log";
+import { requireCronAuth } from "@/lib/security/cron";
 
 export const runtime = "nodejs";
 export const maxDuration = 300;
@@ -16,15 +17,8 @@ type QueuedJobRow = {
 };
 
 export async function GET(req: NextRequest) {
-  const configuredSecret = process.env.CRON_SECRET;
-  if (!configuredSecret) {
-    return NextResponse.json({ ok: false, error: "Cron is not configured." }, { status: 503 });
-  }
-  const auth = req.headers.get("authorization") ?? "";
-  const token = auth.startsWith("Bearer ") ? auth.slice(7) : req.nextUrl.searchParams.get("secret");
-  if (token !== configuredSecret) {
-    return NextResponse.json({ ok: false, error: "Unauthorized" }, { status: 401 });
-  }
+  const authFailure = requireCronAuth(req);
+  if (authFailure) return authFailure;
 
   const admin = createSupabaseAdminClient();
   const { data: jobs, error } = await (admin
