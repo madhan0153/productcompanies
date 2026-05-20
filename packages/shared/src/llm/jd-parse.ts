@@ -14,7 +14,8 @@
 //   • Tightened must-have rule: only when JD uses "required / must / minimum"
 //   • Few-shot examples in the prompt to anchor the lite model
 
-import { runWithRetry, SchemaType, type Schema, type RetryOptions } from "./gemini";
+import { LlmRunError, runWithRetry, SchemaType, type Schema, type RetryOptions } from "./gemini";
+import { shouldUseDeterministicFallback } from "./provider-router";
 import { CANONICAL_ROLE_FUNCTIONS, normalizeRoleFunction } from "../roles/taxonomy";
 
 export const ROLE_FUNCTIONS = [
@@ -254,6 +255,109 @@ function num(n: unknown): number | null {
   return Math.round(n * 10) / 10;
 }
 
+const COMMON_TECH = [
+  "java", "go", "golang", "python", "javascript", "typescript", "react", "next.js",
+  "node.js", "spring", "kafka", "postgres", "postgresql", "mysql", "mongodb",
+  "redis", "aws", "gcp", "azure", "kubernetes", "docker", "spark", "airflow",
+  "flink", "hadoop", "snowflake", "databricks", "terraform", "graphql",
+  "microservices", "distributed systems", "machine learning", "llm", "rag",
+];
+
+function uniqueLower(values: string[], max: number): string[] {
+  const seen = new Set<string>();
+  const out: string[] = [];
+  for (const value of values) {
+    const v = value.trim().toLowerCase();
+    if (!v || seen.has(v)) continue;
+    seen.add(v);
+    out.push(v);
+    if (out.length >= max) break;
+  }
+  return out;
+}
+
+function extractYears(text: string): { min: number | null; max: number | null } {
+  const range = text.match(/(\d+(?:\.\d+)?)\s*(?:-|–|to)\s*(\d+(?:\.\d+)?)\s*(?:\+?\s*)?(?:years|yrs|y\b)/i);
+  if (range) return { min: num(Number(range[1])), max: num(Number(range[2])) };
+  const plus = text.match(/(?:minimum|at least|min\.?|more than)?\s*(\d+(?:\.\d+)?)\s*\+?\s*(?:years|yrs|y\b)/i);
+  const n = plus ? num(Number(plus[1])) : null;
+  return { min: n, max: null };
+}
+
+function inferSeniority(title: string, text: string): ParsedJD["jd_seniority_signal"] {
+  const hay = `${title} ${text}`.toLowerCase();
+  if (/\b(vp|vice president)\b/.test(hay)) return "vp";
+  if (/\bdirector\b/.test(hay)) return "director";
+  if (/\bmanager|engineering manager|em\b/.test(hay)) return "manager";
+  if (/\bprincipal\b/.test(hay)) return "principal";
+  if (/\bstaff\b/.test(hay)) return "staff";
+  if (/\blead\b/.test(hay)) return "lead";
+  if (/\bsenior|sr\.?|sde\s*3|engineer\s*iii\b/.test(hay)) return "senior";
+  if (/\bjunior|jr\.?|sde\s*1|engineer\s*i\b/.test(hay)) return "junior";
+  if (/\bintern\b/.test(hay)) return "intern";
+  return null;
+}
+
+function deterministicParseJobDescription(input: {
+  title: string;
+  description: string;
+  seniority_hint?: string | null;
+}): ParsedJD {
+  const text = stripText(input.description);
+  const lower = `${input.title}\n${text}`.toLowerCase();
+  const mentionedTech = COMMON_TECH.filter((skill) => lower.includes(skill));
+  const requiredText = text
+    .split(/\n|\.|;/)
+    .filter((line) => /required|must|minimum|expert|strong proficiency|qualification/i.test(line))
+    .join(" ");
+  const preferredText = text
+    .split(/\n|\.|;/)
+    .filter((line) => /preferred|bonus|nice to have|plus|familiarity|desirable/i.test(line))
+    .join(" ");
+  const must = uniqueLower(COMMON_TECH.filter((skill) => requiredText.toLowerCase().includes(skill)), 12);
+  const nice = uniqueLower(COMMON_TECH.filter((skill) => preferredText.toLowerCase().includes(skill) && !must.includes(skill)), 8);
+  const years = extractYears(lower);
+  const roleFunction = normalizeRoleFunction(
+    /frontend|react|ui\b|web\b/.test(lower) ? "frontend" :
+    /android|ios|mobile|flutter|react native/.test(lower) ? "mobile" :
+    /data pipeline|etl|spark|airflow|warehouse|analytics engineer/.test(lower) ? "data_engineering" :
+    /machine learning|ml\b|llm|rag|model training|deep learning/.test(lower) ? "machine_learning" :
+    /devops|sre|platform|kubernetes|terraform|infrastructure/.test(lower) ? "devops_sre" :
+    /security|appsec|vulnerability/.test(lower) ? "security" :
+    /qa|quality|test automation|sdet/.test(lower) ? "qa_test" :
+    /backend|api|microservice|distributed system|server/.test(lower) ? "backend" :
+    "other",
+  );
+  const responsibilities = text
+    .split(/\n|•|- /)
+    .map((line) => line.trim())
+    .filter((line) => /build|design|develop|own|lead|operate|maintain|scale|deliver|implement/i.test(line))
+    .slice(0, 5)
+    .map((line) => line.slice(0, 200));
+
+  return {
+    must_have_skills: must.length > 0 ? must : uniqueLower(mentionedTech, 8),
+    nice_to_have_skills: nice,
+    jd_min_years: years.min,
+    jd_max_years: years.max,
+    work_mode: /\bremote\b/i.test(lower) ? "remote" : /\bhybrid\b/i.test(lower) ? "hybrid" : /\bonsite|office\b/i.test(lower) ? "onsite" : null,
+    jd_seniority_signal: inferSeniority(input.title, text) ?? (input.seniority_hint as ParsedJD["jd_seniority_signal"] ?? null),
+    jd_summary: `${input.title}: ${text.split(/[.\n]/)[0] ?? "Engineering role"}`.slice(0, 280),
+    is_boilerplate: mentionedTech.length === 0 && text.length > 500,
+    ghost_reasons: mentionedTech.length === 0 ? ["no concrete tech stack"] : [],
+    role_function_jd: roleFunction,
+    responsibilities,
+    qualifications_required: years.min != null ? [`${years.min}+ years of relevant experience`] : [],
+    qualifications_preferred: [],
+    tech_stack_explicit: dedupPreserveCase(mentionedTech, 25, 60),
+    team_context: null,
+  };
+}
+
+function stripText(text: string): string {
+  return text.replace(/\s+/g, " ").trim().slice(0, 12000);
+}
+
 export async function parseJobDescription(
   input: { title: string; description: string; seniority_hint?: string | null },
   retryOpts?: RetryOptions,
@@ -265,17 +369,28 @@ SENIORITY HINT (from crawler): ${input.seniority_hint ?? "unknown"}
 JOB DESCRIPTION:
 ${input.description.slice(0, 12000)}`;
 
-  const text = await runWithRetry("light", async (model) => {
-    const res = await model.generateContent({
-      contents: [{ role: "user", parts: [{ text: prompt }] }],
-      generationConfig: {
-        responseMimeType: "application/json",
-        responseSchema: SCHEMA,
-        temperature: 0.05,
-      },
-    });
-    return res.response.text();
-  }, retryOpts);
+  let text: string;
+  try {
+    text = await runWithRetry("light", async (model) => {
+      const res = await model.generateContent({
+        contents: [{ role: "user", parts: [{ text: prompt }] }],
+        generationConfig: {
+          responseMimeType: "application/json",
+          responseSchema: SCHEMA,
+          temperature: 0.05,
+        },
+      });
+      return res.response.text();
+    }, { ...retryOpts, operation: "jd_parse" });
+  } catch (err) {
+    if (shouldUseDeterministicFallback() && (
+      err instanceof LlmRunError ||
+      /GEMINI_API_KEY|provider|quota|rate|exhausted/i.test(err instanceof Error ? err.message : String(err))
+    )) {
+      return deterministicParseJobDescription(input);
+    }
+    throw err;
+  }
 
   const raw = JSON.parse(text) as Partial<ParsedJD>;
 

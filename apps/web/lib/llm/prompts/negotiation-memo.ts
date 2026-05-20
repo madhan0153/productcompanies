@@ -241,7 +241,7 @@ export async function generateNegotiationMemo(input: NegotiationMemoInput): Prom
       },
     });
     return res.response.text();
-  });
+  }, { operation: "negotiation_memo" });
 
   const raw = JSON.parse(text) as NegotiationMemoContent;
   const trunc = (s: string | undefined, n: number) => (s ?? "").slice(0, n);

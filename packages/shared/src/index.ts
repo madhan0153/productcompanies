@@ -4,6 +4,8 @@ export * from "./schemas/resume-json";
 export * from "./llm/gemini";
 export * from "./llm/embed";
 export * from "./llm/jd-parse";
+export * from "./llm/operations";
+export * from "./llm/provider-router";
 export * from "./roles/taxonomy";
 export * from "./roles/taxonomy-benchmarks";
 export * from "./scoring";

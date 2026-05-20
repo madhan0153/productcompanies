@@ -1,5 +1,6 @@
 import { runWithRetry, SchemaType, type Schema } from "@/lib/llm/gemini";
 import type { ParsedResume } from "./resume-parse";
+import { shouldUseDeterministicFallback } from "@prodmatch/shared";
 
 // Gemini no longer contributes a numeric score to the match ranking.
 // The rules engine (score.ts) owns the 0–100 score entirely.
@@ -73,17 +74,36 @@ export async function explainMatch(
   resume: ParsedResume,
   job: JobSnapshot,
 ): Promise<MatchExplanation> {
-  const text = await runWithRetry("light", async (model) => {
-    const result = await model.generateContent({
-      contents: [{ role: "user", parts: [{ text: buildPrompt(resume, job) }] }],
-      generationConfig: {
-        responseMimeType: "application/json",
-        responseSchema: SCHEMA,
-        temperature: 0.15,
-      },
-    });
-    return result.response.text();
-  });
+  let text: string;
+  try {
+    text = await runWithRetry("light", async (model) => {
+      const result = await model.generateContent({
+        contents: [{ role: "user", parts: [{ text: buildPrompt(resume, job) }] }],
+        generationConfig: {
+          responseMimeType: "application/json",
+          responseSchema: SCHEMA,
+          temperature: 0.15,
+        },
+      });
+      return result.response.text();
+    }, { operation: "match_explanation" });
+  } catch (err) {
+    if (!shouldUseDeterministicFallback()) throw err;
+    const resumeTech = new Set(resume.tech_stack.map((s) => s.toLowerCase()));
+    const required = (job.tech_stack ?? []).map((s) => s.toLowerCase()).filter(Boolean);
+    const overlap = required.filter((s) => resumeTech.has(s));
+    const missing = required.filter((s) => !resumeTech.has(s));
+    return {
+      strengths: [
+        resume.role_function && job.role_function && resume.role_function === job.role_function
+          ? `Role function aligns with ${job.role_function}`
+          : `${resume.total_years_experience} years of engineering experience`,
+        overlap.length > 0 ? `Matches ${overlap.slice(0, 3).join(", ")}` : "Profile has transferable engineering signal",
+      ].slice(0, 3),
+      gaps: missing.slice(0, 3).map((s) => `JD mentions ${s}`),
+      reasoning: `${job.company} role fit is based on deterministic role, experience and skill overlap because LLM quota is unavailable.`,
+    };
+  }
 
   const raw = JSON.parse(text) as MatchExplanation;
   return {

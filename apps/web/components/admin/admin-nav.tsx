@@ -9,7 +9,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LayoutDashboard, Radar, Activity, ShieldAlert } from "lucide-react";
+import { LayoutDashboard, Radar, Activity, ShieldAlert, BrainCircuit } from "lucide-react";
 
 const TABS: Array<{
   href: string;
@@ -18,6 +18,7 @@ const TABS: Array<{
 }> = [
   { href: "/admin",               label: "Overview",       icon: LayoutDashboard },
   { href: "/admin/crawler-intel", label: "Crawler Intel",  icon: Radar          },
+  { href: "/admin/ai-ops",        label: "AI Ops",         icon: BrainCircuit   },
   { href: "/admin/health",        label: "Operations",     icon: Activity       },
 ];
 

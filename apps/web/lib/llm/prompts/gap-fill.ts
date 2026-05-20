@@ -219,7 +219,7 @@ export async function generateGapFill(input: GapFillInput): Promise<GapFillResul
       },
     });
     return result.response.text();
-  });
+  }, { operation: "resume_gap_fill" });
 
   const parsed = JSON.parse(text) as GapFillResult;
 

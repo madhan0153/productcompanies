@@ -113,7 +113,7 @@ export async function generateCoachPlan(ctx: CoachContext): Promise<CoachPlan> {
       },
     });
     return res.response.text();
-  });
+  }, { operation: "coach_plan" });
 
   const raw = JSON.parse(text) as CoachPlan;
   return {

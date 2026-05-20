@@ -122,7 +122,7 @@ export async function POST(req: NextRequest) {
           role_function: parsed.role_function_jd,
           responsibilities: parsed.responsibilities,
           team_context: parsed.team_context,
-        }));
+        }), "job_embedding");
       } catch (embedErr) {
         if (errors.length < 5) {
           logEvent("warn", "admin_parse_jd_embed_failed", {

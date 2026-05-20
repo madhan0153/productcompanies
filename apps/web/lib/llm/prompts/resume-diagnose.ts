@@ -231,7 +231,7 @@ export async function diagnoseResume(input: DiagnoseInput): Promise<DiagnoseResu
       },
     });
     return resp.response.text();
-  });
+  }, { operation: "resume_diagnosis" });
 
   const diagnosis = JSON.parse(text) as ResumeDiagnosis;
 

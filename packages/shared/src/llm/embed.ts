@@ -6,6 +6,11 @@
 // negligible for a per-user compute that already pulls every job row.
 
 import { GoogleGenerativeAI } from "@google/generative-ai";
+import {
+  runOpenAiCompatibleEmbedding,
+  shouldUseDeterministicFallback,
+} from "./provider-router";
+import type { LlmOperationId } from "./operations";
 
 // gemini-embedding-001 is the rename of the legacy text-embedding-004.
 // The old name 404s on v1beta now.
@@ -44,12 +49,66 @@ function rateLimitWaitMs(err: unknown): number {
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
+const FALLBACK_DIMS = DIMS;
+let deterministicFallbackLogged = false;
+
+function hashString(input: string): number {
+  let hash = 2166136261;
+  for (let i = 0; i < input.length; i++) {
+    hash ^= input.charCodeAt(i);
+    hash = Math.imul(hash, 16777619);
+  }
+  return hash >>> 0;
+}
+
+export function deterministicEmbedding(text: string): number[] {
+  const vector = new Array<number>(FALLBACK_DIMS).fill(0);
+  const tokens = text
+    .toLowerCase()
+    .replace(/[^a-z0-9+#.\- ]+/g, " ")
+    .split(/\s+/)
+    .filter((t) => t.length >= 2)
+    .slice(0, 1200);
+
+  for (const token of tokens) {
+    const h = hashString(token);
+    const idx = h % FALLBACK_DIMS;
+    const sign = (h & 1) === 0 ? 1 : -1;
+    vector[idx] += sign;
+  }
+
+  let norm = 0;
+  for (const v of vector) norm += v * v;
+  if (norm === 0) return [];
+  const scale = 1 / Math.sqrt(norm);
+  return vector.map((v) => Math.round(v * scale * 1_000_000) / 1_000_000);
+}
+
+function maybeLogDeterministicFallback(): void {
+  if (deterministicFallbackLogged) return;
+  deterministicFallbackLogged = true;
+  // eslint-disable-next-line no-console
+  console.warn("[llm-provider] embedding providers exhausted/unavailable; using deterministic hash vectors for this process");
+}
+
 /** Single embedding. ~768 floats. Cascades through model names + key rotation. */
-export async function embed(text: string): Promise<number[]> {
-  const keys = allKeys();
-  if (keys.length === 0) throw new Error("GEMINI_API_KEY not set");
+export async function embed(
+  text: string,
+  operation: Extract<LlmOperationId, "job_embedding" | "resume_embedding"> = "resume_embedding",
+): Promise<number[]> {
   const trimmed = text.replace(/\s+/g, " ").trim().slice(0, 8000);
   if (!trimmed) return [];
+
+  const keys = allKeys();
+  if (keys.length === 0) {
+    const external = await runOpenAiCompatibleEmbedding(operation, [trimmed]);
+    if (external?.[0]) return trim(external[0]);
+    if (shouldUseDeterministicFallback()) {
+      maybeLogDeterministicFallback();
+      return deterministicEmbedding(trimmed);
+    }
+    throw new Error("GEMINI_API_KEY not set");
+  }
 
   let lastErr: unknown;
   for (const modelName of MODEL_CASCADE) {
@@ -71,17 +130,34 @@ export async function embed(text: string): Promise<number[]> {
       }
     }
   }
+  const external = await runOpenAiCompatibleEmbedding(operation, [trimmed]);
+  if (external?.[0]) return trim(external[0]);
+  if (shouldUseDeterministicFallback()) {
+    maybeLogDeterministicFallback();
+    return deterministicEmbedding(trimmed);
+  }
   throw lastErr;
 }
 
 /** Batch embeddings — Gemini supports up to 100 contents per request.
  *  Used by the crawler post-parse step: 35 calls instead of 3,500. */
-export async function embedBatch(texts: string[]): Promise<number[][]> {
+export async function embedBatch(
+  texts: string[],
+  operation: Extract<LlmOperationId, "job_embedding" | "resume_embedding"> = "job_embedding",
+): Promise<number[][]> {
   if (texts.length === 0) return [];
-  const keys = allKeys();
-  if (keys.length === 0) throw new Error("GEMINI_API_KEY not set");
 
   const cleaned = texts.map((t) => t.replace(/\s+/g, " ").trim().slice(0, 8000) || " ");
+  const keys = allKeys();
+  if (keys.length === 0) {
+    const external = await runOpenAiCompatibleEmbedding(operation, cleaned);
+    if (external) return external.map(trim);
+    if (shouldUseDeterministicFallback()) {
+      maybeLogDeterministicFallback();
+      return cleaned.map(deterministicEmbedding);
+    }
+    throw new Error("GEMINI_API_KEY not set");
+  }
 
   let lastErr: unknown;
   for (const modelName of MODEL_CASCADE) {
@@ -107,6 +183,12 @@ export async function embedBatch(texts: string[]): Promise<number[][]> {
         }
       }
     }
+  }
+  const external = await runOpenAiCompatibleEmbedding(operation, cleaned);
+  if (external) return external.map(trim);
+  if (shouldUseDeterministicFallback()) {
+    maybeLogDeterministicFallback();
+    return cleaned.map(deterministicEmbedding);
   }
   throw lastErr;
 }

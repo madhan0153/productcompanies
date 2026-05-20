@@ -144,7 +144,7 @@ export async function parseResumePdf(pdfBase64: string): Promise<ParsedResume> {
       },
     });
     return result.response.text();
-  });
+  }, { operation: "resume_pdf_parse" });
 
   return JSON.parse(text) as ParsedResume;
 }

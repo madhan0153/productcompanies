@@ -22,6 +22,8 @@ import {
   type GenerativeModel,
   type Schema,
 } from "@google/generative-ai";
+import { createExternalGenerativeModel } from "./provider-router";
+import type { LlmOperationId } from "./operations";
 
 let _keyIndex = 0;
 
@@ -263,6 +265,12 @@ export interface RetryOptions {
   maxRateLimitWaitMs?: number;
   /** Override which key to start with (round-robin from this offset). */
   startKeyIndex?: number;
+  /**
+   * Operation id for privacy-aware external provider fallback. Gemini is still
+   * attempted first; this id decides whether OpenAI-compatible free providers
+   * may be used after Gemini keys/models are exhausted.
+   */
+  operation?: LlmOperationId;
 }
 
 /**
@@ -293,9 +301,6 @@ export async function runWithRetry<T>(
   }
 
   const keys = allKeys();
-  if (keys.length === 0) {
-    throw new LlmRunError({ kind: "auth", raw: "GEMINI_API_KEY is not set" });
-  }
 
   const startIdx = opts.startKeyIndex ?? _keyIndex;
   const maxWait = opts.maxRateLimitWaitMs ?? 60_000;
@@ -318,94 +323,105 @@ export async function runWithRetry<T>(
   // With 12 workers × 100 JDs and one early-dying key, that wasted ~50-100
   // requests. Now: first call learns it, all subsequent calls skip in O(1).
 
-  for (const modelName of cascade) {
-    let modelUnavailable = false;
-    let allKeysExhaustedForModel = true;
+  if (keys.length > 0) {
+    for (const modelName of cascade) {
+      let modelUnavailable = false;
+      let allKeysExhaustedForModel = true;
 
-    for (let attempt = 0; attempt < keys.length; attempt++) {
-      const keyIdx = (startIdx + attempt) % keys.length;
-      if (_processExhausted.has(exhaustedKey(modelName, keyIdx))) continue;
+      for (let attempt = 0; attempt < keys.length; attempt++) {
+        const keyIdx = (startIdx + attempt) % keys.length;
+        if (_processExhausted.has(exhaustedKey(modelName, keyIdx))) continue;
 
-      const key = keys[keyIdx];
-      const model = client(key).getGenerativeModel({ model: modelName });
-      attemptCount++;
-      try {
-        const result = await build(model);
-        // First-success-per-key diagnostic — proves each key index actually
-        // gets used AND lands on a separate quota counter. One log line per
-        // key per process lifetime; silent thereafter.
-        logKeyFirstUse(keyIdx, modelName, key);
-        _keyIndex = (keyIdx + 1) % keys.length;
-        return result;
-      } catch (err) {
-        const classified = classify(err);
-        lastError = classified;
+        const key = keys[keyIdx];
+        const model = client(key).getGenerativeModel({ model: modelName });
+        attemptCount++;
+        try {
+          const result = await build(model);
+          // First-success-per-key diagnostic — proves each key index actually
+          // gets used AND lands on a separate quota counter. One log line per
+          // key per process lifetime; silent thereafter.
+          logKeyFirstUse(keyIdx, modelName, key);
+          _keyIndex = (keyIdx + 1) % keys.length;
+          return result;
+        } catch (err) {
+          const classified = classify(err);
+          lastError = classified;
 
-        // AUTH = permanent error on this key; skip it for ALL models.
-        if (classified.kind === "auth") {
-          for (const m of cascade) _processExhausted.add(exhaustedKey(m, keyIdx));
-          maybeLogFullyDeadKey(keyIdx, cascade, key);
-          continue; // try next key
-        }
-
-        // QUOTA_DISABLED = daily quota for this (model × key). Mark this combo
-        // exhausted and try the next key — DON'T break out, the other keys
-        // may still have their own daily quota intact. This was the bug:
-        // before, one quota_disabled response would break the entire key
-        // loop, so we'd repeatedly hammer key 0 only.
-        if (classified.kind === "quota_disabled") {
-          // First time this (key × model) is marked dead in this process,
-          // log the raw Google error so the next run can be diagnosed
-          // from logs alone. Truncated to 240 chars to keep log lines
-          // readable; the full classification reason is included.
-          const combo = exhaustedKey(modelName, keyIdx);
-          if (!_quotaDisabledLogged.has(combo)) {
-            _quotaDisabledLogged.add(combo);
-            // eslint-disable-next-line no-console
-            console.log(
-              `[gemini-key] key #${keyIdx} (${maskKey(key)}) × ${modelName}: ` +
-              `marked exhausted (RPD). reason="${classified.raw.slice(0, 240).replace(/\s+/g, " ")}"`,
-            );
+          // AUTH = permanent error on this key; skip it for ALL models.
+          if (classified.kind === "auth") {
+            for (const m of cascade) _processExhausted.add(exhaustedKey(m, keyIdx));
+            maybeLogFullyDeadKey(keyIdx, cascade, key);
+            continue; // try next key
           }
-          _processExhausted.add(combo);
-          // Once this combo dies, check if the WHOLE key is now fully
-          // exhausted across the cascade and surface a summary line.
-          maybeLogFullyDeadKey(keyIdx, cascade, key);
-          continue;
-        }
 
-        // MODEL_UNAVAILABLE = whole model is gone (404). No point trying
-        // other keys on this model.
-        if (classified.kind === "model_unavailable") {
-          modelUnavailable = true;
-          for (let i = 0; i < keys.length; i++) _processExhausted.add(exhaustedKey(modelName, i));
-          break;
-        }
+          // QUOTA_DISABLED = daily quota for this (model × key). Mark this combo
+          // exhausted and try the next key — DON'T break out, the other keys
+          // may still have their own daily quota intact. This was the bug:
+          // before, one quota_disabled response would break the entire key
+          // loop, so we'd repeatedly hammer key 0 only.
+          if (classified.kind === "quota_disabled") {
+            // First time this (key × model) is marked dead in this process,
+            // log the raw Google error so the next run can be diagnosed
+            // from logs alone. Truncated to 240 chars to keep log lines
+            // readable; the full classification reason is included.
+            const combo = exhaustedKey(modelName, keyIdx);
+            if (!_quotaDisabledLogged.has(combo)) {
+              _quotaDisabledLogged.add(combo);
+              // eslint-disable-next-line no-console
+              console.log(
+                `[gemini-key] key #${keyIdx} (${maskKey(key)}) × ${modelName}: ` +
+                `marked exhausted (RPD). reason="${classified.raw.slice(0, 240).replace(/\s+/g, " ")}"`,
+              );
+            }
+            _processExhausted.add(combo);
+            // Once this combo dies, check if the WHOLE key is now fully
+            // exhausted across the cascade and surface a summary line.
+            maybeLogFullyDeadKey(keyIdx, cascade, key);
+            continue;
+          }
 
-        // RATE_LIMITED = per-minute throttle. Wait per server retry-after
-        // hint (capped) then try next key. The next key likely has its own
-        // RPM counter, so this is usually fast.
-        if (classified.kind === "rate_limited") {
+          // MODEL_UNAVAILABLE = whole model is gone (404). No point trying
+          // other keys on this model.
+          if (classified.kind === "model_unavailable") {
+            modelUnavailable = true;
+            for (let i = 0; i < keys.length; i++) _processExhausted.add(exhaustedKey(modelName, i));
+            break;
+          }
+
+          // RATE_LIMITED = per-minute throttle. Wait per server retry-after
+          // hint (capped) then try next key. The next key likely has its own
+          // RPM counter, so this is usually fast.
+          if (classified.kind === "rate_limited") {
+            allKeysExhaustedForModel = false;
+            const wait = classified.retryAfterMs;
+            if (totalWaited + wait <= maxWait) {
+              totalWaited += wait;
+              await sleep(wait);
+            }
+            continue;
+          }
+
+          // UNKNOWN error — don't burn other keys on it, but don't mark
+          // exhausted either. Try the next key with the same model.
           allKeysExhaustedForModel = false;
-          const wait = classified.retryAfterMs;
-          if (totalWaited + wait <= maxWait) {
-            totalWaited += wait;
-            await sleep(wait);
-          }
           continue;
         }
+      }
 
-        // UNKNOWN error — don't burn other keys on it, but don't mark
-        // exhausted either. Try the next key with the same model.
-        allKeysExhaustedForModel = false;
-        continue;
+      // Inter-model wait — gives the prior model's per-minute window a chance
+      // to recover before we hammer the next one with the same keys.
+      if (!modelUnavailable && lastError?.kind === "rate_limited" && !allKeysExhaustedForModel) {
+        await sleep(400);
       }
     }
+  }
 
-    // Inter-model wait — gives the prior model's per-minute window a chance
-    // to recover before we hammer the next one with the same keys.
-    if (!modelUnavailable && lastError?.kind === "rate_limited" && !allKeysExhaustedForModel) {
-      await sleep(400);
+  if (opts.operation) {
+    try {
+      const externalModel = createExternalGenerativeModel(opts.operation) as unknown as GenerativeModel;
+      return await build(externalModel);
+    } catch (err) {
+      lastError = classify(err);
     }
   }
 
@@ -415,6 +431,9 @@ export async function runWithRetry<T>(
   // crawler's parse.ts didn't recognise this as a quota signal and every
   // post-Amazon company in the 2026-05-17 run burned its entire parse list.
   if (attemptCount === 0) {
+    if (keys.length === 0) {
+      throw new LlmRunError({ kind: "auth", raw: "GEMINI_API_KEY is not set and no external provider fallback succeeded" });
+    }
     throw new LlmRunError({
       kind: "all_keys_exhausted",
       raw: `All ${cascade.length} model(s) × ${keys.length} key(s) were already marked exhausted in this process. ` +

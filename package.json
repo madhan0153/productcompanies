@@ -15,10 +15,12 @@
     "test:role-benchmarks": "tsx packages/shared/src/roles/taxonomy-benchmarks.ts",
     "test:security": "tsx apps/web/scripts/security-smoke.ts",
     "test:deploy-readiness": "tsx --require ./apps/web/scripts/loadenv.cjs apps/web/scripts/deployment-readiness.ts",
+    "test:llm-governance": "tsx apps/web/scripts/llm-governance-check.ts",
     "test:crawler-invariants": "tsx packages/crawler/source-invariants.ts",
     "test:crawler": "node --import tsx --test packages/crawler/__tests__/*.test.ts",
     "test:resilience": "node --import tsx --test apps/web/__tests__/admin/crawler-resilience.test.ts",
     "test:resume-mapper": "node --import tsx --test apps/web/__tests__/resume/json-mapper.test.ts",
+    "test:llm-runtime": "node --import tsx --test packages/shared/src/llm/*.test.ts",
     "capture-fixture": "tsx packages/crawler/capture-fixture.ts",
     "crawl": "pnpm --filter crawler start"
   },

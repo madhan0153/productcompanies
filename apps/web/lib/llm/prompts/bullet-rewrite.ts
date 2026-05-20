@@ -195,7 +195,7 @@ export async function rewriteBullets(input: RewriteInput): Promise<RewriteResult
       },
     });
     return resp.response.text();
-  });
+  }, { operation: "resume_bullet_rewrite" });
 
   // LLM may return risk_flag as string "" — parse as unknown first, then
   // sanitise. Allowed canonical values: null, "metric_inferred",

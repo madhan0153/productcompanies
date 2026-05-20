@@ -228,7 +228,7 @@ export async function generateTailoredResume(input: TailorInput): Promise<Tailor
       },
     });
     return res.response.text();
-  });
+  }, { operation: "tailored_resume" });
 
   const raw = JSON.parse(text) as TailoredResumeContent;
 

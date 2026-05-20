@@ -491,7 +491,7 @@ async function embedJobsBatched(
     while (attempt < 2 && vectors === null) {
       attempt++;
       try {
-        vectors = await embedBatch(texts);
+        vectors = await embedBatch(texts, "job_embedding");
       } catch (err) {
         lastErr = err;
         if (attempt < 2) {
@@ -512,7 +512,7 @@ async function embedJobsBatched(
       let singleOk = 0;
       for (const t of texts) {
         try {
-          const v = await embedBatch([t]);
+          const v = await embedBatch([t], "job_embedding");
           vectors.push(v[0] ?? []);
           if (v[0] && v[0].length > 0) singleOk++;
         } catch {

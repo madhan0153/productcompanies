@@ -419,7 +419,7 @@ export async function uploadAndParseResume(formData: FormData): Promise<UploadRe
 
       const dnaBreakdown = computeDnaBreakdown(parsed);
       const resumeSignature = computeResumeSignature(parsed);
-      const resumeEmbedding = await embed(buildResumeEmbedText(parsed));
+      const resumeEmbedding = await embed(buildResumeEmbedText(parsed), "resume_embedding");
       if (resumeEmbedding.length === 0) {
         throw new Error("Resume embedding returned no vector.");
       }

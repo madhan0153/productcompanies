@@ -2,6 +2,7 @@ import { runWithRetry, SchemaType, type Schema } from "@/lib/llm/gemini";
 import type { ParsedResume } from "./resume-parse";
 import type { ParsedJD } from "./jd-parse";
 import type { CompBracket } from "@/lib/insights/comp-percentiles";
+import { shouldUseDeterministicFallback } from "@prodmatch/shared";
 
 // Phase G — Fit Card.
 // Replaces the flat strengths/gaps/reasoning trio with a structured, opinionated
@@ -237,17 +238,23 @@ Respond as JSON matching the schema. No prose.`;
 }
 
 export async function generateFitCard(input: FitCardInput): Promise<FitCard> {
-  const text = await runWithRetry("light", async (model) => {
-    const res = await model.generateContent({
-      contents: [{ role: "user", parts: [{ text: buildPrompt(input) }] }],
-      generationConfig: {
-        responseMimeType: "application/json",
-        responseSchema: SCHEMA,
-        temperature: 0.25,
-      },
-    });
-    return res.response.text();
-  });
+  let text: string;
+  try {
+    text = await runWithRetry("light", async (model) => {
+      const res = await model.generateContent({
+        contents: [{ role: "user", parts: [{ text: buildPrompt(input) }] }],
+        generationConfig: {
+          responseMimeType: "application/json",
+          responseSchema: SCHEMA,
+          temperature: 0.25,
+        },
+      });
+      return res.response.text();
+    }, { operation: "fit_card" });
+  } catch (err) {
+    if (!shouldUseDeterministicFallback()) throw err;
+    return deterministicFitCard(input);
+  }
 
   const raw = JSON.parse(text) as Partial<FitCard>;
 
@@ -291,6 +298,66 @@ export async function generateFitCard(input: FitCardInput): Promise<FitCard> {
     })),
     // Sprint 3 Item 27/28 — surface the engine-supplied grounding so the UI
     // can show "from real market data" instead of "Gemini said so".
+    market_comp: input.marketComp ?? null,
+  };
+}
+
+function deterministicFitCard(input: FitCardInput): FitCard {
+  const resumeSkills = new Set(input.resume.tech_stack.map((s) => s.toLowerCase()));
+  const must = input.jd.must_have_skills.map((s) => s.toLowerCase());
+  const hits = must.filter((s) => resumeSkills.has(s));
+  const misses = must.filter((s) => !resumeSkills.has(s));
+  const years = input.candidate.years ?? input.resume.total_years_experience;
+  const minYears = input.jd.jd_min_years;
+  const functionMismatch = Boolean(
+    input.job.role_function &&
+    input.candidate.target_role_functions.length > 0 &&
+    !input.candidate.target_role_functions.includes(input.job.role_function),
+  );
+  const coverage = must.length === 0 ? 1 : hits.length / must.length;
+  const verdict: Verdict = functionMismatch
+    ? "off_target"
+    : minYears != null && years != null && years + 2 < minYears
+      ? "underqualified"
+      : coverage >= 0.8
+        ? "strong_fit"
+        : coverage >= 0.5
+          ? "stretch"
+          : "underqualified";
+  const market = input.marketComp;
+  const compNote = market
+    ? `Posted comp ${input.job.comp_lpa_max ? `tops at ${input.job.comp_lpa_max} LPA` : "is not disclosed"}; market p75 is ${market.p75} LPA.`
+    : "Posted and market compensation are limited; use recruiter screen to confirm range.";
+
+  return {
+    verdict,
+    one_liner: misses.length > 0
+      ? `Deterministic read: matches ${hits.length}/${must.length} must-haves; close ${misses.slice(0, 2).join(", ")}.`
+      : "Deterministic read: role and core skills look aligned.",
+    hard_blockers: misses.slice(0, 3).map((s) => `JD requires ${s}; resume evidence is weak.`),
+    soft_gaps: input.jd.nice_to_have_skills
+      .filter((s) => !resumeSkills.has(s.toLowerCase()))
+      .slice(0, 4)
+      .map((s) => `Nice-to-have ${s} is not clearly visible.`),
+    resume_tweaks: misses.slice(0, 3).map((s, idx) => ({
+      priority: (idx + 1) as 1 | 2 | 3,
+      suggestion: `Add a grounded bullet that shows hands-on ${s} impact, only if it is true.`,
+      why: `Closes JD must-have: ${s}`,
+    })),
+    level_read: {
+      band: minYears != null && years != null && years < minYears ? "under" : "at",
+      note: minYears != null && years != null
+        ? `Candidate has ${years} years against JD floor ${minYears}.`
+        : "JD level signal is incomplete; confirm with recruiter.",
+    },
+    comp_reality: {
+      note: compNote,
+      negotiate_to_lpa: market?.p75 ?? input.job.comp_lpa_max ?? null,
+    },
+    story_prompts: (must.length > 0 ? must : ["role ownership", "system design", "delivery impact"]).slice(0, 3).map((s) => ({
+      requirement: s.slice(0, 60),
+      prompt: `(LLM unavailable) Pick a real project proving ${s}; do not invent metrics.`,
+    })),
     market_comp: input.marketComp ?? null,
   };
 }

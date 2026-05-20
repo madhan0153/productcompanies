@@ -139,7 +139,7 @@ export async function extractResumeContent(pdfBase64: string): Promise<Extracted
       },
     });
     return result.response.text();
-  });
+  }, { operation: "resume_content_extract" });
 
   const parsed = JSON.parse(text) as ExtractedResumeContent;
   // Sanitise: drop empty/whitespace bullets so downstream pipelines don't
