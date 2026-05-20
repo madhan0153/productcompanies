@@ -612,9 +612,16 @@ create table if not exists public.resume_versions (
   product_dna_score   integer,
   dna_breakdown   jsonb,
   resume_signature text,
-  source          text not null default 'overwrite',  -- 'overwrite' | 'manual_revert'
+  source          text not null default 'overwrite',  -- 'overwrite' | 'manual_revert' | 'json_import' | 'editor'
   created_at      timestamptz not null default now()
 );
+
+-- JSON Resume v1.0.0 canonical copy (jsonresume.org schema). Optional column
+-- added in the Reactive-Resume-inspired interop layer. When present, this is
+-- the authoritative source for the editor + multi-template render; otherwise
+-- the mapper derives one from resume_parsed on the fly.
+alter table public.resume_versions
+  add column if not exists resume_json jsonb;
 
 create index if not exists idx_resume_versions_user
   on public.resume_versions(user_id, created_at desc);
