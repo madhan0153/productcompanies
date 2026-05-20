@@ -21,7 +21,8 @@
 //   - profiles.last_match_compute_at stamped on success
 
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
-import { computeRulesScore, inferRoleFunctionFromTitle } from "./score";
+import { computeRulesScore } from "./score";
+import { calibrateMatch, capScoreForVerdict } from "./calibrate";
 import { generateFitCard, type FitCard, type Verdict } from "@/lib/llm/prompts/fit-card";
 import { cosineSimilarity } from "@/lib/llm/embed";
 import type { ParsedResume } from "@/lib/llm/prompts/resume-parse";
@@ -112,86 +113,23 @@ export interface ComputeResult {
   duration_ms: number;
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Deterministic verdict
-// ─────────────────────────────────────────────────────────────────────────────
+// Calibration step (verdict + caps + visibility) lives in ./calibrate so it
+// can be unit-tested in isolation. The engine wires the calibrated result
+// into match rows + Fit Cards below.
 
-function deterministicVerdict(
-  score: number,
-  hardMismatch: boolean,
-  roleScore: number,
-  experienceScore: number,
-): Verdict {
-  if (hardMismatch) return "mismatch";
-  if (roleScore > 0 && roleScore <= 3 && score >= 55) return "off_target";
-  if (experienceScore <= 2) return "underqualified";
-  if (score >= 75) return "strong_fit";
-  if (score >= 55) return "stretch";
-  return "underqualified";
-}
-
-const VERDICT_SCORE_CAP: Record<Verdict, number> = {
-  strong_fit:     100,
-  stretch:        74,
-  underqualified: 49,
-  off_target:     44,
-  mismatch:       0,
-};
-
-function capScoreForVerdict(score: number, verdict: Verdict | null): number {
-  if (!verdict) return Math.max(0, Math.min(100, Math.round(score)));
-  return Math.max(0, Math.min(100, VERDICT_SCORE_CAP[verdict], Math.round(score)));
-}
-
-function isLowEvidenceJob(job: JobRow): boolean {
-  const descLen = job.description.trim().length;
-  const structuredSignals =
-    job.must_have_skills.length +
-    job.nice_to_have_skills.length +
-    job.tech_stack.length +
-    (job.jd_summary ? 1 : 0) +
-    (job.role_function_jd && job.role_function_jd !== "other" ? 1 : 0);
-  return job.quality_score < 60
-    || job.jd_parsed_at === null
-    || (descLen < 200 && structuredSignals < 2)
-    || /job description provided is empty|provided is empty|lacks specific details/i.test(job.jd_summary ?? "");
-}
-
-function hasRoleSignalConflict(job: JobRow): boolean {
-  const titleFunction = inferRoleFunctionFromTitle(job.title);
-  const jdFunction = job.role_function_jd;
-  if (!titleFunction || !jdFunction) return false;
-  if (jdFunction === "other") return true;
-  return titleFunction !== jdFunction;
-}
-
-function calibrateEnterpriseMatch(input: {
-  job: JobRow;
-  rules: ReturnType<typeof computeRulesScore>;
-  score: number;
-  verdict: Verdict;
-}): { score: number; verdict: Verdict; hidden_reason: string | null } {
-  if (input.rules.hardMismatch) {
-    return { score: 0, verdict: "mismatch", hidden_reason: input.rules.hardMismatchReason ?? "mismatch" };
-  }
-
-  let score = Math.round(Math.max(0, Math.min(100, input.score)));
-  let verdict = input.verdict;
-  let hidden_reason: string | null = null;
-
-  if (hasRoleSignalConflict(input.job)) {
-    score = Math.min(score, 39);
-    verdict = "mismatch";
-    hidden_reason = "role_signal_conflict";
-  } else if (isLowEvidenceJob(input.job)) {
-    score = Math.min(score, 39);
-    if (verdict === "strong_fit") verdict = "stretch";
-    hidden_reason = "low_quality_jd";
-  }
-
-  score = capScoreForVerdict(score, verdict);
-  if (verdict === "mismatch") hidden_reason = hidden_reason ?? "mismatch";
-  return { score, verdict, hidden_reason };
+function jobToCalibrateInput(job: JobRow): import("./calibrate").CalibrateJobInput {
+  return {
+    title:             job.title,
+    description:       job.description,
+    quality_score:     job.quality_score,
+    jd_parsed_at:      job.jd_parsed_at,
+    jd_summary:        job.jd_summary,
+    role_function_jd:  job.role_function_jd,
+    must_have_skills:  job.must_have_skills,
+    nice_to_have_skills: job.nice_to_have_skills,
+    tech_stack:        job.tech_stack,
+    is_likely_ghost:   job.is_likely_ghost,
+  };
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -422,19 +360,17 @@ export async function computeMatchesForUser(
       must_have_skills: job.must_have_skills,
     });
     const finalScore = Math.max(0, Math.min(100, rules.total + feedback_adjustment));
-    const baselineVerdict = deterministicVerdict(finalScore, rules.hardMismatch, rules.breakdown.role, rules.breakdown.experience);
-    const calibrated = calibrateEnterpriseMatch({
-      job,
+    const calibrated = calibrateMatch({
+      job: jobToCalibrateInput(job),
       rules,
-      score: finalScore,
-      verdict: baselineVerdict,
+      baseScore: finalScore,
     });
 
     return {
       job,
       rules,
       score: calibrated.score,
-      verdict: calibrated.verdict,
+      verdict: calibrated.verdict as Verdict,
       hidden_reason: calibrated.hidden_reason,
       existing,
       rescored: true,

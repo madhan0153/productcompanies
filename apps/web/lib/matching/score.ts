@@ -425,11 +425,18 @@ export function scoreTechV3(
   const merged = [...new Set([...fallbackJobTech, ...fromDescription])];
   if (merged.length === 0) return 5; // truly no signal — low partial credit
 
-  const a = resumeDomains;
+  // **JD-coverage** instead of symmetric Jaccard:
+  //   "What fraction of the JD's tech domains does the candidate cover?"
+  // Symmetric Jaccard punished broad-resume candidates: a QA with 8 domains
+  // vs a JD with 2 domains both perfectly covered would score
+  // inter/union = 2/8 = 0.25 → ~6/22. With coverage we score 2/2 = 1.0 →
+  // 22/22 because the candidate IS satisfying every requirement on the JD.
+  // The "is the candidate a generalist diluting the signal?" concern is
+  // already handled by the role_function dimension.
   const b = skillsToDomains(merged);
-  const inter = [...a].filter((d) => b.has(d)).length;
-  const union = new Set([...a, ...b]).size;
-  return Math.round((inter / union) * 22);
+  if (b.size === 0) return 5;
+  const covered = [...b].filter((d) => resumeDomains.has(d)).length;
+  return Math.round((covered / b.size) * 22);
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -782,13 +789,22 @@ export function applyHardCaps(input: {
   description: string | null | undefined;
   hasMustHaves: boolean;
   techCoverage: TechCoverage | null;
+  /** Set when the score's tech dimension already reflects strong overlap. */
+  techDimScore?: number;
+  /** Set when role function is directly matched (post-scaling). */
+  roleDimScore?: number;
 }): { total: number; reason: HardCapReason | null } {
   const triggered: HardCapReason[] = [];
 
-  // (1) Thin JD: too little signal to justify a high score, regardless of
-  //     what embeddings or fallback heuristics produced.
+  // (1) Thin JD: too little signal to justify a high score — UNLESS the
+  //     fallback path already extracted decent tech coverage AND the role
+  //     function is a direct match. In that case the candidate is clearly
+  //     aligned with what little signal we have, and capping at 70 would
+  //     burn a good role just because the upstream description was short.
   const descLen = (input.description ?? "").trim().length;
-  if (descLen > 0 && descLen < 200) {
+  const strongDespiteThin =
+    (input.techDimScore ?? 0) >= 18 && (input.roleDimScore ?? 0) >= 18;
+  if (descLen > 0 && descLen < 200 && !strongDespiteThin) {
     triggered.push("thin_jd");
   }
 
@@ -943,6 +959,8 @@ export function computeRulesScore(
     description:   job.description,
     hasMustHaves:  mustHaves.length > 0,
     techCoverage,
+    techDimScore:  tech,
+    roleDimScore:  role,
   });
 
   // Sprint 6 — Confidence (0–100) reflects data quality, not match quality.
