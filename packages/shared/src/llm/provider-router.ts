@@ -121,14 +121,21 @@ export function resetLlmProviderRuntimeState(): void {
   loggedProviderStates.clear();
 }
 
-/** Convert a preset to a runtime ProviderConfig if its env keys are set. */
+/**
+ * Convert a preset to a runtime ProviderConfig if it can be activated.
+ * A preset is activatable when:
+ *   - its `keysEnvVar` is set (and parses to at least one key), AND
+ *   - every `${ENV_VAR}` token in its baseUrl is also set in the env.
+ */
 function presetToConfig(preset: ProviderPreset): ProviderConfig | null {
   const apiKeys = readPresetKeys(preset);
   if (apiKeys.length === 0) return null;
+  const baseUrl = resolvePresetBaseUrl(preset);
+  if (baseUrl === null) return null;
   return {
     id: preset.id,
     label: preset.label,
-    baseUrl: resolvePresetBaseUrl(preset),
+    baseUrl,
     apiKeys,
     textModels: [...preset.textModels],
     embeddingModel: preset.embeddingModel,
@@ -416,7 +423,13 @@ export function describeLlmRuntime(): {
     id: string;
     label: string;
     keysEnvVar: string;
-    configured: boolean;
+    requiredEnvVars: string[];
+    /** "active" = in chain; "partial" = key set but template var missing;
+     *  "idle" = no key set. */
+    state: "active" | "partial" | "idle";
+    /** Env vars referenced but currently unset. Empty when state==="active". */
+    missingEnvVars: string[];
+    embeddingsOnly: boolean;
   }>;
   operations: Array<{
     id: string;
@@ -446,12 +459,28 @@ export function describeLlmRuntime(): {
 
   return {
     providers,
-    presets: PROVIDER_PRESETS.map((p) => ({
-      id: p.id,
-      label: p.label,
-      keysEnvVar: p.keysEnvVar,
-      configured: configured.has(p.id),
-    })),
+    presets: PROVIDER_PRESETS.map((p) => {
+      const hasKey = readPresetKeys(p).length > 0;
+      const baseUrl = resolvePresetBaseUrl(p);
+      const requiredEnvVars = [p.keysEnvVar, ...(p.requiredEnvVars ?? [])];
+      const missingEnvVars = requiredEnvVars.filter((v) => {
+        const value = process.env[v];
+        return value == null || value.trim() === "";
+      });
+      let state: "active" | "partial" | "idle";
+      if (configured.has(p.id)) state = "active";
+      else if (hasKey && baseUrl === null) state = "partial";
+      else state = "idle";
+      return {
+        id: p.id,
+        label: p.label,
+        keysEnvVar: p.keysEnvVar,
+        requiredEnvVars,
+        state,
+        missingEnvVars,
+        embeddingsOnly: p.textModels.length === 0,
+      };
+    }),
     operations: Object.values(LLM_OPERATION_POLICIES).map((policy) => ({
       id: policy.id,
       label: policy.label,

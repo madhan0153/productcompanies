@@ -49,16 +49,18 @@ if (undeclaredFallback.length > 0) {
   );
 }
 
-// Presets must each declare a model cascade + key env var.
+// Presets must each declare either text models OR an embedding model, plus
+// a key env var. Embedding-only presets (Voyage, Jina) are valid — they're
+// used by runOpenAiCompatibleEmbedding and skipped by the text router.
 for (const preset of PROVIDER_PRESETS) {
-  if (preset.textModels.length === 0) {
-    throw new Error(`Provider preset '${preset.id}' has no textModels`);
+  if (preset.textModels.length === 0 && preset.embeddingModel === null) {
+    throw new Error(`Provider preset '${preset.id}' has neither text models nor an embedding model`);
   }
   if (!preset.keysEnvVar) {
     throw new Error(`Provider preset '${preset.id}' has no keysEnvVar`);
   }
-  if (!preset.baseUrl.startsWith("http")) {
-    throw new Error(`Provider preset '${preset.id}' baseUrl must be absolute`);
+  if (!preset.baseUrl.startsWith("http") && !preset.baseUrl.startsWith("${")) {
+    throw new Error(`Provider preset '${preset.id}' baseUrl must be absolute or templated`);
   }
 }
 
