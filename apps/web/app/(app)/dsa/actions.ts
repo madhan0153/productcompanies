@@ -4,9 +4,12 @@ import { revalidatePath } from "next/cache";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { checkRateLimit, userActionKey } from "@/lib/security/rate-limit";
 import {
+  DSA_CATALOG,
   getDsaLearningGuide,
   getDsaProblemBySlug,
   pickNextDsaProblem,
+  planDsaReview,
+  type DsaConfidence,
   type DsaPattern,
   type DsaProblem,
 } from "@prodmatch/shared";
@@ -88,6 +91,86 @@ export async function getTodayDispatchAction(): Promise<ActionResult<TodayDispat
     };
   } catch {
     return { ok: false, error: "Could not pick today's problem. Please try again shortly." };
+  }
+}
+
+const VALID_CONFIDENCE: DsaConfidence[] = ["got_it", "review", "confused"];
+const VALID_SLUGS = new Set(DSA_CATALOG.map((p) => p.slug));
+
+export type DsaReviewRow = {
+  problem_slug: string;
+  confidence: DsaConfidence;
+  next_review_at: string;
+  repetitions: number;
+};
+
+export async function rateDsaConfidenceAction(input: {
+  problem_slug: string;
+  confidence: DsaConfidence;
+}): Promise<ActionResult<DsaReviewRow>> {
+  try {
+    if (!VALID_SLUGS.has(input.problem_slug)) {
+      return { ok: false, error: "Unknown problem." };
+    }
+    if (!VALID_CONFIDENCE.includes(input.confidence)) {
+      return { ok: false, error: "Invalid confidence rating." };
+    }
+
+    const supabase = await createSupabaseServerClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return { ok: false, error: "Sign in required." };
+
+    const rate = checkRateLimit({ key: userActionKey(user.id, "dsa_rate"), limit: 120, windowMs: 60 * 60_000 });
+    if (!rate.ok) return { ok: false, error: "Too many rating updates this hour. Try again later." };
+
+    // Read existing repetitions so the curve advances correctly.
+    const { data: existing } = await (supabase
+      .from("dsa_user_progress")
+      .select("repetitions")
+      .eq("user_id", user.id)
+      .eq("problem_slug", input.problem_slug)
+      .maybeSingle() as unknown as Promise<{ data: { repetitions: number } | null }>);
+
+    const schedule = planDsaReview({
+      confidence: input.confidence,
+      currentRepetitions: existing?.repetitions ?? 1,
+    });
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const nextReview = new Date(today);
+    nextReview.setDate(nextReview.getDate() + schedule.nextOffsetDays);
+    const todayIso = today.toISOString().slice(0, 10);
+    const nextReviewIso = nextReview.toISOString().slice(0, 10);
+
+    const { error } = await (supabase
+      .from("dsa_user_progress")
+      .upsert({
+        user_id: user.id,
+        problem_slug: input.problem_slug,
+        confidence: input.confidence,
+        last_reviewed_on: todayIso,
+        repetitions: schedule.nextRepetitions,
+        next_review_at: nextReviewIso,
+        updated_at: new Date().toISOString(),
+      } as unknown as never, { onConflict: "user_id,problem_slug" }) as unknown as Promise<{
+        error: { message: string } | null;
+      }>);
+
+    if (error) return { ok: false, error: "Could not save your rating." };
+
+    revalidatePath("/dsa");
+    return {
+      ok: true,
+      data: {
+        problem_slug: input.problem_slug,
+        confidence: input.confidence,
+        next_review_at: nextReviewIso,
+        repetitions: schedule.nextRepetitions,
+      },
+    };
+  } catch {
+    return { ok: false, error: "Could not save your rating. Please try again." };
   }
 }
 

@@ -13,8 +13,11 @@ import {
   DSA_PATTERNS_DISPLAY,
   getDsaLearningGuide,
   getDsaProblemBySlug,
+  type DsaConfidence,
 } from "@prodmatch/shared";
+import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { cn } from "@/lib/utils";
+import { ConfidenceRating } from "../confidence-rating";
 import { RevealSections } from "./reveal-sections";
 
 export const dynamic = "force-dynamic";
@@ -36,6 +39,7 @@ export default async function DsaProblemPage({ params }: { params: Promise<{ slu
 
   const guide = getDsaLearningGuide(problem);
   const similar = guide.similarSlugs.map(getDsaProblemBySlug).filter(Boolean);
+  const progress = await loadDsaProgress(problem.slug);
 
   return (
     <div className="mx-auto max-w-3xl space-y-5">
@@ -93,6 +97,12 @@ export default async function DsaProblemPage({ params }: { params: Promise<{ slu
 
       <RevealSections guide={guide} />
 
+      <ConfidenceRating
+        problemSlug={problem.slug}
+        initialConfidence={progress?.confidence ?? null}
+        initialNextReview={progress?.next_review_at ?? null}
+      />
+
       {guide.pitfalls.length > 0 && (
         <LessonBlock icon={<Target className="h-4 w-4" />} title="Common Mistakes">
           <ul className="space-y-1.5">
@@ -125,6 +135,27 @@ export default async function DsaProblemPage({ params }: { params: Promise<{ slu
       )}
     </div>
   );
+}
+
+async function loadDsaProgress(
+  slug: string,
+): Promise<{ confidence: DsaConfidence; next_review_at: string } | null> {
+  try {
+    const supabase = await createSupabaseServerClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return null;
+    const { data } = await (supabase
+      .from("dsa_user_progress")
+      .select("confidence, next_review_at")
+      .eq("user_id", user.id)
+      .eq("problem_slug", slug)
+      .maybeSingle() as unknown as Promise<{
+        data: { confidence: DsaConfidence; next_review_at: string } | null;
+      }>);
+    return data ?? null;
+  } catch {
+    return null;
+  }
 }
 
 function LessonBlock({ icon, title, children }: { icon: React.ReactNode; title: string; children: React.ReactNode }) {

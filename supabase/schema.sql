@@ -1290,6 +1290,68 @@ end $$;
 
 
 -- -----------------------------------------------------------------------------
+-- DSA: per-(user, problem) spaced-repetition progress.
+-- After marking a problem done, the learner self-rates mastery
+-- (got_it / review / confused). Confidence drives next_review_at so we
+-- can resurface problems before they're forgotten. Owner-scoped via RLS.
+-- -----------------------------------------------------------------------------
+do $$ begin
+  create type dsa_confidence as enum ('got_it', 'review', 'confused');
+exception when duplicate_object then null; end $$;
+
+create table if not exists public.dsa_user_progress (
+  user_id          uuid not null references auth.users(id) on delete cascade,
+  problem_slug     text not null,
+  confidence       dsa_confidence not null default 'review',
+  /** Day the learner last reviewed (last "Mark Done" + rating). */
+  last_reviewed_on date not null default current_date,
+  /** Repetition count; informs spacing curve (1d → 3d → 7d → 21d). */
+  repetitions      smallint not null default 1,
+  /** When to nudge this problem back into the carousel. */
+  next_review_at   date not null default (current_date + interval '3 days'),
+  created_at       timestamptz not null default now(),
+  updated_at       timestamptz not null default now(),
+  primary key (user_id, problem_slug)
+);
+
+create index if not exists idx_dsa_user_progress_review_due
+  on public.dsa_user_progress(user_id, next_review_at);
+
+alter table public.dsa_user_progress enable row level security;
+do $$ begin
+  if not exists (
+    select 1 from pg_policies
+    where schemaname = 'public' and tablename = 'dsa_user_progress'
+      and policyname = 'dsa_user_progress_select_own'
+  ) then
+    create policy dsa_user_progress_select_own on public.dsa_user_progress
+      for select to authenticated using (auth.uid() = user_id);
+  end if;
+end $$;
+do $$ begin
+  if not exists (
+    select 1 from pg_policies
+    where schemaname = 'public' and tablename = 'dsa_user_progress'
+      and policyname = 'dsa_user_progress_insert_own'
+  ) then
+    create policy dsa_user_progress_insert_own on public.dsa_user_progress
+      for insert to authenticated with check (auth.uid() = user_id);
+  end if;
+end $$;
+do $$ begin
+  if not exists (
+    select 1 from pg_policies
+    where schemaname = 'public' and tablename = 'dsa_user_progress'
+      and policyname = 'dsa_user_progress_update_own'
+  ) then
+    create policy dsa_user_progress_update_own on public.dsa_user_progress
+      for update to authenticated using (auth.uid() = user_id)
+      with check (auth.uid() = user_id);
+  end if;
+end $$;
+
+
+-- -----------------------------------------------------------------------------
 -- 5. updated_at TRIGGERS  (drop-then-create for idempotency)
 -- -----------------------------------------------------------------------------
 do $$

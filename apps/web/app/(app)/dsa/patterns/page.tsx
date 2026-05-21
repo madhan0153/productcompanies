@@ -9,6 +9,7 @@ import {
   type DsaProblem,
 } from "@prodmatch/shared";
 import { cn } from "@/lib/utils";
+import { PatternAnimation } from "./pattern-animations";
 
 export const metadata: Metadata = { title: "Patterns · DSA Practice" };
 export const dynamic = "force-static";
@@ -67,6 +68,8 @@ export default function DsaPatternsPage() {
                   {problems.length}
                 </span>
               </header>
+
+              <PatternAnimation pattern={item.pattern} />
 
               <ul className="mt-3 space-y-1.5">
                 {problems.map((problem) => (

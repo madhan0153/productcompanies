@@ -3,7 +3,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { Brain, Clock3, Layers, Target } from "lucide-react";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
-import { DsaClient, type DsaHistoryRow } from "./dsa-client";
+import { DsaClient, type DsaHistoryRow, type DsaProgressRow } from "./dsa-client";
 
 export const metadata: Metadata = { title: "DSA Practice · ProdMatch" };
 export const dynamic = "force-dynamic";
@@ -13,9 +13,10 @@ export default async function DsaPage() {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect("/auth/login");
 
-  const [profile, history] = await Promise.all([
+  const [profile, history, progress] = await Promise.all([
     loadProfileResumeState(supabase, user.id),
     loadDsaHistory(supabase, user.id),
+    loadDsaProgressRows(supabase, user.id),
   ]);
 
   const hasResume = Boolean(profile?.resume_parsed);
@@ -54,7 +55,7 @@ export default async function DsaPage() {
         </Link>
       </header>
 
-      <DsaClient history={history ?? []} hasResume={hasResume} />
+      <DsaClient history={history ?? []} progress={progress ?? []} hasResume={hasResume} />
     </div>
   );
 }
@@ -85,7 +86,24 @@ async function loadDsaHistory(
       .select("day, problem_slug, personalised_note, is_complete")
       .eq("user_id", userId)
       .order("day", { ascending: false })
-      .limit(45) as unknown as Promise<{ data: DsaHistoryRow[] | null }>);
+      .limit(60) as unknown as Promise<{ data: DsaHistoryRow[] | null }>);
+    return data ?? [];
+  } catch {
+    return [];
+  }
+}
+
+async function loadDsaProgressRows(
+  supabase: Awaited<ReturnType<typeof createSupabaseServerClient>>,
+  userId: string,
+): Promise<DsaProgressRow[]> {
+  try {
+    const { data } = await (supabase
+      .from("dsa_user_progress")
+      .select("problem_slug, confidence, next_review_at, last_reviewed_on, repetitions")
+      .eq("user_id", userId)
+      .order("next_review_at", { ascending: true })
+      .limit(200) as unknown as Promise<{ data: DsaProgressRow[] | null }>);
     return data ?? [];
   } catch {
     return [];

@@ -5,12 +5,26 @@ import {
   type DsaProblem,
 } from "./dsa-catalog";
 
+export type DsaCodeLang = "typescript" | "python" | "java";
+
+export const DSA_CODE_LANGS: readonly DsaCodeLang[] = ["typescript", "python", "java"] as const;
+
+export const DSA_CODE_LANG_LABEL: Record<DsaCodeLang, string> = {
+  typescript: "TypeScript",
+  python: "Python",
+  java: "Java",
+};
+
 export interface DsaLearningGuide {
   prompt: string;
   examples: string[];
   approach: string[];
   solution: string[];
+  /** Legacy single-language code; kept for problems that only ship TS. */
   code?: string;
+  /** Multi-language canonical solutions (TS / Py / Java). Optional per
+   *  problem; the detail page tabs only what is present. */
+  codeByLang?: Partial<Record<DsaCodeLang, string>>;
   complexity: string;
   whyItMatters: string;
   pitfalls: string[];
@@ -60,7 +74,8 @@ const GUIDE_OVERRIDES: Record<string, Partial<DsaLearningGuide>> = {
       "Check before inserting the current number so the same element is never reused.",
       "Return as soon as a pair is found.",
     ],
-    code: `function twoSum(nums: number[], target: number): number[] {
+    codeByLang: {
+      typescript: `function twoSum(nums: number[], target: number): number[] {
   const seen = new Map<number, number>();
 
   for (let i = 0; i < nums.length; i++) {
@@ -72,6 +87,32 @@ const GUIDE_OVERRIDES: Record<string, Partial<DsaLearningGuide>> = {
 
   return [];
 }`,
+      python: `def two_sum(nums: list[int], target: int) -> list[int]:
+    seen: dict[int, int] = {}
+
+    for i, value in enumerate(nums):
+        need = target - value
+        if need in seen:
+            return [seen[need], i]
+        seen[value] = i
+
+    return []`,
+      java: `class Solution {
+    public int[] twoSum(int[] nums, int target) {
+        Map<Integer, Integer> seen = new HashMap<>();
+
+        for (int i = 0; i < nums.length; i++) {
+            int need = target - nums[i];
+            if (seen.containsKey(need)) {
+                return new int[] { seen.get(need), i };
+            }
+            seen.put(nums[i], i);
+        }
+
+        return new int[0];
+    }
+}`,
+    },
     complexity: "Time O(n), space O(n).",
     pitfalls: ["Do not sort if the question asks for original indices.", "Check complement before insert to avoid reusing one element."],
     similarSlugs: ["valid-anagram", "top-k-frequent-elements", "longest-consecutive-sequence"],
@@ -87,7 +128,8 @@ const GUIDE_OVERRIDES: Record<string, Partial<DsaLearningGuide>> = {
       "If any count goes negative or remains positive, the strings are not anagrams.",
     ],
     solution: ["Use a frequency map or fixed-size array.", "One pass adds counts; one pass subtracts counts.", "All final counts must be zero."],
-    code: `function isAnagram(s: string, t: string): boolean {
+    codeByLang: {
+      typescript: `function isAnagram(s: string, t: string): boolean {
   if (s.length !== t.length) return false;
   const counts = new Map<string, number>();
 
@@ -100,6 +142,37 @@ const GUIDE_OVERRIDES: Record<string, Partial<DsaLearningGuide>> = {
 
   return true;
 }`,
+      python: `def is_anagram(s: str, t: str) -> bool:
+    if len(s) != len(t):
+        return False
+
+    counts: dict[str, int] = {}
+    for ch in s:
+        counts[ch] = counts.get(ch, 0) + 1
+    for ch in t:
+        if counts.get(ch, 0) == 0:
+            return False
+        counts[ch] -= 1
+
+    return True`,
+      java: `class Solution {
+    public boolean isAnagram(String s, String t) {
+        if (s.length() != t.length()) return false;
+        Map<Character, Integer> counts = new HashMap<>();
+
+        for (char ch : s.toCharArray()) {
+            counts.merge(ch, 1, Integer::sum);
+        }
+        for (char ch : t.toCharArray()) {
+            int next = counts.getOrDefault(ch, 0) - 1;
+            if (next < 0) return false;
+            counts.put(ch, next);
+        }
+
+        return true;
+    }
+}`,
+    },
     complexity: "Time O(n), space O(k) where k is unique characters.",
     pitfalls: ["Length check saves work.", "Unicode assumptions matter; use a map unless lowercase English is guaranteed."],
     similarSlugs: ["group-anagrams", "two-sum"],
@@ -115,7 +188,8 @@ const GUIDE_OVERRIDES: Record<string, Partial<DsaLearningGuide>> = {
       "Then update the minimum price if today is cheaper.",
     ],
     solution: ["One pass is enough because sell must happen after buy.", "The best buy for any day is the minimum price before that day."],
-    code: `function maxProfit(prices: number[]): number {
+    codeByLang: {
+      typescript: `function maxProfit(prices: number[]): number {
   let minPrice = Infinity;
   let best = 0;
 
@@ -126,6 +200,29 @@ const GUIDE_OVERRIDES: Record<string, Partial<DsaLearningGuide>> = {
 
   return best;
 }`,
+      python: `def max_profit(prices: list[int]) -> int:
+    min_price = float("inf")
+    best = 0
+
+    for price in prices:
+        best = max(best, price - min_price)
+        min_price = min(min_price, price)
+
+    return best`,
+      java: `class Solution {
+    public int maxProfit(int[] prices) {
+        int minPrice = Integer.MAX_VALUE;
+        int best = 0;
+
+        for (int price : prices) {
+            best = Math.max(best, price - minPrice);
+            minPrice = Math.min(minPrice, price);
+        }
+
+        return best;
+    }
+}`,
+    },
     complexity: "Time O(n), space O(1).",
     pitfalls: ["Do not allow selling before buying.", "Return 0 when no profitable trade exists."],
     similarSlugs: ["longest-substring-without-repeating", "minimum-window-substring"],
@@ -141,7 +238,8 @@ const GUIDE_OVERRIDES: Record<string, Partial<DsaLearningGuide>> = {
       "At the end, the stack must be empty.",
     ],
     solution: ["Use stack order because the most recent opener closes first.", "A mismatch or empty pop means invalid."],
-    code: `function isValid(s: string): boolean {
+    codeByLang: {
+      typescript: `function isValid(s: string): boolean {
   const stack: string[] = [];
   const pairs: Record<string, string> = { ")": "(", "]": "[", "}": "{" };
 
@@ -152,6 +250,35 @@ const GUIDE_OVERRIDES: Record<string, Partial<DsaLearningGuide>> = {
 
   return stack.length === 0;
 }`,
+      python: `def is_valid(s: str) -> bool:
+    stack: list[str] = []
+    pairs = {")": "(", "]": "[", "}": "{"}
+
+    for ch in s:
+        if ch in "([{":
+            stack.append(ch)
+        else:
+            if not stack or stack.pop() != pairs[ch]:
+                return False
+
+    return not stack`,
+      java: `class Solution {
+    public boolean isValid(String s) {
+        Deque<Character> stack = new ArrayDeque<>();
+        Map<Character, Character> pairs = Map.of(')', '(', ']', '[', '}', '{');
+
+        for (char ch : s.toCharArray()) {
+            if (ch == '(' || ch == '[' || ch == '{') {
+                stack.push(ch);
+            } else if (stack.isEmpty() || stack.pop() != pairs.get(ch)) {
+                return false;
+            }
+        }
+
+        return stack.isEmpty();
+    }
+}`,
+    },
     complexity: "Time O(n), space O(n).",
     pitfalls: ["A leftover opener at the end is invalid.", "A closer with an empty stack is invalid."],
     similarSlugs: ["daily-temperatures", "car-fleet"],
@@ -167,6 +294,55 @@ const GUIDE_OVERRIDES: Record<string, Partial<DsaLearningGuide>> = {
       "Move previous and current forward until current is null.",
     ],
     solution: ["Iteratively reverse one edge at a time.", "The previous pointer is the new head after the loop."],
+    codeByLang: {
+      typescript: `class ListNode { val = 0; next: ListNode | null = null; }
+
+function reverseList(head: ListNode | null): ListNode | null {
+  let prev: ListNode | null = null;
+  let curr = head;
+
+  while (curr !== null) {
+    const next = curr.next;
+    curr.next = prev;
+    prev = curr;
+    curr = next;
+  }
+
+  return prev;
+}`,
+      python: `class ListNode:
+    def __init__(self, val: int = 0, nxt: "ListNode | None" = None):
+        self.val = val
+        self.next = nxt
+
+
+def reverse_list(head: ListNode | None) -> ListNode | None:
+    prev: ListNode | None = None
+    curr = head
+
+    while curr is not None:
+        nxt = curr.next
+        curr.next = prev
+        prev = curr
+        curr = nxt
+
+    return prev`,
+      java: `class Solution {
+    public ListNode reverseList(ListNode head) {
+        ListNode prev = null;
+        ListNode curr = head;
+
+        while (curr != null) {
+            ListNode next = curr.next;
+            curr.next = prev;
+            prev = curr;
+            curr = next;
+        }
+
+        return prev;
+    }
+}`,
+    },
     complexity: "Time O(n), space O(1).",
     pitfalls: ["Save next before rewiring.", "Return previous, not current, after the loop."],
     similarSlugs: ["merge-two-sorted-lists", "linked-list-cycle", "reorder-list"],
@@ -182,7 +358,8 @@ const GUIDE_OVERRIDES: Record<string, Partial<DsaLearningGuide>> = {
       "Continue scanning for the next unvisited land cell.",
     ],
     solution: ["Use DFS/BFS flood fill.", "Visited can be a set or in-place marking if mutation is allowed."],
-    code: `function numIslands(grid: string[][]): number {
+    codeByLang: {
+      typescript: `function numIslands(grid: string[][]): number {
   const rows = grid.length;
   const cols = grid[0]?.length ?? 0;
   let count = 0;
@@ -204,6 +381,53 @@ const GUIDE_OVERRIDES: Record<string, Partial<DsaLearningGuide>> = {
 
   return count;
 }`,
+      python: `def num_islands(grid: list[list[str]]) -> int:
+    if not grid:
+        return 0
+    rows, cols = len(grid), len(grid[0])
+    count = 0
+
+    def dfs(r: int, c: int) -> None:
+        if r < 0 or c < 0 or r >= rows or c >= cols or grid[r][c] != "1":
+            return
+        grid[r][c] = "0"
+        dfs(r + 1, c); dfs(r - 1, c); dfs(r, c + 1); dfs(r, c - 1)
+
+    for r in range(rows):
+        for c in range(cols):
+            if grid[r][c] == "1":
+                count += 1
+                dfs(r, c)
+
+    return count`,
+      java: `class Solution {
+    public int numIslands(char[][] grid) {
+        int rows = grid.length;
+        int cols = grid[0].length;
+        int count = 0;
+
+        for (int r = 0; r < rows; r++) {
+            for (int c = 0; c < cols; c++) {
+                if (grid[r][c] == '1') {
+                    count++;
+                    dfs(grid, r, c, rows, cols);
+                }
+            }
+        }
+
+        return count;
+    }
+
+    private void dfs(char[][] grid, int r, int c, int rows, int cols) {
+        if (r < 0 || c < 0 || r >= rows || c >= cols || grid[r][c] != '1') return;
+        grid[r][c] = '0';
+        dfs(grid, r + 1, c, rows, cols);
+        dfs(grid, r - 1, c, rows, cols);
+        dfs(grid, r, c + 1, rows, cols);
+        dfs(grid, r, c - 1, rows, cols);
+    }
+}`,
+    },
     complexity: "Time O(rows * cols), space O(rows * cols) worst-case recursion.",
     pitfalls: ["Mark visited immediately to avoid loops.", "Use only four directions unless diagonals are explicitly allowed."],
     similarSlugs: ["rotting-oranges", "clone-graph", "course-schedule"],
@@ -219,7 +443,8 @@ const GUIDE_OVERRIDES: Record<string, Partial<DsaLearningGuide>> = {
       "Otherwise append it as a new disjoint interval.",
     ],
     solution: ["Sorting creates local adjacency, so only the previous merged interval matters."],
-    code: `function merge(intervals: number[][]): number[][] {
+    codeByLang: {
+      typescript: `function merge(intervals: number[][]): number[][] {
   intervals.sort((a, b) => a[0]! - b[0]!);
   const merged: number[][] = [];
 
@@ -231,6 +456,36 @@ const GUIDE_OVERRIDES: Record<string, Partial<DsaLearningGuide>> = {
 
   return merged;
 }`,
+      python: `def merge(intervals: list[list[int]]) -> list[list[int]]:
+    intervals.sort(key=lambda pair: pair[0])
+    merged: list[list[int]] = []
+
+    for current in intervals:
+        if not merged or current[0] > merged[-1][1]:
+            merged.append(list(current))
+        else:
+            merged[-1][1] = max(merged[-1][1], current[1])
+
+    return merged`,
+      java: `class Solution {
+    public int[][] merge(int[][] intervals) {
+        Arrays.sort(intervals, (a, b) -> Integer.compare(a[0], b[0]));
+        List<int[]> merged = new ArrayList<>();
+
+        for (int[] current : intervals) {
+            if (merged.isEmpty() || current[0] > merged.get(merged.size() - 1)[1]) {
+                merged.add(new int[] { current[0], current[1] });
+            } else {
+                merged.get(merged.size() - 1)[1] = Math.max(
+                    merged.get(merged.size() - 1)[1], current[1]
+                );
+            }
+        }
+
+        return merged.toArray(new int[0][]);
+    }
+}`,
+    },
     complexity: "Time O(n log n), space O(n) for output.",
     pitfalls: ["Sort first.", "Touching intervals may count as overlap depending on inclusive boundaries; LeetCode uses inclusive ranges."],
     similarSlugs: ["insert-interval", "non-overlapping-intervals"],
@@ -246,7 +501,8 @@ export function getDsaLearningGuide(problem: DsaProblem): DsaLearningGuide {
     examples: override.examples ?? pattern.examples,
     approach: override.approach ?? pattern.approach,
     solution: override.solution ?? pattern.solution,
-    code: override.code,
+    code: override.code ?? override.codeByLang?.typescript,
+    codeByLang: override.codeByLang,
     complexity: override.complexity ?? pattern.complexity,
     whyItMatters: override.whyItMatters ?? pattern.whyItMatters,
     pitfalls: override.pitfalls ?? pattern.pitfalls,
@@ -336,4 +592,54 @@ function defaultMinutes(difficulty: DsaProblem["difficulty"]): number {
   if (difficulty === "easy") return 20;
   if (difficulty === "medium") return 35;
   return 50;
+}
+
+// ── Spaced repetition (SM-2-lite) ───────────────────────────────────────────
+// Three confidence buckets keep the UX simple. The scheduler is intentionally
+// boring: confidence + repetitions -> a day offset on a fixed curve. We avoid
+// SM-2's full ease-factor math because a beginner DSA learner does not need
+// 5-decimal precision, and the simpler curve is easier to debug.
+
+export type DsaConfidence = "got_it" | "review" | "confused";
+
+export const DSA_CONFIDENCE_LABEL: Record<DsaConfidence, string> = {
+  got_it: "Got it",
+  review: "Review later",
+  confused: "Need more work",
+};
+
+export const DSA_CONFIDENCE_HINT: Record<DsaConfidence, string> = {
+  got_it: "Nice. We'll resurface this in about 3 weeks.",
+  review: "We'll bring this back in a few days.",
+  confused: "We'll show this again tomorrow with a refresher.",
+};
+
+const REVIEW_CURVE: Record<DsaConfidence, readonly number[]> = {
+  // Day offsets indexed by repetitions - 1 (clamped to last bucket).
+  got_it:   [3, 7, 14, 21, 30],
+  review:   [2, 4, 8, 14, 21],
+  confused: [1, 2, 4, 7, 14],
+};
+
+export interface DsaReviewSchedule {
+  /** Day-offset to add to today to produce the next-review date. */
+  nextOffsetDays: number;
+  /** Updated repetition count (current + 1, capped). */
+  nextRepetitions: number;
+}
+
+/**
+ * Pure scheduling function. Caller adds nextOffsetDays to today's date and
+ * writes the result + nextRepetitions back to dsa_user_progress.
+ */
+export function planDsaReview(input: {
+  confidence: DsaConfidence;
+  currentRepetitions: number;
+}): DsaReviewSchedule {
+  const curve = REVIEW_CURVE[input.confidence];
+  const reps = Math.max(1, Math.min(input.currentRepetitions, curve.length));
+  const nextRepetitions = Math.min(reps + 1, curve.length);
+  // Read curve at index (reps - 1) so a fresh problem (reps = 1) uses curve[0].
+  const offset = curve[reps - 1] ?? curve[curve.length - 1]!;
+  return { nextOffsetDays: offset, nextRepetitions };
 }

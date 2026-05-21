@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { CheckCircle2, Eye, Target } from "lucide-react";
 import type { DsaLearningGuide } from "@prodmatch/shared";
+import { CodeTabs } from "../code-tabs";
 
 /**
  * Progressive disclosure for problem detail.
@@ -66,11 +67,7 @@ export function RevealSections({ guide }: { guide: DsaLearningGuide }) {
                 </li>
               ))}
             </ol>
-            {guide.code && (
-              <pre className="mt-3 overflow-x-auto rounded-lg border border-border bg-secondary/50 p-3 text-[12px] leading-relaxed">
-                <code>{guide.code}</code>
-              </pre>
-            )}
+            {(guide.codeByLang || guide.code) && <CodeTabs guide={guide} />}
             <p className="mt-3 text-sm font-medium text-muted-foreground">{guide.complexity}</p>
           </div>
         ) : (
