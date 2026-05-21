@@ -36,6 +36,9 @@ const REQUIRED: LlmOperationId[] = [
   "interview_story_polish",
   "interview_readiness_score",
   "interview_project_translate",
+  "interview_study_plan_generate",
+  "interview_dsa_explain",
+  "interview_cheatsheet_personalise",
 ];
 
 const missing = REQUIRED.filter((id) => !LLM_OPERATION_POLICIES[id]);

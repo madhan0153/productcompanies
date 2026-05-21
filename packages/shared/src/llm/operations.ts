@@ -24,7 +24,10 @@ export type LlmOperationId =
   | "interview_story_generate"
   | "interview_story_polish"
   | "interview_readiness_score"
-  | "interview_project_translate";
+  | "interview_project_translate"
+  | "interview_study_plan_generate"
+  | "interview_dsa_explain"
+  | "interview_cheatsheet_personalise";
 
 export interface LlmOperationPolicy {
   id: LlmOperationId;
@@ -251,6 +254,36 @@ export const LLM_OPERATION_POLICIES: Record<LlmOperationId, LlmOperationPolicy> 
     freeProviderDefault: "allowed",
     deterministicFallback: "unavailable",
     notes: "Rewrites a service-co bullet for product-co interview register. Per click; small output.",
+  },
+  interview_study_plan_generate: {
+    id: "interview_study_plan_generate",
+    label: "Interview Lab — study plan generation",
+    capability: "text_json",
+    sensitivity: "derived_resume_facts",
+    preferredTier: "heavy",
+    freeProviderDefault: "allowed",
+    deterministicFallback: "partial",
+    notes: "Generates a 4-12 week personalised study plan with daily tasks. One call per user per plan; cached on (resume_signature, target_companies, weeks).",
+  },
+  interview_dsa_explain: {
+    id: "interview_dsa_explain",
+    label: "Interview Lab — DSA dispatch personalisation",
+    capability: "text_json",
+    sensitivity: "derived_resume_facts",
+    preferredTier: "light",
+    freeProviderDefault: "allowed",
+    deterministicFallback: "available",
+    notes: "Generates ~3 sentences tying a static DSA problem to the candidate's resume + companies. Cached per (user, problem) so re-visiting doesn't re-call.",
+  },
+  interview_cheatsheet_personalise: {
+    id: "interview_cheatsheet_personalise",
+    label: "Interview Lab — company × round cheatsheet",
+    capability: "text_json",
+    sensitivity: "derived_resume_facts",
+    preferredTier: "heavy",
+    freeProviderDefault: "allowed",
+    deterministicFallback: "unavailable",
+    notes: "Generates a markdown cheatsheet for a specific (company, role_function, round_type) anchored to the candidate's resume. Cached per row on the table.",
   },
 };
 

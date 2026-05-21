@@ -1069,6 +1069,226 @@ do $$ begin
 end $$;
 
 
+-- ----------------------------------------------------------------------------
+-- INTERVIEW LAB (Phase 3) — Study Plan + DSA Dispatch + Cheatsheets
+-- ----------------------------------------------------------------------------
+
+-- Personalised study plan. One row per user; regenerate replaces in place.
+create table if not exists public.interview_study_plan (
+  user_id              uuid primary key references auth.users(id) on delete cascade,
+  weeks                integer not null default 6,
+  target_role_function text,
+  target_companies     text[] not null default '{}',
+  /** Full plan JSON: weeks[], each with days[], each with tasks[]. Shape is
+   *  documented in apps/web/lib/llm/prompts/interview-study-plan.ts. */
+  plan                 jsonb not null,
+  source_signature     text,
+  start_date           date not null default current_date,
+  end_date             date,
+  generated_at         timestamptz not null default now(),
+  updated_at           timestamptz not null default now()
+);
+
+alter table public.interview_study_plan enable row level security;
+
+do $$ begin
+  if not exists (
+    select 1 from pg_policies
+    where schemaname = 'public' and tablename = 'interview_study_plan'
+      and policyname = 'interview_study_plan_select_own'
+  ) then
+    create policy interview_study_plan_select_own on public.interview_study_plan
+      for select to authenticated using (auth.uid() = user_id);
+  end if;
+end $$;
+do $$ begin
+  if not exists (
+    select 1 from pg_policies
+    where schemaname = 'public' and tablename = 'interview_study_plan'
+      and policyname = 'interview_study_plan_insert_own'
+  ) then
+    create policy interview_study_plan_insert_own on public.interview_study_plan
+      for insert to authenticated with check (auth.uid() = user_id);
+  end if;
+end $$;
+do $$ begin
+  if not exists (
+    select 1 from pg_policies
+    where schemaname = 'public' and tablename = 'interview_study_plan'
+      and policyname = 'interview_study_plan_update_own'
+  ) then
+    create policy interview_study_plan_update_own on public.interview_study_plan
+      for update to authenticated using (auth.uid() = user_id)
+      with check (auth.uid() = user_id);
+  end if;
+end $$;
+
+-- Daily check-off rows. One per (user, date). Used to track streaks +
+-- per-day task completion ticks.
+create table if not exists public.interview_study_day_progress (
+  user_id            uuid not null references auth.users(id) on delete cascade,
+  day                date not null,
+  dsa_done           boolean not null default false,
+  story_rehearsed    boolean not null default false,
+  system_design_done boolean not null default false,
+  mock_done          boolean not null default false,
+  notes              text,
+  completed_at       timestamptz,
+  updated_at         timestamptz not null default now(),
+  primary key (user_id, day)
+);
+
+create index if not exists idx_study_day_progress_user
+  on public.interview_study_day_progress(user_id, day desc);
+
+alter table public.interview_study_day_progress enable row level security;
+do $$ begin
+  if not exists (
+    select 1 from pg_policies
+    where schemaname = 'public' and tablename = 'interview_study_day_progress'
+      and policyname = 'study_day_progress_select_own'
+  ) then
+    create policy study_day_progress_select_own on public.interview_study_day_progress
+      for select to authenticated using (auth.uid() = user_id);
+  end if;
+end $$;
+do $$ begin
+  if not exists (
+    select 1 from pg_policies
+    where schemaname = 'public' and tablename = 'interview_study_day_progress'
+      and policyname = 'study_day_progress_insert_own'
+  ) then
+    create policy study_day_progress_insert_own on public.interview_study_day_progress
+      for insert to authenticated with check (auth.uid() = user_id);
+  end if;
+end $$;
+do $$ begin
+  if not exists (
+    select 1 from pg_policies
+    where schemaname = 'public' and tablename = 'interview_study_day_progress'
+      and policyname = 'study_day_progress_update_own'
+  ) then
+    create policy study_day_progress_update_own on public.interview_study_day_progress
+      for update to authenticated using (auth.uid() = user_id)
+      with check (auth.uid() = user_id);
+  end if;
+end $$;
+
+-- Daily DSA dispatch — what problem was given to each user each day.
+-- problem_slug references a static catalog (packages/shared/src/dsa-catalog.ts).
+create table if not exists public.interview_daily_dispatch (
+  user_id            uuid not null references auth.users(id) on delete cascade,
+  day                date not null,
+  problem_slug       text not null,
+  /** AI-generated personalisation (≤ 800 chars) tying the problem to the
+   *  candidate's resume. Cached per (user, problem) so re-visiting today
+   *  doesn't re-call the LLM. */
+  personalised_note  text,
+  is_complete        boolean not null default false,
+  completed_at       timestamptz,
+  created_at         timestamptz not null default now(),
+  primary key (user_id, day)
+);
+
+create index if not exists idx_daily_dispatch_user
+  on public.interview_daily_dispatch(user_id, day desc);
+
+alter table public.interview_daily_dispatch enable row level security;
+do $$ begin
+  if not exists (
+    select 1 from pg_policies
+    where schemaname = 'public' and tablename = 'interview_daily_dispatch'
+      and policyname = 'daily_dispatch_select_own'
+  ) then
+    create policy daily_dispatch_select_own on public.interview_daily_dispatch
+      for select to authenticated using (auth.uid() = user_id);
+  end if;
+end $$;
+do $$ begin
+  if not exists (
+    select 1 from pg_policies
+    where schemaname = 'public' and tablename = 'interview_daily_dispatch'
+      and policyname = 'daily_dispatch_insert_own'
+  ) then
+    create policy daily_dispatch_insert_own on public.interview_daily_dispatch
+      for insert to authenticated with check (auth.uid() = user_id);
+  end if;
+end $$;
+do $$ begin
+  if not exists (
+    select 1 from pg_policies
+    where schemaname = 'public' and tablename = 'interview_daily_dispatch'
+      and policyname = 'daily_dispatch_update_own'
+  ) then
+    create policy daily_dispatch_update_own on public.interview_daily_dispatch
+      for update to authenticated using (auth.uid() = user_id)
+      with check (auth.uid() = user_id);
+  end if;
+end $$;
+
+-- Per-(user, company, round) cheatsheet cache. AI generated, refreshes when
+-- resume_signature changes so cheatsheets stay anchored to the user's stack.
+create table if not exists public.interview_company_cheatsheet (
+  id                   uuid primary key default gen_random_uuid(),
+  user_id              uuid not null references auth.users(id) on delete cascade,
+  company_slug         text not null,
+  role_function        text not null,
+  round_type           text not null,
+  title                text not null,
+  body_markdown        text not null,
+  source_signature     text,
+  generated_at         timestamptz not null default now(),
+  updated_at           timestamptz not null default now(),
+  unique (user_id, company_slug, role_function, round_type)
+);
+
+create index if not exists idx_company_cheatsheet_user
+  on public.interview_company_cheatsheet(user_id, generated_at desc);
+
+alter table public.interview_company_cheatsheet enable row level security;
+do $$ begin
+  if not exists (
+    select 1 from pg_policies
+    where schemaname = 'public' and tablename = 'interview_company_cheatsheet'
+      and policyname = 'cheatsheet_select_own'
+  ) then
+    create policy cheatsheet_select_own on public.interview_company_cheatsheet
+      for select to authenticated using (auth.uid() = user_id);
+  end if;
+end $$;
+do $$ begin
+  if not exists (
+    select 1 from pg_policies
+    where schemaname = 'public' and tablename = 'interview_company_cheatsheet'
+      and policyname = 'cheatsheet_insert_own'
+  ) then
+    create policy cheatsheet_insert_own on public.interview_company_cheatsheet
+      for insert to authenticated with check (auth.uid() = user_id);
+  end if;
+end $$;
+do $$ begin
+  if not exists (
+    select 1 from pg_policies
+    where schemaname = 'public' and tablename = 'interview_company_cheatsheet'
+      and policyname = 'cheatsheet_update_own'
+  ) then
+    create policy cheatsheet_update_own on public.interview_company_cheatsheet
+      for update to authenticated using (auth.uid() = user_id)
+      with check (auth.uid() = user_id);
+  end if;
+end $$;
+do $$ begin
+  if not exists (
+    select 1 from pg_policies
+    where schemaname = 'public' and tablename = 'interview_company_cheatsheet'
+      and policyname = 'cheatsheet_delete_own'
+  ) then
+    create policy cheatsheet_delete_own on public.interview_company_cheatsheet
+      for delete to authenticated using (auth.uid() = user_id);
+  end if;
+end $$;
+
+
 -- -----------------------------------------------------------------------------
 -- 5. updated_at TRIGGERS  (drop-then-create for idempotency)
 -- -----------------------------------------------------------------------------

@@ -13,3 +13,4 @@ export * from "./roles/taxonomy";
 export * from "./roles/taxonomy-benchmarks";
 export * from "./scoring";
 export * from "./crawler-meta";
+export * from "./dsa-catalog";

@@ -221,6 +221,28 @@ export default async function LabPage() {
         </Link>
       </section>
 
+      {/* Phase 3 — habit layer */}
+      <section className="grid grid-cols-1 gap-3 md:grid-cols-3">
+        <LabTile
+          href="/lab/plan"
+          title="Study Plan"
+          subtitle="4 / 6 / 8 / 12-week personalised plan with daily check-offs"
+          enabled={hasResume}
+        />
+        <LabTile
+          href="/lab/dsa"
+          title="Daily DSA"
+          subtitle="One problem a day, matched to your gaps and target companies"
+          enabled={hasResume}
+        />
+        <LabTile
+          href="/lab/cheatsheets"
+          title="Cheatsheets"
+          subtitle="One-page cheatsheets per company × round, anchored to your resume"
+          enabled={hasResume}
+        />
+      </section>
+
       {/* Project Translator pointer */}
       <section className="rounded-2xl border border-border bg-card/40 p-4">
         <div className="flex items-start gap-3">
@@ -237,6 +259,32 @@ export default async function LabPage() {
         </div>
       </section>
     </div>
+  );
+}
+
+function LabTile({ href, title, subtitle, enabled }: {
+  href: string; title: string; subtitle: string; enabled: boolean;
+}) {
+  if (!enabled) {
+    return (
+      <div className="rounded-2xl border border-border bg-card/30 p-4 opacity-60">
+        <p className="font-semibold">{title}</p>
+        <p className="mt-1 text-xs text-muted-foreground">{subtitle}</p>
+        <p className="mt-2 text-[10px] text-amber-300">Upload resume to unlock</p>
+      </div>
+    );
+  }
+  return (
+    <Link
+      href={href}
+      className="group flex flex-col gap-1 rounded-2xl border border-border bg-card/40 p-4 transition-colors hover:border-primary/40"
+    >
+      <p className="font-semibold">{title}</p>
+      <p className="text-xs text-muted-foreground">{subtitle}</p>
+      <p className="mt-1 inline-flex items-center gap-1 text-[11px] text-primary opacity-0 transition-opacity group-hover:opacity-100 motion-reduce:transition-none">
+        Open <ArrowRight className="h-3 w-3" />
+      </p>
+    </Link>
   );
 }
 
