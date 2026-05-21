@@ -323,6 +323,23 @@ export function ResumeUpload({ hasExisting, existingRole, existingDnaScore, isPa
       {/* Result banner */}
       <AnimatePresence>
         {result && !pending && (
+          (() => {
+            const failedWithFallback = !result.ok && hasExisting;
+            const tone = result.ok
+              ? "border-success/30 bg-success/5 text-success"
+              : failedWithFallback
+                ? "border-warning/30 bg-warning/5 text-warning"
+                : "border-destructive/30 bg-destructive/5 text-destructive";
+            const mutedTone = result.ok
+              ? "text-success/80"
+              : failedWithFallback
+                ? "text-warning/85"
+                : "text-destructive/80";
+            const buttonTone = failedWithFallback
+              ? "border-warning/30 bg-warning/10 text-warning hover:bg-warning/15"
+              : "border-destructive/30 bg-destructive/10 text-destructive hover:bg-destructive/15";
+
+            return (
           <motion.div
             initial={reduce ? {} : { opacity: 0, y: 8 }}
             animate={{ opacity: 1, y: 0 }}
@@ -330,9 +347,7 @@ export function ResumeUpload({ hasExisting, existingRole, existingDnaScore, isPa
             transition={{ duration: 0.3 }}
             className={[
               "flex items-start gap-3 rounded-xl border p-4",
-              result.ok
-                ? "border-success/30 bg-success/5 text-success"
-                : "border-destructive/30 bg-destructive/5 text-destructive",
+              tone,
             ].join(" ")}
           >
             {result.ok ? (
@@ -359,12 +374,20 @@ export function ResumeUpload({ hasExisting, existingRole, existingDnaScore, isPa
                 </>
               ) : (
                 <>
+                  {failedWithFallback && (
+                    <p className="font-semibold">Previous resume is still active</p>
+                  )}
                   <p>{result.error}</p>
+                  {failedWithFallback && (
+                    <p className={`mt-1 text-xs ${mutedTone}`}>
+                      Matches and profile data continue using your last successfully parsed resume.
+                    </p>
+                  )}
                   {result.retryable && (
                     <button
                       type="button"
                       onClick={() => inputRef.current?.click()}
-                      className="tap-target-sm mt-3 inline-flex items-center gap-1.5 rounded-md border border-destructive/30 bg-destructive/10 px-3 text-xs font-semibold text-destructive transition hover:bg-destructive/15 focus-ring"
+                      className={`tap-target-sm mt-3 inline-flex items-center gap-1.5 rounded-md border px-3 text-xs font-semibold transition focus-ring ${buttonTone}`}
                     >
                       <Upload className="h-3 w-3" /> Choose PDF again
                     </button>
@@ -373,6 +396,8 @@ export function ResumeUpload({ hasExisting, existingRole, existingDnaScore, isPa
               )}
             </div>
           </motion.div>
+            );
+          })()
         )}
       </AnimatePresence>
 

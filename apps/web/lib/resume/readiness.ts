@@ -10,6 +10,8 @@ export type ResumeReadinessCode =
   | "parsed_not_current"
   | "embedding_not_current"
   | "compute_running"
+  | "ready_with_pending_parse"
+  | "ready_with_parse_failed"
   | "ready";
 
 export interface ResumeReadiness {
@@ -35,7 +37,7 @@ type ProfileReadinessRow = {
   last_match_compute_at: string | null;
 };
 
-export type ResumeStatusKind = "missing" | "parsing" | "failed" | "ready";
+export type ResumeStatusKind = "missing" | "parsing" | "failed" | "fallback" | "ready";
 export type MatchStatusKind = "blocked" | "computing" | "failed" | "stale" | "up_to_date" | "not_computed";
 
 export interface ResumeMatchStatus {
@@ -97,6 +99,58 @@ export async function getResumeReadinessForCompute(
     };
   }
 
+  const activeResumeReady = Boolean(
+    data.resume_parsed &&
+    data.resume_parsed_version_id === data.active_resume_version_id &&
+    data.resume_embedding &&
+    data.resume_embedding_version_id === data.active_resume_version_id,
+  );
+
+  const activeComputeJob = activeResumeReady
+    ? await findActiveJob(admin, {
+        userId,
+        type: "match_compute",
+        resumeVersionId: data.active_resume_version_id,
+      })
+    : null;
+
+  if (activeComputeJob) {
+    return {
+      ...base,
+      activeComputeJob,
+      ready: false,
+      code: "compute_running",
+      message: "A match computation is already running for this resume.",
+    };
+  }
+
+  if (activeResumeReady && (data.pending_resume_version_id || data.resume_parsing_at)) {
+    return {
+      ...base,
+      ready: true,
+      code: "ready_with_pending_parse",
+      message: "Your previous parsed resume is active while the new upload is being processed.",
+    };
+  }
+
+  if (activeResumeReady && data.resume_parse_error) {
+    return {
+      ...base,
+      ready: true,
+      code: "ready_with_parse_failed",
+      message: "Your latest upload failed, but your previous parsed resume is still active for matching.",
+    };
+  }
+
+  if (activeResumeReady) {
+    return {
+      ...base,
+      ready: true,
+      code: "ready",
+      message: "Resume is ready for matching.",
+    };
+  }
+
   const activeParseJob = await findActiveJob(admin, { userId, type: "resume_parse" });
   if (data.pending_resume_version_id || data.resume_parsing_at || activeParseJob) {
     return {
@@ -131,21 +185,6 @@ export async function getResumeReadinessForCompute(
       ready: false,
       code: "embedding_not_current",
       message: "Resume matching signals are still being prepared. Please re-upload if this does not clear.",
-    };
-  }
-
-  const activeComputeJob = await findActiveJob(admin, {
-    userId,
-    type: "match_compute",
-    resumeVersionId: data.active_resume_version_id,
-  });
-  if (activeComputeJob) {
-    return {
-      ...base,
-      activeComputeJob,
-      ready: false,
-      code: "compute_running",
-      message: "A match computation is already running for this resume.",
     };
   }
 
@@ -204,6 +243,18 @@ export async function getResumeMatchStatus(
           kind: "ready" as const,
           title: "Resume ready",
           message: "Your current resume is parsed and ready for matching.",
+        };
+      case "ready_with_pending_parse":
+        return {
+          kind: "fallback" as const,
+          title: "Previous resume active",
+          message: readiness.message,
+        };
+      case "ready_with_parse_failed":
+        return {
+          kind: "fallback" as const,
+          title: "Previous resume active",
+          message: readiness.message,
         };
     }
   })();
