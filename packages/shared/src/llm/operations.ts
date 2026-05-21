@@ -10,7 +10,9 @@ export type LlmOperationId =
   | "match_explanation"
   | "fit_card"
   | "resume_pdf_parse"
+  | "resume_text_parse"
   | "resume_content_extract"
+  | "resume_text_content_extract"
   | "resume_diagnosis"
   | "resume_bullet_rewrite"
   | "resume_gap_fill"
@@ -94,7 +96,17 @@ export const LLM_OPERATION_POLICIES: Record<LlmOperationId, LlmOperationPolicy> 
     preferredTier: "heavy",
     freeProviderDefault: "allowed",
     deterministicFallback: "unavailable",
-    notes: "Multimodal PDF parse. Prefers Gemini; only providers with PDF support are attempted on rollover.",
+    notes: "Multimodal PDF parse. Prefers Gemini; only providers with PDF support are attempted on rollover. Falls through to resume_text_parse when no PDF-capable provider is available.",
+  },
+  resume_text_parse: {
+    id: "resume_text_parse",
+    label: "Resume parsing (text fallback)",
+    capability: "text_json",
+    sensitivity: "resume_pii",
+    preferredTier: "heavy",
+    freeProviderDefault: "allowed",
+    deterministicFallback: "unavailable",
+    notes: "Text-only resume parse. Server extracts text from the PDF first, then any text-capable provider can fulfil it. Lower quality than multimodal Gemini (no table / layout signal) but keeps resume parse working when Gemini exhausts.",
   },
   resume_content_extract: {
     id: "resume_content_extract",
@@ -104,7 +116,17 @@ export const LLM_OPERATION_POLICIES: Record<LlmOperationId, LlmOperationPolicy> 
     preferredTier: "heavy",
     freeProviderDefault: "allowed",
     deterministicFallback: "unavailable",
-    notes: "Extracts verbatim resume bullets from PDF; requires PDF-capable provider on rollover.",
+    notes: "Extracts verbatim resume bullets from PDF; requires PDF-capable provider on rollover. Falls through to resume_text_content_extract when no PDF-capable provider is available.",
+  },
+  resume_text_content_extract: {
+    id: "resume_text_content_extract",
+    label: "Resume content extraction (text fallback)",
+    capability: "text_json",
+    sensitivity: "resume_pii",
+    preferredTier: "heavy",
+    freeProviderDefault: "allowed",
+    deterministicFallback: "unavailable",
+    notes: "Text-only verbatim bullet extraction. Used when no PDF-capable provider is available.",
   },
   resume_diagnosis: {
     id: "resume_diagnosis",

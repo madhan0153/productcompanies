@@ -17,8 +17,16 @@
 //
 // Cached on enhanced_resumes.diagnosis via the existing row → no repeated
 // extractions for the same review session.
+//
+// FALLBACK PATH:
+// When the multimodal Gemini path fails (keys exhausted, no PDF-capable
+// provider configured), extract text server-side and route through any
+// text-capable LLM. Slightly lower fidelity (no layout cues) but keeps the
+// enhancement pipeline working when Gemini exhausts.
 
 import { runWithRetry, SchemaType, type Schema } from "@/lib/llm/gemini";
+import { extractPdfText } from "@/lib/resume/pdf-text";
+import { logEvent } from "@/lib/observability/log";
 
 export interface ExtractedResumeContent {
   /** Concise professional summary, verbatim if the resume has one. */
@@ -94,12 +102,7 @@ const SCHEMA: Schema = {
   required: ["summary", "skills", "experience", "projects", "education"],
 };
 
-const PROMPT = `You are extracting the FULL bullet content from a resume PDF for an
-enhancement pipeline. The downstream pipeline will analyse each bullet for
-weaknesses (weak verbs, missing metrics, vague scope) and suggest rewrites,
-so the EXTRACTION quality determines whether the enhancement works.
-
-CRITICAL RULES:
+const COMMON_RULES = `CRITICAL RULES:
 1. EVERY bullet must be COPIED VERBATIM from the resume. Do not paraphrase,
    abbreviate, or fix typos. If the resume says "Worked on backend", the
    bullet is "Worked on backend" — even if that's a weak phrasing.
@@ -119,7 +122,43 @@ CRITICAL RULES:
 
 Return JSON conforming to the schema. No prose outside the JSON.`;
 
+const PDF_PROMPT = `You are extracting the FULL bullet content from a resume PDF for an
+enhancement pipeline. The downstream pipeline will analyse each bullet for
+weaknesses (weak verbs, missing metrics, vague scope) and suggest rewrites,
+so the EXTRACTION quality determines whether the enhancement works.
+
+${COMMON_RULES}`;
+
+const TEXT_PROMPT = `You are extracting the FULL bullet content from a resume text dump for an
+enhancement pipeline. The downstream pipeline will analyse each bullet for
+weaknesses (weak verbs, missing metrics, vague scope) and suggest rewrites,
+so the EXTRACTION quality determines whether the enhancement works.
+
+The text below is extracted from a PDF and may have wrapping artefacts;
+treat lines starting with "•", "-", or that follow a role/project header
+as bullets.
+
+${COMMON_RULES}
+
+=== RESUME TEXT BEGINS ===`;
+
+/**
+ * Extract verbatim resume content. Tries multimodal Gemini first; on
+ * failure, extracts text from the PDF server-side and routes the text to
+ * any text-capable provider.
+ */
 export async function extractResumeContent(pdfBase64: string): Promise<ExtractedResumeContent> {
+  try {
+    return await extractResumeContentMultimodal(pdfBase64);
+  } catch (primaryErr) {
+    logEvent("warn", "resume_content_multimodal_failed", {
+      reason: errKind(primaryErr),
+    });
+    return await extractResumeContentFromPdfViaText(pdfBase64, primaryErr);
+  }
+}
+
+async function extractResumeContentMultimodal(pdfBase64: string): Promise<ExtractedResumeContent> {
   const text = await runWithRetry("heavy", async (model) => {
     const result = await model.generateContent({
       contents: [
@@ -127,7 +166,7 @@ export async function extractResumeContent(pdfBase64: string): Promise<Extracted
           role: "user",
           parts: [
             { inlineData: { mimeType: "application/pdf", data: pdfBase64 } },
-            { text: PROMPT },
+            { text: PDF_PROMPT },
           ],
         },
       ],
@@ -141,7 +180,55 @@ export async function extractResumeContent(pdfBase64: string): Promise<Extracted
     return result.response.text();
   }, { operation: "resume_content_extract" });
 
-  const parsed = JSON.parse(text) as ExtractedResumeContent;
+  return sanitise(JSON.parse(text) as ExtractedResumeContent);
+}
+
+async function extractResumeContentFromPdfViaText(
+  pdfBase64: string,
+  primaryErr?: unknown,
+): Promise<ExtractedResumeContent> {
+  const buffer = Buffer.from(pdfBase64, "base64");
+  let extractedText: string;
+  try {
+    extractedText = await extractPdfText(buffer);
+  } catch (extractErr) {
+    const reason = errKind(extractErr);
+    logEvent("error", "resume_content_text_extract_failed", {
+      reason,
+      primary: primaryErr ? errKind(primaryErr) : null,
+    });
+    throw new Error(`Resume content extraction failed: ${reason}`);
+  }
+  return await extractResumeContentFromText(extractedText);
+}
+
+/** Pure text → ExtractedResumeContent helper. */
+export async function extractResumeContentFromText(resumeText: string): Promise<ExtractedResumeContent> {
+  if (!resumeText || resumeText.trim().length < 80) {
+    throw new Error("Resume text too short to extract bullets");
+  }
+  const text = await runWithRetry("heavy", async (model) => {
+    const result = await model.generateContent({
+      contents: [
+        {
+          role: "user",
+          parts: [{ text: `${TEXT_PROMPT}\n${resumeText}` }],
+        },
+      ],
+      generationConfig: {
+        responseMimeType: "application/json",
+        responseSchema: SCHEMA,
+        temperature: 0,
+        maxOutputTokens: 6000,
+      },
+    });
+    return result.response.text();
+  }, { operation: "resume_text_content_extract" });
+
+  return sanitise(JSON.parse(text) as ExtractedResumeContent);
+}
+
+function sanitise(parsed: ExtractedResumeContent): ExtractedResumeContent {
   // Sanitise: drop empty/whitespace bullets so downstream pipelines don't
   // see garbage "weak bullets" they can't improve.
   parsed.experience = (parsed.experience ?? []).map((r) => ({
@@ -153,6 +240,20 @@ export async function extractResumeContent(pdfBase64: string): Promise<Extracted
     bullets: (p.bullets ?? []).map((b) => b.trim()).filter((b) => b.length > 4),
   }));
   return parsed;
+}
+
+function errKind(err: unknown): string {
+  if (err && typeof err === "object" && "name" in err && typeof err.name === "string") {
+    if (err.name === "LlmRunError") {
+      const detail = (err as { detail?: { kind?: string } }).detail;
+      return detail?.kind ?? "llm_unknown";
+    }
+    if (err.name === "PdfTextExtractionError") {
+      return (err as { kind?: string }).kind ?? "pdf_extract_unknown";
+    }
+  }
+  if (err instanceof Error) return err.message.slice(0, 80);
+  return "unknown";
 }
 
 /**
