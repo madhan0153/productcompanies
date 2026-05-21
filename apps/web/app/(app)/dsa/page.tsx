@@ -12,18 +12,9 @@ export default async function DsaPage() {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect("/auth/login");
 
-  const [{ data: profile }, { data: history }] = await Promise.all([
-    (supabase
-      .from("profiles")
-      .select("resume_parsed")
-      .eq("id", user.id)
-      .maybeSingle() as unknown as Promise<{ data: { resume_parsed: unknown } | null }>),
-    (supabase
-      .from("interview_daily_dispatch")
-      .select("day, problem_slug, personalised_note, is_complete")
-      .eq("user_id", user.id)
-      .order("day", { ascending: false })
-      .limit(45) as unknown as Promise<{ data: DsaHistoryRow[] | null }>),
+  const [profile, history] = await Promise.all([
+    loadProfileResumeState(supabase, user.id),
+    loadDsaHistory(supabase, user.id),
   ]);
 
   const hasResume = Boolean(profile?.resume_parsed);
@@ -54,6 +45,39 @@ export default async function DsaPage() {
       <DsaClient history={history ?? []} hasResume={hasResume} />
     </div>
   );
+}
+
+async function loadProfileResumeState(
+  supabase: Awaited<ReturnType<typeof createSupabaseServerClient>>,
+  userId: string,
+): Promise<{ resume_parsed: unknown } | null> {
+  try {
+    const { data } = await (supabase
+      .from("profiles")
+      .select("resume_parsed")
+      .eq("id", userId)
+      .maybeSingle() as unknown as Promise<{ data: { resume_parsed: unknown } | null }>);
+    return data ?? null;
+  } catch {
+    return null;
+  }
+}
+
+async function loadDsaHistory(
+  supabase: Awaited<ReturnType<typeof createSupabaseServerClient>>,
+  userId: string,
+): Promise<DsaHistoryRow[]> {
+  try {
+    const { data } = await (supabase
+      .from("interview_daily_dispatch")
+      .select("day, problem_slug, personalised_note, is_complete")
+      .eq("user_id", userId)
+      .order("day", { ascending: false })
+      .limit(45) as unknown as Promise<{ data: DsaHistoryRow[] | null }>);
+    return data ?? [];
+  } catch {
+    return [];
+  }
 }
 
 function HeroStat({ icon, label, value }: { icon: React.ReactNode; label: string; value: string }) {

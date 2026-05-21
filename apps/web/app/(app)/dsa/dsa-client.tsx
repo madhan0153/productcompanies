@@ -46,13 +46,18 @@ export function DsaClient({ history, hasResume }: Props) {
 
   useEffect(() => {
     startTransition(async () => {
-      const res = await getTodayDispatchAction();
-      if (res.ok && res.data) {
-        setToday(res.data);
-      } else {
-        setFlash({ kind: "err", text: res.error ?? "Could not pick today's problem." });
+      try {
+        const res = await getTodayDispatchAction();
+        if (res.ok && res.data) {
+          setToday(res.data);
+        } else {
+          setFlash({ kind: "err", text: res.error ?? "Could not pick today's problem." });
+        }
+      } catch {
+        setFlash({ kind: "err", text: "Could not pick today's problem. Please try again shortly." });
+      } finally {
+        setLoaded(true);
       }
-      setLoaded(true);
     });
   }, []);
 
@@ -70,12 +75,16 @@ export function DsaClient({ history, hasResume }: Props) {
     if (!today) return;
     const todayIso = new Date().toISOString().slice(0, 10);
     startTransition(async () => {
-      const res = await completeDsaAction({ day: todayIso });
-      if (res.ok) {
-        setToday((current) => (current ? { ...current, is_complete: true } : current));
-        setFlash({ kind: "ok", text: "Done. Today's DSA streak is counted." });
-      } else {
-        setFlash({ kind: "err", text: res.error ?? "Could not mark complete." });
+      try {
+        const res = await completeDsaAction({ day: todayIso });
+        if (res.ok) {
+          setToday((current) => (current ? { ...current, is_complete: true } : current));
+          setFlash({ kind: "ok", text: "Done. Today's DSA streak is counted." });
+        } else {
+          setFlash({ kind: "err", text: res.error ?? "Could not mark complete." });
+        }
+      } catch {
+        setFlash({ kind: "err", text: "Could not mark complete. Please try again." });
       }
     });
   }
