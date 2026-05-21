@@ -60,3 +60,26 @@ export function validateResumePdf(bytes: ArrayBuffer, mimeType: string | null): 
 
   return { ok: true, pageCount };
 }
+
+/**
+ * QA fix (B5): the regex-based page count above is fast but can be defeated
+ * by a crafted PDF that hides `/Type /Page` inside compressed object streams.
+ * `verifyPdfPageCount` is the authoritative async check used after the cheap
+ * sync validator passes. We keep `validateResumePdf` synchronous (it's still
+ * cheap and rejects 99% of bad PDFs early); the async check below is the
+ * adversarial-grade backstop.
+ *
+ * Returns the decoded page count, or `null` if the PDF library could not
+ * read the document at all (in which case the caller should reject — a PDF
+ * that no library can open is not a valid resume).
+ */
+export async function verifyPdfPageCount(bytes: ArrayBuffer): Promise<number | null> {
+  try {
+    const { getDocumentProxy } = await import("unpdf");
+    const buf = new Uint8Array(bytes);
+    const doc = await getDocumentProxy(buf);
+    return doc.numPages;
+  } catch {
+    return null;
+  }
+}

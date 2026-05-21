@@ -66,13 +66,29 @@ export async function POST(req: NextRequest) {
   } catch { /* no body — that's fine */ }
 
   // ── Cron lock (skipped for single-user ad-hoc calls) ───────────────────
+  // QA fix (B12): when the lock RPC isn't deployed yet (e.g. operator hasn't
+  // re-run schema.sql), the previous code silently treated `held = null` as
+  // "lock held" and the cron 409'd forever. Now we distinguish "RPC missing"
+  // (error returned) from "lock held" (no error, null data) so the operator
+  // gets a clear 503 with a hint.
   let lockHolder: string | null = null;
   if (!targetUserId) {
-
-    const { data: held } = await (admin.rpc as any)("acquire_cron_lock", {
+    const { data: held, error: lockError } = (await (admin.rpc as any)("acquire_cron_lock", {
       lock_name:   LOCK_NAME,
       ttl_seconds: LOCK_TTL_SECONDS,
-    }) as { data: string | null };
+    })) as { data: string | null; error: { message: string; code?: string } | null };
+    if (lockError) {
+      const isMissingRpc = /function .* does not exist|PGRST/i.test(lockError.message ?? "");
+      return NextResponse.json(
+        {
+          ok: false,
+          error: isMissingRpc
+            ? "cron-lock RPC missing — re-run the latest supabase/schema.sql"
+            : `Lock acquisition failed: ${lockError.message}`,
+        },
+        { status: 503 },
+      );
+    }
     if (!held) {
       return NextResponse.json(
         {
@@ -87,6 +103,26 @@ export async function POST(req: NextRequest) {
   }
 
   try {
+    // QA fix (B6): reap stuck "parsing…" states before we do anything else.
+    // If a profile has resume_parsing_at older than 30 minutes and no
+    // pending durable job is still running for it, the after()-block parser
+    // almost certainly died (cold start aborted, lambda killed, etc.). Clear
+    // the parsing flag so the user can re-upload and the UI stops claiming
+    // work is in flight.
+    try {
+      const stuckCutoff = new Date(Date.now() - 30 * 60_000).toISOString();
+      await (admin.from("profiles") as any)
+        .update({
+          resume_parsing_at: null,
+          resume_parse_error: "Parsing timed out. Please re-upload your resume.",
+          pending_resume_version_id: null,
+        })
+        .lt("resume_parsing_at", stuckCutoff)
+        .not("resume_parsing_at", "is", null);
+    } catch {
+      // Best-effort — never block the daily fan-out on the reaper.
+    }
+
     // ── Build the work queue ─────────────────────────────────────────────
     // Eligibility joins: matching consent granted + profile has a resume
     // embedding. We pull from `consents` (source of truth) and intersect

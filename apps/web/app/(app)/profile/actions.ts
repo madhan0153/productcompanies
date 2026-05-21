@@ -24,7 +24,7 @@ import {
   transitionDurableJob,
 } from "@/lib/jobs/state";
 import { logEvent } from "@/lib/observability/log";
-import { validateResumePdf } from "@/lib/security/pdf";
+import { validateResumePdf, verifyPdfPageCount } from "@/lib/security/pdf";
 import { checkRateLimit, userActionKey } from "@/lib/security/rate-limit";
 import type { ParsedResume } from "@/lib/llm/prompts/resume-parse";
 import type { SeniorityLevel } from "@/lib/supabase/types";
@@ -283,6 +283,35 @@ export async function uploadAndParseResume(formData: FormData): Promise<UploadRe
       size_bytes: file.size,
     });
     return { ok: false, error: validation.message, retryable: true };
+  }
+  // QA fix (B5): regex-based page count above can be defeated; cross-check
+  // with the PDF library before we trust the file. A null return means the
+  // PDF can't be opened at all — reject it on principle (parser would fail
+  // downstream anyway, but we want a clean user-facing error here).
+  const authoritativePageCount = await verifyPdfPageCount(bytes);
+  if (authoritativePageCount === null) {
+    logEvent("warn", "resume_pdf_rejected", {
+      user_id: userId.slice(0, 8),
+      code: "unreadable_pdf",
+      size_bytes: file.size,
+    });
+    return {
+      ok: false,
+      error: "We could not read this PDF. Export a fresh text-based PDF and try again.",
+      retryable: true,
+    };
+  }
+  if (authoritativePageCount > 12) {
+    logEvent("warn", "resume_pdf_rejected", {
+      user_id: userId.slice(0, 8),
+      code: "too_many_pages_authoritative",
+      size_bytes: file.size,
+    });
+    return {
+      ok: false,
+      error: "Resume PDFs must be 12 pages or fewer. Upload a shorter resume.",
+      retryable: true,
+    };
   }
   const pdfHash = createHash("sha256").update(Buffer.from(bytes)).digest("hex");
   const { error: storageError } = await admin.storage

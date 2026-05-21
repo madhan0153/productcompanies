@@ -24,24 +24,48 @@ export default async function ProfilePage() {
   if (!user) redirect("/auth/login");
 
 
+  // QA fix (B9): proper type for the profile read so downstream usages
+  // are compile-time checked. Cast through unknown only at the boundary.
+  type ProfileRow = {
+    display_name: string | null;
+    current_role: string | null;
+    years_experience: number | null;
+    current_lpa: number | null;
+    target_lpa: number | null;
+    tech_stack: string[] | null;
+    preferred_hubs: string[] | null;
+    seniority: string | null;
+    resume_storage_path: string | null;
+    product_dna_score: number | null;
+    dna_breakdown: unknown;
+    resume_parsed: unknown;
+    resume_score: number | null;
+    resume_score_breakdown: unknown;
+    resume_tips: unknown;
+    resume_score_at: string | null;
+    role_function: string | null;
+    target_role_functions: string[] | null;
+    resume_parsing_at: string | null;
+    resume_parse_error: string | null;
+  };
   const { data: profile } = await (supabase
     .from("profiles")
     .select(
       "display_name, current_role, years_experience, current_lpa, target_lpa, tech_stack, preferred_hubs, seniority, resume_storage_path, product_dna_score, dna_breakdown, resume_parsed, resume_score, resume_score_breakdown, resume_tips, resume_score_at, role_function, target_role_functions, resume_parsing_at, resume_parse_error",
     )
     .eq("id", user.id)
-    .maybeSingle() as any) as { data: Record<string, unknown> | null };
+    .maybeSingle() as unknown as Promise<{ data: ProfileRow | null }>);
 
-  const preferredHubs = (profile?.preferred_hubs as string[] | null) ?? [];
-  const techStack = (profile?.tech_stack as string[] | null) ?? [];
-  const isParsing = !!(profile as { resume_parsing_at?: string | null } | null)?.resume_parsing_at;
-  const parseError = (profile as { resume_parse_error?: string | null } | null)?.resume_parse_error ?? null;
+  const preferredHubs = profile?.preferred_hubs ?? [];
+  const techStack = profile?.tech_stack ?? [];
+  const isParsing = !!profile?.resume_parsing_at;
+  const parseError = profile?.resume_parse_error ?? null;
   // hasResume is true whenever parsed data exists — even if a NEW parse is
   // currently running. This keeps the tabs + previous data visible during a
   // re-upload, and the ParseStatusBanner explains the in-flight parse.
   const hasResume = !!profile?.resume_parsed;
-  const dnaScore = profile?.product_dna_score as number | null ?? null;
-  const resumeScore = (profile as { resume_score?: number | null } | null)?.resume_score ?? null;
+  const dnaScore = profile?.product_dna_score ?? null;
+  const resumeScore = profile?.resume_score ?? null;
 
   const versions = hasResume ? await listResumeVersions() : [];
 
@@ -50,7 +74,7 @@ export default async function ProfilePage() {
       {/* Parse-status banner — shows during background parse (incl. when the
           user navigates away and comes back). Renders nothing on idle. */}
       <ParseStatusBanner
-        initialStartedAt={(profile as { resume_parsing_at?: string | null } | null)?.resume_parsing_at ?? null}
+        initialStartedAt={profile?.resume_parsing_at ?? null}
         initialError={parseError}
         hasActiveResume={hasResume}
       />
@@ -111,7 +135,7 @@ export default async function ProfilePage() {
                 >
                   <ResumeUpload
                     hasExisting={true}
-                    existingRole={profile?.current_role as string | null}
+                    existingRole={profile?.current_role ?? null}
                     existingDnaScore={dnaScore}
                     isParsing={isParsing}
                   />
@@ -133,9 +157,9 @@ export default async function ProfilePage() {
 
                 <ResumeScorePanel
                   score={resumeScore}
-                  breakdown={(profile as { resume_score_breakdown?: ResumeScorePanelData["breakdown"] } | null)?.resume_score_breakdown ?? null}
-                  tips={(profile as { resume_tips?: ResumeScorePanelData["tips"] } | null)?.resume_tips ?? null}
-                  scoredAt={(profile as { resume_score_at?: string | null } | null)?.resume_score_at ?? null}
+                  breakdown={(profile?.resume_score_breakdown as ResumeScorePanelData["breakdown"] | null) ?? null}
+                  tips={(profile?.resume_tips as ResumeScorePanelData["tips"] | null) ?? null}
+                  scoredAt={profile?.resume_score_at ?? null}
                 />
 
                 {resumeScore !== null && <AtsSignalPanel score={resumeScore} />}
@@ -149,14 +173,14 @@ export default async function ProfilePage() {
               >
                 <SaveProfileForm
                   defaultValues={{
-                    display_name: (profile?.display_name as string) ?? "",
-                    current_role: (profile?.current_role as string) ?? "",
+                    display_name: profile?.display_name ?? "",
+                    current_role: profile?.current_role ?? "",
                     years_experience: String(profile?.years_experience ?? ""),
                     current_lpa: String(profile?.current_lpa ?? ""),
                     target_lpa: String(profile?.target_lpa ?? ""),
                     tech_stack: techStack.join(", "),
                     preferred_hubs: preferredHubs,
-                    seniority: (profile?.seniority as string) ?? "",
+                    seniority: profile?.seniority ?? "",
                   }}
                 />
               </SectionCard>

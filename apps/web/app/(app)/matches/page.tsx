@@ -1,5 +1,6 @@
 ﻿import type { Metadata } from "next";
 import { redirect } from "next/navigation";
+import { after } from "next/server";
 import {
   Eye,
   ArrowUpRight, Activity,
@@ -113,6 +114,11 @@ export default async function MatchesPage({
   // fast. The band-strip counts above are accurate beyond the cap, so the
   // user always sees the truthful number even if the list is paginated.
 
+  // QA fix (B10): bump the hard cap to 1000 and surface a "showing N of M"
+  // indicator further down if the visible tab is truncated. The accurate
+  // band counts above already report the true total — this just ensures
+  // the card list doesn't silently lose rows for power users.
+  const MATCH_LIST_CAP = 1000;
   let query: any = supabase
     .from("matches")
     .select(`
@@ -128,7 +134,7 @@ export default async function MatchesPage({
     `)
     .eq("user_id", user.id)
     .order("score", { ascending: false })
-    .limit(500);
+    .limit(MATCH_LIST_CAP);
 
   if (minScore !== null) query = query.gte("score", minScore);
 
@@ -171,15 +177,25 @@ export default async function MatchesPage({
     for (const a of apps ?? []) applicationStatus.set(a.job_id, a.status);
   }
 
-  // Mark unseen items in this tab as seen (fire-and-forget â€” same as before).
+  // QA fix (B11): the seen-mark used to run inline as a fire-and-forget
+  // void during RSC render. That kept the Supabase call on the response-
+  // critical path even though we didn't await it. Move it into after() so
+  // the response streams to the client first, then the mark happens.
   const unseenInTab = tabRows.filter((m) => m.seen_at === null).map((m) => m.jobs.id);
   if (unseenInTab.length > 0) {
-
-    void (supabase.from("matches") as any)
-      .update({ seen_at: new Date().toISOString() })
-      .eq("user_id", user.id)
-      .in("job_id", unseenInTab)
-      .is("seen_at", null);
+    const userId = user.id;
+    const jobIds = unseenInTab;
+    after(async () => {
+      try {
+        await (supabase.from("matches") as any)
+          .update({ seen_at: new Date().toISOString() })
+          .eq("user_id", userId)
+          .in("job_id", jobIds)
+          .is("seen_at", null);
+      } catch {
+        // Silently swallow — next page load will pick up the unseen rows.
+      }
+    });
   }
 
   // Filter chip data â€” companies/hubs derived from the full scope, not the
@@ -283,7 +299,7 @@ export default async function MatchesPage({
               if (tabExpected > tabRows.length) {
                 return (
                   <p className="rounded-md border border-dashed border-border bg-secondary/30 px-4 py-2.5 text-center text-xs text-muted-foreground">
-                    Showing top <span className="font-semibold tabular-nums text-foreground">{tabRows.length}</span> â€” apply a company or hub filter to narrow results.
+                    Showing top <span className="font-semibold tabular-nums text-foreground">{tabRows.length}</span> of <span className="font-semibold tabular-nums text-foreground">{tabExpected}</span> — apply a company or hub filter to narrow results.
                   </p>
                 );
               }

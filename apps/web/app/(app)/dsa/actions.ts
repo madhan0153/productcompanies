@@ -202,6 +202,40 @@ export async function completeDsaAction(input: { day: string }): Promise<ActionR
         updated_at: completedAt,
       } as unknown as never, { onConflict: "user_id,day" }) as unknown as Promise<{ error: { message: string } | null }>);
 
+    // QA fix (B15): auto-seed dsa_user_progress so spaced repetition kicks
+    // in even when the learner skips the confidence rating. We only insert
+    // on conflict-do-nothing so an existing user-set confidence is never
+    // overwritten by a default; the rating action upserts a stronger value.
+    try {
+      const { data: dispatch } = await (supabase
+        .from("interview_daily_dispatch")
+        .select("problem_slug")
+        .eq("user_id", user.id)
+        .eq("day", input.day)
+        .maybeSingle() as unknown as Promise<{ data: { problem_slug: string } | null }>);
+      if (dispatch?.problem_slug && VALID_SLUGS.has(dispatch.problem_slug)) {
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        const nextReview = new Date(today);
+        // Default to the "review later" cadence (4 days) if the learner
+        // never taps the rating; the rating action overrides this.
+        nextReview.setDate(nextReview.getDate() + 4);
+        await (supabase
+          .from("dsa_user_progress")
+          .insert({
+            user_id: user.id,
+            problem_slug: dispatch.problem_slug,
+            confidence: "review",
+            last_reviewed_on: today.toISOString().slice(0, 10),
+            repetitions: 1,
+            next_review_at: nextReview.toISOString().slice(0, 10),
+            updated_at: new Date().toISOString(),
+          } as unknown as never) as unknown as Promise<{ error: unknown }>);
+      }
+    } catch {
+      // Best-effort — never block the "Mark Done" path on spaced-repetition seeding.
+    }
+
     revalidatePath("/dsa");
     return { ok: true, data: undefined };
   } catch {

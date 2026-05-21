@@ -21,6 +21,8 @@ import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { JsonResumeSchema } from "@prodmatch/shared";
 import { jsonToParsedResume } from "@/lib/resume/json-mapper";
 import { logEvent } from "@/lib/observability/log";
+import { getUserConsents } from "@/lib/dpdp/consent";
+import { checkRateLimit, userActionKey } from "@/lib/security/rate-limit";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -34,6 +36,30 @@ export async function POST(req: Request) {
   } = await supabase.auth.getUser();
   if (!user) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  // QA fix: match the consent gate on the upload action. Without this, a
+  // user who revoked Matching consent could still publish a resume version
+  // via the JSON import path.
+  const consents = await getUserConsents(user.id);
+  if (!consents.matching) {
+    return NextResponse.json(
+      { error: "Enable AI Matching consent in Settings → Privacy to import a resume." },
+      { status: 403 },
+    );
+  }
+
+  // Rate-limit imports the same way uploads are limited.
+  const limit = checkRateLimit({
+    key: userActionKey(user.id, "resume-import"),
+    limit: 6,
+    windowMs: 60 * 60_000,
+  });
+  if (!limit.ok) {
+    return NextResponse.json(
+      { error: `Too many imports. Try again in ${Math.ceil(limit.retryAfterSeconds / 60)} minute(s).` },
+      { status: 429, headers: { "Retry-After": String(limit.retryAfterSeconds) } },
+    );
   }
 
   // Bound payload size before parsing.

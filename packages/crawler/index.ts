@@ -110,6 +110,33 @@ async function main() {
     // structured logger; per-key "first call ok" lines follow as the workers
     // touch each key for the first time.
     logKeyRoster();
+
+    // QA fix (B21): if Supabase has every configured key marked dead, the
+    // run will silently yield zero new jobs. Surface this as an explicit
+    // error so the operator gets a workflow failure (and the drift webhook
+    // fires) rather than a quiet 0-yield run.
+    try {
+      const sbForKeyCheck = adminClient();
+      const { data: deadRows } = (await sbForKeyCheck
+        .from("llm_dead_keys")
+        .select("key_suffix")
+        .eq("provider", "gemini")) as unknown as { data: Array<{ key_suffix: string }> | null };
+      const deadSuffixes = new Set((deadRows ?? []).map((r) => r.key_suffix));
+      const liveKeys = keys.filter((k) => !deadSuffixes.has(k.slice(-6)));
+      if (liveKeys.length === 0 && deadSuffixes.size > 0) {
+        log(
+          `All ${keys.length} configured Gemini key(s) are marked dead in llm_dead_keys. ` +
+          `Rotate the keys in GitHub secrets or clear the dead-key rows before re-running.`,
+          "error",
+          { event: "all_keys_dead", data: { keyCount: keys.length } },
+        );
+        process.exit(3);
+      }
+    } catch (err) {
+      // Best-effort: if the dead-key table doesn't exist or the query fails,
+      // proceed and let downstream key rotation handle failures inline.
+      log(`Dead-key check skipped: ${(err as Error).message}`, "warn", { event: "dead_key_check_skipped" });
+    }
   }
 
   const supabase = adminClient();

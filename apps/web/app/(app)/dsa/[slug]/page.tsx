@@ -9,7 +9,6 @@ import {
   Target,
 } from "lucide-react";
 import {
-  DSA_CATALOG,
   DSA_PATTERNS_DISPLAY,
   getDsaLearningGuide,
   getDsaProblemBySlug,
@@ -20,11 +19,10 @@ import { cn } from "@/lib/utils";
 import { ConfidenceRating } from "../confidence-rating";
 import { RevealSections } from "./reveal-sections";
 
+// QA fix (B16): the page loads per-user dsa_user_progress, so it has to be
+// dynamic. generateStaticParams was wasted CPU at build time because
+// force-dynamic always won. Drop the static params; keep force-dynamic.
 export const dynamic = "force-dynamic";
-
-export function generateStaticParams() {
-  return DSA_CATALOG.map((problem) => ({ slug: problem.slug }));
-}
 
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
   const { slug } = await params;

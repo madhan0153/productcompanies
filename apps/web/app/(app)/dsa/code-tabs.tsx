@@ -59,7 +59,10 @@ export function CodeTabs({ guide }: { guide: DsaLearningGuide }) {
               </button>
             ))
           ) : (
-            <span className="px-2 text-[11px] font-medium text-muted-foreground">TypeScript</span>
+            // QA fix (B18): don't claim the legacy single-snippet is
+            // TypeScript when we don't actually know. The fallback only
+            // fires when codeByLang is absent; honest label is "Code".
+            <span className="px-2 text-[11px] font-medium text-muted-foreground">Code</span>
           )}
         </div>
         <button

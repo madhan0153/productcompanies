@@ -49,6 +49,15 @@ export async function middleware(request: NextRequest) {
     }
   }
 
+  // QA fix (B1): API routes and the health endpoint authenticate themselves.
+  // Calling supabase.auth.getUser() in middleware on every /api/* request
+  // burned an Auth round-trip per cold start with no benefit. Short-circuit
+  // here so the rest of the auth + consent dance only fires on real page
+  // navigations.
+  if (pathname.startsWith("/api/")) {
+    return NextResponse.next({ request });
+  }
+
   let supabaseResponse = NextResponse.next({ request });
 
   const supabase = createServerClient(
@@ -73,7 +82,8 @@ export async function middleware(request: NextRequest) {
   // Refresh session (keeps cookie alive)
   const { data: { user } } = await supabase.auth.getUser();
 
-  const isPublic = PUBLIC_PATHS.some((p) => pathname === p || pathname.startsWith("/api/"));
+  // /api/* already short-circuited above — only page paths reach here.
+  const isPublic = PUBLIC_PATHS.some((p) => pathname === p);
 
   // Redirect unauthenticated users away from protected routes
   if (!user && !isPublic) {
@@ -83,10 +93,15 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(url);
   }
 
-  // Redirect logged-in users away from auth pages
+  // Redirect logged-in users away from auth pages — honour ?next= so a
+  // mid-session re-auth (e.g. magic-link from another device) returns the
+  // user to where they were trying to go.
   if (user && pathname.startsWith("/auth/login")) {
     const url = request.nextUrl.clone();
-    url.pathname = "/dashboard";
+    const next = request.nextUrl.searchParams.get("next");
+    const safeNext = next && next.startsWith("/") && !next.startsWith("//") ? next : "/dashboard";
+    url.pathname = safeNext;
+    url.search = "";
     return NextResponse.redirect(url);
   }
 
@@ -97,7 +112,6 @@ export async function middleware(request: NextRequest) {
     user &&
     !pathname.startsWith("/consent") &&
     !pathname.startsWith("/auth/") &&
-    !pathname.startsWith("/api/") &&
     !PUBLIC_PATHS.some((p) => pathname === p);
 
   if (isConsentable) {
