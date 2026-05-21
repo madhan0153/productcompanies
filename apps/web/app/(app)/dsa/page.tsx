@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { redirect } from "next/navigation";
-import { Brain, Clock3, Target } from "lucide-react";
+import { Brain, Clock3, Layers, Target } from "lucide-react";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { DsaClient, type DsaHistoryRow } from "./dsa-client";
 
@@ -40,6 +41,17 @@ export default async function DsaPage() {
           <HeroStat icon={<Clock3 className="h-4 w-4" />} label="Session" value="20-45m" />
           <HeroStat icon={<Brain className="h-4 w-4" />} label="Mode" value={hasResume ? "Tuned" : "Core"} />
         </div>
+
+        <Link
+          href="/dsa/patterns"
+          className="inline-flex min-h-11 w-full items-center justify-between gap-3 rounded-lg border border-border bg-card px-4 py-2.5 text-sm font-medium transition hover:bg-secondary/50 sm:w-auto"
+        >
+          <span className="inline-flex items-center gap-2">
+            <Layers className="h-4 w-4 text-primary" />
+            Browse all 17 patterns
+          </span>
+          <span className="text-xs text-muted-foreground">Roadmap order →</span>
+        </Link>
       </header>
 
       <DsaClient history={history ?? []} hasResume={hasResume} />

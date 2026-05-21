@@ -4,7 +4,6 @@ import { notFound } from "next/navigation";
 import {
   ArrowLeft,
   BookOpen,
-  CheckCircle2,
   Clock3,
   ExternalLink,
   Target,
@@ -16,6 +15,7 @@ import {
   getDsaProblemBySlug,
 } from "@prodmatch/shared";
 import { cn } from "@/lib/utils";
+import { RevealSections } from "./reveal-sections";
 
 export const dynamic = "force-dynamic";
 
@@ -46,9 +46,12 @@ export default async function DsaProblemPage({ params }: { params: Promise<{ slu
 
       <header className="space-y-3">
         <div className="flex flex-wrap items-center gap-2">
-          <span className="rounded-full bg-secondary px-2 py-1 text-[11px] font-semibold text-muted-foreground">
+          <Link
+            href={`/dsa/patterns#${problem.pattern}`}
+            className="rounded-full bg-secondary px-2 py-1 text-[11px] font-semibold text-muted-foreground transition hover:bg-secondary/80 hover:text-foreground"
+          >
             {DSA_PATTERNS_DISPLAY[problem.pattern]}
-          </span>
+          </Link>
           <span
             className={cn(
               "rounded-full px-2 py-1 text-[11px] font-semibold uppercase",
@@ -88,19 +91,7 @@ export default async function DsaProblemPage({ params }: { params: Promise<{ slu
         </div>
       </LessonBlock>
 
-      <LessonBlock icon={<Target className="h-4 w-4" />} title="Approach">
-        <NumberedList lines={guide.approach} />
-      </LessonBlock>
-
-      <LessonBlock icon={<CheckCircle2 className="h-4 w-4" />} title="Clean Solution">
-        <NumberedList lines={guide.solution} />
-        {guide.code && (
-          <pre className="mt-3 overflow-x-auto rounded-lg border border-border bg-secondary/50 p-3 text-[12px] leading-relaxed">
-            <code>{guide.code}</code>
-          </pre>
-        )}
-        <p className="mt-3 text-sm font-medium text-muted-foreground">{guide.complexity}</p>
-      </LessonBlock>
+      <RevealSections guide={guide} />
 
       {guide.pitfalls.length > 0 && (
         <LessonBlock icon={<Target className="h-4 w-4" />} title="Common Mistakes">
@@ -145,20 +136,5 @@ function LessonBlock({ icon, title, children }: { icon: React.ReactNode; title: 
       </h2>
       <div className="mt-3 text-sm leading-relaxed text-muted-foreground">{children}</div>
     </section>
-  );
-}
-
-function NumberedList({ lines }: { lines: string[] }) {
-  return (
-    <ol className="space-y-2">
-      {lines.map((line, index) => (
-        <li key={line} className="flex gap-2">
-          <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-secondary text-[11px] font-semibold text-muted-foreground">
-            {index + 1}
-          </span>
-          <span>{line}</span>
-        </li>
-      ))}
-    </ol>
   );
 }
