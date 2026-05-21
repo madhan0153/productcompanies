@@ -20,7 +20,11 @@ export type LlmOperationId =
   | "negotiation_memo"
   | "coach_plan"
   | "job_embedding"
-  | "resume_embedding";
+  | "resume_embedding"
+  | "interview_story_generate"
+  | "interview_story_polish"
+  | "interview_readiness_score"
+  | "interview_project_translate";
 
 export interface LlmOperationPolicy {
   id: LlmOperationId;
@@ -207,6 +211,46 @@ export const LLM_OPERATION_POLICIES: Record<LlmOperationId, LlmOperationPolicy> 
     freeProviderDefault: "allowed",
     deterministicFallback: "available",
     notes: "Derived resume facts (not raw PDF); rolls freely.",
+  },
+  interview_story_generate: {
+    id: "interview_story_generate",
+    label: "Interview Lab — STAR story generation",
+    capability: "text_json",
+    sensitivity: "resume_pii",
+    preferredTier: "heavy",
+    freeProviderDefault: "allowed",
+    deterministicFallback: "unavailable",
+    notes: "Generates 8-10 STAR stories from parsed resume + extracted bullets. One call per user, cached on resume_signature.",
+  },
+  interview_story_polish: {
+    id: "interview_story_polish",
+    label: "Interview Lab — single-story polish",
+    capability: "text_json",
+    sensitivity: "resume_pii",
+    preferredTier: "light",
+    freeProviderDefault: "allowed",
+    deterministicFallback: "unavailable",
+    notes: "Per-story polish when the user edits the situation/task/action/result.",
+  },
+  interview_readiness_score: {
+    id: "interview_readiness_score",
+    label: "Interview Lab — readiness score",
+    capability: "text_json",
+    sensitivity: "derived_resume_facts",
+    preferredTier: "light",
+    freeProviderDefault: "allowed",
+    deterministicFallback: "partial",
+    notes: "Returns 4 sub-scores (DSA / SD / Behavioral / Domain) and weekly actions. Deterministic fallback uses parsed-resume facts only.",
+  },
+  interview_project_translate: {
+    id: "interview_project_translate",
+    label: "Interview Lab — project translator",
+    capability: "text_json",
+    sensitivity: "resume_pii",
+    preferredTier: "light",
+    freeProviderDefault: "allowed",
+    deterministicFallback: "unavailable",
+    notes: "Rewrites a service-co bullet for product-co interview register. Per click; small output.",
   },
 };
 
