@@ -23,6 +23,8 @@
     "test:matching-bench": "node --import tsx --test apps/web/__tests__/matching/banding-benchmark.test.ts",
     "test:pdf-text": "node --import tsx --test apps/web/__tests__/resume/pdf-text.test.ts",
     "test:llm-runtime": "node --import tsx --test packages/shared/src/llm/*.test.ts",
+    "test:dsa": "node --import tsx --test packages/shared/src/dsa-learning.test.ts",
+    "test:matches": "node --import tsx --test \"apps/web/app/(app)/matches/match-types.test.ts\"",
     "capture-fixture": "tsx packages/crawler/capture-fixture.ts",
     "crawl": "pnpm --filter crawler start"
   },

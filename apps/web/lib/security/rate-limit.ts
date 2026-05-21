@@ -1,3 +1,13 @@
+// Dev review note (D3): this is an in-memory per-instance rate limiter.
+// Vercel can run multiple lambda instances for the same function, so the
+// effective limit is roughly N_instances × declared limit. That's fine for
+// deterring casual abuse, but for production-grade abuse control move to a
+// shared backend:
+//   - Upstash Redis (recommended) — `INCR` + `EXPIRE`
+//   - Postgres advisory locks + a counter row
+// When that lands, the contract here stays the same; only the bucket
+// store changes. Tests and call sites do not need to be touched.
+
 type RateLimitOptions = {
   key: string;
   limit: number;

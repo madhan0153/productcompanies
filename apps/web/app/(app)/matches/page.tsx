@@ -26,22 +26,22 @@ import { MatchCardArea } from "./match-card-area";
 export const metadata: Metadata = { title: "Matches" };
 export const maxDuration = 60;
 
-// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ----------------------------------------------------------------------
 // Types
-// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ----------------------------------------------------------------------
 
 type MatchRow = MatchCardData & {
   verdict: Verdict | null;
   fit_card_at: string | null;
   computed_at: string;
   seen_at: string | null;
-  /** Phase G derived field â€” kept for routing/cap reads. */
+  /** Phase G derived field — kept for routing/cap reads. */
   hidden_reason: string | null;
 };
 
-// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ----------------------------------------------------------------------
 // Page
-// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ----------------------------------------------------------------------
 
 export default async function MatchesPage({
   searchParams,
@@ -80,10 +80,10 @@ export default async function MatchesPage({
   const resumeScore = profile?.resume_score ?? null;
   const lastComputeAt = profile?.last_match_compute_at ?? null;
 
-  // Accurate band counts via parallel head-count queries â€” each is a fast
+  // Accurate band counts via parallel head-count queries — each is a fast
   // indexed COUNT(*) that bypasses the PostgREST max_rows cap. Scope filters
   // (company, hub) apply server-side so the strip honours them.
-  // Dismiss was removed â€” there is no longer a user_hidden filter.
+  // Dismiss was removed — there is no longer a user_hidden filter.
   const baseCountQuery = () => {
 
     let q: any = supabase
@@ -110,7 +110,7 @@ export default async function MatchesPage({
     filtered:   (cFilteredLow.count ?? 0) + (cFilteredHidden.count ?? 0),
   };
 
-  // Single read for the tab's visible cards â€” capped at 500 so SSR stays
+  // Single read for the tab's visible cards — capped at 500 so SSR stays
   // fast. The band-strip counts above are accurate beyond the cap, so the
   // user always sees the truthful number even if the list is paginated.
 
@@ -143,7 +143,7 @@ export default async function MatchesPage({
   const allRows = (matchRows ?? []).filter((m): m is MatchRow & { jobs: NonNullable<MatchRow["jobs"]> } => !!m.jobs);
   const allScores = allRows.map(m => m.score).sort((a, b) => a - b);
 
-  // Scope filter â€” applied in-memory to the 500-row list. The band counts
+  // Scope filter — applied in-memory to the 500-row list. The band counts
   // above already applied the same predicates server-side, so the strip
   // numbers are unaffected by this client-side narrowing.
   const passesScopeFilters = (m: MatchRow) => {
@@ -155,7 +155,7 @@ export default async function MatchesPage({
   };
   const scopedRows = allRows.filter(passesScopeFilters);
 
-  // Tab slicing â€” single source of truth.
+  // Tab slicing — single source of truth.
   const tabRows = scopedRows.filter((m) => {
     const cls = classifyMatch(m);
     if (tab === "shortlist")    return cls === "shortlist";
@@ -164,7 +164,7 @@ export default async function MatchesPage({
     return false;
   });
 
-  // Sprint 6 â€” fold in application status for the cards in view.
+  // Sprint 6 — fold in application status for the cards in view.
   const visibleJobIds = tabRows.map((m) => m.jobs.id);
   const applicationStatus = new Map<string, string>();
   if (visibleJobIds.length > 0) {
@@ -198,7 +198,7 @@ export default async function MatchesPage({
     });
   }
 
-  // Filter chip data â€” companies/hubs derived from the full scope, not the
+  // Filter chip data — companies/hubs derived from the full scope, not the
   // tab slice, so users can switch companies even while in "Filtered".
   const companies = [...new Map(
     allRows
@@ -218,7 +218,7 @@ export default async function MatchesPage({
       {/* Session-history beacon */}
       <MatchesURLBeacon />
 
-      {/* â”€â”€ Header â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
+      {/* Header */}
       <div className="flex items-center justify-between gap-3">
         <div className="min-w-0">
           <h1 className="text-xl font-semibold tracking-tight sm:text-2xl">Matches</h1>
@@ -234,12 +234,12 @@ export default async function MatchesPage({
         <ComputeTrigger />
       </div>
 
-      {/* â”€â”€ Compute status banner â€” full-width, only when running/error â”€ */}
+      {/* Compute status banner — full-width, only when running/error */}
       <ComputeStatusBanner />
       <MatchStatusPanel status={status} />
 
 
-      {/* â”€â”€ Band strip â€” sticky tab spine, right under title â”€â”€â”€â”€â”€â”€â”€ */}
+      {/* Band strip — sticky tab spine, right under title */}
       {allRows.length > 0 && (
         <BandStrip
           counts={bandCounts}
@@ -250,7 +250,7 @@ export default async function MatchesPage({
         />
       )}
 
-      {/* â”€â”€ Filters (company/hub/min-score) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
+      {/* Filters (company/hub/min-score) */}
       {allRows.length > 0 && (
         <MatchFilters
           allCompanies={companies}
@@ -258,24 +258,24 @@ export default async function MatchesPage({
         />
       )}
 
-      {/* â”€â”€ Resume score strip â€” only when score < 60 (where the
-          weak-resume â†’ weak-matches connection actually matters).
+      {/* Resume score strip — only when score < 60 (where the
+          weak-resume -†’ weak-matches connection actually matters).
           Strong/Application-ready scores hide entirely. */}
       {hasResume && resumeScore !== null && resumeScore < 60 && (
         <ResumeScoreStrip score={resumeScore} />
       )}
 
-      {/* â”€â”€ Filtered tab inline note â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
+      {/* Filtered tab inline note */}
       {tab === "filtered" && tabRows.length > 0 && (
         <div className="flex items-start gap-2.5 rounded-md border border-dashed border-border bg-secondary/40 px-4 py-3 text-sm">
           <AlertCircle className="mt-0.5 h-3.5 w-3.5 shrink-0 text-muted-foreground" />
           <p className="text-muted-foreground">
-            These roles scored below 40, hit a hard cap, or were classified as a mismatch. Most users skip them â€” but if you want to see why each was filtered, open the Fit Card on any row.
+            These roles scored below 40, hit a hard cap, or were classified as a mismatch. Most users skip them — but if you want to see why each was filtered, open the Fit Card on any row.
           </p>
         </div>
       )}
 
-      {/* â”€â”€ Card list â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
+      {/* Card list */}
       <MatchCardArea>
         {tabRows.length > 0 ? (
           <>
@@ -322,9 +322,9 @@ export default async function MatchesPage({
   );
 }
 
-// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-// Empty states per tab â€” keeps the user oriented when a slice is empty.
-// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ----------------------------------------------------------------------
+// Empty states per tab — keeps the user oriented when a slice is empty.
+// ----------------------------------------------------------------------
 
 function MatchStatusPanel({
   status,
@@ -398,7 +398,7 @@ function emptyStateForTab(tab: MatchTab, activeFilterCount: number): React.React
       <EmptyState
         icon={<Eye className="h-5 w-5" />}
         title="No matches in this slice"
-        body="Try clearing or widening a filter â€” there may be roles you'd qualify for hiding behind the current selection."
+        body="Try clearing or widening a filter — there may be roles you'd qualify for hiding behind the current selection."
         actions={[{ label: "Clear filters", href: `/matches?tab=${tab}`, variant: "primary" }]}
       />
     );
@@ -408,7 +408,7 @@ function emptyStateForTab(tab: MatchTab, activeFilterCount: number): React.React
       <EmptyState
         icon={<Activity className="h-5 w-5" />}
         title="No priority matches yet"
-        body="Nothing scored â‰¥60 yet. Check Explore for partial fits, or set your preferred hubs / strengthen your resume to lift more roles."
+        body="Nothing scored -‰¥60 yet. Check Explore for partial fits, or set your preferred hubs / strengthen your resume to lift more roles."
         actions={[
           { label: "See Explore matches", href: "/matches?tab=worth_a_look", variant: "primary" },
           { label: "Edit profile", href: "/profile", variant: "ghost" },
@@ -434,11 +434,11 @@ function emptyStateForTab(tab: MatchTab, activeFilterCount: number): React.React
   );
 }
 
-// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-// Resume Score Strip â€” compact 1-line alert. Only renders for score < 60.
+// ----------------------------------------------------------------------
+// Resume Score Strip — compact 1-line alert. Only renders for score < 60.
 // Above 60 the resume isn't the bottleneck, so the strip stays hidden and
 // the matches page is purely about matches.
-// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ----------------------------------------------------------------------
 
 function ResumeScoreStrip({ score }: { score: number }) {
   const tone = score < 40 ? "destructive" : "warning";
@@ -459,7 +459,7 @@ function ResumeScoreStrip({ score }: { score: number }) {
         </span>
         <span className="truncate">
           Resume score: <strong className={tones.text}>{grade}</strong>{" "}
-          <span className="text-muted-foreground">â€” this is capping your matches</span>
+          <span className="text-muted-foreground">— this is capping your matches</span>
         </span>
       </div>
       <ArrowUpRight className="h-3.5 w-3.5 shrink-0 text-muted-foreground transition group-hover:text-foreground" />
@@ -467,9 +467,9 @@ function ResumeScoreStrip({ score }: { score: number }) {
   );
 }
 
-// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ----------------------------------------------------------------------
 // Helpers
-// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ----------------------------------------------------------------------
 
 function humanAgo(iso: string): string {
   const diff = Date.now() - new Date(iso).getTime();

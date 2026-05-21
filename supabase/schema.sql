@@ -4,18 +4,33 @@
 -- Paste this entire file into the Supabase SQL editor and run.
 -- Safe to re-run any number of times; will not create duplicates or errors.
 --
--- Sections:
---   1. Extensions
---   2. Enums
---   3. Helper functions
---   4. Tables + indexes
---   5. updated_at triggers
---   6. RLS enable + policies
---   7. Storage bucket + policies (resumes)
---   8. Seed: 18 approved product companies
+-- To navigate this file in your editor, search for "=== SECTION:" — every
+-- top-level section emits one banner that takes you straight to the block.
+--
+-- Sections (in file order):
+--   === SECTION: EXTENSIONS               (1)
+--   === SECTION: ENUMS                    (2)
+--   === SECTION: HELPER FUNCTIONS         (3)
+--   === SECTION: TABLES — CORE            (4a)  companies, jobs, profiles, ...
+--   === SECTION: TABLES — RESUME          (4b)  resume_versions, exports, ...
+--   === SECTION: TABLES — MATCHING        (4c)  matches, dna_breakdowns, ...
+--   === SECTION: TABLES — CRAWLER         (4d)  crawl_runs, background_jobs, ...
+--   === SECTION: TABLES — LLM OPS         (4e)  llm_dead_keys, ...
+--   === SECTION: TABLES — INTERVIEW       (4f)  readiness, stories, dispatch, ...
+--   === SECTION: TABLES — DSA             (4g)  dsa_user_progress
+--   === SECTION: UPDATED_AT TRIGGERS      (5)
+--   === SECTION: RLS POLICIES             (6)
+--   === SECTION: STORAGE BUCKET           (7)
+--   === SECTION: SEED DATA                (8)
+--
+-- All blocks use IF NOT EXISTS / DO $$ ... EXCEPTION WHEN duplicate_object
+-- patterns so re-running this entire file in the Supabase SQL editor is
+-- always safe.
 -- =============================================================================
 
 
+-- =============================================================================
+-- === SECTION: EXTENSIONS ===
 -- -----------------------------------------------------------------------------
 -- 1. EXTENSIONS
 -- -----------------------------------------------------------------------------
@@ -29,6 +44,7 @@ create extension if not exists "pg_trgm";
 
 
 -- -----------------------------------------------------------------------------
+-- === SECTION: ENUMS ===
 -- 2. ENUMS  (idempotent via duplicate_object catch)
 -- -----------------------------------------------------------------------------
 do $$ begin
@@ -67,6 +83,7 @@ alter type seniority_level add value if not exists 'vp';
 
 
 -- -----------------------------------------------------------------------------
+-- === SECTION: HELPER FUNCTIONS ===
 -- 3. HELPER FUNCTIONS
 -- -----------------------------------------------------------------------------
 
@@ -157,7 +174,8 @@ grant execute on function public.request_user_erasure(uuid) to service_role;
 
 
 -- -----------------------------------------------------------------------------
--- 4. TABLES + INDEXES
+-- === SECTION: TABLES ===
+-- 4. TABLES + INDEXES (sub-sections grouped by domain — see file header)
 -- -----------------------------------------------------------------------------
 
 -- COMPANIES (the 18 approved product companies)
@@ -1352,6 +1370,7 @@ end $$;
 
 
 -- -----------------------------------------------------------------------------
+-- === SECTION: UPDATED_AT TRIGGERS ===
 -- 5. updated_at TRIGGERS  (drop-then-create for idempotency)
 -- -----------------------------------------------------------------------------
 do $$
@@ -1374,6 +1393,7 @@ end $$;
 
 
 -- -----------------------------------------------------------------------------
+-- === SECTION: RLS POLICIES ===
 -- 6. RLS ENABLE + POLICIES  (drop-then-create for idempotency)
 -- -----------------------------------------------------------------------------
 
@@ -1518,6 +1538,7 @@ create policy "dpdp_events_select_own" on public.dpdp_events for select
 
 
 -- -----------------------------------------------------------------------------
+-- === SECTION: STORAGE BUCKET ===
 -- 7. STORAGE BUCKET + POLICIES (resumes, private)
 -- -----------------------------------------------------------------------------
 insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
@@ -1801,6 +1822,7 @@ comment on column public.tailored_resumes.status is 'pending_review | finalised 
 
 
 -- -----------------------------------------------------------------------------
+-- === SECTION: SEED DATA ===
 -- 8. SEED — 18 approved product companies (no jobs)
 -- -----------------------------------------------------------------------------
 insert into public.companies (slug, name, careers_url, hubs) values
