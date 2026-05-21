@@ -15,6 +15,7 @@
 //   • Few-shot examples in the prompt to anchor the lite model
 
 import { LlmRunError, runWithRetry, SchemaType, type Schema, type RetryOptions } from "./gemini";
+import { parseJsonObject } from "./json";
 import { shouldUseDeterministicFallback } from "./provider-router";
 import { CANONICAL_ROLE_FUNCTIONS, normalizeRoleFunction } from "../roles/taxonomy";
 
@@ -392,7 +393,7 @@ ${input.description.slice(0, 12000)}`;
     throw err;
   }
 
-  const raw = JSON.parse(text) as Partial<ParsedJD>;
+  const raw = parseJsonObject<Partial<ParsedJD>>(text);
 
   const seniority = lc(raw.jd_seniority_signal);
   const seniorityOut = validSeniorities.has(seniority)

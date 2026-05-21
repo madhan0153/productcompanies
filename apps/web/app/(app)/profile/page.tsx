@@ -52,6 +52,7 @@ export default async function ProfilePage() {
       <ParseStatusBanner
         initialStartedAt={(profile as { resume_parsing_at?: string | null } | null)?.resume_parsing_at ?? null}
         initialError={parseError}
+        hasActiveResume={hasResume}
       />
 
       {/* ── Compact header — single row ─────────────────────────── */}

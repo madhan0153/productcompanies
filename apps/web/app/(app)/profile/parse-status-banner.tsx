@@ -15,9 +15,11 @@ import { getParseStatus } from "./actions";
 export function ParseStatusBanner({
   initialStartedAt,
   initialError,
+  hasActiveResume,
 }: {
   initialStartedAt: string | null;
   initialError:     string | null;
+  hasActiveResume:  boolean;
 }) {
   const router = useRouter();
   const reduce = useReducedMotion();
@@ -86,17 +88,31 @@ export function ParseStatusBanner({
   }
 
   if (error) {
+    const fallback = hasActiveResume;
     return (
       <motion.div
         initial={reduce ? {} : { opacity: 0, y: -4 }}
         animate={{ opacity: 1, y: 0 }}
-        className="flex items-start gap-3 rounded-xl border border-destructive/30 bg-destructive/5 px-4 py-3 text-destructive"
+        className={[
+          "flex items-start gap-3 rounded-xl border px-4 py-3",
+          fallback
+            ? "border-warning/30 bg-warning/5 text-warning"
+            : "border-destructive/30 bg-destructive/5 text-destructive",
+        ].join(" ")}
       >
         <AlertCircle className="mt-0.5 h-5 w-5 shrink-0" />
         <div className="min-w-0 flex-1">
-          <p className="text-sm font-semibold">Resume parse failed</p>
-          <p className="mt-0.5 text-xs text-destructive/80">{error}</p>
-          <p className="mt-1 text-xs text-destructive/80">Re-upload the PDF below to retry.</p>
+          <p className="text-sm font-semibold">
+            {fallback ? "New resume parse failed" : "Resume parse failed"}
+          </p>
+          <p className={["mt-0.5 text-xs", fallback ? "text-warning/85" : "text-destructive/80"].join(" ")}>
+            {error}
+          </p>
+          <p className={["mt-1 text-xs", fallback ? "text-warning/85" : "text-destructive/80"].join(" ")}>
+            {fallback
+              ? "Your previous parsed resume is still active for matches. Re-upload the PDF below when ready."
+              : "Re-upload the PDF below to retry."}
+          </p>
         </div>
       </motion.div>
     );

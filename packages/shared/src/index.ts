@@ -4,6 +4,7 @@ export * from "./schemas/resume-json";
 export * from "./llm/gemini";
 export * from "./llm/embed";
 export * from "./llm/jd-parse";
+export * from "./llm/json";
 export * from "./llm/operations";
 export * from "./llm/provider-router";
 export * from "./llm/providers-preset";

@@ -1,6 +1,7 @@
 import { runWithRetry, SchemaType, type Schema } from "@/lib/llm/gemini";
 import { extractPdfText } from "@/lib/resume/pdf-text";
 import { logEvent } from "@/lib/observability/log";
+import { parseJsonObject } from "@prodmatch/shared";
 
 export interface ParsedResume {
   name: string;
@@ -185,7 +186,7 @@ export async function parseResumeMultimodal(pdfBase64: string): Promise<ParsedRe
     return result.response.text();
   }, { operation: "resume_pdf_parse" });
 
-  return JSON.parse(text) as ParsedResume;
+  return parseJsonObject<ParsedResume>(text);
 }
 
 /**
@@ -243,7 +244,7 @@ export async function parseResumeFromText(resumeText: string): Promise<ParsedRes
     return result.response.text();
   }, { operation: "resume_text_parse" });
 
-  return JSON.parse(text) as ParsedResume;
+  return parseJsonObject<ParsedResume>(text);
 }
 
 // ── Diagnostics helpers ────────────────────────────────────────────────────
