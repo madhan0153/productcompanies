@@ -1,4 +1,6 @@
 import { runWithRetry, SchemaType, type Schema } from "@/lib/llm/gemini";
+import { extractPdfText } from "@/lib/resume/pdf-text";
+import { logEvent } from "@/lib/observability/log";
 
 export interface ParsedResume {
   name: string;
@@ -82,10 +84,7 @@ const SCHEMA: Schema = {
 
 const INDIA_HUBS = ["Bengaluru", "Hyderabad", "Pune", "Gurugram", "Noida", "Delhi NCR", "Mumbai", "Chennai", "Remote-India"];
 
-const PROMPT = `You are an expert resume parser for an India-focused engineering job platform.
-Extract structured information from the provided resume PDF.
-
-For role_function: classify the candidate's PRIMARY engineering function based on their
+const COMMON_INSTRUCTIONS = `For role_function: classify the candidate's PRIMARY engineering function based on their
 most recent 3 years of work. Must be EXACTLY one of:
 ${ROLE_FUNCTION_VALUES.join(", ")}.
 - qa_sdet: QA engineers, SDETs, test automation, quality leads
@@ -119,9 +118,49 @@ Estimate total_years_experience from work history dates.
 Do NOT include PII in summary — only professional summary.
 For estimated_current_lpa: estimate in LPA (lakhs per annum) based on role seniority, company tier, and years of experience in India market. Return null/omit if insufficient data.`;
 
+const PDF_PROMPT = `You are an expert resume parser for an India-focused engineering job platform.
+Extract structured information from the provided resume PDF.
+
+${COMMON_INSTRUCTIONS}`;
+
+const TEXT_PROMPT = `You are an expert resume parser for an India-focused engineering job platform.
+Extract structured information from the resume text provided below the marker.
+Return ONLY a JSON object that matches the requested schema; no prose, no markdown.
+
+${COMMON_INSTRUCTIONS}
+
+=== RESUME TEXT BEGINS ===`;
+
+/**
+ * Parse a resume PDF into the ParsedResume schema.
+ *
+ *   1. Tries the multimodal Gemini path first (best quality — Gemini reads
+ *      tables, columns, fonts, layout).
+ *   2. On any failure (Gemini exhausted, no PDF-capable provider), extracts
+ *      plain text from the PDF on the server and routes the text through
+ *      any configured text-capable provider (Groq, OpenRouter, Mistral,
+ *      etc.). Slightly lower quality, but keeps resume parse working when
+ *      Gemini is dead.
+ *
+ * Input is the **base64 representation of the raw PDF bytes** — same shape
+ * the rest of the app passes around. The fallback reconstructs the buffer
+ * server-side to run text extraction.
+ */
 export async function parseResumePdf(pdfBase64: string): Promise<ParsedResume> {
-  // 'heavy' tier cascades through 2.5-flash → 2.0-flash → 1.5-flash → lite
-  // variants. PDF input + structured output works on all of them.
+  try {
+    return await parseResumeMultimodal(pdfBase64);
+  } catch (primaryErr) {
+    // Multimodal failed — Gemini keys exhausted, or no PDF-capable provider.
+    // Log a structured event WITHOUT the resume content, then try text path.
+    logEvent("warn", "resume_pdf_multimodal_failed", {
+      reason: errKind(primaryErr),
+    });
+    return await parseResumeFromPdfViaText(pdfBase64, primaryErr);
+  }
+}
+
+/** Primary multimodal path — kept under the hood for tests + telemetry. */
+export async function parseResumeMultimodal(pdfBase64: string): Promise<ParsedResume> {
   const text = await runWithRetry("heavy", async (model) => {
     const result = await model.generateContent({
       contents: [
@@ -129,7 +168,7 @@ export async function parseResumePdf(pdfBase64: string): Promise<ParsedResume> {
           role: "user",
           parts: [
             { inlineData: { mimeType: "application/pdf", data: pdfBase64 } },
-            { text: PROMPT },
+            { text: PDF_PROMPT },
           ],
         },
       ],
@@ -147,4 +186,78 @@ export async function parseResumePdf(pdfBase64: string): Promise<ParsedResume> {
   }, { operation: "resume_pdf_parse" });
 
   return JSON.parse(text) as ParsedResume;
+}
+
+/**
+ * Fallback path: extract text from the PDF server-side, then pass the text
+ * to any text-capable LLM via the standard provider router. Uses the
+ * `resume_text_parse` operation policy.
+ *
+ * The caller should only invoke this after the multimodal path fails;
+ * exposed for diagnostic UIs.
+ */
+export async function parseResumeFromPdfViaText(
+  pdfBase64: string,
+  /** Optional original error to chain when text extraction also fails. */
+  primaryErr?: unknown,
+): Promise<ParsedResume> {
+  const buffer = Buffer.from(pdfBase64, "base64");
+  let extractedText: string;
+  try {
+    extractedText = await extractPdfText(buffer);
+  } catch (extractErr) {
+    // PDF couldn't be turned into text either — surface a useful aggregate
+    // error so the caller can show the user something actionable.
+    const reason = errKind(extractErr);
+    logEvent("error", "resume_pdf_text_extract_failed", {
+      reason,
+      primary: primaryErr ? errKind(primaryErr) : null,
+    });
+    throw new Error(`Resume parse failed: ${reason}`);
+  }
+  return await parseResumeFromText(extractedText);
+}
+
+/**
+ * Pure text → ParsedResume helper. Used directly when the caller already
+ * has plain text (e.g. a Reactive-Resume JSON import that has no PDF).
+ */
+export async function parseResumeFromText(resumeText: string): Promise<ParsedResume> {
+  if (!resumeText || resumeText.trim().length < 80) {
+    throw new Error("Resume text too short to parse");
+  }
+  const text = await runWithRetry("heavy", async (model) => {
+    const result = await model.generateContent({
+      contents: [
+        {
+          role: "user",
+          parts: [{ text: `${TEXT_PROMPT}\n${resumeText}` }],
+        },
+      ],
+      generationConfig: {
+        responseMimeType: "application/json",
+        responseSchema: SCHEMA,
+        temperature: 0,
+      },
+    });
+    return result.response.text();
+  }, { operation: "resume_text_parse" });
+
+  return JSON.parse(text) as ParsedResume;
+}
+
+// ── Diagnostics helpers ────────────────────────────────────────────────────
+
+function errKind(err: unknown): string {
+  if (err && typeof err === "object" && "name" in err && typeof err.name === "string") {
+    if (err.name === "LlmRunError") {
+      const detail = (err as { detail?: { kind?: string } }).detail;
+      return detail?.kind ?? "llm_unknown";
+    }
+    if (err.name === "PdfTextExtractionError") {
+      return (err as { kind?: string }).kind ?? "pdf_extract_unknown";
+    }
+  }
+  if (err instanceof Error) return err.message.slice(0, 80);
+  return "unknown";
 }
