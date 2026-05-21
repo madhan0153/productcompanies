@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
-  LayoutDashboard, Briefcase, ClipboardList, Compass, User,
+  LayoutDashboard, Briefcase, ClipboardList, Sparkles, User,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -21,7 +21,7 @@ const BOTTOM_NAV = [
   { href: "/dashboard",    label: "Home",     icon: LayoutDashboard, badgeKey: null              },
   { href: "/matches",      label: "Matches",  icon: Briefcase,       badgeKey: "matches"      as const },
   { href: "/applications", label: "Apps",     icon: ClipboardList,   badgeKey: "applications" as const },
-  { href: "/coach",        label: "Coach",    icon: Compass,         badgeKey: null              },
+  { href: "/lab",          label: "Lab",      icon: Sparkles,        badgeKey: null              },
   { href: "/profile",      label: "Profile",  icon: User,            badgeKey: null              },
 ] as const;
 

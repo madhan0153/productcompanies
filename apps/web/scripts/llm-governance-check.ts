@@ -32,6 +32,10 @@ const REQUIRED: LlmOperationId[] = [
   "coach_plan",
   "job_embedding",
   "resume_embedding",
+  "interview_story_generate",
+  "interview_story_polish",
+  "interview_readiness_score",
+  "interview_project_translate",
 ];
 
 const missing = REQUIRED.filter((id) => !LLM_OPERATION_POLICIES[id]);

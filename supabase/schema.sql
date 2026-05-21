@@ -923,6 +923,152 @@ alter table public.llm_dead_keys enable row level security;
 -- Intentionally no public policies — service-role only.
 
 
+-- ----------------------------------------------------------------------------
+-- INTERVIEW LAB (Phase 1) — Story Bank + Readiness Mirror
+-- ----------------------------------------------------------------------------
+--
+-- Two owner-scoped tables. Insert/update goes through the user's session
+-- (NOT service-role) so RLS guarantees user_id = auth.uid().
+
+do $$ begin
+  create type interview_story_competency as enum (
+    'leadership',
+    'ownership',
+    'conflict',
+    'scope_change',
+    'technical_depth',
+    'business_impact',
+    'failure_learning',
+    'mentorship',
+    'ambiguity',
+    'cross_functional'
+  );
+exception when duplicate_object then null; end $$;
+
+-- Story Bank
+create table if not exists public.interview_stories (
+  id                   uuid primary key default gen_random_uuid(),
+  user_id              uuid not null references auth.users(id) on delete cascade,
+  competency           interview_story_competency not null,
+  title                text not null,
+  situation            text not null,
+  task                 text not null,
+  action               text not null,
+  result               text not null,
+  source_company       text,
+  source_role          text,
+  suggested_questions  jsonb not null default '[]'::jsonb,
+  is_starred           boolean not null default false,
+  polished             boolean not null default false,
+  /** Snapshot of profiles.resume_signature when this row was generated. Lets us
+   *  invalidate auto-generated stories when the user uploads a new resume. */
+  source_signature     text,
+  created_at           timestamptz not null default now(),
+  updated_at           timestamptz not null default now()
+);
+
+create index if not exists idx_interview_stories_user
+  on public.interview_stories(user_id, created_at desc);
+
+alter table public.interview_stories enable row level security;
+
+do $$ begin
+  if not exists (
+    select 1 from pg_policies
+    where schemaname = 'public' and tablename = 'interview_stories'
+      and policyname = 'interview_stories_select_own'
+  ) then
+    create policy interview_stories_select_own on public.interview_stories
+      for select to authenticated using (auth.uid() = user_id);
+  end if;
+end $$;
+
+do $$ begin
+  if not exists (
+    select 1 from pg_policies
+    where schemaname = 'public' and tablename = 'interview_stories'
+      and policyname = 'interview_stories_insert_own'
+  ) then
+    create policy interview_stories_insert_own on public.interview_stories
+      for insert to authenticated with check (auth.uid() = user_id);
+  end if;
+end $$;
+
+do $$ begin
+  if not exists (
+    select 1 from pg_policies
+    where schemaname = 'public' and tablename = 'interview_stories'
+      and policyname = 'interview_stories_update_own'
+  ) then
+    create policy interview_stories_update_own on public.interview_stories
+      for update to authenticated using (auth.uid() = user_id)
+      with check (auth.uid() = user_id);
+  end if;
+end $$;
+
+do $$ begin
+  if not exists (
+    select 1 from pg_policies
+    where schemaname = 'public' and tablename = 'interview_stories'
+      and policyname = 'interview_stories_delete_own'
+  ) then
+    create policy interview_stories_delete_own on public.interview_stories
+      for delete to authenticated using (auth.uid() = user_id);
+  end if;
+end $$;
+
+-- Readiness Mirror — one row per user. Updates in place.
+create table if not exists public.interview_readiness (
+  user_id              uuid primary key references auth.users(id) on delete cascade,
+  target_role_function text,
+  dsa_score            integer not null default 0,
+  system_design_score  integer not null default 0,
+  behavioral_score     integer not null default 0,
+  domain_score         integer not null default 0,
+  actions              jsonb not null default '[]'::jsonb,
+  assessment_answers   jsonb not null default '{}'::jsonb,
+  source_signature     text,
+  generated_at         timestamptz not null default now(),
+  updated_at           timestamptz not null default now()
+);
+
+alter table public.interview_readiness enable row level security;
+
+do $$ begin
+  if not exists (
+    select 1 from pg_policies
+    where schemaname = 'public' and tablename = 'interview_readiness'
+      and policyname = 'interview_readiness_select_own'
+  ) then
+    create policy interview_readiness_select_own on public.interview_readiness
+      for select to authenticated using (auth.uid() = user_id);
+  end if;
+end $$;
+
+do $$ begin
+  if not exists (
+    select 1 from pg_policies
+    where schemaname = 'public' and tablename = 'interview_readiness'
+      and policyname = 'interview_readiness_insert_own'
+  ) then
+    create policy interview_readiness_insert_own on public.interview_readiness
+      for insert to authenticated with check (auth.uid() = user_id);
+  end if;
+end $$;
+
+do $$ begin
+  if not exists (
+    select 1 from pg_policies
+    where schemaname = 'public' and tablename = 'interview_readiness'
+      and policyname = 'interview_readiness_update_own'
+  ) then
+    create policy interview_readiness_update_own on public.interview_readiness
+      for update to authenticated using (auth.uid() = user_id)
+      with check (auth.uid() = user_id);
+  end if;
+end $$;
+
+
 -- -----------------------------------------------------------------------------
 -- 5. updated_at TRIGGERS  (drop-then-create for idempotency)
 -- -----------------------------------------------------------------------------

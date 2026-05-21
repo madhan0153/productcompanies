@@ -28,6 +28,7 @@ import type {
   JsonResumeLanguage,
 } from "@prodmatch/shared";
 import { saveResumeJson } from "./actions";
+import { ProjectTranslatorButton } from "@/components/lab/project-translator-button";
 
 type DerivedFrom = "json" | "parsed" | "empty";
 
@@ -469,7 +470,22 @@ function WorkForm({ doc, setDoc }: { doc: JsonResume; setDoc: SetDoc }) {
               onChange={(e) => setItem(i, { highlights: e.target.value.split("\n").map((s) => s.trim()).filter(Boolean) })}
             />
           </Field>
-          <div className="flex justify-end"><RemoveButton onClick={() => remove(i)} /></div>
+          {/* Interview Lab — Project Translator. Lets the user rewrite any
+              bullet for product-co interview register without leaving the
+              editor. Replaces the chosen bullet in place when accepted. */}
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <ProjectTranslatorButton
+              bullets={w.highlights}
+              role={w.position}
+              company={w.name}
+              onReplace={(idx, newBullet) => {
+                const next = [...w.highlights];
+                next[idx] = newBullet;
+                setItem(i, { highlights: next });
+              }}
+            />
+            <RemoveButton onClick={() => remove(i)} />
+          </div>
         </div>
       ))}
       <AddButton label="Add role" onClick={add} />
