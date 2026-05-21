@@ -26,9 +26,13 @@ on:
 permissions:
   contents: read
 
+# QA fix (B22): allow a newly-dispatched crawl to cancel a stalled prior run.
+# We hold a Postgres cron lock during recompute, so the cancellation can't
+# cause overlapping writes. With cancel-in-progress=false we observed runs
+# queueing for hours when GitHub's scheduler lagged.
 concurrency:
   group: crawl
-  cancel-in-progress: false
+  cancel-in-progress: true
 
 jobs:
   validate:
@@ -143,10 +147,22 @@ jobs:
   # clock budget hits.
   recompute_matches:
     name: "Recompute matches (fan-out)"
-    needs: crawl
+    needs: [validate, crawl]
     runs-on: ubuntu-latest
     timeout-minutes: 90    # Allows up to MAX_ITER=30 iterations
-    if: ${{ always() && github.event.inputs.dry_run != 'true' && github.event.inputs.dry_run_parse != 'true' }}
+    # QA fix (B20): don't recompute when secrets validation fails (no crawl
+    # ran) or when both crawl and recompute are dry-runs. We still recompute
+    # when the crawl partially failed — a partial new-jobs set is worth
+    # matching for any users with stale matches.
+    if: >-
+      ${{
+        always()
+        && needs.validate.result == 'success'
+        && needs.crawl.result != 'skipped'
+        && needs.crawl.result != 'cancelled'
+        && github.event.inputs.dry_run != 'true'
+        && github.event.inputs.dry_run_parse != 'true'
+      }}
     steps:
       - name: Install jq
         run: sudo apt-get update && sudo apt-get install -y jq
