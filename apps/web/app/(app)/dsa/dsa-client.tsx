@@ -20,11 +20,19 @@ import {
   getDsaLearningGuide,
   getDsaPatternProgress,
   getDsaProblemBySlug,
+  type DsaProblem,
   type DsaDifficulty,
   type DsaPattern,
 } from "@prodmatch/shared";
-import { completeDsaAction, getTodayDispatchAction, type TodayDispatch } from "../lab/phase3-actions";
+import { completeDsaAction, getTodayDispatchAction } from "./actions";
 import { cn } from "@/lib/utils";
+
+type TodayDispatch = {
+  problem: DsaProblem;
+  personalised_note: string;
+  what_youll_learn: string[];
+  is_complete: boolean;
+};
 
 export interface DsaHistoryRow {
   day: string;
@@ -48,10 +56,10 @@ export function DsaClient({ history, hasResume }: Props) {
     startTransition(async () => {
       try {
         const res = await getTodayDispatchAction();
-        if (res.ok && res.data) {
-          setToday(res.data);
-        } else {
+        if (!res.ok) {
           setFlash({ kind: "err", text: res.error ?? "Could not pick today's problem." });
+        } else {
+          setToday(res.data);
         }
       } catch {
         setFlash({ kind: "err", text: "Could not pick today's problem. Please try again shortly." });
