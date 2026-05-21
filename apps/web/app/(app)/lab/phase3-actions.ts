@@ -14,6 +14,7 @@ import { logEvent } from "@/lib/observability/log";
 import { checkRateLimit, userActionKey } from "@/lib/security/rate-limit";
 import {
   DSA_CATALOG,
+  getDsaLearningGuide,
   getDsaProblemBySlug,
   pickNextDsaProblem,
   type DsaPattern,
@@ -208,6 +209,9 @@ export async function getTodayDispatchAction(): Promise<ActionResult<TodayDispat
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return { ok: false, error: "Sign in required." };
 
+  const rate = checkRateLimit({ key: userActionKey(user.id, "dsa_dispatch"), limit: 30, windowMs: 24 * 60 * 60_000 });
+  if (!rate.ok) return { ok: false, error: "Too many DSA refreshes today. Try again tomorrow." };
+
   const today = new Date().toISOString().slice(0, 10);
 
   // Has a dispatch row for today already?
@@ -264,11 +268,7 @@ export async function getTodayDispatchAction(): Promise<ActionResult<TodayDispat
       }>),
   ]);
 
-  if (!profile?.resume_parsed) {
-    return { ok: false, error: "Upload your resume first." };
-  }
-
-  const targetCompanies = profile.target_role_functions ? [] : []; // placeholder; pull from plan if needed
+  const targetCompanies: string[] = [];
   // Actual target companies come from interview_study_plan if it exists.
   const { data: plan } = await (supabase
     .from("interview_study_plan")
@@ -294,17 +294,26 @@ export async function getTodayDispatchAction(): Promise<ActionResult<TodayDispat
   });
   if (!problem) return { ok: false, error: "Out of recommended problems for now — try again tomorrow." };
 
-  // Personalise via LLM (cached on personalised_note column).
+  // Personalise via LLM when a parsed resume exists. DSA must still work
+  // without resume/LLM, so the static guide is the fallback.
+  const guide = getDsaLearningGuide(problem);
   let explanation: DsaExplanation;
-  try {
-    explanation = await explainDsaProblem({
-      problem,
-      parsed: profile.resume_parsed as ParsedResume,
-      target_companies: plan?.target_companies ?? [],
-    });
-  } catch (err) {
-    logEvent("warn", "interview_dsa_explain_failed", { reason: errKind(err) });
-    explanation = { personalised_note: "", what_youll_learn: [] };
+  if (profile?.resume_parsed) {
+    try {
+      explanation = await explainDsaProblem({
+        problem,
+        parsed: profile.resume_parsed as ParsedResume,
+        target_companies: plan?.target_companies ?? [],
+      });
+    } catch (err) {
+      logEvent("warn", "interview_dsa_explain_failed", { reason: errKind(err) });
+      explanation = { personalised_note: "", what_youll_learn: [] };
+    }
+  } else {
+    explanation = {
+      personalised_note: "Starting with a general DSA track. Upload a resume later to tune picks around your target role and companies.",
+      what_youll_learn: guide.approach.slice(0, 3),
+    };
   }
 
   // Persist dispatch row.
@@ -322,6 +331,7 @@ export async function getTodayDispatchAction(): Promise<ActionResult<TodayDispat
       error: { message: string } | null;
     }>);
 
+  revalidatePath("/dsa");
   revalidatePath("/lab/dsa");
   return {
     ok: true,
@@ -338,6 +348,10 @@ export async function completeDsaAction(input: { day: string }): Promise<ActionR
   const supabase = await createSupabaseServerClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return { ok: false, error: "Sign in required." };
+
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(input.day)) {
+    return { ok: false, error: "Bad date." };
+  }
 
   const { error } = await (supabase
     .from("interview_daily_dispatch")
@@ -361,6 +375,7 @@ export async function completeDsaAction(input: { day: string }): Promise<ActionR
       error: { message: string } | null;
     }>);
 
+  revalidatePath("/dsa");
   revalidatePath("/lab/dsa");
   revalidatePath("/lab/plan");
   revalidatePath("/lab");

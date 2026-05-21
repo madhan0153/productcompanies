@@ -5,7 +5,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { LayoutGroup, motion, useReducedMotion } from "framer-motion";
 import {
   LayoutDashboard, Briefcase, ShieldCheck, LogOut, Menu, X, User,
-  BarChart3, Sparkles, ClipboardList, Zap, Search,
+  BarChart3, Brain, ClipboardList, Zap, Search,
 } from "lucide-react";
 import { useEffect, useRef, useState, Suspense } from "react";
 import { createSupabaseBrowserClient } from "@/lib/supabase/browser";
@@ -21,7 +21,7 @@ const NAV = [
   { href: "/dashboard",    label: "Dashboard",    icon: LayoutDashboard },
   { href: "/profile",      label: "Profile",      icon: User },
   { href: "/matches",      label: "Matches",      icon: Briefcase },
-  { href: "/lab",          label: "Interview Lab",icon: Sparkles },
+  { href: "/dsa",          label: "DSA Practice", icon: Brain },
   { href: "/insights",     label: "Market",       icon: BarChart3 },
   { href: "/applications", label: "Applications", icon: ClipboardList },
 ];

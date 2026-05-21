@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
 import {
   LayoutDashboard, User, Briefcase, Compass, BarChart3, ClipboardList,
-  Search, ArrowRight, Zap, Upload, RefreshCw, X, Building2,
+  Search, ArrowRight, Zap, Upload, RefreshCw, X, Building2, Brain,
 } from "lucide-react";
 
 type Command = {
@@ -22,12 +22,14 @@ const ALL_COMMANDS: Command[] = [
   { id: "dashboard",    label: "Dashboard",         icon: LayoutDashboard, href: "/dashboard",    group: "Navigate" },
   { id: "profile",      label: "My Profile",         icon: User,            href: "/profile",      group: "Navigate" },
   { id: "matches",      label: "Matches",            icon: Briefcase,       href: "/matches",      group: "Navigate" },
+  { id: "dsa",          label: "DSA Practice",       icon: Brain,           href: "/dsa",          group: "Navigate" },
   { id: "coach",        label: "AI Coach",           icon: Compass,         href: "/coach",        group: "Navigate" },
   { id: "market",       label: "Market Insights",    icon: BarChart3,       href: "/insights",     group: "Navigate" },
   { id: "applications", label: "Applications",       icon: ClipboardList,   href: "/applications", group: "Navigate" },
   // Actions
   { id: "upload",       label: "Upload resume",       sub: "Go to profile",          icon: Upload,    href: "/profile",  group: "Actions" },
   { id: "compute",      label: "Compute matches",     sub: "Refresh AI rankings",    icon: RefreshCw, href: "/matches",  group: "Actions" },
+  { id: "daily-dsa",    label: "Open daily DSA",      sub: "Question, approach, solution", icon: Brain, href: "/dsa", group: "Actions" },
   { id: "coach-prep",   label: "Get interview prep",  sub: "AI-generated prep tips", icon: Zap,       href: "/coach",    group: "Actions" },
   // Companies (18 approved)
   ...(["Google", "Microsoft", "Meta", "Amazon", "Apple", "Atlassian",
