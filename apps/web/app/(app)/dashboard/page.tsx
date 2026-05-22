@@ -26,6 +26,7 @@ import { RecommendedCompaniesCard, rankCompaniesForUser } from "./recommended-co
 import { ToolDiscoveryCard } from "./tool-discovery-card";
 import { TopMatchesMobile, type TopMatchCard } from "./top-matches-mobile";
 import { ContinueCard } from "./continue-card";
+import { BenchmarkCard } from "./benchmark-card";
 
 export const metadata: Metadata = { title: "Dashboard" };
 
@@ -120,7 +121,7 @@ export default async function DashboardPage() {
     { count: memoCount },
   ] = await Promise.all([
     supabase.from("profiles")
-      .select("display_name, resume_storage_path, product_dna_score, dna_breakdown, years_experience, current_role, resume_score, resume_score_breakdown, tech_stack, preferred_hubs, resume_embedding_at, last_match_compute_at, resume_signature, resume_parsed")
+      .select("display_name, resume_storage_path, product_dna_score, dna_breakdown, years_experience, current_role, role_function, resume_score, resume_score_breakdown, tech_stack, preferred_hubs, resume_embedding_at, last_match_compute_at, resume_signature, resume_parsed")
       .eq("id", user.id).maybeSingle(),
     supabase.from("matches").select("*", { count: "exact", head: true }).eq("user_id", user.id),
     supabase.from("applications").select("*", { count: "exact", head: true }).eq("user_id", user.id),
@@ -425,6 +426,17 @@ export default async function DashboardPage() {
           href="/matches"
         />
       </div>
+
+      {/* Product fix: percentile benchmark — social-proof / nudge. Lives
+          right after the headline stat grid because that's where the user's
+          eye lands. Only renders when we have a DNA score to compare. */}
+      {dnaScore !== null && (
+        <BenchmarkCard
+          dnaScore={dnaScore}
+          roleFunction={(profile as { role_function?: string | null } | null)?.role_function ?? null}
+          yearsExperience={(profile as { years_experience?: number | null } | null)?.years_experience ?? null}
+        />
+      )}
 
       {/* ── Continue card + incompleteness — below fold on mobile ─── */}
       <ContinueCard />

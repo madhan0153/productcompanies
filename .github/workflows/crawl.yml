@@ -58,19 +58,38 @@ jobs:
           echo "All required secrets present."
 
   crawl:
-    name: "Crawl all (sequential)"
+    name: "Crawl ${{ matrix.group.name }}"
     runs-on: ubuntu-latest
     needs: validate
-    # Single sequential job. All 18 companies are crawled one at a time in
-    # the same runner. The previous 5-group parallel matrix hammered Gemini
-    # concurrently and exhausted the free-tier RPM/RPD within minutes.
-    # Trade-off: longer wall-clock (2-4 hrs typical), but stays within
-    # Gemini rate limits on the free tier. Public repo → unlimited minutes.
-    timeout-minutes: 350    # ~5h 50m — GH Actions hard ceiling is 6h
+    # Product fix: parallel-by-domain matrix (3 groups). The earlier 5-group
+    # split hammered Gemini's free tier, but now we have 16 LLM providers +
+    # dead-key persistence + per-key rotation, so concurrent groups can fail
+    # over instead of stalling. Tail latency drops from ~4 hr (sequential)
+    # to ~80 min (worst-of-three-groups) while staying within free quotas.
+    #
+    # Group composition:
+    #   - html_heavy: Playwright-driven DOM scrapes — the slow ones
+    #   - api_global: FAANG / global product cos with JSON APIs
+    #   - api_india:  India product cos with JSON APIs
+    #
+    # If one group exhausts its provider pool, fail-fast=false keeps the
+    # others running so partial inventory still lands in jobs table.
+    strategy:
+      fail-fast: false
+      max-parallel: 3
+      matrix:
+        group:
+          - name: html_heavy
+            slugs: google,apple,zerodha,zomato,sap-labs
+          - name: api_global
+            slugs: microsoft,meta,amazon,atlassian,nvidia,oracle,salesforce
+          - name: api_india
+            slugs: razorpay,phonepe,cred,groww,swiggy,flipkart
+    timeout-minutes: 120    # per group; was 350 wall-clock for the whole run
     env:
       # Surfaces as `runId` in every structured log line emitted by the crawler.
       # Lets us correlate crawl_runs rows with the originating workflow.
-      CRAWL_RUN_ID: ${{ github.run_id }}-${{ github.run_attempt }}
+      CRAWL_RUN_ID: ${{ github.run_id }}-${{ github.run_attempt }}-${{ matrix.group.name }}
     steps:
       - name: Checkout
         uses: actions/checkout@v5
@@ -105,7 +124,7 @@ jobs:
           retry_wait_seconds: 20
           command: pnpm --filter @prodmatch/crawler exec playwright install --with-deps chromium
 
-      - name: Run crawler (sequential, all companies)
+      - name: Run crawler for this group
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
@@ -116,7 +135,8 @@ jobs:
           # when unset, but recommended for production.
           CRAWL_ALERT_WEBHOOK_URL: ${{ secrets.CRAWL_ALERT_WEBHOOK_URL }}
         run: |
-          SLUGS="${{ github.event.inputs.slugs }}"
+          GROUP_SLUGS="${{ matrix.group.slugs }}"
+          INPUT_SLUGS="${{ github.event.inputs.slugs }}"
           FLAGS=""
           if [ "${{ github.event.inputs.dry_run }}" = "true" ]; then
             FLAGS="--dry-run"
@@ -124,18 +144,38 @@ jobs:
           if [ "${{ github.event.inputs.dry_run_parse }}" = "true" ]; then
             FLAGS="--dry-run-parse"
           fi
-          # Empty SLUGS means "all companies in sequence" (default).
-          if [ -z "$SLUGS" ]; then
-            pnpm --filter @prodmatch/crawler start -- $FLAGS
+
+          # If the operator supplied --slugs via workflow_dispatch, narrow this
+          # group to the intersection. Empty input means "run all of this group".
+          if [ -z "$INPUT_SLUGS" ]; then
+            SLUGS="$GROUP_SLUGS"
           else
-            pnpm --filter @prodmatch/crawler start -- --slugs="$SLUGS" $FLAGS
+            # Comma-separated intersection in pure shell.
+            SLUGS=""
+            IFS=',' read -ra REQUESTED <<< "$INPUT_SLUGS"
+            IFS=',' read -ra OWNED <<< "$GROUP_SLUGS"
+            for r in "${REQUESTED[@]}"; do
+              for o in "${OWNED[@]}"; do
+                if [ "$r" = "$o" ]; then SLUGS="$SLUGS,$o"; fi
+              done
+            done
+            SLUGS="${SLUGS#,}"
           fi
+
+          if [ -z "$SLUGS" ]; then
+            echo "No slugs for group ${{ matrix.group.name }} (operator filter excluded all). Skipping."
+            exit 0
+          fi
+
+          echo "Group ${{ matrix.group.name }} running: $SLUGS"
+          pnpm --filter @prodmatch/crawler start -- --slugs="$SLUGS" $FLAGS
 
       - name: Upload logs on failure
         if: failure()
         uses: actions/upload-artifact@v5
         with:
-          name: crawl-logs
+          # Each matrix leg writes a distinct artifact name to avoid collisions.
+          name: crawl-logs-${{ matrix.group.name }}
           path: |
             packages/crawler/*.log
           retention-days: 7
@@ -150,10 +190,11 @@ jobs:
     needs: [validate, crawl]
     runs-on: ubuntu-latest
     timeout-minutes: 90    # Allows up to MAX_ITER=30 iterations
-    # QA fix (B20): don't recompute when secrets validation fails (no crawl
-    # ran) or when both crawl and recompute are dry-runs. We still recompute
-    # when the crawl partially failed — a partial new-jobs set is worth
-    # matching for any users with stale matches.
+    # QA fix (B20) + product fix: don't recompute when secrets validation
+    # fails. With the parallel matrix, `crawl.result` is "success" only if
+    # every group succeeded — treat "failure" the same as "success" for
+    # the purpose of recompute, because partial new jobs from 2-of-3 groups
+    # is still worth matching. Only "skipped" / "cancelled" suppress this.
     if: >-
       ${{
         always()
