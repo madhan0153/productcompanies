@@ -234,13 +234,8 @@ export async function uploadAndParseResume(formData: FormData): Promise<UploadRe
     const name = err instanceof Error ? err.name : "unknown";
     const message = err instanceof Error ? err.message : String(err);
     const firstStackLine = err instanceof Error
-      ? (err.stack ?? "").split("\n").slice(1, 3).join(" | ").slice(0, 400)
+      ? (err.stack ?? "").split("\n").slice(1, 4).join(" | ").slice(0, 500)
       : null;
-    // Vercel's log-table MCP truncates structured-event lines at ~30 chars
-    // of the leading JSON, so the actual error text in {"event":"...","err_msg":"..."}
-    // never makes it past the column boundary. Emit a SECOND, plain
-    // console.error whose first 30+ chars are the raw error text — that
-    // line surfaces the real cause directly in the truncated view.
     // eslint-disable-next-line no-console
     console.error(`RUPLOAD_THROW [${name}] ${message.slice(0, 240)} || ${firstStackLine ?? ""}`);
     logEvent("error", "resume_upload_uncaught", {
@@ -248,12 +243,28 @@ export async function uploadAndParseResume(formData: FormData): Promise<UploadRe
       err_msg:   message.slice(0, 240),
       err_stack: firstStackLine,
     });
-    // Surface a SAFE message that matches the friendly-error vocabulary the
-    // UI already understands. Retryable = true so the banner shows "Choose
-    // PDF again" instead of "permanently failed".
+    // Persist the full error to the profiles row so we can read it via the
+    // admin API without fighting log-table truncation. resume_parse_error
+    // already exists and is reset on every successful parse.
+    try {
+      const admin = createSupabaseAdminClient();
+      const supabase = await createSupabaseServerClient();
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        const tag = `[${name}] ${message.slice(0, 200)} || ${(firstStackLine ?? "").slice(0, 240)}`;
+        await (admin.from("profiles") as any)
+          .update({ resume_parse_error: tag })
+          .eq("id", user.id);
+      }
+    } catch {
+      // Best effort.
+    }
+    // Surface the actual TypeError name + first 200 chars to the UI so the
+    // user (and we) can see what's happening instead of a black-box "try
+    // again".
     return {
       ok: false,
-      error: "Resume upload hit an unexpected error. Please try again — if it persists, refresh the page and re-upload.",
+      error: `Upload error [${name}]: ${message.slice(0, 200)}`,
       retryable: true,
     };
   }
