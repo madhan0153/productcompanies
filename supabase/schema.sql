@@ -589,6 +589,73 @@ grant execute on function public.release_cron_lock(text, uuid) to service_role;
 
 
 -- ─────────────────────────────────────────────────────────────────────────────
+-- Security fix (S-1): distributed rate-limit counter shared across all
+-- Vercel function instances. The in-memory Map in apps/web/lib/security
+-- was bypassable by fanning requests out across lambda instances. This
+-- table is the shared backend; `rate_limit_check` is an atomic UPSERT.
+-- Sliding-window-fixed: we count per (key, window-start) where window-start
+-- is computed by the caller as floor(now / windowMs). Stale rows are
+-- garbage-collected by the cron reaper at the bottom of every recompute.
+-- ─────────────────────────────────────────────────────────────────────────────
+create table if not exists public.rate_limit_counters (
+  bucket_key   text not null,
+  window_start timestamptz not null,
+  count        integer not null default 0,
+  expires_at   timestamptz not null,
+  primary key (bucket_key, window_start)
+);
+
+create index if not exists idx_rate_limit_expires
+  on public.rate_limit_counters(expires_at);
+
+-- Atomic counter increment. Returns the post-increment value; caller compares
+-- against limit. Safe under concurrent calls thanks to the ON CONFLICT + the
+-- returning clause.
+create or replace function public.rate_limit_check(
+  bucket_key   text,
+  window_start timestamptz,
+  ttl_seconds  integer
+)
+returns integer
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  current_count integer;
+begin
+  insert into public.rate_limit_counters (bucket_key, window_start, count, expires_at)
+  values (bucket_key, window_start, 1, window_start + (ttl_seconds || ' seconds')::interval)
+  on conflict (bucket_key, window_start) do update
+    set count = public.rate_limit_counters.count + 1
+  returning count into current_count;
+
+  return current_count;
+end;
+$$;
+revoke all on function public.rate_limit_check(text, timestamptz, integer) from public, anon, authenticated;
+grant execute on function public.rate_limit_check(text, timestamptz, integer) to service_role;
+
+-- Best-effort GC. Called from /api/cron/recompute-matches.
+create or replace function public.rate_limit_gc()
+returns integer
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  deleted integer;
+begin
+  delete from public.rate_limit_counters where expires_at < now() - interval '1 hour';
+  get diagnostics deleted = row_count;
+  return deleted;
+end;
+$$;
+revoke all on function public.rate_limit_gc() from public, anon, authenticated;
+grant execute on function public.rate_limit_gc() to service_role;
+
+
+-- ─────────────────────────────────────────────────────────────────────────────
 -- Sprint 2: apply-click intent signal + resume version history
 -- ─────────────────────────────────────────────────────────────────────────────
 -- jobs.apply_click_count:

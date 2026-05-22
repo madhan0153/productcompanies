@@ -22,7 +22,7 @@ import { JsonResumeSchema } from "@prodmatch/shared";
 import { jsonToParsedResume } from "@/lib/resume/json-mapper";
 import { logEvent } from "@/lib/observability/log";
 import { getUserConsents } from "@/lib/dpdp/consent";
-import { checkRateLimit, userActionKey } from "@/lib/security/rate-limit";
+import { checkRateLimitShared, userActionKey } from "@/lib/security/rate-limit";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -49,8 +49,8 @@ export async function POST(req: Request) {
     );
   }
 
-  // Rate-limit imports the same way uploads are limited.
-  const limit = checkRateLimit({
+  // Rate-limit imports the same way uploads are limited (S-1: shared backend).
+  const limit = await checkRateLimitShared({
     key: userActionKey(user.id, "resume-import"),
     limit: 6,
     windowMs: 60 * 60_000,

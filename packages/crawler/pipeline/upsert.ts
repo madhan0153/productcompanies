@@ -161,12 +161,95 @@ async function applyBulkUpsert(
   return ok;
 }
 
+/**
+ * Security fix (S-3): integrity guard against jobs-table poisoning.
+ *
+ * If a crawler dependency is ever compromised (rogue npm install,
+ * supply-chain attack), an attacker controlling parsed content could
+ * inject jobs whose `apply_url` redirects users to phishing sites, or
+ * whose title contains script-like payloads that downstream rendering
+ * eventually shows.
+ *
+ * We enforce three invariants here. None of them should ever fail for
+ * a legitimate crawler run — they're the equivalent of a parser-level
+ * "shouldn't happen" check that gives us a loud alert if it does.
+ */
+const MAX_TITLE_LEN = 400;
+const MAX_LOCATION_LEN = 200;
+const SUSPICIOUS_TITLE = /<script|javascript:|data:text\/html/i;
+
+function isAllowedApplyUrl(url: string | null | undefined): boolean {
+  if (!url) return true; // No apply URL is fine; the crawler is allowed to skip it.
+  if (!/^https:\/\//.test(url)) return false;
+  try {
+    const host = new URL(url).hostname.toLowerCase();
+    // Apply URLs must live on an official career-page domain. We accept
+    // anything inside the 18 approved companies' own domains or the major
+    // ATS providers they delegate to (Greenhouse, Workday, Lever, etc.).
+    const ALLOWED_HOST_SUFFIXES = [
+      "google.com", "amazon.jobs", "amazon.com", "microsoft.com", "metacareers.com",
+      "apple.com", "atlassian.com", "nvidia.com", "oracle.com", "salesforce.com",
+      "sap.com", "saplabs.com", "razorpay.com", "phonepe.com", "zerodha.com",
+      "cred.club", "groww.in", "swiggy.com", "zomato.com", "flipkart.com",
+      "myworkdayjobs.com", "greenhouse.io", "lever.co", "ashbyhq.com",
+      "smartrecruiters.com", "workable.com", "recruitee.com",
+      "icims.com", "successfactors.com", "workdayjobs.com", "workday.com",
+    ];
+    return ALLOWED_HOST_SUFFIXES.some((suffix) => host === suffix || host.endsWith("." + suffix));
+  } catch {
+    return false;
+  }
+}
+
+interface IntegrityFailure {
+  external_id: string;
+  reasons: string[];
+}
+
+function checkJobIntegrity(job: EnrichedJob): IntegrityFailure | null {
+  const reasons: string[] = [];
+
+  const title = String(job.title ?? "");
+  if (!title || title.length > MAX_TITLE_LEN) reasons.push(`title_length=${title.length}`);
+  if (SUSPICIOUS_TITLE.test(title)) reasons.push("title_suspicious_token");
+
+  const location = String(job.location ?? "");
+  if (location.length > MAX_LOCATION_LEN) reasons.push(`location_length=${location.length}`);
+
+  const applyUrl = job.apply_url as string | null | undefined;
+  if (!isAllowedApplyUrl(applyUrl)) reasons.push(`apply_url_disallowed:${(applyUrl ?? "").slice(0, 80)}`);
+
+  return reasons.length ? { external_id: String(job.external_id ?? "unknown"), reasons } : null;
+}
+
 export async function upsertJobs(
   supabase: SupabaseClient,
   companyId: string,
   jobs: EnrichedJob[],
 ): Promise<{ inserted: number; updated: number }> {
   if (jobs.length === 0) return { inserted: 0, updated: 0 };
+
+  // Integrity guard. Drops any row that fails one of the invariants and
+  // emits a structured log so an operator gets paged. We never persist a
+  // row that fails this gate even if all other paths pass — a single
+  // poisoned row in `jobs` reaches every authenticated user.
+  const safeJobs: EnrichedJob[] = [];
+  const blocked: IntegrityFailure[] = [];
+  for (const job of jobs) {
+    const failure = checkJobIntegrity(job);
+    if (failure) blocked.push(failure);
+    else safeJobs.push(job);
+  }
+  if (blocked.length > 0) {
+    log(
+      `Integrity guard dropped ${blocked.length} job(s). First few: ` +
+        blocked.slice(0, 3).map((b) => `${b.external_id}=[${b.reasons.join(",")}]`).join(", "),
+      "error",
+      { event: "jobs_integrity_blocked", data: { companyId, blocked: blocked.slice(0, 25), totalBlocked: blocked.length } },
+    );
+  }
+  if (safeJobs.length === 0) return { inserted: 0, updated: 0 };
+  jobs = safeJobs;
 
   const now = new Date().toISOString();
   let inserted = 0;

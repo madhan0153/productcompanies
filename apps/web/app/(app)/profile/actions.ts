@@ -25,7 +25,7 @@ import {
 } from "@/lib/jobs/state";
 import { logEvent } from "@/lib/observability/log";
 import { validateResumePdf, verifyPdfPageCount } from "@/lib/security/pdf";
-import { checkRateLimit, userActionKey } from "@/lib/security/rate-limit";
+import { checkRateLimitShared, userActionKey } from "@/lib/security/rate-limit";
 import type { ParsedResume } from "@/lib/llm/prompts/resume-parse";
 import type { SeniorityLevel } from "@/lib/supabase/types";
 import type { Json } from "@/lib/supabase/types";
@@ -258,7 +258,9 @@ export async function uploadAndParseResume(formData: FormData): Promise<UploadRe
     return { ok: false, error: "Resume upload limit reached. Please try again in about an hour.", retryable: true };
   }
 
-  const uploadLimit = checkRateLimit({
+  // Security fix (S-1): use the Postgres-backed shared rate-limit so the
+  // 3-per-15-min cap holds across all serverless instances.
+  const uploadLimit = await checkRateLimitShared({
     key: userActionKey(userId, "resume-upload"),
     limit: 3,
     windowMs: 15 * 60 * 1000,

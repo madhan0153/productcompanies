@@ -19,7 +19,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { runUserRecomputeBlocking } from "@/lib/queue/recompute";
-import { requireCronAuth } from "@/lib/security/cron";
+import { requireCronAuth, verifySensitiveCronAuth } from "@/lib/security/cron";
 
 export const runtime = "nodejs";
 export const maxDuration = 300;
@@ -51,6 +51,10 @@ interface UserResult {
 }
 
 export async function POST(req: NextRequest) {
+  // Read the raw body once — both the JSON parse and the HMAC verification
+  // below need it. NextRequest.body is a single-use stream.
+  const rawBody = await req.text();
+
   const authFailure = requireCronAuth(req);
   if (authFailure) return authFailure;
 
@@ -60,10 +64,30 @@ export async function POST(req: NextRequest) {
   // Optional: caller can pin a single user for ad-hoc recompute (debugging,
   // post-resume-upload retry). Default = drain the queue.
   let targetUserId: string | null = null;
-  try {
-    const body = await req.json().catch(() => ({}));
-    if (body?.user_id && typeof body.user_id === "string") targetUserId = body.user_id;
-  } catch { /* no body — that's fine */ }
+  let parsedBody: { user_id?: unknown } = {};
+  if (rawBody) {
+    try {
+      parsedBody = JSON.parse(rawBody);
+      if (typeof parsedBody?.user_id === "string") targetUserId = parsedBody.user_id;
+    } catch { /* no body — that's fine */ }
+  }
+
+  // Security fix (S-8): ad-hoc mode (per-user recompute) is the high-leverage
+  // path — a leaked CRON_SECRET alone shouldn't be enough to spam every
+  // user's LLM quota. Require an HMAC over the body + a freshness window.
+  // The GH Actions full-fan-out (no body, no user_id) keeps the legacy
+  // bearer-only path because the workflow already controls the secret.
+  if (targetUserId) {
+    const hmacOutcome = verifySensitiveCronAuth({
+      authHeader: req.headers.get("authorization"),
+      tsHeader:   req.headers.get("x-prodmatch-cron-ts"),
+      sigHeader:  req.headers.get("x-prodmatch-cron-sig"),
+      rawBody,
+    });
+    if (!hmacOutcome.ok) {
+      return NextResponse.json(hmacOutcome.body, { status: hmacOutcome.status });
+    }
+  }
 
   // ── Cron lock (skipped for single-user ad-hoc calls) ───────────────────
   // QA fix (B12): when the lock RPC isn't deployed yet (e.g. operator hasn't

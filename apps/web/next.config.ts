@@ -20,6 +20,12 @@ const securityHeaders = [
     key: "Permissions-Policy",
     value: "camera=(), microphone=(), geolocation=(), payment=(), usb=(), interest-cohort=()",
   },
+  // Security fix (S-6): isolate browsing contexts so a compromised
+  // window.opener / cross-origin iframe can't reach this origin's globals.
+  // COEP is intentionally left off — enabling require-corp on a Next.js
+  // App Router app breaks Supabase Storage image loads.
+  { key: "Cross-Origin-Opener-Policy", value: "same-origin" },
+  { key: "Cross-Origin-Resource-Policy", value: "same-origin" },
   // HSTS — 2 years, include subdomains, preload
   {
     key: "Strict-Transport-Security",
