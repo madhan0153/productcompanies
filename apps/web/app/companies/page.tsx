@@ -70,25 +70,41 @@ export default async function CompaniesIndexPage() {
         <ul className="mt-8 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {CRAWLER_META.map((company) => {
             const summary = summaryBySlug.get(company.slug);
+            const hasJobs = (summary?.activeJobs ?? 0) > 0;
             return (
               <li key={company.slug}>
                 <Link
                   href={`/companies/${company.slug}`}
-                  className="group flex min-h-20 items-center gap-3 rounded-xl border border-border bg-card p-4 transition hover:border-primary/30 hover:bg-secondary/30"
-                  aria-label={`${company.name} careers — ${summary?.activeJobs ?? 0} open roles`}
+                  className="group flex min-h-28 flex-col gap-2 rounded-xl border border-border bg-card p-4 transition hover:-translate-y-0.5 hover:border-primary/30 hover:bg-secondary/30 hover:shadow-elev2 motion-reduce:hover:translate-y-0"
+                  aria-label={`${company.name} careers in India`}
                 >
-                  <CompanyLogo
-                    name={company.name}
-                    logoUrl={summary?.logoUrl ?? null}
-                    size={44}
-                  />
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate text-sm font-semibold">{company.name}</p>
-                    <p className="mt-0.5 text-xs text-muted-foreground">
-                      {summary?.activeJobs ?? 0} open roles · India
-                    </p>
+                  <div className="flex items-start gap-3">
+                    <CompanyLogo name={company.name} logoUrl={summary?.logoUrl ?? null} size={44} />
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-sm font-semibold">{company.name}</p>
+                      <p className="mt-0.5 text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
+                        {summary?.kind ?? "Product company"}
+                      </p>
+                    </div>
+                    <ArrowRight className="h-4 w-4 shrink-0 text-muted-foreground transition group-hover:translate-x-0.5 group-hover:text-primary" />
                   </div>
-                  <ArrowRight className="h-4 w-4 shrink-0 text-muted-foreground transition group-hover:translate-x-0.5 group-hover:text-primary" />
+                  <p className="line-clamp-2 text-xs leading-relaxed text-muted-foreground">
+                    {summary?.oneLiner ?? "Product company in India."}
+                  </p>
+                  <div className="mt-auto flex flex-wrap items-center gap-1.5 pt-1">
+                    {(summary?.hubs ?? []).slice(0, 3).map((hub) => (
+                      <span key={hub} className="rounded-full border border-border bg-secondary/40 px-2 py-0.5 text-[10px] text-muted-foreground">
+                        {hub}
+                      </span>
+                    ))}
+                    {hasJobs ? (
+                      <span className="ml-auto rounded-full border border-success/30 bg-success/10 px-2 py-0.5 text-[10px] font-semibold text-success">
+                        {summary!.activeJobs} open
+                      </span>
+                    ) : (
+                      <span className="ml-auto text-[10px] text-muted-foreground">view details →</span>
+                    )}
+                  </div>
                 </Link>
               </li>
             );

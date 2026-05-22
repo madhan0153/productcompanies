@@ -8,7 +8,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ArrowRight, Briefcase, ExternalLink, MapPin } from "lucide-react";
+import { ArrowRight, Briefcase, ExternalLink, IndianRupee, MapPin, Target } from "lucide-react";
 import { CRAWLER_META } from "@prodmatch/shared";
 import { CompanyLogo } from "@/components/company-logo";
 import { JsonLd, breadcrumbJsonLd, faqJsonLd } from "@/lib/seo/json-ld";
@@ -19,6 +19,7 @@ import {
   loadCompanyHubBreakdown,
   loadCompanyTopSkills,
 } from "@/lib/seo/data";
+import { companyFactsBySlug } from "@/lib/seo/company-metadata";
 import { PublicNav } from "@/components/public-nav";
 import { PublicFooter } from "@/components/public-footer";
 
@@ -56,16 +57,24 @@ export default async function CompanyPage({ params }: { params: Promise<{ slug: 
   const company = CRAWLER_META.find((c) => c.slug === slug);
   if (!company) notFound();
 
-  const [jobs, hubBreakdown, topSkills] = await Promise.all([
+  // Curated always-true facts about this company.
+  const facts = companyFactsBySlug(slug);
+
+  const [jobs, hubBreakdown, topSkillsLive] = await Promise.all([
     loadActiveJobs({ companySlug: slug, limit: 60 }),
     loadCompanyHubBreakdown(slug),
     loadCompanyTopSkills(slug),
   ]);
 
   const totalOpen = jobs.length;
-  const hubsRanked = Object.entries(hubBreakdown)
-    .sort((a, b) => b[1] - a[1])
-    .slice(0, 6);
+
+  // Hubs to display: prefer live breakdown when present; fall back to curated.
+  const hubsRanked = Object.entries(hubBreakdown).length > 0
+    ? Object.entries(hubBreakdown).sort((a, b) => b[1] - a[1]).slice(0, 6)
+    : (facts?.indiaHubs ?? []).map((h) => [h, 0] as [string, number]);
+
+  // Skills: prefer live top-skills; fall back to typical curated stack.
+  const topSkills = topSkillsLive.length > 0 ? topSkillsLive : (facts?.typicalStack ?? []);
 
   // Role-function distribution → which company × role pages exist for this co.
   const roleCounts = new Map<string, number>();
@@ -113,7 +122,7 @@ export default async function CompanyPage({ params }: { params: Promise<{ slug: 
           <CompanyLogo name={company.name} logoUrl={jobs[0]?.company.logoUrl ?? null} size={56} />
           <div className="min-w-0 flex-1">
             <p className="text-xs font-semibold uppercase tracking-wider text-primary">
-              Product company · India
+              {facts?.kind ?? "Product company"} · India
             </p>
             <h1 className="mt-1 text-2xl font-bold tracking-tight sm:text-3xl">
               {company.name} careers in India
@@ -127,27 +136,50 @@ export default async function CompanyPage({ params }: { params: Promise<{ slug: 
                 </>
               ) : (
                 <>
-                  ProdMatch tracks {company.name}&apos;s official career page every
-                  24 hours. New roles will appear here as they go live.
+                  {facts?.oneLiner ?? `${company.name} is one of the 18 product-based companies ProdMatch tracks in India.`}
                 </>
               )}
             </p>
           </div>
         </header>
 
-        {/* ── Quick stats ────────────────────────────────────────────── */}
-        {totalOpen > 0 && (
-          <section className="mt-6 grid grid-cols-3 gap-2">
-            <Stat label="Open roles" value={String(totalOpen)} />
-            <Stat label="Top hub" value={hubsRanked[0]?.[0] ?? "—"} />
-            <Stat label="Updated" value="Within 24h" />
+        {/* ── Quick stats — always visible (uses curated facts when 0 live) */}
+        <section className="mt-6 grid grid-cols-3 gap-2 sm:grid-cols-4">
+          <Stat label={totalOpen > 0 ? "Open roles" : "Roles tracked"} value={totalOpen > 0 ? String(totalOpen) : "Live daily"} />
+          <Stat label="Primary hub" value={hubsRanked[0]?.[0] ?? (facts?.indiaHubs[0] ?? "India")} />
+          {facts?.founded && <Stat label="Founded" value={String(facts.founded)} />}
+          <Stat label="Refresh" value="24h" />
+        </section>
+
+        {/* ── Apply on official site CTA — always visible */}
+        {facts?.careersUrl && (
+          <section className="mt-6">
+            <a
+              href={facts.careersUrl}
+              target="_blank"
+              rel="noopener noreferrer external"
+              className="press group inline-flex min-h-11 items-center gap-2 rounded-lg bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground transition hover:bg-primary/90"
+            >
+              <ExternalLink className="h-4 w-4" />
+              Apply on the official {company.name} career page
+            </a>
           </section>
         )}
 
-        {/* ── Open roles ─────────────────────────────────────────────── */}
-        <section className="mt-10">
-          <h2 className="text-lg font-semibold sm:text-xl">Open roles</h2>
-          {jobs.length > 0 ? (
+        {/* ── About — always rendered when we have curated overview */}
+        {facts?.overview && (
+          <section className="mt-10">
+            <h2 className="text-lg font-semibold sm:text-xl">About {company.name}</h2>
+            <p className="mt-3 text-sm leading-relaxed text-muted-foreground sm:text-base">
+              {facts.overview}
+            </p>
+          </section>
+        )}
+
+        {/* ── Open roles — only when there are live roles */}
+        {jobs.length > 0 ? (
+          <section className="mt-10">
+            <h2 className="text-lg font-semibold sm:text-xl">Open roles</h2>
             <ul className="mt-4 space-y-2">
               {jobs.slice(0, 25).map((job) => (
                 <li key={job.id}>
@@ -169,12 +201,77 @@ export default async function CompanyPage({ params }: { params: Promise<{ slug: 
                 </li>
               ))}
             </ul>
-          ) : (
-            <p className="mt-4 rounded-lg border border-dashed border-border bg-secondary/30 p-4 text-sm text-muted-foreground">
-              No open roles at {company.name} right now. We&apos;ll refresh in 24 hours.
+          </section>
+        ) : (
+          <section className="mt-10 rounded-xl border border-border bg-card p-5">
+            <h2 className="inline-flex items-center gap-2 text-base font-semibold">
+              <Briefcase className="h-4 w-4 text-primary" />
+              Open roles · refreshing
+            </h2>
+            <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
+              The {company.name} crawler runs every 24 hours. While it&apos;s
+              refreshing, you can apply directly on the official career page above,
+              browse the role functions {company.name} typically hires for, or
+              check the reference salary bands and interview process below.
             </p>
-          )}
-        </section>
+          </section>
+        )}
+
+        {/* ── Reference salary bands — always when curated facts exist */}
+        {facts?.referenceBands && facts.referenceBands.length > 0 && (
+          <section className="mt-10">
+            <h2 className="inline-flex items-center gap-2 text-lg font-semibold sm:text-xl">
+              <IndianRupee className="h-4 w-4 text-primary" />
+              Reference salary bands
+            </h2>
+            <p className="mt-1 text-[11px] text-muted-foreground">
+              Indicative bands from publicly-known patterns at {company.name}. Live JD-disclosed
+              percentiles appear on the <Link href={`/salaries/${slug}`} className="text-primary hover:underline">{company.name} salaries page</Link>.
+            </p>
+            <div className="mt-3 overflow-x-auto rounded-xl border border-border">
+              <table className="w-full text-left text-sm">
+                <thead className="bg-secondary/40 text-[11px] uppercase tracking-wider text-muted-foreground">
+                  <tr>
+                    <th className="px-3 py-2">Seniority</th>
+                    <th className="px-3 py-2 text-right">Base (LPA)</th>
+                    <th className="px-3 py-2 text-right">TC (LPA)</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {facts.referenceBands.map((b) => (
+                    <tr key={b.seniority} className="border-t border-border">
+                      <td className="px-3 py-3 font-medium">{b.seniority}</td>
+                      <td className="px-3 py-3 text-right tabular-nums">{b.refLowLpa}–{b.refHighLpa}L</td>
+                      <td className="px-3 py-3 text-right tabular-nums font-semibold text-foreground">{b.refTcLowLpa}–{b.refTcHighLpa}L</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </section>
+        )}
+
+        {/* ── Role functions they hire for — from curated facts */}
+        {facts?.roleFunctions && facts.roleFunctions.length > 0 && (
+          <section className="mt-10">
+            <h2 className="inline-flex items-center gap-2 text-lg font-semibold sm:text-xl">
+              <Target className="h-4 w-4 text-primary" />
+              {company.name} typically hires
+            </h2>
+            <ul className="mt-3 flex flex-wrap gap-2">
+              {PUBLIC_ROLES.filter((r) => facts.roleFunctions.includes(r.canonical)).map((r) => (
+                <li key={r.slug}>
+                  <Link
+                    href={`/companies/${slug}/${r.slug}`}
+                    className="inline-flex min-h-9 items-center rounded-full border border-border bg-card px-3 text-xs font-medium transition hover:bg-secondary/40 hover:border-primary/30"
+                  >
+                    {r.label}
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </section>
+        )}
 
         {/* ── Hubs ──────────────────────────────────────────────────── */}
         {hubsRanked.length > 0 && (

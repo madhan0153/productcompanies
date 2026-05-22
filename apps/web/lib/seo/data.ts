@@ -6,12 +6,32 @@
 
 import { CRAWLER_META } from "@prodmatch/shared";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { companyFactsBySlug } from "./company-metadata";
 
 export interface CompanySummary {
   slug: string;
   name: string;
   logoUrl: string | null;
   activeJobs: number;
+  /** Curated: primary India hubs the company operates in. */
+  hubs: string[];
+  /** Curated: short one-liner about what the company does. */
+  oneLiner: string;
+  /** Curated: kind tag (Big Tech / Fintech / etc.). */
+  kind: string;
+}
+
+function enrich(slug: string, name: string, logoUrl: string | null, activeJobs: number): CompanySummary {
+  const facts = companyFactsBySlug(slug);
+  return {
+    slug,
+    name,
+    logoUrl,
+    activeJobs,
+    hubs: facts?.indiaHubs ?? [],
+    oneLiner: facts?.oneLiner ?? "Product company in India.",
+    kind: facts?.kind ?? "Product company",
+  };
 }
 
 export async function loadCompanySummaries(): Promise<CompanySummary[]> {
@@ -22,7 +42,9 @@ export async function loadCompanySummaries(): Promise<CompanySummary[]> {
       .select("id, slug, name, logo_url") as unknown as Promise<{
         data: Array<{ id: string; slug: string; name: string; logo_url: string | null }> | null;
       }>);
-    if (!companies) return CRAWLER_META.map((c) => ({ slug: c.slug, name: c.name, logoUrl: null, activeJobs: 0 }));
+    if (!companies) {
+      return CRAWLER_META.map((c) => enrich(c.slug, c.name, null, 0));
+    }
 
     // Count active jobs per company in one round-trip-ish — head counts.
     const counts = await Promise.all(
@@ -35,14 +57,11 @@ export async function loadCompanySummaries(): Promise<CompanySummary[]> {
       ),
     );
 
-    return companies.map((c, i) => ({
-      slug: c.slug,
-      name: c.name,
-      logoUrl: c.logo_url,
-      activeJobs: counts[i]?.count ?? 0,
-    })).sort((a, b) => b.activeJobs - a.activeJobs);
+    return companies
+      .map((c, i) => enrich(c.slug, c.name, c.logo_url, counts[i]?.count ?? 0))
+      .sort((a, b) => b.activeJobs - a.activeJobs);
   } catch {
-    return CRAWLER_META.map((c) => ({ slug: c.slug, name: c.name, logoUrl: null, activeJobs: 0 }));
+    return CRAWLER_META.map((c) => enrich(c.slug, c.name, null, 0));
   }
 }
 

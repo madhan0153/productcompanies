@@ -8,6 +8,7 @@ import { JsonLd, breadcrumbJsonLd, faqJsonLd } from "@/lib/seo/json-ld";
 import { INDIA_HUBS, hubToSlug, slugToHub, absoluteUrl } from "@/lib/seo/site";
 import { PUBLIC_ROLES } from "@/lib/seo/roles";
 import { loadActiveJobs } from "@/lib/seo/data";
+import { companiesInHub } from "@/lib/seo/company-metadata";
 import { PublicNav } from "@/components/public-nav";
 import { PublicFooter } from "@/components/public-footer";
 
@@ -168,23 +169,29 @@ export default async function CityPage({ params }: { params: Promise<{ hub: stri
           )}
         </section>
 
-        {/* Companies hiring in this hub */}
-        {byCompany.size > 0 && (
+        {/* Companies hiring in this hub — live first, curated fallback */}
+        {(byCompany.size > 0 ? [...byCompany.entries()].sort((a, b) => b[1].count - a[1].count).map(([slug, info]) => ({ slug, name: info.name, logoUrl: info.logoUrl, count: info.count })) : companiesInHub(hub).map((c) => ({ slug: c.slug, name: c.name, logoUrl: null as string | null, count: 0 }))).length > 0 && (
           <section className="mt-10">
-            <h2 className="text-lg font-semibold sm:text-xl">Companies hiring in {hub}</h2>
+            <h2 className="text-lg font-semibold sm:text-xl">Companies operating in {hub}</h2>
+            {byCompany.size === 0 && (
+              <p className="mt-1 text-[11px] text-muted-foreground">
+                Companies with engineering offices in {hub}. Live role counts will appear after the next 24-hour crawl.
+              </p>
+            )}
             <ul className="mt-4 grid grid-cols-1 gap-2 sm:grid-cols-2">
-              {[...byCompany.entries()]
-                .sort((a, b) => b[1].count - a[1].count)
-                .map(([slug, info]) => (
-                  <li key={slug}>
+              {(byCompany.size > 0
+                ? [...byCompany.entries()].sort((a, b) => b[1].count - a[1].count).map(([slug, info]) => ({ slug, name: info.name, logoUrl: info.logoUrl, count: info.count }))
+                : companiesInHub(hub).map((c) => ({ slug: c.slug, name: c.name, logoUrl: null as string | null, count: 0 }))
+              ).map((info) => (
+                  <li key={info.slug}>
                     <Link
-                      href={`/companies/${slug}`}
+                      href={`/companies/${info.slug}`}
                       className="flex min-h-12 items-center gap-3 rounded-md border border-border bg-card px-3 py-2 transition hover:bg-secondary/40"
                     >
                       <CompanyLogo name={info.name} logoUrl={info.logoUrl} size={32} />
                       <span className="min-w-0 flex-1 truncate text-sm font-medium">{info.name}</span>
                       <span className="shrink-0 text-xs text-muted-foreground">
-                        {info.count} {info.count === 1 ? "role" : "roles"}
+                        {info.count > 0 ? `${info.count} ${info.count === 1 ? "role" : "roles"}` : "view →"}
                       </span>
                     </Link>
                   </li>
