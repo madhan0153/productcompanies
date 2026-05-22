@@ -6,17 +6,33 @@ const MAX_RESUME_BYTES = 5 * 1024 * 1024;
 const MIN_RESUME_BYTES = 4 * 1024;
 const MAX_RESUME_PAGES = 12;
 const PDF_SIGNATURE = "%PDF-";
-const SUSPICIOUS_TOKENS = [
-  "/JavaScript",
-  "/JS",
-  "/OpenAction",
-  "/AA",
-  "/Launch",
-  "/EmbeddedFile",
-  "/RichMedia",
+
+// PDF tokens that indicate ACTUAL active content worth rejecting.
+// The original list was too broad and produced false positives for every
+// modern resume — Word, Google Docs, LaTeX, Overleaf, Resume.io, Canva,
+// and almost every ATS-friendly resume exporter routinely emit
+// /OpenAction (go-to-first-page on open), /AA (additional actions for
+// print/save lifecycle), and /EmbeddedFile (font subsets and PDF/A
+// attachments). None of those represent a real attack surface in a PDF
+// that the user is going to upload, parse, and never re-open as a
+// document. We keep the genuinely-active triggers:
+//
+//   /JavaScript, /JS    → embedded scripts (actual code execution)
+//   /Launch             → external file/process launch
+//   /RichMedia          → Flash / video / 3D embeds
+//
+// Patterns are regexes anchored at PDF-token boundaries (the byte after
+// the keyword must be whitespace, /, (, <, or end-of-stream). Without
+// the boundary, "/JS" alone would false-match the middle of unrelated
+// compressed stream bytes that happen to contain those three chars.
+const SUSPICIOUS_TOKEN_RES: RegExp[] = [
+  /\/JavaScript(?=[\s/<(\r\n])/,
+  /\/JS(?=[\s/<(\r\n])/,
+  /\/Launch(?=[\s/<(\r\n])/,
+  /\/RichMedia(?=[\s/<(\r\n])/,
 ];
 
-function bytesToAscii(bytes: ArrayBuffer, maxBytes = 512 * 1024): string {
+function bytesToAscii(bytes: ArrayBuffer, maxBytes = 1024 * 1024): string {
   return Buffer.from(bytes.slice(0, Math.min(bytes.byteLength, maxBytes))).toString("latin1");
 }
 
@@ -44,8 +60,8 @@ export function validateResumePdf(bytes: ArrayBuffer, mimeType: string | null): 
   if (/\/Encrypt\b/.test(body)) {
     return { ok: false, code: "encrypted_pdf", message: "Encrypted or password-protected PDFs are not supported. Upload an unlocked resume PDF." };
   }
-  if (SUSPICIOUS_TOKENS.some((token) => body.includes(token))) {
-    return { ok: false, code: "unsafe_pdf", message: "This PDF contains active or embedded content. Export a clean resume PDF and upload again." };
+  if (SUSPICIOUS_TOKEN_RES.some((re) => re.test(body))) {
+    return { ok: false, code: "unsafe_pdf", message: "This PDF contains executable scripts or active content (JavaScript / Launch action / RichMedia). Re-export it without these and try again." };
   }
 
   const pageCount = Math.max(1, (body.match(/\/Type\s*\/Page\b/g) ?? []).length);
