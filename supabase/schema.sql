@@ -611,7 +611,16 @@ create index if not exists idx_rate_limit_expires
 -- Atomic counter increment. Returns the post-increment value; caller compares
 -- against limit. Safe under concurrent calls thanks to the ON CONFLICT + the
 -- returning clause.
-create or replace function public.rate_limit_check(
+--
+-- BUG FIX (2026-05-22): parameter names `bucket_key` and `window_start`
+-- collide with the column names on `rate_limit_counters`, producing
+-- ERROR 42702 "column reference ... is ambiguous". The `#variable_conflict
+-- use_column` declaration tells PL/pgSQL to resolve bare identifiers to
+-- column names; parameter references are then qualified explicitly via
+-- `rate_limit_check.<param>`. Drop-then-recreate because Postgres rejects
+-- changing a function's input parameter names with CREATE OR REPLACE.
+drop function if exists public.rate_limit_check(text, timestamptz, integer);
+create function public.rate_limit_check(
   bucket_key   text,
   window_start timestamptz,
   ttl_seconds  integer
@@ -621,15 +630,18 @@ language plpgsql
 security definer
 set search_path = public
 as $$
+#variable_conflict use_column
 declare
   current_count integer;
 begin
   insert into public.rate_limit_counters (bucket_key, window_start, count, expires_at)
-  values (bucket_key, window_start, 1, window_start + (ttl_seconds || ' seconds')::interval)
+  values (rate_limit_check.bucket_key,
+          rate_limit_check.window_start,
+          1,
+          rate_limit_check.window_start + (rate_limit_check.ttl_seconds || ' seconds')::interval)
   on conflict (bucket_key, window_start) do update
     set count = public.rate_limit_counters.count + 1
-  returning count into current_count;
-
+  returning rate_limit_counters.count into current_count;
   return current_count;
 end;
 $$;

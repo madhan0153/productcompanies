@@ -72,7 +72,15 @@ const securityHeaders = [
 const nextConfig: NextConfig = {
   reactStrictMode: true,
   poweredByHeader: false,
-  experimental: {},
+  experimental: {
+    // Server Actions default body-size limit is 1MB. Resume uploads are
+    // capped at 5MB on the client + validator, so any user uploading a
+    // PDF >1MB was getting an uncaught "Body exceeded 1 MB limit" thrown
+    // by the Next.js runtime BEFORE our action body ran — surfaced as a
+    // 500 response with no application log. 6MB headroom = 5MB hard cap
+    // + multipart-form-data boundary overhead.
+    serverActions: { bodySizeLimit: "6mb" },
+  },
   // The shared workspace package ships TypeScript sources with explicit
   // `.js` extensions on relative imports (CJS-target convention). Next's
   // bundler needs to transpile and resolve those itself rather than

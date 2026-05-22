@@ -222,6 +222,37 @@ function friendlyParseError(err: unknown): { message: string; retryable: boolean
 }
 
 export async function uploadAndParseResume(formData: FormData): Promise<UploadResult> {
+  // Top-level safety net. Server actions in Next.js 15 turn any uncaught
+  // throw into a 500 response with no application log — the user sees a
+  // catastrophic "Previous resume is still active" banner even when the
+  // failure was recoverable (storage hiccup, Supabase blip, body-size
+  // overflow, etc.). Catch everything, log a structured detail line, and
+  // return a graceful { ok: false } so the client can show a real reason.
+  try {
+    return await uploadAndParseResumeInner(formData);
+  } catch (err) {
+    const name = err instanceof Error ? err.name : "unknown";
+    const message = err instanceof Error ? err.message : String(err);
+    const firstStackLine = err instanceof Error
+      ? (err.stack ?? "").split("\n").slice(1, 3).join(" | ").slice(0, 400)
+      : null;
+    logEvent("error", "resume_upload_uncaught", {
+      err_name:  name,
+      err_msg:   message.slice(0, 240),
+      err_stack: firstStackLine,
+    });
+    // Surface a SAFE message that matches the friendly-error vocabulary the
+    // UI already understands. Retryable = true so the banner shows "Choose
+    // PDF again" instead of "permanently failed".
+    return {
+      ok: false,
+      error: "Resume upload hit an unexpected error. Please try again — if it persists, refresh the page and re-upload.",
+      retryable: true,
+    };
+  }
+}
+
+async function uploadAndParseResumeInner(formData: FormData): Promise<UploadResult> {
   const supabase = await createSupabaseServerClient();
   const admin = createSupabaseAdminClient();
   const { data: { user } } = await supabase.auth.getUser();
