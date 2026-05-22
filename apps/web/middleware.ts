@@ -8,7 +8,21 @@ import { clientEnv } from "@/lib/env";
 //   - Content / legal pages            (NEW — about/privacy/terms/guides)
 // Match uses exact equality OR prefix-with-slash so deep children share the
 // rule. Order doesn't matter — middleware does a single pass.
-const PUBLIC_PATHS = ["/", "/auth/login", "/auth/callback", "/api/health"];
+// File-based metadata + AI-discoverability files at the root. The
+// prefix-match below treats /robots as a folder, so /robots.txt would
+// not match. Listed here as exact paths so AI crawlers (Bingbot,
+// GPTBot, ClaudeBot, PerplexityBot, etc.) can fetch them without a
+// 307 redirect to /auth/login.
+const PUBLIC_PATHS = [
+  "/",
+  "/auth/login",
+  "/auth/callback",
+  "/api/health",
+  "/robots.txt",
+  "/sitemap.xml",
+  "/llms.txt",
+  "/llms-full.txt",
+];
 const PUBLIC_PREFIXES = [
   "/companies",
   "/cities",
