@@ -18,6 +18,7 @@ import { requireCronAuth } from "@/lib/security/cron";
 import { CRAWLER_META, DSA_CATALOG } from "@prodmatch/shared";
 import { absoluteUrl, INDIA_HUBS, hubToSlug } from "@/lib/seo/site";
 import { PUBLIC_ROLES } from "@/lib/seo/roles";
+import { PUBLIC_SKILLS } from "@/lib/seo/skills";
 import { loadActiveJobs } from "@/lib/seo/data";
 
 export const runtime = "nodejs";
@@ -50,14 +51,24 @@ export async function POST(req: NextRequest) {
     absoluteUrl("/dsa/patterns"),
     absoluteUrl("/guides"),
     absoluteUrl("/compare"),
+    absoluteUrl("/salaries"),
+    absoluteUrl("/skills"),
     absoluteUrl("/about"),
   ];
 
   for (const c of CRAWLER_META) {
     urlList.push(absoluteUrl(`/companies/${c.slug}`));
+    urlList.push(absoluteUrl(`/companies/${c.slug}/interview-process`));
+    urlList.push(absoluteUrl(`/salaries/${c.slug}`));
     for (const r of PUBLIC_ROLES) {
       urlList.push(absoluteUrl(`/companies/${c.slug}/${r.slug}`));
     }
+  }
+  for (const r of PUBLIC_ROLES) {
+    urlList.push(absoluteUrl(`/salaries/role/${r.slug}`));
+  }
+  for (const s of PUBLIC_SKILLS) {
+    urlList.push(absoluteUrl(`/skills/${s.slug}`));
   }
   for (const hub of INDIA_HUBS) {
     urlList.push(absoluteUrl(`/cities/${hubToSlug(hub)}`));

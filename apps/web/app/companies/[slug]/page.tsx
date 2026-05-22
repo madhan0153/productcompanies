@@ -273,6 +273,24 @@ export default async function CompanyPage({ params }: { params: Promise<{ slug: 
           </ul>
         </section>
 
+        {/* Cross-links to derivative pages */}
+        <section className="mt-10 grid grid-cols-1 gap-2 sm:grid-cols-2">
+          <Link
+            href={`/salaries/${slug}`}
+            className="group flex min-h-12 items-center justify-between gap-3 rounded-lg border border-border bg-card px-3 py-2 text-sm transition hover:bg-secondary/40"
+          >
+            <span className="min-w-0 truncate font-medium">{company.name} salaries (2026)</span>
+            <ArrowRight className="h-4 w-4 shrink-0 text-muted-foreground group-hover:text-primary" />
+          </Link>
+          <Link
+            href={`/companies/${slug}/interview-process`}
+            className="group flex min-h-12 items-center justify-between gap-3 rounded-lg border border-border bg-card px-3 py-2 text-sm transition hover:bg-secondary/40"
+          >
+            <span className="min-w-0 truncate font-medium">{company.name} interview process</span>
+            <ArrowRight className="h-4 w-4 shrink-0 text-muted-foreground group-hover:text-primary" />
+          </Link>
+        </section>
+
         {/* ── Apply on official site footnote ───────────────────────── */}
         <p className="mt-10 inline-flex items-center gap-1 text-[11px] text-muted-foreground">
           <ExternalLink className="h-3 w-3" />

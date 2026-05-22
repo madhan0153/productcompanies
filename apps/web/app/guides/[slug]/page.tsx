@@ -16,6 +16,8 @@ import { PublicFooter } from "@/components/public-footer";
 import { HowToGetProductJobs } from "./_content/how-to-get-product-company-jobs-india";
 import { ServicesToProductSwitch } from "./_content/services-to-product-switch";
 import { AiResumeMatcherComparison } from "./_content/ai-resume-matcher-comparison";
+import { WomenInTechIndia } from "./_content/women-in-tech-india";
+import { FreshersProductCompanyJobs } from "./_content/freshers-product-company-jobs-india";
 
 export const revalidate = 86400;
 
@@ -47,6 +49,8 @@ const RENDERERS: Record<string, () => React.ReactNode> = {
   "how-to-get-product-company-jobs-india": () => <HowToGetProductJobs />,
   "services-to-product-switch": () => <ServicesToProductSwitch />,
   "ai-resume-matcher-comparison": () => <AiResumeMatcherComparison />,
+  "women-in-tech-india": () => <WomenInTechIndia />,
+  "freshers-product-company-jobs-india": () => <FreshersProductCompanyJobs />,
 };
 
 export default async function GuidePage({ params }: { params: Promise<{ slug: string }> }) {

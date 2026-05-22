@@ -12,6 +12,7 @@ import { INDIA_HUBS, hubToSlug, absoluteUrl } from "@/lib/seo/site";
 import { PUBLIC_ROLES } from "@/lib/seo/roles";
 import { COMPETITORS } from "@/lib/seo/comparisons";
 import { PILLAR_GUIDES } from "@/lib/seo/guides";
+import { PUBLIC_SKILLS } from "@/lib/seo/skills";
 
 export const revalidate = 3600; // 1 hour
 
@@ -33,7 +34,39 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     { url: absoluteUrl("/dsa/patterns"), lastModified: now, changeFrequency: "weekly", priority: 0.7 },
     { url: absoluteUrl("/guides"),    lastModified: now, changeFrequency: "weekly",  priority: 0.8 },
     { url: absoluteUrl("/compare"),   lastModified: now, changeFrequency: "monthly", priority: 0.7 },
+    { url: absoluteUrl("/salaries"),  lastModified: now, changeFrequency: "daily",   priority: 0.85 },
+    { url: absoluteUrl("/skills"),    lastModified: now, changeFrequency: "weekly",  priority: 0.75 },
   ];
+
+  // Salary pages (per-company + per-role).
+  const salaryCompanyEntries: SitemapEntry[] = CRAWLER_META.map((c) => ({
+    url: absoluteUrl(`/salaries/${c.slug}`),
+    lastModified: now,
+    changeFrequency: "daily" as const,
+    priority: 0.8,
+  }));
+  const salaryRoleEntries: SitemapEntry[] = PUBLIC_ROLES.map((r) => ({
+    url: absoluteUrl(`/salaries/role/${r.slug}`),
+    lastModified: now,
+    changeFrequency: "daily" as const,
+    priority: 0.75,
+  }));
+
+  // Interview-process pages (per-company).
+  const interviewEntries: SitemapEntry[] = CRAWLER_META.map((c) => ({
+    url: absoluteUrl(`/companies/${c.slug}/interview-process`),
+    lastModified: now,
+    changeFrequency: "monthly" as const,
+    priority: 0.7,
+  }));
+
+  // Skill pages.
+  const skillEntries: SitemapEntry[] = PUBLIC_SKILLS.map((s) => ({
+    url: absoluteUrl(`/skills/${s.slug}`),
+    lastModified: now,
+    changeFrequency: "weekly" as const,
+    priority: 0.7,
+  }));
 
   const guideEntries: SitemapEntry[] = PILLAR_GUIDES.map((g) => ({
     url: absoluteUrl(`/guides/${g.slug}`),
@@ -114,6 +147,10 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     ...staticEntries,
     ...guideEntries,
     ...compareEntries,
+    ...salaryCompanyEntries,
+    ...salaryRoleEntries,
+    ...interviewEntries,
+    ...skillEntries,
     ...companyEntries,
     ...companyRoleEntries,
     ...cityEntries,

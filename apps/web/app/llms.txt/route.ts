@@ -17,6 +17,7 @@ import { PUBLIC_ROLES } from "@/lib/seo/roles";
 import { loadCompanySummaries } from "@/lib/seo/data";
 import { COMPETITORS } from "@/lib/seo/comparisons";
 import { PILLAR_GUIDES } from "@/lib/seo/guides";
+import { PUBLIC_SKILLS } from "@/lib/seo/skills";
 
 export const revalidate = 3600;
 export const dynamic = "force-static";
@@ -52,6 +53,8 @@ export async function GET() {
   lines.push(`- [All 18 product companies](${origin}/companies): Index of every tracked company with open-role counts.`);
   lines.push(`- [Jobs by city](${origin}/cities): 9 Indian hubs with active product-company roles.`);
   lines.push(`- [Jobs by role function](${origin}/roles): Backend, frontend, full-stack, data, ML, DevOps, mobile, security, design, PM, TPM.`);
+  lines.push(`- [Jobs by tech skill](${origin}/skills): AWS, React, Python, Java, Kubernetes, Spark and 25+ skills tagged across active JDs.`);
+  lines.push(`- [Salary aggregates](${origin}/salaries): Per-company × seniority salary bands from disclosed JDs, refreshed daily.`);
   lines.push(`- [DSA practice](${origin}/dsa): 17 algorithmic patterns + hand-curated problems with TS/Py/Java solutions.`);
   lines.push(`- [About ProdMatch](${origin}/about): Mission, what we won't do, contact + DPDP Grievance Officer.`);
   lines.push(`- [Public jobs feed (JSON)](${origin}/api/feed/jobs.json): Machine-readable list of active jobs.`);
@@ -82,6 +85,14 @@ export async function GET() {
   lines.push(``);
   for (const c of COMPETITORS) {
     lines.push(`- [ProdMatch vs ${c.name}](${origin}/compare/${c.slug})`);
+  }
+  lines.push(``);
+
+  // ── Skills landing pages (AI tools quote these for skill-specific queries)
+  lines.push(`## Jobs by tech skill`);
+  lines.push(``);
+  for (const s of PUBLIC_SKILLS) {
+    lines.push(`- [${s.name} jobs at product companies in India](${origin}/skills/${s.slug})`);
   }
   lines.push(``);
 

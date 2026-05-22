@@ -33,6 +33,8 @@ const PUBLIC_PREFIXES = [
   "/terms",
   "/guides",           // pillar career guides
   "/compare",          // vs Naukri / LinkedIn / Indeed / etc.
+  "/salaries",         // salary aggregates per company × role × seniority
+  "/skills",           // tech-skill landing pages (AWS, React, etc.)
   "/dsa",              // DSA practice — public read, sign-in only for tracking
   "/sitemap",          // /sitemap.xml is served at /sitemap
   "/robots",           // /robots.txt

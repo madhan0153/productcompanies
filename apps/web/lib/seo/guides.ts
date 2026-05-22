@@ -57,6 +57,29 @@ export const PILLAR_GUIDES: readonly PillarGuide[] = [
       "The best AI resume matcher for product-company jobs in India is one that (1) sources roles only from official career pages, (2) gives an explainable Fit Card with strengths and gaps, (3) ranks roles by your actual stack + role function, not just keywords, and (4) doesn't sell or share your data. ProdMatch.ai is built specifically for this use case across India's 18 verified product companies.",
     readMinutes: 7,
   },
+  {
+    slug: "women-in-tech-india",
+    title: "Women in Tech at India's Product Companies — 2026 Career Guide",
+    headline: "Working as a woman engineer at India's top product companies",
+    description:
+      "Career guide for women software engineers targeting India's product companies in 2026 — known DEI signals across the 18 companies, returnship + maternity programs, comp negotiation, and where to apply.",
+    datePublished: "2026-05-22",
+    tldr:
+      "India's 18 product companies vary substantially on DEI signals. As of 2026: Microsoft India, Google, Razorpay, Salesforce, and Atlassian publish gender-pay-parity audits or returnship programs. Most have maternity policies of 26 weeks (statutory minimum), with several extending to 30+ weeks. Comp negotiation patterns, returnship windows, and the realistic application path are detailed below.",
+    readMinutes: 8,
+    authorName: "ProdMatch Editorial",
+  },
+  {
+    slug: "freshers-product-company-jobs-india",
+    title: "Product Company Jobs for Freshers in India — 2026 Application Playbook",
+    headline: "How freshers can land jobs at India's top product companies",
+    description:
+      "Application playbook for fresh graduates targeting India's product-based companies. Which 18 cos hire freshers, what the SDE-1 / Associate loop looks like, comp bands, and a realistic 6-month prep plan from college to offer.",
+    datePublished: "2026-05-25",
+    tldr:
+      "13 of India's 18 product companies actively hire fresh graduates — Google, Microsoft, Amazon, Meta, Salesforce, SAP Labs, Atlassian, Nvidia, Oracle, Flipkart, Razorpay, PhonePe and Groww run dedicated SDE-1 / Associate pipelines. The realistic prep window for a fresher is 6 months of focused DSA + system-design basics + 2-3 strong projects. Application happens through each company's own University / Early Career page — never through aggregators.",
+    readMinutes: 9,
+  },
 ];
 
 export function pillarGuideBySlug(slug: string): PillarGuide | null {

@@ -82,10 +82,14 @@ export function PublicFooter() {
               ProdMatch
             </h3>
             <ul className="mt-3 space-y-1.5">
-              <li><Link href="/about"   className="text-xs text-muted-foreground hover:text-foreground">About</Link></li>
-              <li><Link href="/dsa"     className="text-xs text-muted-foreground hover:text-foreground">DSA practice</Link></li>
-              <li><Link href="/privacy" className="text-xs text-muted-foreground hover:text-foreground">Privacy</Link></li>
-              <li><Link href="/terms"   className="text-xs text-muted-foreground hover:text-foreground">Terms</Link></li>
+              <li><Link href="/about"     className="text-xs text-muted-foreground hover:text-foreground">About</Link></li>
+              <li><Link href="/guides"    className="text-xs text-muted-foreground hover:text-foreground">Career guides</Link></li>
+              <li><Link href="/compare"   className="text-xs text-muted-foreground hover:text-foreground">Compare</Link></li>
+              <li><Link href="/salaries"  className="text-xs text-muted-foreground hover:text-foreground">Salaries</Link></li>
+              <li><Link href="/skills"    className="text-xs text-muted-foreground hover:text-foreground">Skills</Link></li>
+              <li><Link href="/dsa"       className="text-xs text-muted-foreground hover:text-foreground">DSA practice</Link></li>
+              <li><Link href="/privacy"   className="text-xs text-muted-foreground hover:text-foreground">Privacy</Link></li>
+              <li><Link href="/terms"     className="text-xs text-muted-foreground hover:text-foreground">Terms</Link></li>
               <li><Link href="/auth/login" className="text-xs font-medium text-primary hover:underline">Sign in</Link></li>
             </ul>
           </div>
