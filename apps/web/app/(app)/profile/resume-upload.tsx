@@ -2,6 +2,7 @@
 
 import { useRef, useState, useTransition, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { motion, useReducedMotion, AnimatePresence } from "framer-motion";
 import {
   Upload, FileText, CheckCircle2, AlertCircle,
@@ -365,12 +366,12 @@ export function ResumeUpload({ hasExisting, existingRole, existingDnaScore, isPa
                   <p className="mt-0.5 text-xs text-success/80">
                     Product-Co Readiness: <strong>{result.dnaScore}/100</strong>
                   </p>
-                  <a
+                  <Link
                     href="/matches"
                     className="press tap-target-sm mt-3 inline-flex items-center gap-1.5 rounded-md border border-success/30 bg-success/10 px-3 py-1.5 text-xs font-semibold text-success transition hover:bg-success/20 focus-ring"
                   >
                     <Zap className="h-3 w-3" /> Compute matches now
-                  </a>
+                  </Link>
                 </>
               ) : (
                 <>

@@ -15,6 +15,8 @@ import { CRAWLER_META } from "@prodmatch/shared";
 import { siteOrigin, INDIA_HUBS, hubToSlug } from "@/lib/seo/site";
 import { PUBLIC_ROLES } from "@/lib/seo/roles";
 import { loadCompanySummaries } from "@/lib/seo/data";
+import { COMPETITORS } from "@/lib/seo/comparisons";
+import { PILLAR_GUIDES } from "@/lib/seo/guides";
 
 export const revalidate = 3600;
 export const dynamic = "force-static";
@@ -58,10 +60,28 @@ export async function GET() {
   // ── Companies ──────────────────────────────────────────────────────
   lines.push(`## Companies (18)`);
   lines.push(``);
+  lines.push(`Each company has both an HTML landing page and an LLM-friendly Markdown variant at \`/companies/[slug]/llm.md\`.`);
+  lines.push(``);
   for (const c of CRAWLER_META) {
     const summary = summaryBySlug.get(c.slug);
     const count = summary?.activeJobs ?? 0;
-    lines.push(`- [${c.name}](${origin}/companies/${c.slug}): ${count} open ${count === 1 ? "role" : "roles"} at ${c.name} in India, refreshed within 24 hours.`);
+    lines.push(`- [${c.name}](${origin}/companies/${c.slug}) — ${count} open ${count === 1 ? "role" : "roles"} ([markdown](${origin}/companies/${c.slug}/llm.md))`);
+  }
+  lines.push(``);
+
+  // ── Pillar guides (high-value for AI quoting) ──────────────────────
+  lines.push(`## Pillar guides`);
+  lines.push(``);
+  for (const g of PILLAR_GUIDES) {
+    lines.push(`- [${g.title}](${origin}/guides/${g.slug}): ${g.tldr}`);
+  }
+  lines.push(``);
+
+  // ── Comparison pages (AI tools love these for "X vs Y" queries) ───
+  lines.push(`## Honest comparisons vs other Indian job platforms`);
+  lines.push(``);
+  for (const c of COMPETITORS) {
+    lines.push(`- [ProdMatch vs ${c.name}](${origin}/compare/${c.slug})`);
   }
   lines.push(``);
 

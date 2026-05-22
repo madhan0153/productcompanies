@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { JsonLd, breadcrumbJsonLd } from "@/lib/seo/json-ld";
 import { absoluteUrl } from "@/lib/seo/site";
 import { PublicNav } from "@/components/public-nav";
@@ -57,7 +58,7 @@ export default function TermsPage() {
           <Section title="5. Account termination">
             We may suspend or remove accounts that violate these terms. You
             may delete your account at any time via{" "}
-            <a className="text-primary hover:underline" href="/settings/privacy">Settings → Privacy</a>;
+            <Link className="text-primary hover:underline" href="/settings/privacy">Settings → Privacy</Link>;
             erasure completes within 7 working days.
           </Section>
 

@@ -17,7 +17,8 @@ const PUBLIC_PREFIXES = [
   "/about",
   "/privacy",
   "/terms",
-  "/guides",
+  "/guides",           // pillar career guides
+  "/compare",          // vs Naukri / LinkedIn / Indeed / etc.
   "/dsa",              // DSA practice — public read, sign-in only for tracking
   "/sitemap",          // /sitemap.xml is served at /sitemap
   "/robots",           // /robots.txt
@@ -26,6 +27,10 @@ const PUBLIC_PREFIXES = [
 
 function isPublicPath(pathname: string): boolean {
   if (PUBLIC_PATHS.some((p) => pathname === p)) return true;
+  // IndexNow ownership-verification file lives at /{key}.txt at the root.
+  // The key is opaque; match any single-segment text file with hex-ish
+  // characters at the root level.
+  if (/^\/[a-zA-Z0-9_-]{8,}\.txt$/.test(pathname)) return true;
   return PUBLIC_PREFIXES.some(
     (prefix) => pathname === prefix || pathname.startsWith(prefix + "/"),
   );

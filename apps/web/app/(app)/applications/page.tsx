@@ -108,6 +108,7 @@ export default async function ApplicationsPage({
         </div>
         <div className="flex shrink-0 items-center gap-2">
           {followups.length > 0 && (
+            // eslint-disable-next-line @next/next/no-html-link-for-pages -- API download, not a page navigation
             <a
               href="/api/applications/calendar"
               className="press tap-target-sm inline-flex items-center gap-1.5 rounded-md border border-border bg-card px-3 py-1.5 text-xs font-medium text-muted-foreground transition hover:border-primary/40 hover:text-foreground focus-ring"

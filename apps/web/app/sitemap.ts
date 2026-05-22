@@ -10,6 +10,8 @@ import { CRAWLER_META, DSA_CATALOG, DSA_PATTERN_ROADMAP } from "@prodmatch/share
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { INDIA_HUBS, hubToSlug, absoluteUrl } from "@/lib/seo/site";
 import { PUBLIC_ROLES } from "@/lib/seo/roles";
+import { COMPETITORS } from "@/lib/seo/comparisons";
+import { PILLAR_GUIDES } from "@/lib/seo/guides";
 
 export const revalidate = 3600; // 1 hour
 
@@ -29,7 +31,23 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     { url: absoluteUrl("/terms"),     lastModified: now, changeFrequency: "monthly", priority: 0.3 },
     { url: absoluteUrl("/dsa"),       lastModified: now, changeFrequency: "weekly",  priority: 0.7 },
     { url: absoluteUrl("/dsa/patterns"), lastModified: now, changeFrequency: "weekly", priority: 0.7 },
+    { url: absoluteUrl("/guides"),    lastModified: now, changeFrequency: "weekly",  priority: 0.8 },
+    { url: absoluteUrl("/compare"),   lastModified: now, changeFrequency: "monthly", priority: 0.7 },
   ];
+
+  const guideEntries: SitemapEntry[] = PILLAR_GUIDES.map((g) => ({
+    url: absoluteUrl(`/guides/${g.slug}`),
+    lastModified: new Date(g.dateModified ?? g.datePublished),
+    changeFrequency: "monthly" as const,
+    priority: 0.85,
+  }));
+
+  const compareEntries: SitemapEntry[] = COMPETITORS.map((c) => ({
+    url: absoluteUrl(`/compare/${c.slug}`),
+    lastModified: now,
+    changeFrequency: "monthly" as const,
+    priority: 0.75,
+  }));
 
   const companyEntries: SitemapEntry[] = CRAWLER_META.map((c) => ({
     url: absoluteUrl(`/companies/${c.slug}`),
@@ -94,6 +112,8 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 
   return [
     ...staticEntries,
+    ...guideEntries,
+    ...compareEntries,
     ...companyEntries,
     ...companyRoleEntries,
     ...cityEntries,

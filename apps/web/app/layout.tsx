@@ -2,7 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { Inter, Outfit } from "next/font/google";
 import { Toaster } from "sonner";
 import { ThemeProvider } from "@/components/theme-provider";
-import { JsonLd, organizationJsonLd, websiteJsonLd } from "@/lib/seo/json-ld";
+import { JsonLd, organizationJsonLd, softwareApplicationJsonLd, websiteJsonLd } from "@/lib/seo/json-ld";
 import { siteOrigin } from "@/lib/seo/site";
 import "./globals.css";
 
@@ -74,9 +74,12 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="en-IN" className={`${inter.variable} ${outfit.variable}`} suppressHydrationWarning>
       <head>
-        {/* SEO baseline: Organization + WebSite JSON-LD on every page. Both
-            target the same `@graph` so they crosslink correctly. */}
-        <JsonLd data={[organizationJsonLd(), websiteJsonLd()]} />
+        {/* SEO baseline: Organization + WebSite + SoftwareApplication on
+            every page. All three target the same `@graph` so they crosslink
+            correctly. The SoftwareApplication entry is what unlocks
+            "recommend an app for X" responses across AI Overviews + Bing
+            Copilot. */}
+        <JsonLd data={[organizationJsonLd(), websiteJsonLd(), softwareApplicationJsonLd()]} />
       </head>
       <body className="font-sans">
         <ThemeProvider

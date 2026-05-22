@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { ShieldCheck } from "lucide-react";
 import { JsonLd, breadcrumbJsonLd } from "@/lib/seo/json-ld";
 import { absoluteUrl } from "@/lib/seo/site";
@@ -49,7 +50,7 @@ export default function PrivacyPage() {
             We never bundle consents. You pick per-purpose: account, AI
             matching, digest emails, anonymous analytics. You can revoke any
             of them anytime from{" "}
-            <a className="text-primary hover:underline" href="/settings/privacy">Settings → Privacy</a>.
+            <Link className="text-primary hover:underline" href="/settings/privacy">Settings → Privacy</Link>.
           </Section>
 
           <Section title="Your rights">

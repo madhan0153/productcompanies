@@ -235,6 +235,104 @@ export function jobPostingJsonLd(input: JobPostingInput) {
   };
 }
 
+// ── SoftwareApplication (marks ProdMatch as an app — eligible for AI
+//    "recommend me an app for X" responses) ─────────────────────────────────
+
+export function softwareApplicationJsonLd() {
+  const origin = siteOrigin();
+  return {
+    "@context": "https://schema.org",
+    "@type": "SoftwareApplication",
+    "@id": `${origin}/#softwareapp`,
+    name: "ProdMatch.ai",
+    operatingSystem: "Web",
+    applicationCategory: "BusinessApplication",
+    applicationSubCategory: "Job Matching",
+    url: origin,
+    description:
+      "AI-powered, India-first job matching for software engineers. Explainable matches to high-package roles at 18 verified product companies — sourced from official career pages, refreshed daily.",
+    offers: {
+      "@type": "Offer",
+      price: "0",
+      priceCurrency: "INR",
+      availability: "https://schema.org/InStock",
+    },
+    featureList: [
+      "AI resume parsing and matching",
+      "Daily-refreshed job inventory from 18 product companies",
+      "Explainable Fit Card (strengths, gaps, reasoning)",
+      "DSA practice with 17 patterns",
+      "DPDP Act 2023 compliant data handling",
+    ],
+    audience: { "@type": "Audience", audienceType: "Software Engineers in India" },
+    provider: { "@id": `${origin}/#org` },
+  };
+}
+
+// ── HowTo (for guides — explicit recipe schema) ──────────────────────────────
+
+export interface HowToStep {
+  name: string;
+  text: string;
+  url?: string;
+}
+
+export function howToJsonLd(input: {
+  name: string;
+  description: string;
+  totalTimeISO: string; // e.g. "PT15M"
+  steps: HowToStep[];
+}) {
+  const origin = siteOrigin();
+  return {
+    "@context": "https://schema.org",
+    "@type": "HowTo",
+    name: input.name,
+    description: input.description,
+    totalTime: input.totalTimeISO,
+    step: input.steps.map((s, i) => ({
+      "@type": "HowToStep",
+      position: i + 1,
+      name: s.name,
+      text: s.text,
+      ...(s.url ? { url: s.url } : {}),
+    })),
+    publisher: { "@id": `${origin}/#org` },
+  };
+}
+
+// ── Article / TechArticle (for pillar guides) ────────────────────────────────
+
+export interface ArticleInput {
+  headline: string;
+  description: string;
+  url: string;
+  datePublished: string;
+  dateModified?: string;
+  authorName?: string;
+  imageUrl?: string;
+}
+
+export function articleJsonLd(input: ArticleInput) {
+  const origin = siteOrigin();
+  return {
+    "@context": "https://schema.org",
+    "@type": "Article",
+    mainEntityOfPage: { "@type": "WebPage", "@id": input.url },
+    headline: input.headline,
+    description: input.description,
+    image: input.imageUrl ? [input.imageUrl] : [`${origin}/icon`],
+    datePublished: input.datePublished,
+    dateModified: input.dateModified ?? input.datePublished,
+    author: {
+      "@type": "Organization",
+      name: input.authorName ?? "ProdMatch Editorial",
+      url: origin,
+    },
+    publisher: { "@id": `${origin}/#org` },
+  };
+}
+
 // ── ItemList (for company / city / role index pages) ─────────────────────────
 
 export interface ItemListEntry {
