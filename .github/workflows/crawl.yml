@@ -128,9 +128,33 @@ jobs:
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
-          # Comma-separated keys → round-robin in worker pool, separate
-          # daily quota per key.
+          # Gemini — primary provider. Comma-separated keys → round-robin
+          # in worker pool, separate daily quota per key.
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          # All other LLM provider keys — each is OPTIONAL. The router in
+          # @prodmatch/shared auto-includes any provider whose keysEnvVar
+          # is set, so missing keys simply mean that provider stays idle.
+          # When Gemini's daily quota exhausts, the router cascades through
+          # whichever of these are populated, preserving the daily run.
+          # Adding a new key in GitHub repo Secrets is enough — no code
+          # change needed.
+          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+          CEREBRAS_API_KEY: ${{ secrets.CEREBRAS_API_KEY }}
+          SAMBANOVA_API_KEY: ${{ secrets.SAMBANOVA_API_KEY }}
+          NVIDIA_API_KEY: ${{ secrets.NVIDIA_API_KEY }}
+          MISTRAL_API_KEY: ${{ secrets.MISTRAL_API_KEY }}
+          FIREWORKS_API_KEY: ${{ secrets.FIREWORKS_API_KEY }}
+          DEEPINFRA_API_KEY: ${{ secrets.DEEPINFRA_API_KEY }}
+          TOGETHER_API_KEY: ${{ secrets.TOGETHER_API_KEY }}
+          CLOUDFLARE_API_KEY: ${{ secrets.CLOUDFLARE_API_KEY }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          GITHUB_MODELS_API_KEY: ${{ secrets.GITHUB_MODELS_API_KEY }}
+          HF_API_KEY: ${{ secrets.HF_API_KEY }}
+          COHERE_API_KEY: ${{ secrets.COHERE_API_KEY }}
+          VOYAGE_API_KEY: ${{ secrets.VOYAGE_API_KEY }}
+          JINA_API_KEY: ${{ secrets.JINA_API_KEY }}
+          FREELLMAPI_API_KEY: ${{ secrets.FREELLMAPI_API_KEY }}
           # Optional — Slack/Discord webhook for crawl-drift alerts. No-op
           # when unset, but recommended for production.
           CRAWL_ALERT_WEBHOOK_URL: ${{ secrets.CRAWL_ALERT_WEBHOOK_URL }}
