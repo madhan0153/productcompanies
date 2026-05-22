@@ -401,6 +401,25 @@ async function uploadAndParseResumeInner(formData: FormData): Promise<UploadResu
     });
     assertNoSupabaseError(queueError, "Could not mark resume parsing as queued");
   } catch (err) {
+    // CRITICAL: this catch was silent. The original error never reached
+    // logs, so all the user saw was "Could not start resume processing"
+    // with no way to know whether the DB rejected an INSERT, the schema
+    // drifted, or RLS blocked the write. Mirror the top-level
+    // RUPLOAD_THROW emission here so the next failure tells us exactly
+    // which line in the DB-write chain threw.
+    const name = err instanceof Error ? err.name : "unknown";
+    const message = err instanceof Error ? err.message : String(err);
+    const firstStackLine = err instanceof Error
+      ? (err.stack ?? "").split("\n").slice(1, 3).join(" | ").slice(0, 400)
+      : null;
+    // eslint-disable-next-line no-console
+    console.error(`RUPLOAD_QUEUE_FAIL [${name}] ${message.slice(0, 240)} || ${firstStackLine ?? ""}`);
+    logEvent("error", "resume_upload_queue_failed", {
+      user_id:   userId.slice(0, 8),
+      err_name:  name,
+      err_msg:   message.slice(0, 240),
+      err_stack: firstStackLine,
+    });
     try {
       await removeUploadedResume(admin, path);
     } catch {
@@ -411,7 +430,11 @@ async function uploadAndParseResumeInner(formData: FormData): Promise<UploadResu
     } catch {
       // The job row may not exist yet.
     }
-    return { ok: false, error: "Could not start resume processing. Please retry." };
+    return {
+      ok: false,
+      error: `Could not start resume processing. Detail: ${message.slice(0, 120)}. Please retry.`,
+      retryable: true,
+    };
   }
 
   // Note: revalidatePath("/profile") used to live here, but it forced a
