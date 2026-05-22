@@ -236,6 +236,13 @@ export async function uploadAndParseResume(formData: FormData): Promise<UploadRe
     const firstStackLine = err instanceof Error
       ? (err.stack ?? "").split("\n").slice(1, 3).join(" | ").slice(0, 400)
       : null;
+    // Vercel's log-table MCP truncates structured-event lines at ~30 chars
+    // of the leading JSON, so the actual error text in {"event":"...","err_msg":"..."}
+    // never makes it past the column boundary. Emit a SECOND, plain
+    // console.error whose first 30+ chars are the raw error text — that
+    // line surfaces the real cause directly in the truncated view.
+    // eslint-disable-next-line no-console
+    console.error(`RUPLOAD_THROW [${name}] ${message.slice(0, 240)} || ${firstStackLine ?? ""}`);
     logEvent("error", "resume_upload_uncaught", {
       err_name:  name,
       err_msg:   message.slice(0, 240),
