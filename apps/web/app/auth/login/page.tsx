@@ -3,7 +3,12 @@ import Link from "next/link";
 import { ShieldCheck, Zap, CheckCircle2 } from "lucide-react";
 import { LoginForm } from "./login-form";
 
-export const metadata: Metadata = { title: "Sign in" };
+export const metadata: Metadata = {
+  title: "Sign in",
+  // SEO: noindex the auth surface — magic-link / OAuth pages have no
+  // organic value and waste crawl budget.
+  robots: { index: false, follow: false },
+};
 
 export default function LoginPage({
   searchParams,

@@ -2,7 +2,32 @@ import { createServerClient, type CookieOptions } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 import { clientEnv } from "@/lib/env";
 
+// Public routes that bypass the auth-redirect. Three categories:
+//   - Root marketing + auth + health   (legacy)
+//   - SEO templated landing pages      (NEW — companies/cities/roles/listings)
+//   - Content / legal pages            (NEW — about/privacy/terms/guides)
+// Match uses exact equality OR prefix-with-slash so deep children share the
+// rule. Order doesn't matter — middleware does a single pass.
 const PUBLIC_PATHS = ["/", "/auth/login", "/auth/callback", "/api/health"];
+const PUBLIC_PREFIXES = [
+  "/companies",
+  "/cities",
+  "/roles",
+  "/listings",
+  "/about",
+  "/privacy",
+  "/terms",
+  "/guides",
+  "/sitemap",          // /sitemap.xml is served at /sitemap
+  "/robots",           // /robots.txt
+];
+
+function isPublicPath(pathname: string): boolean {
+  if (PUBLIC_PATHS.some((p) => pathname === p)) return true;
+  return PUBLIC_PREFIXES.some(
+    (prefix) => pathname === prefix || pathname.startsWith(prefix + "/"),
+  );
+}
 
 // Best-effort per-instance rate limiter — module-level Map persists per Edge worker.
 // Not distributed, but effective deterrence against simple abuse.
@@ -83,7 +108,7 @@ export async function middleware(request: NextRequest) {
   const { data: { user } } = await supabase.auth.getUser();
 
   // /api/* already short-circuited above — only page paths reach here.
-  const isPublic = PUBLIC_PATHS.some((p) => pathname === p);
+  const isPublic = isPublicPath(pathname);
 
   // Redirect unauthenticated users away from protected routes
   if (!user && !isPublic) {
@@ -112,7 +137,7 @@ export async function middleware(request: NextRequest) {
     user &&
     !pathname.startsWith("/consent") &&
     !pathname.startsWith("/auth/") &&
-    !PUBLIC_PATHS.some((p) => pathname === p);
+    !isPublicPath(pathname);
 
   if (isConsentable) {
     // Lightweight check: look for the mandatory 'account' consent row.

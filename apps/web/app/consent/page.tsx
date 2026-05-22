@@ -5,7 +5,10 @@ import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { CONSENT_LABELS, type ConsentPurpose } from "@/lib/dpdp/consent";
 import { submitConsents } from "./actions";
 
-export const metadata: Metadata = { title: "Privacy consent" };
+export const metadata: Metadata = {
+  title: "Privacy consent",
+  robots: { index: false, follow: false },
+};
 
 export default async function ConsentPage({
   searchParams,
