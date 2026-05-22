@@ -12,7 +12,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { computeRulesScore } from "../../lib/matching/score";
-import { calibrateMatch, type CalibrateJobInput } from "../../lib/matching/calibrate";
+import { calibrateMatch, reconcileVerdictWithScore, type CalibrateJobInput } from "../../lib/matching/calibrate";
 import { classifyMatch } from "../../app/(app)/matches/match-types";
 
 // ── Fixtures ───────────────────────────────────────────────────────────────
@@ -339,6 +339,31 @@ test("backend resume — sales job is Filtered (hard mismatch)", () => {
   assert.equal(result.band, "filtered", `sales role MUST be filtered for backend candidate. ${result.notes}`);
 });
 
+test("verdict reconciliation - strong_fit cannot be stored below strong score band", () => {
+  assert.equal(reconcileVerdictWithScore("strong_fit", 59), "stretch");
+  assert.equal(reconcileVerdictWithScore("strong_fit", 39), "evidence_pending");
+  assert.equal(reconcileVerdictWithScore("strong_fit", 75), "strong_fit");
+});
+
+test("data_engineering resume - compliance/operator title is Filtered despite Python keyword", () => {
+  const r = RESUMES.find((x) => x.label === "senior_data_engineer")!;
+  const j = withDefaults({
+    label: "compliance_ops",
+    title: "Prod Compliance Associate Sr, Brand Protection",
+    description: "Review brand protection workflows. Use Python for reporting and compliance operations.".repeat(2),
+    role_function: "ml_ai",
+    role_function_jd: "ml_ai",
+    must_have_skills: ["Python"],
+    tech_stack: ["python"],
+    jd_min_years: 1,
+    jd_max_years: 5,
+    jd_seniority_signal: "manager",
+    cosineWhenEmbedded: 0.4,
+  });
+  const result = runFullPipeline(r, j);
+  assert.equal(result.band, "filtered", `non-engineering ops title must be filtered. ${result.notes}`);
+});
+
 test("qa_sdet resume — direct strong SDET role is Priority", () => {
   const r = RESUMES.find((x) => x.label === "mid_qa_sdet")!;
   const result = runFullPipeline(r, jobsForQa().find((x) => x.label === "direct_strong_qa")!);
@@ -361,6 +386,25 @@ test("data_engineering resume — direct strong DE role is Priority", () => {
   const r = RESUMES.find((x) => x.label === "senior_data_engineer")!;
   const result = runFullPipeline(r, jobsForDataEng().find((x) => x.label === "direct_strong_de")!);
   assert.equal(result.band, "shortlist", `expected shortlist, got ${result.band} (${result.notes})`);
+});
+
+test("data_engineering resume - exact role and must-have coverage survives weak embedding", () => {
+  const r = RESUMES.find((x) => x.label === "senior_data_engineer")!;
+  const j = withDefaults({
+    label: "weak_embedding_de",
+    title: "Data Engineer II, Analytics Platform",
+    description: "Build data pipelines with PySpark, SQL, dbt and Airflow. Own warehouse quality and batch processing.".repeat(3),
+    role_function: "data_engineering",
+    role_function_jd: "data_engineering",
+    must_have_skills: ["PySpark", "SQL", "dbt", "Airflow"],
+    tech_stack: ["pyspark", "sql", "dbt", "airflow"],
+    jd_min_years: 3,
+    jd_max_years: 6,
+    jd_seniority_signal: "mid",
+    cosineWhenEmbedded: 0.04,
+  });
+  const result = runFullPipeline(r, j);
+  assert.equal(result.band, "shortlist", `exact structured evidence should rescue weak embeddings. ${result.notes}`);
 });
 
 test("data_engineering resume — unparsed DE role is visible (not Filtered)", () => {

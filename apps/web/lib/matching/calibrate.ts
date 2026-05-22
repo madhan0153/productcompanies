@@ -93,9 +93,17 @@ export function capScoreForVerdict(score: number, verdict: Verdict): number {
   return Math.max(0, Math.min(100, VERDICT_SCORE_CAP[verdict], Math.round(score)));
 }
 
+export function reconcileVerdictWithScore(verdict: Verdict, score: number): Verdict {
+  if (verdict === "strong_fit" && score < 75) return score >= 55 ? "stretch" : "evidence_pending";
+  if (verdict === "stretch" && score < 40) return "evidence_pending";
+  return verdict;
+}
+
 // ── Evidence / signal helpers ─────────────────────────────────────────────
 
 const LOW_QUALITY_SUMMARY_RE = /job description provided is empty|provided is empty|lacks specific details/i;
+const NON_ENGINEERING_TITLE_RE =
+  /\b(account partner|account executive|account manager|brand protection|communication specialist|communications specialist|compliance associate|data cent(?:er|re) engineering operations|investigation specialist|planner\b|salescloud|success guide)\b/i;
 
 function isJdGenuinelyLowQuality(job: CalibrateJobInput): boolean {
   // Crawler-flagged garbage data: empty / placeholder / extraction failure.
@@ -105,6 +113,8 @@ function isJdGenuinelyLowQuality(job: CalibrateJobInput): boolean {
 }
 
 function hasRoleSignalConflict(job: CalibrateJobInput): boolean {
+  if (NON_ENGINEERING_TITLE_RE.test(job.title)) return true;
+
   const titleFunction = inferRoleFunctionFromTitle(job.title);
   const jdFunction = job.role_function_jd;
   if (!titleFunction || !jdFunction) return false;
@@ -180,7 +190,7 @@ export function calibrateMatch(input: {
     }
   }
 
-  const verdict = computeVerdict(rules, score, job.jd_parsed_at !== null);
+  let preCapVerdict: Verdict;
 
   // (5) Ghost listings — keep visible at most as Explore.
   if (job.is_likely_ghost) {
@@ -189,7 +199,8 @@ export function calibrateMatch(input: {
   }
 
   // (6) Verdict-driven cap.
-  score = capScoreForVerdict(score, verdict);
+  // Verdict is derived after all visibility caps so labels and score bands
+  // cannot drift apart.
 
   // (7) Hard-cap reason from the rules layer (e.g. no_stack → 50, thin_jd → 70).
   //     rules.total already reflects these but baseScore may have been bumped
@@ -198,6 +209,10 @@ export function calibrateMatch(input: {
     score = Math.min(score, 49);   // never Priority without ANY tech overlap
     hidden_reason = hidden_reason ?? "no_stack";
   }
+
+  preCapVerdict = computeVerdict(rules, score, job.jd_parsed_at !== null);
+  score = capScoreForVerdict(score, preCapVerdict);
+  const verdict = reconcileVerdictWithScore(preCapVerdict, score);
 
   if (verdict === "mismatch" && !hidden_reason) hidden_reason = "mismatch";
   return { score, verdict, hidden_reason };

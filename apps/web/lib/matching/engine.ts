@@ -22,7 +22,7 @@
 
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { computeRulesScore } from "./score";
-import { calibrateMatch, capScoreForVerdict } from "./calibrate";
+import { calibrateMatch, capScoreForVerdict, reconcileVerdictWithScore } from "./calibrate";
 import { generateFitCard, type FitCard, type Verdict } from "@/lib/llm/prompts/fit-card";
 import { cosineSimilarity } from "@/lib/llm/embed";
 import type { ParsedResume } from "@/lib/llm/prompts/resume-parse";
@@ -588,14 +588,17 @@ export async function computeMatchesForUser(
             });
 
             const cardScore = capScoreForVerdict(score, card.verdict);
+            const cardVerdict = reconcileVerdictWithScore(card.verdict, cardScore);
+            const storedCardVerdict: Verdict = cardVerdict === "evidence_pending" ? "stretch" : cardVerdict;
+            const storedCard = { ...card, verdict: storedCardVerdict };
             fitCardRows.push({
               user_id:       userId,
               job_id:        job.id,
               score:         cardScore,
-              verdict:       card.verdict,
-              fit_card:      card as unknown as Json,
+              verdict:       storedCardVerdict,
+              fit_card:      storedCard as unknown as Json,
               fit_card_at:   new Date().toISOString(),
-              hidden_reason: card.verdict === "mismatch" ? "mismatch" : null,
+              hidden_reason: storedCardVerdict === "mismatch" ? "mismatch" : null,
               // Sprint 1 Item 6 — stamp the content signatures the card was
               // generated against. The next compute reads these to decide
               // cache hit vs regen, no LLM call needed when both match.

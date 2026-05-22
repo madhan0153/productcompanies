@@ -74,6 +74,7 @@ export function scoreRoleFunction(
   const normalizedJob = normalizeRoleFunction(jobFunction);
   const normalizedCandidates = normalizeRoleFunctions(candidateFunctions);
   if (!normalizedJob || !normalizedCandidates.length) return 7;
+  if (normalizedJob === "other") return 0;
   if (normalizedCandidates.includes(normalizedJob)) return 18;
   const adjacent = normalizedCandidates.flatMap((f) => ROLE_ADJACENCY[f] ?? []);
   if (adjacent.includes(normalizedJob)) return 10;
@@ -94,7 +95,7 @@ function inferYearsFloorFromTitleAndSeniority(
   if (/\b(intern|internship|graduate|university|campus|trainee)\b/.test(t) || s === "intern") return 0;
   if (/\b(entry|new grad|fresher|associate|junior)\b/.test(t) || s === "junior") return 0;
   if (/\b(?:ii|2)\b/.test(t) || s === "mid") return 2;
-  if (/\b(?:iii|3|senior|lead)\b/.test(t) || s === "senior" || s === "lead") return 5;
+  if (/\b(?:iii|3|senior|sr\.?|lead)\b/.test(t) || s === "senior" || s === "lead") return 5;
   if (/\b(staff|principal|architect)\b/.test(t) || s === "staff" || s === "principal") return 8;
   if (/\b(manager|director|head|vp)\b/.test(t) || s === "manager" || s === "director" || s === "vp") return 6;
   return null;
@@ -929,8 +930,12 @@ export function computeRulesScore(
     jdMaxYears: job.jd_max_years,
     crawlerMaxYears: job.max_experience_years,
   });
+  const normalizedJobFunction = normalizeRoleFunction(job.role_function);
+  const titleRoleFunction = inferRoleFunctionFromTitle(job.title ?? null);
   const effectiveRoleFunction =
-    normalizeRoleFunction(job.role_function) ?? inferRoleFunctionFromTitle(job.title ?? null);
+    normalizedJobFunction === "other"
+      ? titleRoleFunction
+      : normalizedJobFunction ?? titleRoleFunction;
 
   const cosine = job.semantic_cosine ?? null;
 
@@ -942,7 +947,11 @@ export function computeRulesScore(
                                  job.description ?? undefined) * 25 / 22);                        // 0–25
   const role       = Math.round(scoreRoleFunction(profile.target_role_functions, effectiveRoleFunction) * 21 / 18); // 0–21
   const experience = Math.round(scoreExperienceV2(profile.years_experience, yMin, yMax) * 14 / 12); // 0–14
-  const totalRaw   = semantic + tech + role + experience;
+  const adjustedSemantic =
+    cosine !== null && semantic === 0 && role >= 18 && tech >= 18 && experience >= 9
+      ? (tech >= 23 && role >= 21 ? 12 : 8)
+      : semantic;
+  const totalRaw   = adjustedSemantic + tech + role + experience;
 
   // Sprint 6 — Tech coverage breakdown (direct / adjacent / missing).
   // Only meaningful when the JD actually listed must-haves; otherwise null.
@@ -1000,7 +1009,7 @@ export function computeRulesScore(
   return {
     total: capped.total,
     totalRaw,
-    breakdown: { semantic, tech, role, experience, hub: 0, seniority: 0, lpa: 0 },
+    breakdown: { semantic: adjustedSemantic, tech, role, experience, hub: 0, seniority: 0, lpa: 0 },
     hardMismatch: hardMismatchReason !== null,
     hardMismatchReason,
     hardCapReason: capped.reason,
