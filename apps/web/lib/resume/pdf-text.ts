@@ -91,14 +91,19 @@ export async function extractPdfText(input: Buffer | Uint8Array | ArrayBuffer): 
     if (/password|encrypt/i.test(msg)) {
       throw new PdfTextExtractionError("encrypted", "Resume PDF is password-protected");
     }
-    throw new PdfTextExtractionError("corrupt", "Resume PDF could not be parsed");
+    // Surface the underlying parser message — debugging false-positive
+    // "corrupt" failures (e.g. the Node Buffer vs Uint8Array unpdf bug
+    // that hit every legitimate resume in May 2026) is impossible when
+    // we swallow the real reason here.
+    throw new PdfTextExtractionError("corrupt", `Resume PDF could not be parsed: ${msg.slice(0, 200)}`);
   }
 
   let raw;
   try {
     raw = await extractText(proxy, { mergePages: true });
-  } catch {
-    throw new PdfTextExtractionError("corrupt", "Resume PDF text extraction failed");
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    throw new PdfTextExtractionError("corrupt", `Resume PDF text extraction failed: ${msg.slice(0, 200)}`);
   }
 
   const text = Array.isArray(raw.text) ? raw.text.join("\n") : (raw.text ?? "");
@@ -119,9 +124,18 @@ export async function extractPdfText(input: Buffer | Uint8Array | ArrayBuffer): 
 // ── Helpers ────────────────────────────────────────────────────────────────
 
 function toUint8Array(input: Buffer | Uint8Array | ArrayBuffer): Uint8Array {
-  if (input instanceof Uint8Array) return input;
   if (input instanceof ArrayBuffer) return new Uint8Array(input);
-  // Buffer is a Uint8Array subclass; fall through.
+  // CRITICAL: unpdf (>= 0.x) hard-rejects Node Buffer inputs with
+  //   "Please provide binary data as `Uint8Array`, rather than `Buffer`."
+  // even though Buffer extends Uint8Array. Detect that case and return a
+  // plain Uint8Array view over the same memory (no copy needed; the
+  // .buffer / .byteOffset / .byteLength triple unwraps the Buffer's slice
+  // into a real Uint8Array that pdfjs accepts).
+  if (Buffer.isBuffer(input)) {
+    return new Uint8Array(input.buffer, input.byteOffset, input.byteLength);
+  }
+  if (input instanceof Uint8Array) return input;
+  // Fallback for any other Uint8Array-shaped input (TypedArray-like).
   return new Uint8Array(input);
 }
 
