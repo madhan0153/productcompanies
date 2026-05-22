@@ -11,7 +11,15 @@ import {
 import { cn } from "@/lib/utils";
 import { PatternAnimation } from "./pattern-animations";
 
-export const metadata: Metadata = { title: "Patterns · DSA Practice" };
+export const metadata: Metadata = {
+  title: "17 DSA Patterns for Product-Company Interviews — Roadmap + Problems",
+  description: "Master 17 algorithmic patterns asked at Indian product companies: arrays + hashing, two pointers, sliding window, stacks, binary search, linked lists, trees, heap, graphs, DP, backtracking, intervals, tries, bit manipulation, math + geometry.",
+  alternates: { canonical: "/dsa/patterns" },
+  openGraph: {
+    title: "17 DSA Patterns for Interviews — Pattern Roadmap",
+    description: "Pattern-recognition roadmap for product-company DSA interviews. Foundational → graphs → DP.",
+  },
+};
 export const dynamic = "force-static";
 
 const PROBLEMS_BY_PATTERN: Record<DsaPattern, DsaProblem[]> = DSA_PATTERN_ROADMAP.reduce(

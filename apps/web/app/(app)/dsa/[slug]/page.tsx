@@ -27,7 +27,15 @@ export const dynamic = "force-dynamic";
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
   const { slug } = await params;
   const problem = getDsaProblemBySlug(slug);
-  return { title: problem ? `${problem.title} · DSA Practice` : "DSA Practice" };
+  if (!problem) return { title: "DSA Practice" };
+  const title = `${problem.title} — Solution in TypeScript, Python, Java · ProdMatch`;
+  const description = `Solve ${problem.title} (${DSA_PATTERNS_DISPLAY[problem.pattern]}) for product-company interviews. Clean approach, canonical solution in TypeScript/Python/Java, complexity analysis, common mistakes, and spaced-repetition tracking.`;
+  return {
+    title,
+    description,
+    alternates: { canonical: `/dsa/${slug}` },
+    openGraph: { title, description },
+  };
 }
 
 export default async function DsaProblemPage({ params }: { params: Promise<{ slug: string }> }) {

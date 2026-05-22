@@ -18,8 +18,10 @@ const PUBLIC_PREFIXES = [
   "/privacy",
   "/terms",
   "/guides",
+  "/dsa",              // DSA practice — public read, sign-in only for tracking
   "/sitemap",          // /sitemap.xml is served at /sitemap
   "/robots",           // /robots.txt
+  "/llms",             // /llms.txt and /llms-full.txt
 ];
 
 function isPublicPath(pathname: string): boolean {
@@ -83,7 +85,13 @@ export async function middleware(request: NextRequest) {
     return NextResponse.next({ request });
   }
 
-  let supabaseResponse = NextResponse.next({ request });
+  // Expose the pathname to server components via a request header so layouts
+  // can branch on the route (e.g. (app)/layout.tsx skipping its auth-redirect
+  // for public DSA paths nested inside the route group).
+  const requestHeaders = new Headers(request.headers);
+  requestHeaders.set("x-prodmatch-pathname", pathname);
+
+  let supabaseResponse = NextResponse.next({ request: { headers: requestHeaders } });
 
   const supabase = createServerClient(
     clientEnv.NEXT_PUBLIC_SUPABASE_URL,
@@ -95,7 +103,7 @@ export async function middleware(request: NextRequest) {
         },
         setAll(cookiesToSet: Array<{ name: string; value: string; options?: CookieOptions }>) {
           cookiesToSet.forEach(({ name, value }) => request.cookies.set(name, value));
-          supabaseResponse = NextResponse.next({ request });
+          supabaseResponse = NextResponse.next({ request: { headers: requestHeaders } });
           cookiesToSet.forEach(({ name, value, options }) =>
             supabaseResponse.cookies.set(name, value, options),
           );

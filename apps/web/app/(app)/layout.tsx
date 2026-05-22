@@ -1,14 +1,49 @@
 import { redirect } from "next/navigation";
+import { headers } from "next/headers";
 import { Suspense } from "react";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { AppShell } from "@/components/app-shell";
 import { FreshnessBanner } from "@/components/freshness-banner";
+import { PublicNav } from "@/components/public-nav";
+import { PublicFooter } from "@/components/public-footer";
+
+// SEO: DSA practice URLs sit inside the (app) route group for code colocation
+// but should be readable without authentication so search engines + AI tools
+// can index the pattern/problem content. For these paths we skip the redirect
+// and render the public chrome instead of the authed AppShell.
+const PUBLIC_PATH_PREFIXES = ["/dsa"];
+
+function isPublicAppPath(pathname: string | null): boolean {
+  if (!pathname) return false;
+  return PUBLIC_PATH_PREFIXES.some((p) => pathname === p || pathname.startsWith(p + "/"));
+}
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   const supabase = await createSupabaseServerClient();
   const { data: { user } } = await supabase.auth.getUser();
 
-  if (!user) redirect("/auth/login");
+  const hdrs = await headers();
+  const pathname = hdrs.get("x-prodmatch-pathname");
+  const isPublicPath = isPublicAppPath(pathname);
+
+  if (!user) {
+    // Anonymous DSA viewer — render with the public chrome (sticky nav +
+    // dense-link footer) instead of the authed AppShell. This keeps the
+    // page indexable + AI-citable without auth. Any other unauth path
+    // falls through to the auth-login redirect below.
+    if (isPublicPath) {
+      return (
+        <div className="min-h-screen bg-background">
+          <PublicNav />
+          <main className="mx-auto max-w-5xl px-4 pt-6 pb-10 sm:px-6">
+            {children}
+          </main>
+          <PublicFooter />
+        </div>
+      );
+    }
+    redirect("/auth/login");
+  }
 
   const since7d = new Date(Date.now() - 7 * 24 * 3_600_000).toISOString();
   const stuckSince = new Date(Date.now() - 7 * 24 * 3_600_000).toISOString();

@@ -1,25 +1,42 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { redirect } from "next/navigation";
 import { Brain, Clock3, Layers, Target } from "lucide-react";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { absoluteUrl } from "@/lib/seo/site";
 import { DsaClient, type DsaHistoryRow, type DsaProgressRow } from "./dsa-client";
 
-export const metadata: Metadata = { title: "DSA Practice · ProdMatch" };
+// SEO: DSA practice is intentionally public — pattern + problem content
+// is rankable evergreen material. Per-user state (streak, history,
+// confidence ratings) only renders when a user is signed in.
+export const metadata: Metadata = {
+  title: "DSA Practice — 17 Patterns + Problems in TS, Python, Java",
+  description: "Free DSA practice for product-company interviews. 17 algorithmic patterns + hand-curated problems with TypeScript, Python and Java solutions, complexity analysis, and spaced-repetition tracking.",
+  alternates: { canonical: "/dsa" },
+  openGraph: {
+    title: "DSA Practice — Product-Company Interview Prep",
+    description: "Free, India-first DSA practice with TS/Py/Java solutions for product-company interviews.",
+    url: absoluteUrl("/dsa"),
+  },
+};
 export const dynamic = "force-dynamic";
 
 export default async function DsaPage() {
   const supabase = await createSupabaseServerClient();
   const { data: { user } } = await supabase.auth.getUser();
-  if (!user) redirect("/auth/login");
 
-  const [profile, history, progress] = await Promise.all([
-    loadProfileResumeState(supabase, user.id),
-    loadDsaHistory(supabase, user.id),
-    loadDsaProgressRows(supabase, user.id),
-  ]);
+  // SEO: anonymous users see the same content (patterns + problem catalog)
+  // without per-user history. Sign-in adds streak, progress, and the
+  // spaced-repetition tracker.
+  const [profile, history, progress] = user
+    ? await Promise.all([
+        loadProfileResumeState(supabase, user.id),
+        loadDsaHistory(supabase, user.id),
+        loadDsaProgressRows(supabase, user.id),
+      ])
+    : [null, [] as DsaHistoryRow[], [] as DsaProgressRow[]];
 
   const hasResume = Boolean(profile?.resume_parsed);
+  const isAuthed = Boolean(user);
 
   return (
     <div className="mx-auto max-w-5xl space-y-5">
@@ -55,7 +72,24 @@ export default async function DsaPage() {
         </Link>
       </header>
 
-      <DsaClient history={history ?? []} progress={progress ?? []} hasResume={hasResume} />
+      {isAuthed ? (
+        <DsaClient history={history ?? []} progress={progress ?? []} hasResume={hasResume} />
+      ) : (
+        <div className="rounded-lg border border-primary/20 bg-primary-soft p-4">
+          <p className="text-sm font-semibold">
+            Sign in to track your streak, save confidence ratings, and get personalised picks.
+          </p>
+          <p className="mt-1 text-xs text-muted-foreground">
+            Free. No credit card. The 17 patterns and every problem are accessible without an account too.
+          </p>
+          <Link
+            href="/auth/login?next=/dsa"
+            className="mt-3 inline-flex min-h-11 items-center gap-2 rounded-lg bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground transition hover:bg-primary/90"
+          >
+            Sign in
+          </Link>
+        </div>
+      )}
     </div>
   );
 }
