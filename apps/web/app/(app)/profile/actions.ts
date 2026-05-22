@@ -376,11 +376,14 @@ export async function uploadAndParseResume(formData: FormData): Promise<UploadRe
     return { ok: false, error: "Could not start resume processing. Please retry." };
   }
 
-  // Bust the client + server route cache for /profile immediately. Without
-  // this, a user who uploads then navigates to /matches and back gets the
-  // pre-upload cached render — no parse banner, just the upload card again.
-  // We revalidate again inside after() once the parse lands.
-  revalidatePath("/profile");
+  // Note: revalidatePath("/profile") used to live here, but it forced a
+  // post-response RSC re-render that was throwing a #418-shape error
+  // ("could not refresh your profile after starting the new parse")
+  // even though the DB writes above succeeded. The page reads fresh data
+  // from the DB on every load AND the client calls router.refresh() after
+  // a successful action, so the cache stays correct without it. We still
+  // revalidate from inside after() once the parse lands so other surfaces
+  // (/matches, /dashboard, /coach, /insights) see the new state.
 
   // Encode bytes once on the request thread — buffers don't survive into
   // after() reliably across edge/node boundaries.

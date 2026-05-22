@@ -52,11 +52,6 @@ function formatUploadFailure(err: unknown): { error: string; retryable: boolean 
   };
 }
 
-function isRefreshRenderFailure(err: unknown): boolean {
-  const message = err instanceof Error ? err.message : "";
-  return /server components render|minified react error #418|textArgs/i.test(message);
-}
-
 export function ResumeUpload({ hasExisting, existingRole, existingDnaScore, isParsing = false }: Props) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [dragging, setDragging] = useState(false);
@@ -130,27 +125,40 @@ export function ResumeUpload({ hasExisting, existingRole, existingDnaScore, isPa
           setResult({ ok: false, error: r.error, retryable: r.retryable });
         }
       } catch (err) {
-        if (isRefreshRenderFailure(err)) {
-          try {
-            const status = await getParseStatus();
-            if (status.state === "parsing") {
-              setPollingStartedAt(status.startedAt);
-              return;
-            }
-            if (status.state === "done") {
-              setCurrentStep(-1);
-              setResult({
-                ok: true,
-                dnaScore: status.dnaScore,
-                role: status.role,
-                years: status.years,
-                techCount: status.techCount,
-              });
-              return;
-            }
-          } catch {
-            // Fall through to the normal retryable failure UI.
+        // Universal recovery — any thrown error (RSC payload error, hydration
+        // mismatch, network blip, etc.) is treated as a possible "action
+        // committed DB writes but response was broken." Probe the canonical
+        // DB-backed status: if parsing actually kicked off, we are NOT failed.
+        // This is the only reliable way to tell a successful upload (where
+        // the response failed during revalidation) apart from a real failure.
+        console.error("resume upload action threw:", err);
+        try {
+          const status = await getParseStatus();
+          if (status.state === "parsing") {
+            setPollingStartedAt(status.startedAt);
+            return;
           }
+          if (status.state === "done") {
+            setCurrentStep(-1);
+            setResult({
+              ok: true,
+              dnaScore: status.dnaScore,
+              role: status.role,
+              years: status.years,
+              techCount: status.techCount,
+            });
+            return;
+          }
+          if (status.state === "failed") {
+            setCurrentStep(-1);
+            resetFileInput();
+            setResult({ ok: false, error: status.error, retryable: true });
+            return;
+          }
+        } catch {
+          // Fall through to the generic failure UI if the status probe also
+          // fails (e.g. the user is offline). The original action error is
+          // logged above for diagnostics.
         }
         setCurrentStep(-1);
         resetFileInput();
