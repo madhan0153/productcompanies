@@ -7,7 +7,7 @@ import { SaveProfileForm } from "./save-profile-form";
 import { ResumeScorePanel, type ResumeScorePanelData } from "./resume-score-panel";
 import { SectionCard } from "@/components/section-card";
 import { Tooltip } from "@/components/tooltip";
-import { listResumeVersions } from "./actions";
+import { listResumeVersions, type ResumeVersionLite } from "./actions";
 import { ResumeVersionsPanel } from "./resume-versions-panel";
 import { ParseStatusBanner } from "./parse-status-banner";
 import { ProfileTabs } from "./profile-tabs";
@@ -57,8 +57,12 @@ export default async function ProfilePage() {
     .eq("id", user.id)
     .maybeSingle() as unknown as Promise<{ data: ProfileRow | null }>);
 
-  const preferredHubs = profile?.preferred_hubs ?? [];
-  const techStack = profile?.tech_stack ?? [];
+  const preferredHubs = Array.isArray(profile?.preferred_hubs)
+    ? profile.preferred_hubs.filter((hub): hub is string => typeof hub === "string")
+    : [];
+  const techStack = Array.isArray(profile?.tech_stack)
+    ? profile.tech_stack.filter((tech): tech is string => typeof tech === "string")
+    : [];
   const isParsing = !!profile?.resume_parsing_at;
   const parseError = profile?.resume_parse_error ?? null;
   // hasResume is true whenever parsed data exists — even if a NEW parse is
@@ -68,7 +72,15 @@ export default async function ProfilePage() {
   const dnaScore = profile?.product_dna_score ?? null;
   const resumeScore = profile?.resume_score ?? null;
 
-  const versions = hasResume ? await listResumeVersions() : [];
+  let versions: ResumeVersionLite[] = [];
+  if (hasResume) {
+    try {
+      versions = await listResumeVersions();
+    } catch {
+      // Resume history is additive UI, not critical path for upload/replace.
+      versions = [];
+    }
+  }
 
   return (
     <div className="max-w-3xl space-y-4 pb-8">

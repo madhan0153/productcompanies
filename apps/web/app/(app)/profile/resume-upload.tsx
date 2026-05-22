@@ -32,6 +32,26 @@ type DisplayResult =
   | { ok: true; dnaScore: number; role: string; years: number; techCount: number }
   | { ok: false; error: string; retryable?: boolean };
 
+function formatUploadFailure(err: unknown): { error: string; retryable: boolean } {
+  const message = err instanceof Error ? err.message : "";
+  if (/unexpected response|failed to fetch|network|aborted/i.test(message)) {
+    return {
+      error: "The server took too long to respond. Please retry.",
+      retryable: true,
+    };
+  }
+  if (/server components render|minified react error #418|textArgs/i.test(message)) {
+    return {
+      error: "We could not refresh your profile after starting the new parse. Your previous resume is still active. Please refresh once and try again.",
+      retryable: true,
+    };
+  }
+  return {
+    error: message || "Couldn't upload your resume. Please retry.",
+    retryable: true,
+  };
+}
+
 export function ResumeUpload({ hasExisting, existingRole, existingDnaScore, isParsing = false }: Props) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [dragging, setDragging] = useState(false);
@@ -103,17 +123,8 @@ export function ResumeUpload({ hasExisting, existingRole, existingDnaScore, isPa
       } catch (err) {
         setCurrentStep(-1);
         resetFileInput();
-        const isUnexpected = err instanceof Error
-          && /unexpected response|failed to fetch|network|aborted/i.test(err.message);
-        setResult({
-          ok: false,
-          error: isUnexpected
-            ? "The server took too long to respond. Please retry."
-            : err instanceof Error
-              ? err.message
-              : "Couldn't upload your resume. Please retry.",
-          retryable: true,
-        });
+        const failure = formatUploadFailure(err);
+        setResult({ ok: false, ...failure });
       }
     });
   }
