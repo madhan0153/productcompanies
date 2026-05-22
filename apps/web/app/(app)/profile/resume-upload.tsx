@@ -52,6 +52,11 @@ function formatUploadFailure(err: unknown): { error: string; retryable: boolean 
   };
 }
 
+function isRefreshRenderFailure(err: unknown): boolean {
+  const message = err instanceof Error ? err.message : "";
+  return /server components render|minified react error #418|textArgs/i.test(message);
+}
+
 export function ResumeUpload({ hasExisting, existingRole, existingDnaScore, isParsing = false }: Props) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [dragging, setDragging] = useState(false);
@@ -110,17 +115,43 @@ export function ResumeUpload({ hasExisting, existingRole, existingDnaScore, isPa
         const r: UploadResult = await uploadAndParseResume(fd);
         if (r.ok) {
           // Upload + storage write succeeded; parse is running in after().
-          // The poll effect below will watch for completion. Refresh the
-          // route cache now so navigating away + back during the parse
-          // shows the in-progress banner, not the stale pre-upload state.
+          // The poll effect below will watch for completion. A soft refresh
+          // here is best-effort only; the upload must not look failed if the
+          // refreshed Server Component tree hits a transient render issue.
           setPollingStartedAt(r.startedAt);
-          router.refresh();
+          try {
+            router.refresh();
+          } catch {
+            // Polling remains the source of truth for this in-tab flow.
+          }
         } else {
           setCurrentStep(-1);
           resetFileInput();
           setResult({ ok: false, error: r.error, retryable: r.retryable });
         }
       } catch (err) {
+        if (isRefreshRenderFailure(err)) {
+          try {
+            const status = await getParseStatus();
+            if (status.state === "parsing") {
+              setPollingStartedAt(status.startedAt);
+              return;
+            }
+            if (status.state === "done") {
+              setCurrentStep(-1);
+              setResult({
+                ok: true,
+                dnaScore: status.dnaScore,
+                role: status.role,
+                years: status.years,
+                techCount: status.techCount,
+              });
+              return;
+            }
+          } catch {
+            // Fall through to the normal retryable failure UI.
+          }
+        }
         setCurrentStep(-1);
         resetFileInput();
         const failure = formatUploadFailure(err);
