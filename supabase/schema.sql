@@ -1479,16 +1479,28 @@ alter table public.crawl_runs             enable row level security;
 alter table public.dpdp_events            enable row level security;
 alter table public.background_jobs        enable row level security;
 
--- companies: public read for authenticated users; writes via service role only
+-- companies: public read for everyone (companies info is public-domain —
+--   18 approved product brands, names + slugs + logos sourced from their
+--   own marketing pages). Writes via service role only.
 drop policy if exists "companies_read_authed" on public.companies;
-create policy "companies_read_authed"
+drop policy if exists "companies_read_public" on public.companies;
+create policy "companies_read_public"
   on public.companies for select
-  to authenticated
+  to anon, authenticated
   using (true);
 
--- jobs: public read for authenticated users; writes via service role only
+-- jobs: anon can read ACTIVE rows only (deactivated/stale rows stay hidden
+--   so the public surface never shows roles that no longer exist on the
+--   employer career page). Authenticated users see all (for in-app match
+--   recompute, history, etc.). Writes via service role only.
 drop policy if exists "jobs_read_authed" on public.jobs;
-create policy "jobs_read_authed"
+drop policy if exists "jobs_read_active_public" on public.jobs;
+drop policy if exists "jobs_read_authenticated" on public.jobs;
+create policy "jobs_read_active_public"
+  on public.jobs for select
+  to anon
+  using (is_active = true);
+create policy "jobs_read_authenticated"
   on public.jobs for select
   to authenticated
   using (true);
@@ -1910,7 +1922,43 @@ insert into public.companies (slug, name, careers_url, hubs) values
   ('groww',      'Groww',       'https://groww.in/careers',                                                                                 array['Bengaluru']),
   ('swiggy',     'Swiggy',      'https://careers.swiggy.com/',                                                                              array['Bengaluru','Gurugram']),
   ('zomato',     'Zomato',      'https://www.zomato.com/careers',                                                                           array['Gurugram','Bengaluru']),
-  ('flipkart',   'Flipkart',    'https://www.flipkartcareers.com/',                                                                         array['Bengaluru'])
+  ('flipkart',   'Flipkart',    'https://www.flipkartcareers.com/',                                                                         array['Bengaluru']),
+  -- Tier 1 expansion — global elite
+  ('adobe',        'Adobe',        'https://careers.adobe.com/us/en/search-results?qcountry=India',                              array['Bengaluru','Noida']),
+  ('intuit',       'Intuit',       'https://jobs.intuit.com/search-jobs/India',                                                  array['Bengaluru']),
+  ('uber',         'Uber',         'https://www.uber.com/global/en/careers/list/?location=IND',                                  array['Bengaluru','Hyderabad','Gurugram']),
+  ('paypal',       'PayPal',       'https://paypal.eightfold.ai/careers?location=India',                                         array['Bengaluru','Chennai','Hyderabad']),
+  ('servicenow',   'ServiceNow',   'https://careers.servicenow.com/careers-home/jobs?country=India',                             array['Hyderabad','Bengaluru']),
+  ('stripe',       'Stripe',       'https://stripe.com/jobs/search?office_locations=India',                                      array['Bengaluru','Remote-India']),
+  -- Tier 2 — Indian unicorns + SaaS
+  ('freshworks',   'Freshworks',   'https://careers.freshworks.com/jobs',                                                        array['Chennai','Bengaluru','Hyderabad']),
+  ('zoho',         'Zoho',         'https://careers.zohocorp.com/jobs/Careers',                                                  array['Chennai','Bengaluru','Tenkasi']),
+  ('postman',      'Postman',      'https://www.postman.com/company/careers/open-positions/',                                    array['Bengaluru','Remote-India']),
+  ('browserstack', 'BrowserStack', 'https://www.browserstack.com/careers',                                                       array['Mumbai','Bengaluru']),
+  ('chargebee',    'Chargebee',    'https://www.chargebee.com/careers/open-positions/',                                          array['Chennai','Bengaluru']),
+  ('meesho',       'Meesho',       'https://www.meesho.io/careers/open-jobs',                                                    array['Bengaluru']),
+  ('nykaa',        'Nykaa',        'https://www.nykaa.com/careers/jobs',                                                         array['Mumbai','Bengaluru']),
+  ('dream11',      'Dream11',      'https://careers.dream11.com/jobs',                                                           array['Mumbai']),
+  ('policybazaar', 'PolicyBazaar', 'https://www.policybazaar.com/careers/jobs',                                                  array['Gurugram','Mumbai']),
+  ('lenskart',     'Lenskart',     'https://careers.lenskart.com/',                                                              array['Gurugram','Bengaluru','Delhi NCR']),
+  ('udaan',        'Udaan',        'https://udaan.com/career.html',                                                              array['Bengaluru']),
+  ('delhivery',    'Delhivery',    'https://www.delhivery.com/careers/',                                                         array['Gurugram','Bengaluru']),
+  -- Tier 3 — emerging & solid product
+  ('sharechat',    'ShareChat',    'https://sharechat.com/careers',                                                              array['Bengaluru']),
+  ('ola',          'Ola',          'https://olacabs.com/careers',                                                                 array['Bengaluru']),
+  ('paytm',        'Paytm',        'https://jobs.paytm.com/',                                                                    array['Noida','Bengaluru','Mumbai']),
+  ('inmobi',       'InMobi',       'https://www.inmobi.com/company/careers/',                                                    array['Bengaluru','Gurugram']),
+  ('unacademy',    'Unacademy',    'https://unacademy.com/careers',                                                              array['Bengaluru']),
+  ('cars24',       'Cars24',       'https://www.cars24.com/careers/',                                                            array['Gurugram','Bengaluru']),
+  ('myntra',       'Myntra',       'https://careers.myntra.com/',                                                                array['Bengaluru']),
+  ('practo',       'Practo',       'https://www.practo.com/company/careers',                                                     array['Bengaluru']),
+  ('pine-labs',    'Pine Labs',    'https://www.pinelabs.com/careers',                                                           array['Noida','Bengaluru']),
+  ('nobroker',     'NoBroker',     'https://www.nobroker.in/careers',                                                            array['Bengaluru']),
+  ('wingify',      'Wingify',      'https://wingify.com/careers/',                                                               array['Delhi NCR','Remote-India']),
+  ('clevertap',    'CleverTap',    'https://clevertap.com/careers/',                                                             array['Mumbai','Bengaluru']),
+  ('moengage',     'MoEngage',     'https://www.moengage.com/about-us/careers/',                                                 array['Bengaluru']),
+  ('yellow-ai',    'Yellow.ai',    'https://yellow.ai/careers/',                                                                 array['Bengaluru','Remote-India']),
+  ('arcesium',     'Arcesium',     'https://www.arcesium.com/careers',                                                           array['Bengaluru','Hyderabad'])
 on conflict (slug) do update set
   name = excluded.name,
   careers_url = excluded.careers_url,

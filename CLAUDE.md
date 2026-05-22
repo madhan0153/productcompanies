@@ -1,10 +1,14 @@
 # ProdMatch.ai — Project Rules
 
-India-first AI SaaS matching Indian engineers to high-package roles at 18 approved product companies.
+India-first AI SaaS matching Indian engineers to high-package roles at 51 approved product companies.
 
 ## Hard rules
 
-1. **Approved companies only** (18): Google, Microsoft, Meta, Amazon, Apple, Atlassian, Nvidia, Oracle, Salesforce, SAP Labs, Razorpay, PhonePe, Zerodha, CRED, Groww, Swiggy, Zomato, Flipkart. No others. No service/outsourcing companies. Ever.
+1. **Approved companies only** (51 product companies — no service/outsourcing companies, ever):
+   - **Tier 1 Global Big Tech / Enterprise SaaS** (18 — original set): Google, Microsoft, Meta, Amazon, Apple, Atlassian, Nvidia, Oracle, Salesforce, SAP Labs, Razorpay, PhonePe, Zerodha, CRED, Groww, Swiggy, Zomato, Flipkart.
+   - **Tier 1 expansion — Elite global product leaders** (6): Adobe, Intuit, Uber, PayPal, ServiceNow, Stripe.
+   - **Tier 2 — Top Indian unicorns & high-growth SaaS / product** (12): Freshworks, Zoho, Postman, BrowserStack, Chargebee, Meesho, Nykaa, Dream11, PolicyBazaar, Lenskart, Udaan, Delhivery.
+   - **Tier 3 — Strong emerging & solid product** (15): ShareChat, Ola, Paytm, InMobi, Unacademy, Cars24, Myntra, Practo, Pine Labs, NoBroker, Wingify, CleverTap, MoEngage, Yellow.ai, Arcesium.
 2. **Official career pages only** as job source. No aggregators (LinkedIn, Naukri, Indeed, Glassdoor).
 3. **No demo/seed jobs.** The `jobs` table starts empty. All jobs come from the daily Crawlee+Playwright crawler.
 4. **Idempotent SQL only.** Every SQL artifact (tables, enums, policies, functions, triggers, seed) must be safe to run multiple times in the Supabase SQL editor. Use `IF NOT EXISTS`, `CREATE OR REPLACE`, `DROP ... IF EXISTS` before `CREATE`, `ON CONFLICT DO ...`, and `DO $$ BEGIN ... EXCEPTION WHEN duplicate_object THEN null; END $$;` for enums.

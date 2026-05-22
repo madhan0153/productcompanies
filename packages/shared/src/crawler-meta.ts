@@ -53,6 +53,7 @@ export interface CrawlerMeta {
  * resolveAdaptive() wiring in companies/<slug>.ts.
  */
 export const CRAWLER_META: readonly CrawlerMeta[] = [
+  // ─── Original 18 ────────────────────────────────────────────────────────
   { slug: "google",     name: "Google",     kind: "html-dom",   adaptive: true,  hasFixture: true  },
   { slug: "microsoft",  name: "Microsoft",  kind: "api",        adaptive: true,  hasFixture: true  },
   { slug: "meta",       name: "Meta",       kind: "api",        adaptive: true,  hasFixture: true  },
@@ -71,6 +72,48 @@ export const CRAWLER_META: readonly CrawlerMeta[] = [
   { slug: "swiggy",     name: "Swiggy",     kind: "api",        adaptive: true,  hasFixture: true  },
   { slug: "zomato",     name: "Zomato",     kind: "html-dom",   adaptive: true,  hasFixture: true  },
   { slug: "flipkart",   name: "Flipkart",   kind: "api",        adaptive: true,  hasFixture: true  },
+  // ─── Tier 1 expansion — global elite ────────────────────────────────────
+  // (adobe/intuit/uber/paypal/servicenow use the shared Workday adapter;
+  //  stripe uses the shared Greenhouse adapter.)
+  { slug: "adobe",        name: "Adobe",       kind: "api",      adaptive: true,  hasFixture: false },
+  { slug: "intuit",       name: "Intuit",      kind: "api",      adaptive: true,  hasFixture: false },
+  { slug: "uber",         name: "Uber",        kind: "api",      adaptive: true,  hasFixture: false },
+  { slug: "paypal",       name: "PayPal",      kind: "api",      adaptive: true,  hasFixture: false },
+  { slug: "servicenow",   name: "ServiceNow",  kind: "api",      adaptive: true,  hasFixture: false },
+  { slug: "stripe",       name: "Stripe",      kind: "api",      adaptive: true,  hasFixture: false },
+  // ─── Tier 2 — Indian unicorns + SaaS ────────────────────────────────────
+  // freshworks (SmartRecruiters), postman (Greenhouse), browserstack
+  // (Workday), meesho (Lever), dream11 (Lever) are wired.
+  // The rest are pending bespoke / additional ATS adapter work.
+  { slug: "freshworks",   name: "Freshworks",   kind: "api",      adaptive: true,  hasFixture: false },
+  { slug: "zoho",         name: "Zoho",         kind: "html-dom", adaptive: false, hasFixture: false },
+  { slug: "postman",      name: "Postman",      kind: "api",      adaptive: true,  hasFixture: false },
+  { slug: "browserstack", name: "BrowserStack", kind: "api",      adaptive: true,  hasFixture: false },
+  { slug: "chargebee",    name: "Chargebee",    kind: "html-dom", adaptive: false, hasFixture: false },
+  { slug: "meesho",       name: "Meesho",       kind: "api",      adaptive: true,  hasFixture: false },
+  { slug: "nykaa",        name: "Nykaa",        kind: "html-dom", adaptive: false, hasFixture: false },
+  { slug: "dream11",      name: "Dream11",      kind: "api",      adaptive: true,  hasFixture: false },
+  { slug: "policybazaar", name: "PolicyBazaar", kind: "html-dom", adaptive: false, hasFixture: false },
+  { slug: "lenskart",     name: "Lenskart",     kind: "html-dom", adaptive: false, hasFixture: false },
+  { slug: "udaan",        name: "Udaan",        kind: "html-dom", adaptive: false, hasFixture: false },
+  { slug: "delhivery",    name: "Delhivery",    kind: "html-dom", adaptive: false, hasFixture: false },
+  // ─── Tier 3 — emerging & solid product cos ──────────────────────────────
+  // inmobi (Greenhouse), unacademy (SmartRecruiters), cars24 (SmartRecruiters) wired.
+  { slug: "sharechat",    name: "ShareChat",    kind: "html-dom", adaptive: false, hasFixture: false },
+  { slug: "ola",          name: "Ola",          kind: "html-dom", adaptive: false, hasFixture: false },
+  { slug: "paytm",        name: "Paytm",        kind: "html-dom", adaptive: false, hasFixture: false },
+  { slug: "inmobi",       name: "InMobi",       kind: "api",      adaptive: true,  hasFixture: false },
+  { slug: "unacademy",    name: "Unacademy",    kind: "api",      adaptive: true,  hasFixture: false },
+  { slug: "cars24",       name: "Cars24",       kind: "api",      adaptive: true,  hasFixture: false },
+  { slug: "myntra",       name: "Myntra",       kind: "html-dom", adaptive: false, hasFixture: false },
+  { slug: "practo",       name: "Practo",       kind: "html-dom", adaptive: false, hasFixture: false },
+  { slug: "pine-labs",    name: "Pine Labs",    kind: "html-dom", adaptive: false, hasFixture: false },
+  { slug: "nobroker",     name: "NoBroker",     kind: "html-dom", adaptive: false, hasFixture: false },
+  { slug: "wingify",      name: "Wingify",      kind: "html-dom", adaptive: false, hasFixture: false },
+  { slug: "clevertap",    name: "CleverTap",    kind: "html-dom", adaptive: false, hasFixture: false },
+  { slug: "moengage",     name: "MoEngage",     kind: "html-dom", adaptive: false, hasFixture: false },
+  { slug: "yellow-ai",    name: "Yellow.ai",    kind: "html-dom", adaptive: false, hasFixture: false },
+  { slug: "arcesium",     name: "Arcesium",     kind: "html-dom", adaptive: false, hasFixture: false },
 ] as const;
 
 export const CRAWLER_META_BY_SLUG: Readonly<Record<string, CrawlerMeta>> =

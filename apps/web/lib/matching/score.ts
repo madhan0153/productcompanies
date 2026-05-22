@@ -312,6 +312,15 @@ const SKILL_ALIASES: Record<string, string[]> = {
   webdriverio: ["selenium", "testautomation"],
 };
 
+// Cloud-provider prefix expansion: any skill starting with "aws" / "amazon"
+// (e.g. "awsglue", "amazons3", "amazonemr") implies the candidate has AWS;
+// likewise "azure*" → azure, "gcp*" / "googlecloud*" → gcp. This is the
+// single biggest source of false "missing tech" findings — resumes list
+// specific services ("AWS Glue") while JDs ask for the umbrella term ("aws").
+const AWS_FAMILY_RE = /^(aws|amazon)[a-z0-9].*/;
+const AZURE_FAMILY_RE = /^azure[a-z0-9].*/;
+const GCP_FAMILY_RE = /^(gcp|googlecloud)[a-z0-9].*/;
+
 function expandSkillAliases(skill: string): string[] {
   const seen = new Set<string>();
   const queue = [normSkill(skill)];
@@ -319,6 +328,9 @@ function expandSkillAliases(skill: string): string[] {
     const current = queue[i];
     if (!current || seen.has(current)) continue;
     seen.add(current);
+    if (current !== "aws"   && AWS_FAMILY_RE.test(current))   queue.push("aws");
+    if (current !== "azure" && AZURE_FAMILY_RE.test(current)) queue.push("azure");
+    if (current !== "gcp"   && GCP_FAMILY_RE.test(current))   queue.push("gcp");
     for (const next of SKILL_ALIASES[current] ?? []) {
       const n = normSkill(next);
       if (n && !seen.has(n)) queue.push(n);
@@ -445,17 +457,30 @@ export function scoreTechV3(
 // ─────────────────────────────────────────────────────────────────────────────
 
 /** Score 0–35 from cosine similarity between resume + JD Gemini embeddings.
- *  - cosine ≥ 0.85 → 35 (extremely tight match)
- *  - cosine ≥ 0.70 → linear 22..35
- *  - cosine ≥ 0.55 → linear 8..22
- *  - cosine <  0.55 → 0 (semantic mismatch)
+ *
+ *  Recalibrated for Gemini text-embedding-004's actual distribution. Empirical
+ *  audit (Phase L) on the live DB shows same-role pairs land in 0.55–0.85,
+ *  related-but-different in 0.35–0.55, unrelated below 0.30. The previous
+ *  curve (0.55→0, 0.85→35) was calibrated for OpenAI ada-002 and treated
+ *  most legitimately-aligned pairs as zero, capping the engine's strong_fit
+ *  output at 0 across the entire DB.
+ *
+ *  - cosine ≥ 0.80 → 35   (very tight semantic match)
+ *  - cosine ≥ 0.65 → 25..35   (clear alignment)
+ *  - cosine ≥ 0.50 → 15..25   (related)
+ *  - cosine ≥ 0.35 →  6..15   (weak overlap)
+ *  - cosine ≥ 0.20 →  2.. 6   (low signal, not zero)
+ *  - cosine <  0.20 → 0
+ *
  *  Returns a partial-credit fallback (12) when either side has no embedding,
  *  so jobs queued for embedding don't get instantly buried. */
 export function scoreSemanticFit(cosine: number | null): number {
   if (cosine === null || !Number.isFinite(cosine)) return 12;
-  if (cosine >= 0.85) return 35;
-  if (cosine >= 0.70) return Math.round(22 + ((cosine - 0.70) / 0.15) * 13);
-  if (cosine >= 0.55) return Math.round(8  + ((cosine - 0.55) / 0.15) * 14);
+  if (cosine >= 0.80) return 35;
+  if (cosine >= 0.65) return Math.round(25 + ((cosine - 0.65) / 0.15) * 10);
+  if (cosine >= 0.50) return Math.round(15 + ((cosine - 0.50) / 0.15) * 10);
+  if (cosine >= 0.35) return Math.round( 6 + ((cosine - 0.35) / 0.15) *  9);
+  if (cosine >= 0.20) return Math.round( 2 + ((cosine - 0.20) / 0.15) *  4);
   return 0;
 }
 
@@ -636,8 +661,8 @@ const TITLE_HARD_MISMATCH: TitleRule[] = [
   { pattern: /\b(recruiter|recruiting|talent (?:acquisition|partner)|people operations?|people partner|hr business partner|hrbp|comp(?:ensation)? analyst)\b/i, conflictsWith: ALL_TECH_FUNCTIONS },
   // Finance / Accounting / Tax / Audit / Legal / FinOps
   { pattern: /\b(financial analyst|finance manager|accountant|accounting|tax (?:analyst|manager)|auditor?|treasur(?:y|er)|payroll|legal counsel|compliance officer|finops)\b/i, conflictsWith: ALL_TECH_FUNCTIONS },
-  // Marketing / Comms / PR / Content / Brand / Growth-Manager
-  { pattern: /\b(marketing manager|brand manager|growth manager|growth marketer|marketing analyst|marketing data scientist|business and marketing|seo|sem|content marketing|copywriter|pr manager|public relations|communications manager|community manager|business systems analyst|business analyst|apps specialist|measurement implementation)\b/i, conflictsWith: ALL_TECH_FUNCTIONS },
+  // Marketing / Comms / PR / Content / Brand / Growth-Manager / Writer
+  { pattern: /\b(marketing manager|brand manager|growth manager|growth marketer|marketing analyst|marketing data scientist|business and marketing|seo|sem|content marketing|copy[\s-]?writer|content writer|content strategist|script[\s-]?writer|technical writer|blog writer|seo writer|editor (?:intern|trainee|associate)?|pr manager|public relations|communications manager|community manager|business systems analyst|business analyst|apps specialist|measurement implementation)\b/i, conflictsWith: ALL_TECH_FUNCTIONS },
   // Academic / lab research roles should not leak into pure engineering feeds.
   { pattern: /\b(research sciences? intern|research intern|post[\s-]?doc|postdoctoral|researcher\b|research scientist)\b/i, conflictsWith: new Set(["qa_sdet", "backend", "frontend", "fullstack", "data_engineering", "devops_platform", "mobile", "cybersecurity"]) },
   // Program management / TPM / consulting / corp dev (engineering-management
@@ -947,10 +972,20 @@ export function computeRulesScore(
                                  job.description ?? undefined) * 25 / 22);                        // 0–25
   const role       = Math.round(scoreRoleFunction(profile.target_role_functions, effectiveRoleFunction) * 21 / 18); // 0–21
   const experience = Math.round(scoreExperienceV2(profile.years_experience, yMin, yMax) * 14 / 12); // 0–14
-  const adjustedSemantic =
-    cosine !== null && semantic === 0 && role >= 18 && tech >= 18 && experience >= 9
-      ? (tech >= 23 && role >= 21 ? 12 : 8)
-      : semantic;
+  // Rules-derived semantic floor. When the rules layer strongly confirms
+  // alignment (direct role match + high tech coverage + years fit), a low
+  // cosine is more likely noise from a bad JD embedding than real evidence
+  // of semantic distance. Backfill semantic credit so total reflects what
+  // the rules already observed. (Phase L — closes the strong_fit gap that
+  // capped the entire DB at score 70 because Amazon JD embeddings have
+  // near-zero cosine to every resume.)
+  const rulesDerivedSemantic =
+    role >= 18 && tech >= 22 && experience >= 12 ? 32 :
+    role >= 18 && tech >= 18 && experience >=  9 ? 24 :
+    role >= 16 && tech >= 14 && experience >=  9 ? 18 :
+    role >= 16 && tech >= 10                     ? 12 :
+    0;
+  const adjustedSemantic = Math.max(semantic, rulesDerivedSemantic);
   const totalRaw   = adjustedSemantic + tech + role + experience;
 
   // Sprint 6 — Tech coverage breakdown (direct / adjacent / missing).

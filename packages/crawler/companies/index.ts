@@ -17,6 +17,25 @@ import { growwConfig } from "./groww.js";
 import { swiggyConfig } from "./swiggy.js";
 import { zomatoConfig } from "./zomato.js";
 import { flipkartConfig } from "./flipkart.js";
+// Workday-backed tenants (Phase L expansion). Each shares the generic
+// _workday.ts adapter — adding more Workday employers is one file each.
+import { adobeConfig } from "./adobe.js";
+import { intuitConfig } from "./intuit.js";
+import { uberConfig } from "./uber.js";
+import { paypalConfig } from "./paypal.js";
+import { servicenowConfig } from "./servicenow.js";
+import { browserstackConfig } from "./browserstack.js";
+// Greenhouse-backed (boards-api.greenhouse.io/v1/boards/<token>).
+import { stripeConfig } from "./stripe.js";
+import { inmobiConfig } from "./inmobi.js";
+import { postmanConfig } from "./postman.js";
+// Lever-backed (api.lever.co/v0/postings/<org>).
+import { meeshoConfig } from "./meesho.js";
+import { dream11Config } from "./dream11.js";
+// SmartRecruiters-backed (api.smartrecruiters.com/v1/companies/<company>).
+import { freshworksConfig } from "./freshworks.js";
+import { unacademyConfig } from "./unacademy.js";
+import { cars24Config } from "./cars24.js";
 
 export const COMPANY_CONFIGS: Record<string, CompanyConfig> = {
   google: googleConfig,
@@ -37,6 +56,20 @@ export const COMPANY_CONFIGS: Record<string, CompanyConfig> = {
   swiggy: swiggyConfig,
   zomato: zomatoConfig,
   flipkart: flipkartConfig,
+  adobe: adobeConfig,
+  intuit: intuitConfig,
+  uber: uberConfig,
+  paypal: paypalConfig,
+  servicenow: servicenowConfig,
+  browserstack: browserstackConfig,
+  stripe: stripeConfig,
+  inmobi: inmobiConfig,
+  postman: postmanConfig,
+  meesho: meeshoConfig,
+  dream11: dream11Config,
+  freshworks: freshworksConfig,
+  unacademy: unacademyConfig,
+  cars24: cars24Config,
 };
 
 export const ALL_SLUGS = Object.keys(COMPANY_CONFIGS);

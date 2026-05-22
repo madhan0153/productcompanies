@@ -70,19 +70,31 @@ jobs:
     # Group composition:
     #   - html_heavy: Playwright-driven DOM scrapes — the slow ones
     #   - api_global: FAANG / global product cos with JSON APIs
-    #   - api_india:  India product cos with JSON APIs
+    #   - api_workday:        Workday tenants (shared _workday adapter)
+    #   - api_greenhouse:     Greenhouse boards (shared _greenhouse adapter)
+    #   - api_lever:          Lever orgs (shared _lever adapter)
+    #   - api_smartrecruiters: SmartRecruiters cos (shared _smartrecruiters adapter)
+    #   - api_india:  India product cos with bespoke JSON APIs
     #
     # If one group exhausts its provider pool, fail-fast=false keeps the
     # others running so partial inventory still lands in jobs table.
     strategy:
       fail-fast: false
-      max-parallel: 3
+      max-parallel: 6
       matrix:
         group:
           - name: html_heavy
             slugs: google,apple,zerodha,zomato,sap-labs
           - name: api_global
             slugs: microsoft,meta,amazon,atlassian,nvidia,oracle,salesforce
+          - name: api_workday
+            slugs: adobe,intuit,uber,paypal,servicenow,browserstack
+          - name: api_greenhouse
+            slugs: stripe,inmobi,postman
+          - name: api_lever
+            slugs: meesho,dream11
+          - name: api_smartrecruiters
+            slugs: freshworks,unacademy,cars24
           - name: api_india
             slugs: razorpay,phonepe,cred,groww,swiggy,flipkart
     timeout-minutes: 120    # per group; was 350 wall-clock for the whole run

@@ -512,6 +512,12 @@ export async function computeMatchesForUser(
       const ex = s.existing;
       // No card yet → generate.
       if (!ex || !ex.fit_card_at) return true;
+      // forceFull (admin recompute / engine logic change) bypasses the cache.
+      // Without this, a code change that re-derives verdict / score caps
+      // can't propagate to stored rows because cached cards still match
+      // signature. Costs ~25 Gemini calls per affected user — bounded by
+      // FIT_CARD_MAX so it's safe to invoke from admin scripts.
+      if (opts.forceFull) return true;
       // Score moved materially → regenerate (verdict may have shifted).
       if (Math.abs((ex.score ?? 0) - s.score) >= 5) return true;
 
@@ -587,8 +593,30 @@ export async function computeMatchesForUser(
               marketComp,
             });
 
-            const cardScore = capScoreForVerdict(score, card.verdict);
-            const cardVerdict = reconcileVerdictWithScore(card.verdict, cardScore);
+            // Phase L — Don't let Gemini demote a rules-strong fit.
+            //
+            // The rubric has already verified direct role match + ≥80%
+            // must-have coverage + years fit + non-trivial semantic signal.
+            // When the score is ≥75 with the rubric concurring, the Fit
+            // Card LLM's job is to provide reasoning, not veto power. Letting
+            // it cap strong_fit → stretch wipes out the product USP for
+            // clearly-aligned candidates (audit found 0/2974 strong fits
+            // for a perfectly-targeted Data Engineer because every Fit
+            // Card came back "stretch").
+            const rubricStrong = (() => {
+              if (score < 75 || !next.rules) return false;
+              if (next.rules.breakdown.role       < 18) return false;
+              if (next.rules.breakdown.experience <  9) return false;
+              const tc = next.rules.techCoverage;
+              if (tc === null) return true;
+              return !tc.noCoverage && tc.missing.length === 0;
+            })();
+            const effectiveCardVerdict: Verdict =
+              rubricStrong && card.verdict === "stretch"
+                ? "strong_fit"
+                : card.verdict;
+            const cardScore = capScoreForVerdict(score, effectiveCardVerdict);
+            const cardVerdict = reconcileVerdictWithScore(effectiveCardVerdict, cardScore);
             const storedCardVerdict: Verdict = cardVerdict === "evidence_pending" ? "stretch" : cardVerdict;
             const storedCard = { ...card, verdict: storedCardVerdict };
             fitCardRows.push({

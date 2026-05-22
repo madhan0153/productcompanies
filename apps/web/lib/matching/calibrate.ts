@@ -117,11 +117,17 @@ function hasRoleSignalConflict(job: CalibrateJobInput): boolean {
 
   const titleFunction = inferRoleFunctionFromTitle(job.title);
   const jdFunction = job.role_function_jd;
+
+  // Both signals say "this isn't engineering" — Gemini parsed the body
+  // and got "other", and the title doesn't infer to any known eng function.
+  // Examples that landed here in production: "Copy Writer - Intern",
+  // "Communication Specialist", "Investigation Specialist". Mark conflict
+  // so engineering candidates don't see these. (Phase L tightening.)
+  if (jdFunction === "other" && titleFunction === null) return true;
+
   if (!titleFunction || !jdFunction) return false;
-  // "other" is a valid catch-all signal — don't treat it as a conflict.
-  // Engine version had: if (jdFunction === "other") return true;
-  // That dropped a lot of legitimate generic-SWE roles. We trust the title
-  // here and let downstream role-match scoring handle the rest.
+  // "other" with a title that DID infer to an eng function (e.g. SWE) —
+  // trust the title; this is the generic-SWE pattern.
   if (jdFunction === "other") return false;
   return titleFunction !== jdFunction;
 }
