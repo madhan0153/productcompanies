@@ -325,7 +325,11 @@ async function uploadAndParseResumeInner(formData: FormData): Promise<UploadResu
   const resumeVersionId = crypto.randomUUID();
   const jobId = crypto.randomUUID();
   const path = `${userId}/${resumeVersionId}.pdf`;
-  const bytes = await file.arrayBuffer();
+  const uploadBuffer = Buffer.from(await file.arrayBuffer());
+  const bytes = uploadBuffer.buffer.slice(
+    uploadBuffer.byteOffset,
+    uploadBuffer.byteOffset + uploadBuffer.byteLength,
+  );
   const validation = validateResumePdf(bytes, file.type);
   if (!validation.ok) {
     logEvent("warn", "resume_pdf_rejected", {
@@ -339,7 +343,7 @@ async function uploadAndParseResumeInner(formData: FormData): Promise<UploadResu
   // with the PDF library before we trust the file. A null return means the
   // PDF can't be opened at all — reject it on principle (parser would fail
   // downstream anyway, but we want a clean user-facing error here).
-  const authoritativePageCount = await verifyPdfPageCount(bytes);
+  const authoritativePageCount = await verifyPdfPageCount(bytes.slice(0));
   if (authoritativePageCount === null) {
     logEvent("warn", "resume_pdf_rejected", {
       user_id: userId.slice(0, 8),
@@ -364,10 +368,10 @@ async function uploadAndParseResumeInner(formData: FormData): Promise<UploadResu
       retryable: true,
     };
   }
-  const pdfHash = createHash("sha256").update(Buffer.from(bytes)).digest("hex");
+  const pdfHash = createHash("sha256").update(uploadBuffer).digest("hex");
   const { error: storageError } = await admin.storage
     .from("resumes")
-    .upload(path, bytes, { contentType: "application/pdf", upsert: false });
+    .upload(path, uploadBuffer, { contentType: "application/pdf", upsert: false });
   if (storageError) {
     logEvent("warn", "resume_upload_storage_failed", {
       user_id: userId.slice(0, 8),
@@ -459,7 +463,7 @@ async function uploadAndParseResumeInner(formData: FormData): Promise<UploadResu
 
   // Encode bytes once on the request thread — buffers don't survive into
   // after() reliably across edge/node boundaries.
-  const base64 = Buffer.from(bytes).toString("base64");
+  const base64 = uploadBuffer.toString("base64");
 
   after(async () => {
     await transitionDurableJob(admin, jobId, "running", { incrementAttempts: true });
