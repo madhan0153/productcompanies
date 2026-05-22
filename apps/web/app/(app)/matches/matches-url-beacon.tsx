@@ -10,14 +10,22 @@
 // SessionStorage (not localStorage) is intentional: we want this to clear
 // on browser close, and stay scoped to a single tab/window.
 
-import { useEffect } from "react";
-import { usePathname, useSearchParams } from "next/navigation";
+import { useEffect, useRef } from "react";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 
 export const MATCHES_REFERRER_KEY = "prodmatch:matches-url";
 
 export function MatchesURLBeacon() {
   const pathname = usePathname();
+  const router = useRouter();
   const params = useSearchParams();
+  const refreshedRef = useRef(false);
+
+  useEffect(() => {
+    if (pathname !== "/matches" || refreshedRef.current) return;
+    refreshedRef.current = true;
+    router.refresh();
+  }, [pathname, router]);
 
   useEffect(() => {
     if (typeof window === "undefined") return;

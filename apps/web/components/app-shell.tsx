@@ -151,7 +151,7 @@ export function AppShell({ user, navBadges, banner, children }: Props) {
                   <li key={href}>
                     <Link
                       href={href}
-                      prefetch
+                      prefetch={false}
                       onClick={() => setOpen(false)}
                       aria-current={active ? "page" : undefined}
                       className={cn(

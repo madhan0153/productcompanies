@@ -18,6 +18,8 @@ import { MatchCardArea } from "./match-card-area";
 
 export const metadata: Metadata = { title: "Matches" };
 export const maxDuration = 60;
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
 
 // ----------------------------------------------------------------------
 // Types

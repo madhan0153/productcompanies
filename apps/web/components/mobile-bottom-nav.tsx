@@ -43,6 +43,7 @@ export function MobileBottomNav({ badges }: { badges?: { matches?: number; appli
           <Link
             key={href}
             href={href}
+            prefetch={false}
             aria-current={active ? "page" : undefined}
             aria-label={badgeCount > 0 ? `${label} — ${badgeCount} item${badgeCount === 1 ? "" : "s"} need attention` : label}
             className={cn(
