@@ -35,7 +35,7 @@ export function MatchBandCard({ counts }: { counts: MatchBandCounts }) {
     <Link
       href={shortlist > 0 ? "/matches?min_score=60" : "/matches"}
       className="group block rounded-xl border border-border bg-card p-4 transition hover:border-primary/30 hover:bg-secondary/40 focus-ring sm:p-5"
-      aria-label={`Matches: ${shortlist} worth a look out of ${counts.total} ranked`}
+      aria-label={`Matches: ${shortlist} shortlisted out of ${counts.total} ranked`}
     >
       <div className="mb-3 inline-flex h-9 w-9 items-center justify-center rounded-lg bg-primary-soft text-primary-soft-foreground transition group-hover:bg-primary group-hover:text-primary-foreground">
         <Briefcase className="h-4 w-4" />
@@ -44,7 +44,7 @@ export function MatchBandCard({ counts }: { counts: MatchBandCounts }) {
       <div className="flex items-end justify-between gap-2">
         <div className="min-w-0">
           <p className="text-2xl font-semibold tabular-nums leading-none">{shortlist}</p>
-          <p className="mt-1 text-xs font-medium">{shortlist === 1 ? "Worth a look" : "Worth a look"}</p>
+          <p className="mt-1 text-xs font-medium">{shortlist === 1 ? "Shortlisted role" : "Shortlisted roles"}</p>
           <p className="text-[11px] text-muted-foreground">of {counts.total.toLocaleString("en-IN")} ranked</p>
         </div>
         <ChevronRight className="h-3.5 w-3.5 shrink-0 text-muted-foreground transition group-hover:translate-x-0.5 group-hover:text-primary" />

@@ -12,6 +12,7 @@ import {
   ExternalLink,
   Flame,
   Loader2,
+  Shuffle,
   Sparkles,
   Target,
 } from "lucide-react";
@@ -26,7 +27,7 @@ import {
   type DsaPattern,
   type DsaProblem,
 } from "@prodmatch/shared";
-import { completeDsaAction, getTodayDispatchAction } from "./actions";
+import { completeDsaAction, getTodayDispatchAction, skipTodayDsaAction } from "./actions";
 import { CodeTabs } from "./code-tabs";
 import { ConfidenceRating } from "./confidence-rating";
 import { cn } from "@/lib/utils";
@@ -125,6 +126,30 @@ export function DsaClient({ history, progress, hasResume }: Props) {
     });
   }
 
+  // EU-6: skip today's pick (up to 3/day) so the daily problem feels
+  // chosen, not forced. We re-fetch today's dispatch on success so the
+  // UI picks up the replacement without a full page refresh.
+  function handleSkip() {
+    if (!today || today.is_complete) return;
+    setFlash(null);
+    startTransition(async () => {
+      try {
+        const skip = await skipTodayDsaAction();
+        if (!skip.ok) {
+          setFlash({ kind: "err", text: skip.error ?? "Could not skip today's problem." });
+          return;
+        }
+        const fresh = await getTodayDispatchAction();
+        if (fresh.ok) {
+          setToday(fresh.data);
+          setFlash({ kind: "ok", text: "Picked a different problem for today." });
+        }
+      } catch {
+        setFlash({ kind: "err", text: "Could not skip. Please try again." });
+      }
+    });
+  }
+
   return (
     <div className="space-y-4">
       {flash && (
@@ -217,6 +242,21 @@ export function DsaClient({ history, progress, hasResume }: Props) {
                 <ExternalLink className="h-4 w-4" />
                 Open on LeetCode
               </a>
+              {/* EU-6: skip today's pick (up to 3/day). Hidden once the
+                  problem is marked complete — at that point there's no
+                  pick to skip. */}
+              {!today.is_complete && (
+                <button
+                  type="button"
+                  onClick={handleSkip}
+                  disabled={pending}
+                  title="Pick a different problem for today (up to 3 skips/day)"
+                  className="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg border border-border bg-background px-4 py-2.5 text-sm font-medium text-muted-foreground transition hover:bg-secondary hover:text-foreground disabled:cursor-not-allowed disabled:opacity-60 sm:flex-none"
+                >
+                  <Shuffle className="h-4 w-4" />
+                  Skip
+                </button>
+              )}
             </div>
 
             {today.is_complete && (

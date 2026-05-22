@@ -8,8 +8,9 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { motion, useReducedMotion } from "framer-motion";
-import { Sparkles, AlertCircle } from "lucide-react";
+import { Sparkles, AlertCircle, FileJson } from "lucide-react";
 import { getParseStatus } from "./actions";
 
 export function ParseStatusBanner({
@@ -113,6 +114,16 @@ export function ParseStatusBanner({
               ? "Your previous parsed resume is still active for matches. Re-upload the PDF below when ready."
               : "Re-upload the PDF below to retry."}
           </p>
+          {/* EU-5: when the PDF is image-only / unreadable, the upload path
+              will never succeed. Offer the structured editor as an explicit
+              fallback so the user isn't stuck. */}
+          <Link
+            href="/profile/resume"
+            className="mt-2 inline-flex min-h-9 items-center gap-1.5 rounded-md border border-current/30 bg-background px-3 py-1.5 text-xs font-medium transition hover:bg-secondary"
+          >
+            <FileJson className="h-3.5 w-3.5" />
+            Build resume in the editor instead
+          </Link>
         </div>
       </motion.div>
     );

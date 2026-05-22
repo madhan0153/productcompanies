@@ -6,6 +6,7 @@ import { ResumeUpload } from "./resume-upload";
 import { SaveProfileForm } from "./save-profile-form";
 import { ResumeScorePanel, type ResumeScorePanelData } from "./resume-score-panel";
 import { SectionCard } from "@/components/section-card";
+import { Tooltip } from "@/components/tooltip";
 import { listResumeVersions } from "./actions";
 import { ResumeVersionsPanel } from "./resume-versions-panel";
 import { ParseStatusBanner } from "./parse-status-banner";
@@ -88,14 +89,27 @@ export default async function ProfilePage() {
           </p>
         </div>
         {hasResume && dnaScore !== null && (
-          <div className="flex shrink-0 flex-col items-center gap-0.5 rounded-md px-2 py-1">
-            <span className={`text-lg font-bold tabular-nums ${
-              dnaScore >= 75 ? "text-success" : dnaScore >= 55 ? "text-warning" : "text-primary"
-            }`}>{dnaScore}</span>
-            <span className="text-[9px] font-medium uppercase tracking-wider text-muted-foreground">
-              Ready
-            </span>
-          </div>
+          // EU-3: explain the score on tap/hover. The number on its own was
+          // an opaque signal — new users couldn't tell 72 from 81.
+          <Tooltip
+            label={
+              <div className="space-y-1">
+                <p className="font-semibold">Product-Co Readiness {dnaScore}/100</p>
+                <p>How well your resume profile matches product-company expectations across role function, years of experience, tech stack, and product/product-co signals.</p>
+                <p className="text-[10px] opacity-90">75+ strong · 55–74 building · &lt;55 needs work</p>
+              </div>
+            }
+            side="bottom"
+          >
+            <div className="flex shrink-0 flex-col items-center gap-0.5 rounded-md px-2 py-1 cursor-help">
+              <span className={`text-lg font-bold tabular-nums ${
+                dnaScore >= 75 ? "text-success" : dnaScore >= 55 ? "text-warning" : "text-primary"
+              }`}>{dnaScore}</span>
+              <span className="text-[9px] font-medium uppercase tracking-wider text-muted-foreground">
+                Ready
+              </span>
+            </div>
+          </Tooltip>
         )}
       </div>
 

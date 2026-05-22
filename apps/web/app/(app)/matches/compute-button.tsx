@@ -164,7 +164,12 @@ export function ComputeStatusBanner() {
 
   if (phase === "running") {
     return (
-      <div className="rounded-xl border border-primary/20 bg-primary-soft p-4">
+      <div
+        role="status"
+        aria-live="polite"
+        aria-busy="true"
+        className="rounded-xl border border-primary/20 bg-primary-soft p-4"
+      >
         <div className="flex items-center gap-3">
           <Loader2 className="h-4 w-4 shrink-0 animate-spin text-primary" />
           <div className="min-w-0 flex-1">

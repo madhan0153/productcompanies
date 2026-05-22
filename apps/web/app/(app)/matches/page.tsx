@@ -80,6 +80,23 @@ export default async function MatchesPage({
   const resumeScore = profile?.resume_score ?? null;
   const lastComputeAt = profile?.last_match_compute_at ?? null;
 
+  // End-user fix (EU-2): show "Jobs updated Nh ago" so users can trust the
+  // freshness of the underlying inventory. Reads the most-recent successful
+  // crawl_run timestamp. Cheap: single indexed lookup.
+  let lastCrawlAt: string | null = null;
+  try {
+    const { data: lastCrawl } = (await (admin
+      .from("crawl_runs")
+      .select("started_at")
+      .eq("status", "success")
+      .order("started_at", { ascending: false })
+      .limit(1)
+      .maybeSingle() as unknown as Promise<{ data: { started_at: string } | null }>));
+    lastCrawlAt = lastCrawl?.started_at ?? null;
+  } catch {
+    // crawl_runs may not exist on a brand-new schema — fail quietly.
+  }
+
   // Accurate band counts via parallel head-count queries — each is a fast
   // indexed COUNT(*) that bypasses the PostgREST max_rows cap. Scope filters
   // (company, hub) apply server-side so the strip honours them.
@@ -209,6 +226,7 @@ export default async function MatchesPage({
   const allHubs = [...new Set(allRows.flatMap((m) => m.jobs.hubs ?? []))].sort();
 
   const computeAgo = lastComputeAt ? humanAgo(lastComputeAt) : null;
+  const crawlAgo = lastCrawlAt ? humanAgo(lastCrawlAt) : null;
 
   return (
     <MatchNavProvider>
@@ -222,14 +240,26 @@ export default async function MatchesPage({
       <div className="flex items-center justify-between gap-3">
         <div className="min-w-0">
           <h1 className="text-xl font-semibold tracking-tight sm:text-2xl">Matches</h1>
-          {computeAgo ? (
-            <div className="mt-0.5 flex items-center gap-1.5 text-[11px] text-muted-foreground">
-              <Activity className="h-3 w-3 text-success" />
-              <span>Computed {computeAgo}</span>
-            </div>
-          ) : allRows.length === 0 ? (
-            <p className="mt-0.5 text-[11px] text-muted-foreground">Compute your first matches</p>
-          ) : null}
+          <div className="mt-0.5 flex flex-wrap items-center gap-x-3 gap-y-0.5 text-[11px] text-muted-foreground">
+            {computeAgo ? (
+              <span className="inline-flex items-center gap-1">
+                <Activity className="h-3 w-3 text-success" />
+                Computed {computeAgo}
+              </span>
+            ) : allRows.length === 0 ? (
+              <span>Compute your first matches</span>
+            ) : null}
+            {/* EU-2: data-freshness pill so users can trust the inventory. */}
+            {crawlAgo && (
+              <span
+                title="When the daily crawler last completed a successful run across the 18 product companies."
+                className="inline-flex items-center gap-1 rounded-full border border-border bg-secondary/50 px-2 py-0.5 text-[10px] font-medium"
+              >
+                <span className="h-1.5 w-1.5 rounded-full bg-success" aria-hidden />
+                Jobs updated {crawlAgo}
+              </span>
+            )}
+          </div>
         </div>
         <ComputeTrigger />
       </div>

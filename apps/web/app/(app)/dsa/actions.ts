@@ -97,6 +97,66 @@ export async function getTodayDispatchAction(): Promise<ActionResult<TodayDispat
 const VALID_CONFIDENCE: DsaConfidence[] = ["got_it", "review", "confused"];
 const VALID_SLUGS = new Set(DSA_CATALOG.map((p) => p.slug));
 
+/**
+ * End-user fix (EU-6): "skip today" picks a different problem when the
+ * default daily pick doesn't excite the learner. We keep the original
+ * dispatch in place (it doesn't count as a streak loss because it's not
+ * marked complete), but flip the problem_slug so the next render picks
+ * up the new one. Rate-limited to 3 skips per user per day so it can't
+ * be abused to brute-force through the catalog.
+ */
+export async function skipTodayDsaAction(): Promise<ActionResult<{ slug: string }>> {
+  try {
+    const supabase = await createSupabaseServerClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return { ok: false, error: "Sign in required." };
+
+    const rate = checkRateLimit({
+      key: userActionKey(user.id, "dsa_skip"),
+      limit: 3,
+      windowMs: 24 * 60 * 60_000,
+    });
+    if (!rate.ok) {
+      return { ok: false, error: "You can skip up to 3 times today. Try again tomorrow." };
+    }
+
+    const today = new Date().toISOString().slice(0, 10);
+
+    // Build the same exclusion context as getTodayDispatchAction but add the
+    // current day's slug too — the picker must avoid re-selecting it.
+    const [readiness, recentSlugs, solvedCount, targetCompanies, existing] = await Promise.all([
+      loadReadiness(supabase, user.id),
+      loadRecentSlugs(supabase, user.id),
+      loadSolvedCount(supabase, user.id),
+      loadTargetCompanies(supabase, user.id),
+      loadExistingDispatch(supabase, user.id, today),
+    ]);
+
+    const recent = new Set(recentSlugs);
+    if (existing?.problem_slug) recent.add(existing.problem_slug);
+
+    const next = pickNextDsaProblem({
+      weakPatterns: inferWeakPatterns(readiness),
+      targetCompanies,
+      recentSlugs: recent,
+      solvedCount,
+    });
+    if (!next) return { ok: false, error: "No alternate problem available right now." };
+
+    await saveDispatch(supabase, {
+      user_id: user.id,
+      day: today,
+      problem_slug: next.slug,
+      personalised_note: existing?.personalised_note ?? "Skipped to a fresh problem.",
+    });
+
+    revalidatePath("/dsa");
+    return { ok: true, data: { slug: next.slug } };
+  } catch {
+    return { ok: false, error: "Could not skip today's problem. Please try again." };
+  }
+}
+
 export type DsaReviewRow = {
   problem_slug: string;
   confidence: DsaConfidence;
