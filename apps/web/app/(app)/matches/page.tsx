@@ -1,20 +1,13 @@
 ﻿import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { after } from "next/server";
-import {
-  Eye,
-  ArrowUpRight, Activity,
-  AlertCircle,
-  CheckCircle2,
-} from "lucide-react";
+import { Eye, Activity, AlertCircle, ArrowUpRight } from "lucide-react";
 import Link from "next/link";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
-import { getResumeMatchStatus } from "@/lib/resume/readiness";
 import { StaggerList } from "@/components/stagger-list";
 import { EmptyState } from "@/components/empty-state";
 import type { Verdict, Json } from "@/lib/supabase/types";
-import { ComputeProvider, ComputeTrigger, ComputeStatusBanner } from "./compute-button";
 import { MatchFilters } from "./filters";
 import { MatchCard, type MatchCardData } from "./match-card";
 import { BandStrip } from "./band-strip";
@@ -75,8 +68,6 @@ export default async function MatchesPage({
     .maybeSingle() as any) as { data: { resume_storage_path: string | null; resume_score: number | null; last_match_compute_at: string | null } | null };
 
   const hasResume = !!profile?.resume_storage_path;
-  const status = await getResumeMatchStatus(admin, user.id);
-  const canCompute = status.canCompute;
   const resumeScore = profile?.resume_score ?? null;
   const lastComputeAt = profile?.last_match_compute_at ?? null;
 
@@ -230,13 +221,17 @@ export default async function MatchesPage({
 
   return (
     <MatchNavProvider>
-    <ComputeProvider hasResume={canCompute} disabledReason={status.matches.message}>
     <div className="space-y-4 pb-6">
 
       {/* Session-history beacon */}
       <MatchesURLBeacon />
 
-      {/* Header */}
+      {/* Header — freshness pills only. Matches recompute automatically on
+          every resume upload (enqueueUserRecompute in after()) AND after
+          every daily crawl (recompute_matches step in crawl.yml), so the
+          manual compute affordance was redundant and confused users when
+          it transiently failed. The two timestamps below are the
+          authoritative freshness signal. */}
       <div className="flex items-center justify-between gap-3">
         <div className="min-w-0">
           <h1 className="text-xl font-semibold tracking-tight sm:text-2xl">Matches</h1>
@@ -246,13 +241,10 @@ export default async function MatchesPage({
                 <Activity className="h-3 w-3 text-success" />
                 Computed {computeAgo}
               </span>
-            ) : allRows.length === 0 ? (
-              <span>Compute your first matches</span>
             ) : null}
-            {/* EU-2: data-freshness pill so users can trust the inventory. */}
             {crawlAgo && (
               <span
-                title="When the daily crawler last completed a successful run across the 18 product companies."
+                title="When the daily crawler last completed a successful run."
                 className="inline-flex items-center gap-1 rounded-full border border-border bg-secondary/50 px-2 py-0.5 text-[10px] font-medium"
               >
                 <span className="h-1.5 w-1.5 rounded-full bg-success" aria-hidden />
@@ -261,13 +253,7 @@ export default async function MatchesPage({
             )}
           </div>
         </div>
-        <ComputeTrigger />
       </div>
-
-      {/* Compute status banner — full-width, only when running/error */}
-      <ComputeStatusBanner />
-      <MatchStatusPanel status={status} />
-
 
       {/* Band strip — sticky tab spine, right under title */}
       {allRows.length > 0 && (
@@ -342,12 +328,11 @@ export default async function MatchesPage({
           <EmptyState
             icon={<Activity className="h-5 w-5" />}
             title="No matches computed yet"
-            body="Click 'Compute matches' above. We rank every active role across 18 product companies, drop hard mismatches, and write a Fit Card for the top 25."
+            body="Matches are computed automatically right after your resume parses and after every daily crawl. If you just uploaded, give it a minute and refresh."
           />
         ) : null}
       </MatchCardArea>
     </div>
-    </ComputeProvider>
     </MatchNavProvider>
   );
 }
@@ -355,72 +340,6 @@ export default async function MatchesPage({
 // ----------------------------------------------------------------------
 // Empty states per tab — keeps the user oriented when a slice is empty.
 // ----------------------------------------------------------------------
-
-function MatchStatusPanel({
-  status,
-}: {
-  status: Awaited<ReturnType<typeof getResumeMatchStatus>>;
-}) {
-  const matchTone = {
-    blocked: "border-border bg-secondary/40",
-    computing: "border-primary/25 bg-primary-soft",
-    failed: "border-destructive/30 bg-destructive/5",
-    stale: "border-warning/30 bg-warning/5",
-    up_to_date: "border-success/25 bg-success/5",
-    not_computed: "border-primary/25 bg-primary-soft",
-  }[status.matches.kind];
-  const icon = (() => {
-    if (status.matches.kind === "up_to_date") return <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-success" />;
-    if (status.matches.kind === "failed") return <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-destructive" />;
-    if (status.matches.kind === "stale") return <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-warning" />;
-    return <Activity className="mt-0.5 h-4 w-4 shrink-0 text-primary" />;
-  })();
-
-  return (
-    <section
-      aria-live="polite"
-      className={`flex flex-col gap-3 rounded-xl border p-4 sm:flex-row sm:items-start sm:justify-between ${matchTone}`}
-    >
-      <div className="flex min-w-0 gap-3">
-        {icon}
-        <div className="min-w-0">
-          <div className="flex flex-wrap items-center gap-2">
-            <p className="text-sm font-semibold">{status.matches.title}</p>
-            <span className="rounded-full border border-border bg-card px-2 py-0.5 text-[10px] font-medium text-muted-foreground">
-              {status.resume.title}
-            </span>
-          </div>
-          <p className="mt-1 text-xs leading-relaxed text-muted-foreground">{status.matches.message}</p>
-          <p className="mt-0.5 text-[11px] leading-relaxed text-muted-foreground">{status.resume.message}</p>
-        </div>
-      </div>
-      <div className="flex shrink-0 gap-2 sm:justify-end">
-        {status.resume.kind === "missing" || status.resume.kind === "failed" ? (
-          <Link
-            href="/profile"
-            className="tap-target-sm inline-flex items-center justify-center gap-1.5 rounded-md bg-primary px-3 text-xs font-semibold text-primary-foreground transition hover:bg-primary/90 focus-ring"
-          >
-            {status.resume.kind === "missing" ? "Upload resume" : "Retry upload"}
-            <ArrowUpRight className="h-3 w-3" />
-          </Link>
-        ) : status.canCompute && status.matches.kind !== "up_to_date" && status.matches.kind !== "computing" ? (
-          <ComputeTrigger />
-        ) : status.matches.kind === "computing" ? (
-          <span className="inline-flex min-h-9 items-center gap-1.5 rounded-md border border-primary/20 bg-card px-3 text-xs font-medium text-primary">
-            <Activity className="h-3 w-3" /> Running
-          </span>
-        ) : (
-          <Link
-            href="/profile"
-            className="tap-target-sm inline-flex items-center justify-center gap-1.5 rounded-md border border-border bg-card px-3 text-xs font-medium text-foreground transition hover:bg-secondary focus-ring"
-          >
-            View resume
-          </Link>
-        )}
-      </div>
-    </section>
-  );
-}
 
 function emptyStateForTab(tab: MatchTab, activeFilterCount: number): React.ReactNode {
   if (activeFilterCount > 0) {
