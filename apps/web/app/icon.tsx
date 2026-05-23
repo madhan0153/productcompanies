@@ -13,34 +13,23 @@ export default function Icon() {
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
-          background: "#0f0921",
+          background: "#0a0c1a",
           borderRadius: 7,
         }}
       >
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <svg
-          width="20"
-          height="26"
-          viewBox="0 0 20 26"
-          fill="none"
-          xmlns="http://www.w3.org/2000/svg"
-        >
-          {/* Vertical stem */}
-          <rect x="0" y="0" width="5" height="26" rx="2.5" fill="#8B5CF6" />
-          {/* Top bar */}
-          <rect x="0" y="0" width="14" height="5" rx="2.5" fill="#8B5CF6" />
-          {/* Middle bar */}
-          <rect x="0" y="10" width="14" height="5" rx="2.5" fill="#8B5CF6" />
-          {/* Bowl arc */}
-          <path
-            d="M13 0 Q20 0 20 7.5 Q20 15 13 15"
-            stroke="#8B5CF6"
-            strokeWidth="5"
-            strokeLinecap="round"
-            fill="none"
-          />
-          {/* Cyan node */}
-          <circle cx="17" cy="12.5" r="3" fill="#06B6D4" />
+        <svg width="20" height="22" viewBox="0 0 20 22">
+          <defs>
+            <linearGradient id="g" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stopColor="#a855f7" />
+              <stop offset="100%" stopColor="#6d28d9" />
+            </linearGradient>
+          </defs>
+          <rect x="0" y="0" width="4.5" height="22" rx="2" fill="url(#g)" />
+          <rect x="0" y="0" width="12" height="4.5" rx="2" fill="url(#g)" />
+          <rect x="0" y="8.5" width="12" height="4.5" rx="2" fill="url(#g)" />
+          <path d="M11 0 Q19 0 19 6.5 Q19 13 11 13" stroke="url(#g)" strokeWidth="4.5" strokeLinecap="round" fill="none" />
+          <circle cx="16.5" cy="10.5" r="2.8" fill="#06b6d4" />
+          <circle cx="16.5" cy="10.5" r="4.5" fill="#06b6d4" fillOpacity="0.2" />
         </svg>
       </div>
     ),

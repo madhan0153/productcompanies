@@ -13,35 +13,23 @@ export default function AppleIcon() {
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
-          background: "#0f0921",
+          background: "#0a0c1a",
           borderRadius: 38,
         }}
       >
-        <svg
-          width="110"
-          height="144"
-          viewBox="0 0 110 144"
-          fill="none"
-          xmlns="http://www.w3.org/2000/svg"
-        >
-          {/* Vertical stem */}
-          <rect x="0" y="0" width="28" height="144" rx="14" fill="#8B5CF6" />
-          {/* Top bar */}
-          <rect x="0" y="0" width="78" height="28" rx="14" fill="#8B5CF6" />
-          {/* Middle bar */}
-          <rect x="0" y="58" width="78" height="28" rx="14" fill="#8B5CF6" />
-          {/* Bowl arc */}
-          <path
-            d="M72 0 Q110 0 110 43 Q110 86 72 86"
-            stroke="#8B5CF6"
-            strokeWidth="28"
-            strokeLinecap="round"
-            fill="none"
-          />
-          {/* Cyan glow ring */}
-          <circle cx="96" cy="72" r="22" fill="#06B6D4" fillOpacity="0.18" />
-          {/* Cyan node */}
-          <circle cx="96" cy="72" r="13" fill="#06B6D4" />
+        <svg width="108" height="122" viewBox="0 0 108 122">
+          <defs>
+            <linearGradient id="g" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stopColor="#a855f7" />
+              <stop offset="100%" stopColor="#6d28d9" />
+            </linearGradient>
+          </defs>
+          <rect x="0" y="0" width="25" height="122" rx="12" fill="url(#g)" />
+          <rect x="0" y="0" width="66" height="25" rx="12" fill="url(#g)" />
+          <rect x="0" y="48" width="66" height="25" rx="12" fill="url(#g)" />
+          <path d="M60 0 Q108 0 108 36 Q108 72 60 72" stroke="url(#g)" strokeWidth="25" strokeLinecap="round" fill="none" />
+          <circle cx="91" cy="60" r="15" fill="#06b6d4" />
+          <circle cx="91" cy="60" r="25" fill="#06b6d4" fillOpacity="0.18" />
         </svg>
       </div>
     ),
