@@ -8,8 +8,8 @@ export default function Icon() {
     (
       <div
         style={{
-          width: "100%",
-          height: "100%",
+          width: 32,
+          height: 32,
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
@@ -17,34 +17,31 @@ export default function Icon() {
           borderRadius: 7,
         }}
       >
-        {/* P stem + top bar */}
-        <div style={{ position: "relative", width: 20, height: 26, display: "flex" }}>
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <svg
+          width="20"
+          height="26"
+          viewBox="0 0 20 26"
+          fill="none"
+          xmlns="http://www.w3.org/2000/svg"
+        >
           {/* Vertical stem */}
-          <div style={{
-            position: "absolute", left: 0, top: 0, width: 5, height: 26,
-            borderRadius: 2.5,
-            background: "linear-gradient(180deg, #8B5CF6 0%, #6D28D9 100%)",
-          }} />
+          <rect x="0" y="0" width="5" height="26" rx="2.5" fill="#8B5CF6" />
           {/* Top bar */}
-          <div style={{
-            position: "absolute", left: 0, top: 0, width: 14, height: 5,
-            borderRadius: 2.5,
-            background: "linear-gradient(180deg, #8B5CF6 0%, #6D28D9 100%)",
-          }} />
+          <rect x="0" y="0" width="14" height="5" rx="2.5" fill="#8B5CF6" />
           {/* Middle bar */}
-          <div style={{
-            position: "absolute", left: 0, top: 10.5, width: 14, height: 5,
-            borderRadius: 2.5,
-            background: "linear-gradient(180deg, #8B5CF6 0%, #6D28D9 100%)",
-          }} />
+          <rect x="0" y="10" width="14" height="5" rx="2.5" fill="#8B5CF6" />
+          {/* Bowl arc */}
+          <path
+            d="M13 0 Q20 0 20 7.5 Q20 15 13 15"
+            stroke="#8B5CF6"
+            strokeWidth="5"
+            strokeLinecap="round"
+            fill="none"
+          />
           {/* Cyan node */}
-          <div style={{
-            position: "absolute", right: -2, top: 9.5, width: 7, height: 7,
-            borderRadius: "50%",
-            background: "#06B6D4",
-            boxShadow: "0 0 6px #06B6D4",
-          }} />
-        </div>
+          <circle cx="17" cy="12.5" r="3" fill="#06B6D4" />
+        </svg>
       </div>
     ),
     size,

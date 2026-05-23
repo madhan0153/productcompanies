@@ -13,7 +13,6 @@ import { LogoMark } from "@/components/logo-mark";
 // never re-prompt a user who already installed.
 
 const DISMISSED_KEY = "prodmatch.pwa.install.dismissed_until";
-const INSTALLED_KEY  = "prodmatch.pwa.installed";
 const COOLDOWN_MS   = 30 * 24 * 3_600_000;
 
 const FIRST_VISIT_KEY      = "prodmatch.pwa.first_visit_at";
@@ -39,16 +38,11 @@ export function PwaInstallPrompt() {
   useEffect(() => {
     if (typeof window === "undefined") return;
 
-    // Already installed via native flow or our own tracking
-    if (localStorage.getItem(INSTALLED_KEY) === "1") return;
-
+    // Already running as installed PWA — no need to prompt
     const inStandalone =
       window.matchMedia("(display-mode: standalone)").matches ||
       (window.navigator as any).standalone === true;
-    if (inStandalone) {
-      localStorage.setItem(INSTALLED_KEY, "1");
-      return;
-    }
+    if (inStandalone) return;
 
     const dismissedUntil = Number(localStorage.getItem(DISMISSED_KEY) ?? 0);
     if (Date.now() < dismissedUntil) return;
@@ -78,11 +72,12 @@ export function PwaInstallPrompt() {
     return () => window.removeEventListener("beforeinstallprompt", handler);
   }, []);
 
-  // Native install confirmed (fires even when user installs via browser menu)
+  // Native install confirmed — track + close prompt for this session.
+  // We don't set a permanent localStorage flag so if the user later
+  // uninstalls, the prompt will resurface after the normal cooldown.
   useEffect(() => {
     if (typeof window === "undefined") return;
     const handler = () => {
-      try { localStorage.setItem(INSTALLED_KEY, "1"); } catch { /* quota */ }
       trackClarity("pwa_install", "true");
       setDeferred(null);
       setDismissed(true);

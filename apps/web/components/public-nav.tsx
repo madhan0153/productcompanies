@@ -1,17 +1,13 @@
-// Shared header for public SEO pages. Mobile-first (sticky top, compact
-// 56px height, single-line nav). Server component — no client-only deps.
-
 import Link from "next/link";
-import { ArrowRight, Zap } from "lucide-react";
+import { ArrowRight } from "lucide-react";
+import { LogoMark } from "@/components/logo-mark";
 
 export function PublicNav() {
   return (
     <header className="sticky top-0 z-30 border-b border-border bg-background/95 backdrop-blur-md">
       <div className="mx-auto flex h-14 max-w-5xl items-center justify-between gap-3 px-4 sm:px-6">
         <Link href="/" className="flex items-center gap-2 focus-ring rounded-md">
-          <span className="flex h-7 w-7 items-center justify-center rounded-md bg-primary text-primary-foreground">
-            <Zap className="h-3.5 w-3.5" strokeWidth={2.5} aria-hidden />
-          </span>
+          <LogoMark size={28} />
           <span className="brand-mark text-base">ProdMatch</span>
         </Link>
         <nav className="flex items-center gap-1 text-xs sm:text-sm" aria-label="Primary">
