@@ -25,7 +25,7 @@ const HARD_CAP_NOTES: Record<string, string> = {
 
 // Sprint 6 rebalance — seniority + lpa dropped (no scoring contribution).
 // Years experience already captures seniority signal; comp is missing on
-// 95% of JDs from the 18 product-co career pages so the lpa dim defaulted
+// 95% of JDs from the 51 product-co career pages so the lpa dim defaulted
 // to 1/2 on almost every match and distorted comparisons.
 const AXIS_META: Array<{
   key: keyof RulesScoreBreakdown;

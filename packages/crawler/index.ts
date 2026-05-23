@@ -191,7 +191,7 @@ async function main() {
 
     // Per-company browser instance. Launching fresh per company isolates
     // crashes (one company's hang/OOM doesn't pin the next 17). Cost is
-    // ~1-2s per launch, ~36s total across 18 companies — worth it.
+    // ~1-2s per launch across configured company crawlers — worth it.
     let browser: Browser | null = null;
 
     try {

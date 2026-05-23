@@ -4,7 +4,7 @@
 //   1. Aggregator-style AI tools (Perplexity, Bing Copilot, You.com,
 //      Phind) that prefer structured JSON over HTML scraping.
 //   2. Third-party developers building their own derivative tools on
-//      top of ProdMatch's curated 18-company inventory.
+//      top of ProdMatch's curated 51-company inventory.
 //
 // Shape is intentionally close to Schema.org JobPosting but flat, so it
 // can be consumed without JSON-LD parsing.
@@ -62,7 +62,7 @@ export async function GET() {
       sourceUrl: origin,
       license: "CC-BY-4.0 — attribution required",
       generatedAt: new Date().toISOString(),
-      totalCompanies: 18,
+      totalCompanies: 51,
       country: "IN",
       itemCount: items.length,
       items,

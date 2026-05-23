@@ -11,7 +11,7 @@ export const revalidate = 3600;
 export const metadata: Metadata = {
   title: "Product Company Jobs by City in India",
   description:
-    "Engineering jobs at India's top 18 product companies, organised by city — Bengaluru, Hyderabad, Pune, Gurugram, Noida, Delhi NCR, Mumbai, Chennai, and Remote-India.",
+    "Engineering jobs at India's top 51 product companies, organised by city — Bengaluru, Hyderabad, Pune, Gurugram, Noida, Delhi NCR, Mumbai, Chennai, and Remote-India.",
   alternates: { canonical: "/cities" },
   openGraph: {
     title: "Product Company Jobs by City in India",

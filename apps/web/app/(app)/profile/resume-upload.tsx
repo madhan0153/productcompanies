@@ -23,7 +23,7 @@ const AI_STEPS = [
   { icon: Brain,     label: "Detecting seniority & role",     duration: 4000 },
   { icon: Cpu,       label: "Understanding tech stack",        duration: 4000 },
   { icon: Sparkles,  label: "Computing semantic embeddings",   duration: 5000 },
-  { icon: TrendingUp, label: "Matching against 18 companies", duration: 5000 },
+  { icon: TrendingUp, label: "Matching against 51 companies", duration: 5000 },
   { icon: Zap,       label: "Generating Fit Cards",           duration: 4000 },
 ];
 

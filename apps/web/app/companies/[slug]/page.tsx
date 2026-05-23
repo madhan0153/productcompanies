@@ -87,7 +87,7 @@ export default async function CompanyPage({ params }: { params: Promise<{ slug: 
   const faq = [
     {
       question: `Is ${company.name} a product-based company?`,
-      answer: `Yes. ${company.name} is one of the 18 product-based companies tracked by ProdMatch.ai. We index their official career page directly — every listing here links to ${company.name}'s own apply URL.`,
+      answer: `Yes. ${company.name} is one of the 51 product-based companies tracked by ProdMatch.ai. We index their official career page directly — every listing here links to ${company.name}'s own apply URL.`,
     },
     {
       question: `How often does ProdMatch update ${company.name} listings?`,
@@ -136,7 +136,7 @@ export default async function CompanyPage({ params }: { params: Promise<{ slug: 
                 </>
               ) : (
                 <>
-                  {facts?.oneLiner ?? `${company.name} is one of the 18 product-based companies ProdMatch tracks in India.`}
+                  {facts?.oneLiner ?? `${company.name} is one of the 51 product-based companies ProdMatch tracks in India.`}
                 </>
               )}
             </p>

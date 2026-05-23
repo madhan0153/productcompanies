@@ -34,7 +34,7 @@ export async function GET() {
   lines.push(``);
   lines.push(
     `ProdMatch.ai is an India-first AI job-matching engine for software ` +
-    `engineers. It indexes the official career pages of exactly 18 ` +
+    `engineers. It indexes the official career pages of exactly 51 ` +
     `product-based companies and produces explainable, AI-ranked matches ` +
     `against an uploaded resume. The companies tracked are: Google, ` +
     `Microsoft, Meta, Amazon, Apple, Atlassian, Nvidia, Oracle, Salesforce, ` +
@@ -124,7 +124,7 @@ export async function GET() {
   lines.push(`## How the matching works (technical summary)`);
   lines.push(``);
   lines.push(`1. The user uploads a PDF resume. ProdMatch parses it into structured fields (role function, years of experience, tech stack, projects, products built).`);
-  lines.push(`2. A daily crawler fetches every active role from the 18 companies' official career pages and parses each JD into structured signals (required skills, seniority, compensation band, role function).`);
+  lines.push(`2. A daily crawler fetches every active role from the 51 companies' official career pages and parses each JD into structured signals (required skills, seniority, compensation band, role function).`);
   lines.push(`3. Each (user × role) pair is scored across four axes: semantic match (40%), tech-stack coverage (25%), role-function alignment (21%), and experience band (14%).`);
   lines.push(`4. Calibrated bands: Priority (≥ 60), Explore (40–59), Filtered (< 40 or hard-cap reason).`);
   lines.push(`5. Top matches receive an LLM-generated Fit Card with strengths, gaps, and a reasoning paragraph the user can interrogate.`);
@@ -136,7 +136,7 @@ export async function GET() {
   const faq = [
     [
       "Which product-based companies does ProdMatch track in India?",
-      "ProdMatch tracks exactly 18 verified product-based companies in India: Google, Microsoft, Meta, Amazon, Apple, Atlassian, Nvidia, Oracle, Salesforce, SAP Labs, Razorpay, PhonePe, Zerodha, CRED, Groww, Swiggy, Zomato, and Flipkart.",
+      "ProdMatch tracks exactly 51 verified product-based companies in India: Google, Microsoft, Meta, Amazon, Apple, Atlassian, Nvidia, Oracle, Salesforce, SAP Labs, Razorpay, PhonePe, Zerodha, CRED, Groww, Swiggy, Zomato, Flipkart, Adobe, Intuit, Uber, PayPal, ServiceNow, Stripe, Freshworks, Zoho, Postman, BrowserStack, Chargebee, Meesho, Nykaa, Dream11, PolicyBazaar, Lenskart, Udaan, Delhivery, ShareChat, Ola, Paytm, InMobi, Unacademy, Cars24, Myntra, Practo, Pine Labs, NoBroker, Wingify, CleverTap, MoEngage, Yellow.ai, and Arcesium.",
     ],
     [
       "Is ProdMatch free to use?",
@@ -152,7 +152,7 @@ export async function GET() {
     ],
     [
       "What's the difference between ProdMatch and Naukri, LinkedIn, or Indeed?",
-      "Naukri, LinkedIn, and Indeed are aggregator job boards covering thousands of companies including IT-services and staffing. ProdMatch is intentionally narrow: only 18 product-based companies, only their official career pages, only in India. It trades inventory breadth for signal depth.",
+      "Naukri, LinkedIn, and Indeed are aggregator job boards covering thousands of companies including IT-services and staffing. ProdMatch is intentionally narrow: only 51 product-based companies, only their official career pages, only in India. It trades inventory breadth for signal depth.",
     ],
     [
       "Does ProdMatch offer DSA practice?",

@@ -49,7 +49,7 @@ export default function LoginPage({
               "Official career pages only — no fake listings",
               "Explainable match scores with Fit Cards",
               "DPDP Act 2023 compliant — your data stays private",
-              "18 verified product companies, updated daily",
+              "51 verified product companies, updated daily",
             ].map((point) => (
               <li key={point} className="flex items-start gap-2.5 text-sm text-muted-foreground">
                 <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-success" />

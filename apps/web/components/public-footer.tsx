@@ -30,7 +30,7 @@ export function PublicFooter() {
               ))}
               <li>
                 <Link href="/companies" className="text-xs font-medium text-primary hover:underline">
-                  See all 18 →
+                  See all 51 →
                 </Link>
               </li>
             </ul>

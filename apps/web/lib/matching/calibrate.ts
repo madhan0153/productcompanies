@@ -196,8 +196,6 @@ export function calibrateMatch(input: {
     }
   }
 
-  let preCapVerdict: Verdict;
-
   // (5) Ghost listings — keep visible at most as Explore.
   if (job.is_likely_ghost) {
     score = Math.min(score, 58);
@@ -216,7 +214,7 @@ export function calibrateMatch(input: {
     hidden_reason = hidden_reason ?? "no_stack";
   }
 
-  preCapVerdict = computeVerdict(rules, score, job.jd_parsed_at !== null);
+  const preCapVerdict = computeVerdict(rules, score, job.jd_parsed_at !== null);
   score = capScoreForVerdict(score, preCapVerdict);
   const verdict = reconcileVerdictWithScore(preCapVerdict, score);
 

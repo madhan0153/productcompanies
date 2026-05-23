@@ -113,7 +113,7 @@ export default async function GuidePage({ params }: { params: Promise<{ slug: st
         <section className="mt-10 rounded-xl border border-primary/20 bg-primary-soft p-5 sm:p-6">
           <h2 className="text-base font-semibold">Try ProdMatch on your resume</h2>
           <p className="mt-1.5 text-sm leading-relaxed text-muted-foreground">
-            Upload your PDF. We rank every active role at the 18 product
+            Upload your PDF. We rank every active role at the 51 product
             companies by fit, with strengths + gaps, in under 60 seconds.
           </p>
           <Link

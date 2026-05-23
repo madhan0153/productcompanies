@@ -15,7 +15,7 @@ What changed and why, in 1–3 sentences. Link the spec if there is one.
 
 The non-negotiables. Tick every item; the reviewer will spot any that lie.
 
-- [ ] **R1 · 18 approved companies only** — no companies added, no aggregator domains introduced
+- [ ] **R1 · 51 approved companies only** — no unapproved companies added, no aggregator domains introduced
 - [ ] **R2 · Official career pages / APIs only** — no LinkedIn / Naukri / Indeed / Glassdoor / Foundit / Monster strings anywhere
 - [ ] **R3 · No demo / synthetic / seed jobs** — the `jobs` table still starts empty, populated only by the crawler
 - [ ] **R4 · Schema is idempotent + single file** — all Supabase changes are in `supabase/schema.sql`, every new artifact uses `IF NOT EXISTS` / `CREATE OR REPLACE` / the `duplicate_object` catch
@@ -38,7 +38,7 @@ Tick what was actually run on this branch (paste the last line of output if non-
 - [ ] `pnpm test:resume-mapper` — JSON Resume mapper
 - [ ] `pnpm test:llm-runtime` — provider router + deterministic embed
 - [ ] `pnpm test:llm-governance` — operation policies + presets
-- [ ] `pnpm test:crawler-invariants` — 18-company boundary, banned domains
+- [ ] `pnpm test:crawler-invariants` — 51-company boundary, banned domains
 - [ ] `pnpm --filter web test:e2e` — golden path (if UI touched)
 
 ## Out-of-scope follow-ups

@@ -22,7 +22,7 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 const SCHEMA = resolve(__dirname, "../../../supabase/schema.sql");
 
 const START = "-- Phase R1 — Resume Intelligence (USP)";
-const END = "-- 8. SEED — 18 approved product companies";
+const END = "-- 8. SEED — 51 approved product companies";
 
 const sql = readFileSync(SCHEMA, "utf8");
 const s = sql.indexOf(START);

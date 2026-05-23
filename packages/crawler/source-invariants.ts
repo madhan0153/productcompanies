@@ -2,25 +2,39 @@ import { readdirSync, readFileSync, statSync } from "node:fs";
 import { join, relative } from "node:path";
 import { ALL_SLUGS, COMPANY_CONFIGS } from "./companies/index.js";
 
-const APPROVED_SLUGS = [
-  "google",
-  "microsoft",
-  "meta",
+const EXPECTED_CRAWLER_SLUGS = [
+  "adobe",
   "amazon",
   "apple",
   "atlassian",
+  "browserstack",
+  "cars24",
+  "cred",
+  "dream11",
+  "flipkart",
+  "freshworks",
+  "google",
+  "groww",
+  "inmobi",
+  "intuit",
+  "meesho",
+  "meta",
+  "microsoft",
   "nvidia",
   "oracle",
+  "paypal",
+  "phonepe",
+  "postman",
+  "razorpay",
   "salesforce",
   "sap-labs",
-  "razorpay",
-  "phonepe",
-  "zerodha",
-  "cred",
-  "groww",
+  "servicenow",
+  "stripe",
   "swiggy",
+  "uber",
+  "unacademy",
+  "zerodha",
   "zomato",
-  "flipkart",
 ].sort();
 
 const BANNED_SOURCE_PATTERNS = [
@@ -52,7 +66,7 @@ function sourceFiles(dir: string): string[] {
   return files;
 }
 
-assertEqual("crawler slugs", [...ALL_SLUGS].sort(), APPROVED_SLUGS);
+assertEqual("crawler slugs", [...ALL_SLUGS].sort(), EXPECTED_CRAWLER_SLUGS);
 
 const configSlugs = Object.entries(COMPANY_CONFIGS).map(([key, config]) => {
   if (key !== config.slug) {
@@ -60,7 +74,7 @@ const configSlugs = Object.entries(COMPANY_CONFIGS).map(([key, config]) => {
   }
   return config.slug;
 });
-assertEqual("crawler config slugs", configSlugs.sort(), APPROVED_SLUGS);
+assertEqual("crawler config slugs", configSlugs.sort(), EXPECTED_CRAWLER_SLUGS);
 
 const root = process.cwd();
 const crawlerRoot = join(root, "packages", "crawler");

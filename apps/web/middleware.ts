@@ -18,6 +18,8 @@ const PUBLIC_PATHS = [
   "/auth/login",
   "/auth/callback",
   "/api/health",
+  "/icon",
+  "/apple-icon",
   "/manifest.webmanifest",
   "/robots.txt",
   "/sitemap.xml",

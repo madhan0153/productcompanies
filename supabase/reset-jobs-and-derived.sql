@@ -1,5 +1,5 @@
 -- =============================================================================
--- FULL RESET — wipes every tenant + every job, leaves the schema + the 18
+-- FULL RESET — wipes every tenant + every job, leaves the schema + the 51
 -- approved companies intact. Idempotent. Single transaction.
 --
 -- ONLY run this when you genuinely want a clean slate (no shared users,
@@ -7,7 +7,7 @@
 --   - auth.users is empty → user signs up from scratch on the app
 --   - jobs is empty → next crawl populates with full Phase I pipeline
 --     (apply_url + descriptions + must_have_skills + embeddings)
---   - 18 companies remain seeded
+--   - 51 companies remain seeded
 --   - all enum types, indexes, RLS policies, storage bucket config remain
 -- =============================================================================
 
@@ -54,7 +54,7 @@ declare
   c_crawl_runs int := (select count(*) from public.crawl_runs);
   c_companies  int := (select count(*) from public.companies);
 begin
-  raise notice 'Post-reset row counts (should all be 0 except companies = 18):';
+  raise notice 'Post-reset row counts (should all be 0 except companies = 51):';
   raise notice '  auth.users           = %', c_users;
   raise notice '  jobs                 = %', c_jobs;
   raise notice '  matches              = %', c_matches;
@@ -68,10 +68,10 @@ begin
   raise notice '  dpdp_events          = %', c_dpdp;
   raise notice '  crawl_runs           = %', c_crawl_runs;
   raise notice '  ─── preserved ───';
-  raise notice '  companies            = % (expected 18)', c_companies;
+  raise notice '  companies            = % (expected 51)', c_companies;
 
-  if c_companies <> 18 then
-    raise warning 'companies row count is % — expected 18. Re-run the seed block at the bottom of schema.sql.', c_companies;
+  if c_companies <> 51 then
+    raise warning 'companies row count is % — expected 51. Re-run the seed block at the bottom of schema.sql.', c_companies;
   end if;
 end $$;
 

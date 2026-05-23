@@ -23,7 +23,7 @@ export async function generateMetadata({ params }: { params: Promise<{ hub: stri
   const hub = slugToHub(hubSlug);
   if (!hub) return { title: "City not found" };
   const title = `Product Company Jobs in ${hub} — Open Engineering Roles`;
-  const description = `Open engineering roles at 18 product companies in ${hub}, India. Daily-refreshed from official career pages. AI-ranked matches available after free sign-up.`;
+  const description = `Open engineering roles at 51 product companies in ${hub}, India. Daily-refreshed from official career pages. AI-ranked matches available after free sign-up.`;
   return {
     title,
     description,
@@ -162,7 +162,7 @@ export default async function CityPage({ params }: { params: Promise<{ hub: stri
             </ul>
           ) : (
             <p className="mt-4 rounded-lg border border-dashed border-border bg-secondary/30 p-4 text-sm text-muted-foreground">
-              No open roles in {hub} right now. Browse all 18{" "}
+              No open roles in {hub} right now. Browse all 51{" "}
               <Link href="/companies" className="text-primary hover:underline">product companies</Link>{" "}
               or try another city.
             </p>

@@ -9,7 +9,7 @@ import { PublicFooter } from "@/components/public-footer";
 export const metadata: Metadata = {
   title: "About ProdMatch.ai — India's product-company job engine",
   description:
-    "ProdMatch.ai matches Indian engineers to high-package roles at 18 verified product companies. AI-explainable matches sourced from official career pages only. DPDP Act 2023 compliant.",
+    "ProdMatch.ai matches Indian engineers to high-package roles at 51 verified product companies. AI-explainable matches sourced from official career pages only. DPDP Act 2023 compliant.",
   alternates: { canonical: "/about" },
   openGraph: { title: "About ProdMatch.ai", url: absoluteUrl("/about") },
 };
@@ -43,7 +43,7 @@ export default function AboutPage() {
             the bridge from IT-services / freshers / mid-career engineers to
             top product companies (Google, Microsoft, Razorpay, Swiggy,
             Zerodha, PhonePe, and 12 more) is murky and informal. ProdMatch
-            cuts that murk with two things: a daily crawl of the 18
+            cuts that murk with two things: a daily crawl of the 51
             companies&apos; official career pages, and an AI that explains
             <em> why </em> a role matches your resume — strengths, gaps,
             calibrated fit score.
@@ -60,7 +60,7 @@ export default function AboutPage() {
             On sign-up, upload your resume. ProdMatch parses it into
             structured signals (role function, years, tech stack, projects,
             product-company readiness) and ranks every active role across
-            the 18 companies. Each match comes with a Fit Card: strengths,
+            the 51 companies. Each match comes with a Fit Card: strengths,
             gaps, comp band, and a calibrated score you can interrogate.
           </Section>
 

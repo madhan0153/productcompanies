@@ -17,19 +17,20 @@ export default function Icon() {
           borderRadius: 7,
         }}
       >
-        <svg width="20" height="22" viewBox="0 0 20 22">
+        <svg width="25" height="25" viewBox="0 0 32 32">
           <defs>
-            <linearGradient id="g" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor="#a855f7" />
-              <stop offset="100%" stopColor="#6d28d9" />
+            <linearGradient id="teal" x1="7" y1="5" x2="24" y2="24">
+              <stop offset="0%" stopColor="#22D3EE" />
+              <stop offset="100%" stopColor="#14B8A6" />
+            </linearGradient>
+            <linearGradient id="gold" x1="14" y1="25" x2="27" y2="14">
+              <stop offset="0%" stopColor="#F59E0B" />
+              <stop offset="100%" stopColor="#FDE68A" />
             </linearGradient>
           </defs>
-          <rect x="0" y="0" width="4.5" height="22" rx="2" fill="url(#g)" />
-          <rect x="0" y="0" width="12" height="4.5" rx="2" fill="url(#g)" />
-          <rect x="0" y="8.5" width="12" height="4.5" rx="2" fill="url(#g)" />
-          <path d="M11 0 Q19 0 19 6.5 Q19 13 11 13" stroke="url(#g)" strokeWidth="4.5" strokeLinecap="round" fill="none" />
-          <circle cx="16.5" cy="10.5" r="2.8" fill="#06b6d4" />
-          <circle cx="16.5" cy="10.5" r="4.5" fill="#06b6d4" fillOpacity="0.2" />
+          <path d="M9 23.5V9.8C9 7.7 10.7 6 12.8 6h5.4C22 6 25 8.8 25 12.4s-3 6.4-6.8 6.4H13" stroke="url(#teal)" strokeWidth="3.2" strokeLinecap="round" strokeLinejoin="round" fill="none" />
+          <path d="M13.5 22.2l3.5 3.2 7.4-8.4" stroke="url(#gold)" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" fill="none" />
+          <circle cx="24.5" cy="16.8" r="2.3" fill="#FDE68A" fillOpacity="0.22" />
         </svg>
       </div>
     ),

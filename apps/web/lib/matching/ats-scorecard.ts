@@ -2,7 +2,7 @@
 //
 // Computes a 0-100 ATS-readability score WITHOUT any LLM call, so it's
 // instant and free. The score reflects structural fitness for automated
-// resume screening systems used by the 18 approved product companies:
+// resume screening systems used by the 51 approved product companies:
 //   - Section presence (Contact / Summary / Skills / Experience / Education)
 //   - Heading hygiene (no fancy unicode / column layouts / images)
 //   - Keyword density per role function

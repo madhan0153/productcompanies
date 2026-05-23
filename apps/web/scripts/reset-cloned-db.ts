@@ -116,7 +116,7 @@ async function verify() {
   }
   const { count: companies } = await admin.from("companies").select("*", { count: "exact", head: true });
   console.log(`  ─── preserved ───`);
-  console.log(`  companies              = ${companies ?? 0} (expected 18)`);
+  console.log(`  companies              = ${companies ?? 0} (expected 51)`);
 
   const { data: users } = await admin.auth.admin.listUsers({ page: 1, perPage: 1 });
   console.log(`  auth.users (page 1)    = ${users.users.length}`);

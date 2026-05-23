@@ -1,7 +1,7 @@
 // Resume Score — "Will this resume get me a callback?"
 //
 // Measures five dimensions that directly drive recruiter callback rates,
-// grounded in LIVE demand from the 18 approved product companies.
+// grounded in LIVE demand from the 51 approved product companies.
 //
 // Design principles:
 //   1. Stack coverage is the #1 ATS signal — weighted highest.
@@ -208,7 +208,7 @@ function scoreCompleteness(resume: ParsedResume): { score: number; missing: stri
 
 export interface ScoreResumeInput {
   resume: ParsedResume;
-  /** Canonical-token list of the most in-demand skills across the 18 companies. */
+  /** Canonical-token list of the most in-demand skills across the 51 companies. */
   top30Demand: string[];
   /** Profile's target_role_functions (drives role_alignment). */
   userTargets: string[];
@@ -232,7 +232,7 @@ export function computeResumeScore(input: ScoreResumeInput): ResumeScoreResult {
       weight: WEIGHTS.stack_coverage,
       hint: stack.missing.length > 0
         ? `Matches ${stack.covered}/${input.top30Demand.length} top-demand skills. Skills to add: ${stack.missing.slice(0, 3).join(", ")}.`
-        : `Matches ${stack.covered}/${input.top30Demand.length} top-demand skills across your 18 target companies.`,
+        : `Matches ${stack.covered}/${input.top30Demand.length} top-demand skills across your 51 target companies.`,
     },
     {
       dimension: "impact_writing",
@@ -284,7 +284,7 @@ export function computeResumeScore(input: ScoreResumeInput): ResumeScoreResult {
         tip = stack.missing.length > 0
           ? `Add concrete experience with: ${stack.missing.slice(0, 3).join(", ")} — even if brief exposure.`
           : "Your stack already covers top-demand skills — no urgent action.";
-        why = "These appear in the most active JDs across your 18 target companies right now. ATS filters on exact keyword match.";
+        why = "These appear in the most active JDs across your 51 target companies right now. ATS filters on exact keyword match.";
         break;
       case "impact_writing":
         tip = "Rewrite your top 3 bullets: lead with a strong verb (Led / Built / Reduced) and add one number (%, users, ms, ₹).";

@@ -96,7 +96,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ slug: s
 
   lines.push(`## Canonical facts`);
   lines.push(``);
-  lines.push(`- ${company.name} is one of the 18 product-based companies tracked by ProdMatch.ai.`);
+  lines.push(`- ${company.name} is one of the 51 product-based companies tracked by ProdMatch.ai.`);
   lines.push(`- Listings are sourced only from ${company.name}'s official career page — no aggregators.`);
   lines.push(`- ProdMatch updates this data every 24 hours.`);
   lines.push(`- Every Apply button links directly to ${company.name}'s own apply URL — ProdMatch does not host applications.`);
@@ -107,7 +107,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ slug: s
   lines.push(``);
   lines.push(`- [Compare ProdMatch vs Naukri](${origin}/compare/naukri)`);
   lines.push(`- [Compare ProdMatch vs LinkedIn](${origin}/compare/linkedin)`);
-  lines.push(`- [All 18 product companies](${origin}/companies)`);
+  lines.push(`- [All 51 product companies](${origin}/companies)`);
   lines.push(`- [How to get product-company jobs in India](${origin}/guides/how-to-get-product-company-jobs-india)`);
   lines.push(``);
 

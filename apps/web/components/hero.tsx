@@ -26,7 +26,7 @@ const BROWSE: Array<{
   desc: string;
   icon: React.ReactNode;
 }> = [
-  { href: "/companies", label: "All 18 companies", desc: "Browse open roles by company", icon: <Building2 className="h-4 w-4" /> },
+  { href: "/companies", label: "All 51 companies", desc: "Browse open roles by company", icon: <Building2 className="h-4 w-4" /> },
   { href: "/cities",    label: "By city",           desc: "Bengaluru, Hyderabad, Pune + 6", icon: <MapPin className="h-4 w-4" /> },
   { href: "/roles",     label: "By role function", desc: "Backend, ML, DevOps, mobile, design", icon: <Layers className="h-4 w-4" /> },
   { href: "/skills",    label: "By tech skill",     desc: "AWS, React, Java, Python, K8s + 27", icon: <Cpu className="h-4 w-4" /> },
@@ -67,8 +67,8 @@ export function Hero({ companies, liveStats }: Props) {
   // truth instead of showing "0 live roles" (which reads broken).
   const showLive = liveStats.activeJobs > 0;
   const liveLabel = showLive
-    ? `${liveStats.activeJobs.toLocaleString("en-IN")} live roles · 18 product companies`
-    : "Tracking 18 product companies · daily crawl";
+    ? `${liveStats.activeJobs.toLocaleString("en-IN")} live roles · 51 product companies`
+    : "Tracking 51 product companies · daily crawl";
 
   return (
     <div className="relative min-h-screen overflow-hidden bg-background">
@@ -141,7 +141,7 @@ export function Hero({ companies, liveStats }: Props) {
                 <>
                   <strong className="font-semibold text-foreground tabular-nums">
                     <CountUp value={liveStats.activeJobs} />
-                  </strong>{" "}live roles · 18 product companies
+                  </strong>{" "}live roles · 51 product companies
                   {liveStats.newToday > 0 && (
                     <span className="ml-2 text-success">+<CountUp value={liveStats.newToday} /> today</span>
                   )}
@@ -187,7 +187,7 @@ export function Hero({ companies, liveStats }: Props) {
             href="/companies"
             className="press inline-flex h-12 items-center justify-center gap-2 rounded-md border border-border bg-card px-6 text-sm font-medium transition hover:bg-secondary focus-ring"
           >
-            Browse 18 companies
+            Browse 51 companies
           </Link>
         </motion.div>
 
@@ -214,7 +214,7 @@ export function Hero({ companies, liveStats }: Props) {
           <LiveMetricsBar
             activeJobs={liveStats.activeJobs}
             newToday={liveStats.newToday}
-            companiesCount={companies.length || 18}
+            companiesCount={companies.length || 51}
           />
         </motion.div>
 
@@ -272,7 +272,7 @@ export function Hero({ companies, liveStats }: Props) {
             icon={<Building2 className="h-5 w-5" />}
             title="Official sources only"
             body="Daily crawler hits each company's own careers page. Zero aggregator noise, zero fake listings."
-            stat="18 companies"
+            stat="51 companies"
           />
           <Feature
             icon={<Sparkles className="h-5 w-5" />}
@@ -381,7 +381,7 @@ export function Hero({ companies, liveStats }: Props) {
               Ready to see your matches?
             </h2>
             <p className="mx-auto mt-3 max-w-lg text-sm leading-relaxed text-muted-foreground">
-              Upload your resume. We&apos;ll rank every active role at the 18
+              Upload your resume. We&apos;ll rank every active role at the 51
               product companies in under 60 seconds, with strengths and gaps
               on every match. Free, no credit card, DPDP-compliant.
             </p>
@@ -538,7 +538,7 @@ function HomeFooter() {
       <div className="mx-auto max-w-6xl px-4 py-10 sm:px-6">
         <div className="grid grid-cols-2 gap-8 sm:grid-cols-4">
           <FooterColumn title="Discover" items={[
-            ["/companies", "All 18 companies"],
+            ["/companies", "All 51 companies"],
             ["/cities",    "By city"],
             ["/roles",     "By role"],
             ["/skills",    "By skill"],
@@ -784,7 +784,7 @@ function Feature({
 // ─────────────────────────────────────────────────────────────────────────────
 
 function LogoCloud({ companies, reduce }: { companies: Company[]; reduce: boolean }) {
-  // Fall back to the static 18-company name list if the DB returned nothing
+  // Fall back to the static 51-company name list if the DB returned nothing
   // (crawler hasn't run yet) so the visual section isn't empty.
   const FALLBACK = [
     "Google", "Microsoft", "Meta", "Amazon", "Apple", "Atlassian", "Nvidia",

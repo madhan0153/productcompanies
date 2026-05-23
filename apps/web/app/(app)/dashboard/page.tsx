@@ -421,7 +421,7 @@ export default async function DashboardPage() {
         <StatCard
           icon={<Building2 className="h-4 w-4" />}
           label="Companies"
-          value="18"
+          value="51"
           sub="product cos tracked"
           href="/matches"
         />
@@ -640,7 +640,7 @@ export default async function DashboardPage() {
           subtitle={marketRoleLabel ?? "India product-company trends"}
           actionHref="/insights"
           actionLabel="Explore"
-          footer="Demand = active roles per family · Trend = this week vs prior week · Source: 18 official career pages"
+          footer="Demand = active roles per family · Trend = this week vs prior week · Source: 51 official career pages"
         >
           <div className="space-y-3">
             {marketSignals.length === 0 ? (

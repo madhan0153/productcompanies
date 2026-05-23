@@ -89,7 +89,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     priority: 0.9,
   }));
 
-  // Company × role cross-products. ~234 pages (18 cos × 13 roles).
+  // Company × role cross-products. ~663 pages (51 cos × 13 roles).
   const companyRoleEntries: SitemapEntry[] = CRAWLER_META.flatMap((c) =>
     PUBLIC_ROLES.map((r) => ({
       url: absoluteUrl(`/companies/${c.slug}/${r.slug}`),

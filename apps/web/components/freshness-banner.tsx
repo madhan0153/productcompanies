@@ -1,7 +1,7 @@
 import { Database, TrendingUp } from "lucide-react";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
-// Surfaces when jobs were last refreshed across the 18 companies.
+// Surfaces when jobs were last refreshed across the 51 companies.
 // Subtle trust signal — users want to know they aren't browsing stale data.
 export async function FreshnessBanner() {
   const supabase = await createSupabaseServerClient();

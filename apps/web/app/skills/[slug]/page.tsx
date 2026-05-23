@@ -21,7 +21,7 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
   const skill = publicSkillBySlug(slug);
   if (!skill) return { title: "Skill not found", robots: { index: false } };
   const title = `${skill.name} Jobs at Product Companies in India — Open Roles`;
-  const description = `Open engineering roles tagging ${skill.name} at India's 18 product companies — sourced from official career pages. ${skill.blurb}`;
+  const description = `Open engineering roles tagging ${skill.name} at India's 51 product companies — sourced from official career pages. ${skill.blurb}`;
   return {
     title,
     description,
@@ -58,7 +58,7 @@ export default async function SkillPage({ params }: { params: Promise<{ slug: st
       question: `Which Indian product companies hire ${skill.name} engineers?`,
       answer: byCompany.size > 0
         ? `${[...byCompany.values()].map((c) => c.name).slice(0, 10).join(", ")}${byCompany.size > 10 ? " and others" : ""} have active ${skill.name} roles in the last 24-hour crawl.`
-        : `No active ${skill.name}-tagged roles in the last 24-hour crawl. Browse all 18 product companies on ProdMatch for current openings.`,
+        : `No active ${skill.name}-tagged roles in the last 24-hour crawl. Browse all 51 product companies on ProdMatch for current openings.`,
     },
     {
       question: `What does an ${skill.name} engineer at an Indian product company actually work on?`,
@@ -66,7 +66,7 @@ export default async function SkillPage({ params }: { params: Promise<{ slug: st
     },
     {
       question: `Is ${skill.name} in demand at product-based companies in India in 2026?`,
-      answer: `Yes. ${jobs.length > 0 ? `ProdMatch counted ${jobs.length} open ${skill.name}-tagged roles across ${byCompany.size} of India's 18 product companies in the last 24 hours.` : `${skill.name} appears regularly in product-company JDs even when the latest 24-hour crawl shows zero matches.`}`,
+      answer: `Yes. ${jobs.length > 0 ? `ProdMatch counted ${jobs.length} open ${skill.name}-tagged roles across ${byCompany.size} of India's 51 product companies in the last 24 hours.` : `${skill.name} appears regularly in product-company JDs even when the latest 24-hour crawl shows zero matches.`}`,
     },
   ];
 
@@ -155,7 +155,7 @@ export default async function SkillPage({ params }: { params: Promise<{ slug: st
         ) : (
           <section className="mt-10 rounded-lg border border-dashed border-border bg-secondary/30 p-4 text-sm text-muted-foreground">
             No active {skill.name}-tagged roles in the last 24 hours. Browse{" "}
-            <Link href="/companies" className="text-primary hover:underline">all 18 product companies</Link>{" "}
+            <Link href="/companies" className="text-primary hover:underline">all 51 product companies</Link>{" "}
             or check the next crawl.
           </section>
         )}

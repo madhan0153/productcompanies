@@ -10,7 +10,7 @@
 //   2. User feed signal — the engine's read query excludes quality_score<40,
 //      so users never see "Sr Engineer" with a one-line description.
 //
-// Calibrated for our 18 product-co stack — these companies don't post
+// Calibrated for our 51 product-co stack — these companies don't post
 // "unpaid internship" or "equity-only" so the rule set is tighter than
 // general job-board heuristics.
 

@@ -100,7 +100,7 @@ export function ServicesToProductSwitch() {
 
       <h3>Month 6 — Apply with focus</h3>
       <p>
-        Target 25-35 carefully chosen roles across the 18 product
+        Target 25-35 carefully chosen roles across the 51 product
         companies. Customise each application minimally — most companies
         screen on resume + GitHub, not cover letter. Apply through the
         company&apos;s official career page via ProdMatch&apos;s direct

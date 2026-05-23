@@ -4,7 +4,7 @@
 // NeetCode / LeetCode source so the user can solve on their preferred
 // platform. Tags drive personalisation:
 //   - `pattern`   what algorithmic pattern this problem teaches
-//   - `companies` which of the 18 approved companies ask similar problems
+//   - `companies` which of the 51 approved companies ask similar problems
 //   - `difficulty` standard easy/medium/hard
 //
 // To add a problem: append an entry below. Keep the slug stable — it's

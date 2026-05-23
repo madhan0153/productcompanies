@@ -5,7 +5,7 @@ import { absoluteUrl } from "@/lib/seo/site";
 export function FreshersProductCompanyJobs() {
   const howTo = howToJsonLd({
     name: "How freshers get jobs at India's product companies",
-    description: "6-month playbook for fresh graduates targeting India's top 18 product companies.",
+    description: "6-month playbook for fresh graduates targeting India's top 51 product companies.",
     totalTimeISO: "P180D",
     steps: [
       { name: "Identify the 13 product companies that hire freshers", text: "Google, Microsoft, Amazon, Meta, Salesforce, SAP Labs, Atlassian, Nvidia, Oracle, Flipkart, Razorpay, PhonePe and Groww run dedicated SDE-1 / Associate pipelines.", url: absoluteUrl("/companies") },
@@ -19,7 +19,7 @@ export function FreshersProductCompanyJobs() {
   const faq = [
     {
       question: "Which product-based companies in India hire freshers in 2026?",
-      answer: "13 of India's 18 tracked product companies: Google, Microsoft, Amazon, Meta, Salesforce, SAP Labs, Atlassian, Nvidia, Oracle, Flipkart, Razorpay, PhonePe and Groww. The other 5 (Apple India, Swiggy, Zomato, CRED, Zerodha) hire mostly experienced engineers but occasionally run small fresher pilots.",
+      answer: "13 of India's 51 tracked product companies: Google, Microsoft, Amazon, Meta, Salesforce, SAP Labs, Atlassian, Nvidia, Oracle, Flipkart, Razorpay, PhonePe and Groww. The other 5 (Apple India, Swiggy, Zomato, CRED, Zerodha) hire mostly experienced engineers but occasionally run small fresher pilots.",
     },
     {
       question: "What's the salary for a fresher at a product company in India?",
@@ -47,7 +47,7 @@ export function FreshersProductCompanyJobs() {
       <h2>The honest landscape for freshers in 2026</h2>
       <p>
         India&apos;s product companies hire freshers — but not uniformly.
-        Of the 18 ProdMatch tracks, 13 run dedicated SDE-1 / Associate
+        Across the 51 ProdMatch tracks, several run dedicated SDE-1 / Associate
         pipelines. The remaining 5 hire mostly mid + senior engineers
         with the occasional fresher pilot.
       </p>
@@ -114,7 +114,7 @@ export function FreshersProductCompanyJobs() {
         Every application goes through the company&apos;s own University /
         Early Career page. ProdMatch lists every active fresher-eligible
         role with a direct apply link — no middleman, no fees, no
-        recruiter spam. The 18 product companies&apos; career pages are
+        recruiter spam. The 51 product companies&apos; career pages are
         the only source of truth.
       </p>
 

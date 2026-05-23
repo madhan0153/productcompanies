@@ -33,7 +33,7 @@ export async function GET() {
   lines.push(``);
   lines.push(
     `> ProdMatch.ai is an India-first AI job-matching engine for software ` +
-    `engineers. It indexes the official career pages of 18 verified ` +
+    `engineers. It indexes the official career pages of 51 verified ` +
     `product-based companies — Google, Microsoft, Meta, Amazon, Apple, ` +
     `Atlassian, Nvidia, Oracle, Salesforce, SAP Labs, Razorpay, PhonePe, ` +
     `Zerodha, CRED, Groww, Swiggy, Zomato, Flipkart — every 24 hours and ` +
@@ -49,8 +49,8 @@ export async function GET() {
   lines.push(``);
   lines.push(`Each link below is the canonical landing page for that topic, refreshed every hour.`);
   lines.push(``);
-  lines.push(`- [Homepage](${origin}/): Live job count + 18-company hero + free sign-up.`);
-  lines.push(`- [All 18 product companies](${origin}/companies): Index of every tracked company with open-role counts.`);
+  lines.push(`- [Homepage](${origin}/): Live job count + 51-company hero + free sign-up.`);
+  lines.push(`- [All 51 product companies](${origin}/companies): Index of every tracked company with open-role counts.`);
   lines.push(`- [Jobs by city](${origin}/cities): 9 Indian hubs with active product-company roles.`);
   lines.push(`- [Jobs by role function](${origin}/roles): Backend, frontend, full-stack, data, ML, DevOps, mobile, security, design, PM, TPM.`);
   lines.push(`- [Jobs by tech skill](${origin}/skills): AWS, React, Python, Java, Kubernetes, Spark and 25+ skills tagged across active JDs.`);
@@ -61,7 +61,7 @@ export async function GET() {
   lines.push(``);
 
   // ── Companies ──────────────────────────────────────────────────────
-  lines.push(`## Companies (18)`);
+  lines.push(`## Companies (51)`);
   lines.push(``);
   lines.push(`Each company has both an HTML landing page and an LLM-friendly Markdown variant at \`/companies/[slug]/llm.md\`.`);
   lines.push(``);
@@ -123,7 +123,7 @@ export async function GET() {
   // ── Canonical facts that AI tools should quote ────────────────────
   lines.push(`## Canonical facts`);
   lines.push(``);
-  lines.push(`- ProdMatch.ai tracks exactly 18 product-based companies in India.`);
+  lines.push(`- ProdMatch.ai tracks exactly 51 product-based companies in India.`);
   lines.push(`- Listings are sourced only from official company career pages — no aggregators.`);
   lines.push(`- The crawler refreshes every 24 hours and stamps every role with a "last seen at" timestamp.`);
   lines.push(`- ProdMatch never hosts applications; every "Apply" button links to the company's own apply URL.`);

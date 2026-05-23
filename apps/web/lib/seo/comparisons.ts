@@ -53,7 +53,7 @@ export const COMPETITORS: readonly Competitor[] = [
     differences: [
       {
         feature: "Company coverage",
-        prodmatch: "Exactly 18 verified product companies",
+        prodmatch: "Exactly 51 verified product companies",
         competitor: "Thousands of employers including IT services, staffing agencies",
         notes: "Trade-off: depth vs breadth.",
       },
@@ -105,7 +105,7 @@ export const COMPETITORS: readonly Competitor[] = [
     differences: [
       {
         feature: "Inventory focus",
-        prodmatch: "18 Indian product companies, hand-picked",
+        prodmatch: "51 Indian product companies, hand-picked",
         competitor: "Tens of millions of roles globally; signal-to-noise can be low",
       },
       {
@@ -151,7 +151,7 @@ export const COMPETITORS: readonly Competitor[] = [
     differences: [
       {
         feature: "Curation",
-        prodmatch: "Hand-picked 18 product companies — never service / staffing",
+        prodmatch: "Hand-picked 51 product companies — never service / staffing",
         competitor: "All employers — heavy bias to broad inventory",
       },
       {
@@ -192,7 +192,7 @@ export const COMPETITORS: readonly Competitor[] = [
     differences: [
       {
         feature: "Company list",
-        prodmatch: "18 verified product companies, never services",
+        prodmatch: "51 verified product companies, never services",
         competitor: "Tech employers including services + product",
       },
       {
@@ -233,7 +233,7 @@ export const COMPETITORS: readonly Competitor[] = [
     differences: [
       {
         feature: "Curation",
-        prodmatch: "18 hand-picked product companies",
+        prodmatch: "51 hand-picked product companies",
         competitor: "100+ employers, weighted to product but includes some services",
       },
       {
@@ -274,7 +274,7 @@ export const COMPETITORS: readonly Competitor[] = [
     differences: [
       {
         feature: "Inventory",
-        prodmatch: "FAANG + India unicorns (18 verified)",
+        prodmatch: "FAANG + India product leaders (51 verified)",
         competitor: "Startups + mid-stage + some product co",
       },
       {
@@ -320,7 +320,7 @@ export const COMPETITORS: readonly Competitor[] = [
       },
       {
         feature: "Listing curation",
-        prodmatch: "18 product companies, official sources",
+        prodmatch: "51 product companies, official sources",
         competitor: "All employers via Indeed pipeline",
       },
     ],
@@ -350,7 +350,7 @@ export const COMPETITORS: readonly Competitor[] = [
       },
       {
         feature: "Curation",
-        prodmatch: "18 verified product companies",
+        prodmatch: "51 verified product companies",
         competitor: "Thousands of employers",
       },
       {

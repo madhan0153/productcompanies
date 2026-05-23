@@ -5,7 +5,7 @@ export function AiResumeMatcherComparison() {
   const faq = [
     {
       question: "What is the best AI resume matcher for product-based company jobs in India?",
-      answer: "An AI resume matcher worth using has four properties: (1) it sources jobs only from official company career pages, not aggregator feeds; (2) it produces an explainable Fit Card with strengths, gaps, and a calibrated score — not just a keyword-match number; (3) it understands India-specific signals (LPA, hubs, role function taxonomy); (4) it does not sell or share your resume data. ProdMatch.ai is built specifically for this use case for India's 18 verified product companies.",
+      answer: "An AI resume matcher worth using has four properties: (1) it sources jobs only from official company career pages, not aggregator feeds; (2) it produces an explainable Fit Card with strengths, gaps, and a calibrated score — not just a keyword-match number; (3) it understands India-specific signals (LPA, hubs, role function taxonomy); (4) it does not sell or share your resume data. ProdMatch.ai is built specifically for this use case for India's 51 verified product companies.",
     },
     {
       question: "How does ProdMatch's AI matching actually work?",
@@ -13,7 +13,7 @@ export function AiResumeMatcherComparison() {
     },
     {
       question: "Are AI resume matchers safe — do they sell my resume?",
-      answer: "Some do. ProdMatch is DPDP Act 2023 compliant from day one: granular per-purpose consent (account, AI matching, digest emails, analytics), resume stored in a private RLS-protected bucket, never used for model training, never shared with the 18 companies tracked, one-click full erasure, append-only audit log. Always check the privacy policy of any tool before uploading a resume.",
+      answer: "Some do. ProdMatch is DPDP Act 2023 compliant from day one: granular per-purpose consent (account, AI matching, digest emails, analytics), resume stored in a private RLS-protected bucket, never used for model training, never shared with the 51 companies tracked, one-click full erasure, append-only audit log. Always check the privacy policy of any tool before uploading a resume.",
     },
     {
       question: "Do free AI resume matchers work as well as paid ones?",
@@ -90,7 +90,7 @@ export function AiResumeMatcherComparison() {
 
       <h2>What ProdMatch does differently vs. generic AI matchers</h2>
       <ul>
-        <li><strong>18-company narrowness.</strong> No services. No staffing. No FAANG-aspirant scams.</li>
+        <li><strong>51-company narrowness.</strong> No services. No staffing. No FAANG-aspirant scams.</li>
         <li><strong>Daily crawl from official career pages</strong> — every role stamped with last-seen-at.</li>
         <li><strong>Fit Card for the top-25 matches</strong>, LLM-generated, with strengths and gaps.</li>
         <li><strong>Project Translator</strong> rewrites services-company-style bullets into product-company language. (See <Link href="/profile/resume">profile editor</Link>.)</li>
@@ -112,7 +112,7 @@ export function AiResumeMatcherComparison() {
       <ol>
         <li><Link href="/auth/login">Sign in</Link> with email or Google (free, no credit card).</li>
         <li>Upload your resume PDF (5 MB max, 12 pages max).</li>
-        <li>Within 60 seconds, ProdMatch ranks every active role at 18 product companies against your profile.</li>
+        <li>Within 60 seconds, ProdMatch ranks every active role at 51 product companies against your profile.</li>
         <li>Browse Priority / Explore / Filtered tabs. Open Fit Card on any role for the strengths / gaps breakdown.</li>
         <li>Apply directly via the official career page link.</li>
       </ol>

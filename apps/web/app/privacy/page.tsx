@@ -65,7 +65,7 @@ export default function PrivacyPage() {
           <Section title="What we don't do">
             <ul className="ml-4 list-disc space-y-1">
               <li>We don&apos;t sell your data. Ever.</li>
-              <li>We don&apos;t share resumes with the 18 companies we track.</li>
+              <li>We don&apos;t share resumes with the 51 companies we track.</li>
               <li>We don&apos;t use your resume content to train models.</li>
               <li>We don&apos;t log resume text, parsed fields, or auth tokens.</li>
             </ul>

@@ -40,7 +40,7 @@ export default function GuidesIndexPage() {
           </h1>
           <p className="max-w-2xl text-sm leading-relaxed text-muted-foreground sm:text-base">
             No fluff. Each guide is built on data from ProdMatch&apos;s
-            matching engine + the daily crawl of 18 product companies&apos;
+            matching engine + the daily crawl of 51 product companies&apos;
             official career pages.
           </p>
         </header>

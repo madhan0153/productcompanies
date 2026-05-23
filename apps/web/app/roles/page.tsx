@@ -12,7 +12,7 @@ export const revalidate = 3600;
 export const metadata: Metadata = {
   title: "Engineering Roles at Product Companies in India",
   description:
-    "Browse open roles by function — backend, frontend, full-stack, data, ML, DevOps, mobile, security, design, product management — across 18 product companies in India.",
+    "Browse open roles by function — backend, frontend, full-stack, data, ML, DevOps, mobile, security, design, product management — across 51 product companies in India.",
   alternates: { canonical: "/roles" },
   openGraph: {
     title: "Engineering Roles at Product Companies in India",
@@ -44,7 +44,7 @@ export default function RolesIndexPage() {
             Jobs by role at India&apos;s product companies
           </h1>
           <p className="max-w-2xl text-sm leading-relaxed text-muted-foreground sm:text-base">
-            Find open roles by function at the 18 product companies ProdMatch
+            Find open roles by function at the 51 product companies ProdMatch
             tracks. Each role page lists open positions across all companies
             and cities, refreshed daily from official career pages.
           </p>

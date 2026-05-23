@@ -1,4 +1,4 @@
-// Curated facts about each of the 18 product companies ProdMatch tracks.
+// Curated facts about each of the 51 product companies ProdMatch tracks.
 //
 // Purpose: every public surface (homepage, /companies, /cities, /skills,
 // /salaries) needs to render useful content even when the daily crawler
@@ -133,7 +133,7 @@ export const COMPANY_FACTS: readonly CompanyFacts[] = [
     slug: "amazon",
     name: "Amazon",
     kind: "Big Tech",
-    oneLiner: "AWS, retail, Prime Video, Alexa, devices — broadest scope across all 18.",
+    oneLiner: "AWS, retail, Prime Video, Alexa, devices — broadest scope across all 51.",
     overview: "Amazon India has the largest single engineering footprint of any product company in India — Bengaluru (HQ for India tech), Hyderabad, Chennai, Pune, Delhi NCR. Teams work across AWS, Retail, Prime Video, Alexa, and dozens of internal platforms. Hiring loops are explicitly Amazon — 4-6 rounds with strong Leadership Principles emphasis throughout (every interviewer scores LPs, not just behavioural). Bar Raiser owns the final call.",
     hqCity: "Seattle, WA",
     hqCountry: "United States",

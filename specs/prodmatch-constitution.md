@@ -4,7 +4,7 @@ Spec Kit inspired operating rules for future agents and human changes.
 
 ## Non-Negotiables
 
-1. Jobs come only from the 18 approved companies in `AGENTS.md`.
+1. Jobs come only from the 51 approved companies in `AGENTS.md`.
 2. Jobs come only from official career pages or official company APIs.
 3. No demo jobs, synthetic jobs, aggregators or service-company expansion.
 4. All Supabase schema changes stay in `supabase/schema.sql` and remain idempotent.

@@ -69,7 +69,7 @@ export default async function CoachPage() {
             <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Career Coach</p>
             <h1 className="mt-0.5 text-lg font-semibold leading-snug sm:text-xl">Your 90-day plan</h1>
             <p className="mt-1 text-xs leading-relaxed text-muted-foreground sm:text-sm">
-              Tied to live demand from 18 product companies — built from your stack, your gaps, and what the market is actually paying.
+              Tied to live demand from 51 product companies — built from your stack, your gaps, and what the market is actually paying.
             </p>
           </div>
         </div>

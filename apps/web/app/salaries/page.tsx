@@ -49,7 +49,7 @@ export default function SalariesIndexPage() {
           {/* GEO answer-first paragraph. */}
           <p className="text-base leading-relaxed text-muted-foreground">
             Salary aggregates pulled from currently-open job descriptions at
-            India&apos;s 18 product companies. We compute p25 / p50 / p75
+            India&apos;s 51 product companies. We compute p25 / p50 / p75
             bands per company × seniority, refreshed every 24 hours from
             official career pages. Only seniorities with at least 3 disclosed
             bands are published — single-data-point figures are statistically
@@ -96,7 +96,7 @@ export default function SalariesIndexPage() {
           <div className="mt-2 space-y-2 text-sm leading-relaxed text-muted-foreground">
             <p>
               Every 24 hours, ProdMatch&apos;s crawler fetches the official
-              career pages of 18 product companies and extracts disclosed
+              career pages of 51 product companies and extracts disclosed
               compensation ranges from the JD body via an LLM-parsed signal
               (<code className="rounded bg-secondary px-1 text-xs">comp_lpa_min</code> +{" "}
               <code className="rounded bg-secondary px-1 text-xs">comp_lpa_max</code>).

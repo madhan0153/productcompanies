@@ -7,7 +7,7 @@ import { refreshResumeScore } from "./actions";
 
 // Resume Score panel — answers "is my resume any good for what I'm targeting?"
 // Five weighted dimensions, three actionable tips, grounded in LIVE demand
-// from the 18 approved companies (not generic ATS rules).
+// from the 51 approved companies (not generic ATS rules).
 
 export interface ResumeScorePanelData {
   score: number | null;
@@ -43,7 +43,7 @@ export function ResumeScorePanel({ score, breakdown, tips, scoredAt }: ResumeSco
           <div className="min-w-0 flex-1">
             <h2 className="text-sm font-semibold">Resume score</h2>
             <p className="mt-0.5 text-xs leading-relaxed text-muted-foreground">
-              Compute your score against live demand from the 18 approved companies.
+              Compute your score against live demand from the 51 approved companies.
             </p>
           </div>
           <RefreshButton
@@ -91,7 +91,7 @@ export function ResumeScorePanel({ score, breakdown, tips, scoredAt }: ResumeSco
             <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Callback signal</p>
             <p className={`text-lg font-semibold ${tone.text}`}>{grade}</p>
             <p className="text-xs leading-relaxed text-muted-foreground">
-              {scoredAt ? `Updated ${formatDate(scoredAt)}` : ""} · scored against live JD demand from 18 product companies
+              {scoredAt ? `Updated ${formatDate(scoredAt)}` : ""} · scored against live JD demand from 51 product companies
             </p>
           </div>
         </div>

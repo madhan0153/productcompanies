@@ -31,7 +31,7 @@ const ALL_COMMANDS: Command[] = [
   { id: "compute",      label: "Compute matches",     sub: "Refresh AI rankings",    icon: RefreshCw, href: "/matches",  group: "Actions" },
   { id: "daily-dsa",    label: "Open daily DSA",      sub: "Question, approach, solution", icon: Brain, href: "/dsa", group: "Actions" },
   { id: "coach-prep",   label: "Get interview prep",  sub: "AI-generated prep tips", icon: Zap,       href: "/coach",    group: "Actions" },
-  // Companies (18 approved)
+  // Companies (51 approved)
   ...(["Google", "Microsoft", "Meta", "Amazon", "Apple", "Atlassian",
         "Nvidia", "Oracle", "Salesforce", "SAP Labs",
         "Razorpay", "PhonePe", "Zerodha", "CRED", "Groww",
@@ -227,7 +227,7 @@ export function CommandPalette({ open, onClose }: Props) {
               <span><kbd className="font-mono">↑↓</kbd> navigate</span>
               <span><kbd className="font-mono">↵</kbd> open</span>
               <span><kbd className="font-mono">esc</kbd> dismiss</span>
-              <span className="ml-auto opacity-60">18 product companies · official jobs only</span>
+              <span className="ml-auto opacity-60">51 product companies · official jobs only</span>
             </div>
           </motion.div>
         </>

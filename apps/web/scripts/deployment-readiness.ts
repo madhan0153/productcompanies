@@ -20,6 +20,39 @@ const APPROVED_SLUGS = [
   "swiggy",
   "zomato",
   "flipkart",
+  "adobe",
+  "intuit",
+  "uber",
+  "paypal",
+  "servicenow",
+  "stripe",
+  "freshworks",
+  "zoho",
+  "postman",
+  "browserstack",
+  "chargebee",
+  "meesho",
+  "nykaa",
+  "dream11",
+  "policybazaar",
+  "lenskart",
+  "udaan",
+  "delhivery",
+  "sharechat",
+  "ola",
+  "paytm",
+  "inmobi",
+  "unacademy",
+  "cars24",
+  "myntra",
+  "practo",
+  "pine-labs",
+  "nobroker",
+  "wingify",
+  "clevertap",
+  "moengage",
+  "yellow-ai",
+  "arcesium",
 ].sort();
 
 type Check = {
@@ -96,7 +129,7 @@ async function checkSupabase() {
     const ok = JSON.stringify(slugs) === JSON.stringify(APPROVED_SLUGS);
     (ok ? pass : fail)(
       "supabase:approved-companies",
-      ok ? "18 approved companies present" : `found ${slugs.length} companies`,
+      ok ? "51 approved companies present" : `found ${slugs.length} companies`,
     );
   }
 

@@ -1,6 +1,6 @@
 // /companies — index of every approved product company.
 //
-// SEO: 18 in-house brand-name companies, internal-link hub for company
+// SEO: 51 in-house brand-name companies, internal-link hub for company
 // landing pages, JSON-LD ItemList for richer SERP rendering.
 //
 // Server component, ISR (revalidate hourly) — the company list is static
@@ -21,12 +21,12 @@ import { PublicFooter } from "@/components/public-footer";
 export const revalidate = 3600; // 1 hour ISR
 
 export const metadata: Metadata = {
-  title: "All 18 Product Companies Hiring Engineers in India",
+  title: "All 51 Product Companies Hiring Engineers in India",
   description:
-    "Browse 18 verified Indian product-based companies hiring software engineers right now — Google, Microsoft, Razorpay, PhonePe, Swiggy, Zerodha and more. Daily-updated from official career pages.",
+    "Browse 51 verified Indian product-based companies hiring software engineers right now — Google, Microsoft, Razorpay, PhonePe, Swiggy, Zerodha and more. Daily-updated from official career pages.",
   alternates: { canonical: "/companies" },
   openGraph: {
-    title: "All 18 Product Companies Hiring Engineers in India",
+    title: "All 51 Product Companies Hiring Engineers in India",
     description:
       "Verified Indian product-company career pages, indexed daily by ProdMatch.ai.",
     url: absoluteUrl("/companies"),
@@ -55,7 +55,7 @@ export default async function CompaniesIndexPage() {
         <header className="space-y-3">
           <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-primary">
             <Building2 className="h-3.5 w-3.5" />
-            18 verified product companies
+            51 verified product companies
           </div>
           <h1 className="text-3xl font-bold tracking-tight sm:text-4xl">
             Product-based companies hiring in India
@@ -115,7 +115,7 @@ export default async function CompaniesIndexPage() {
           <h2 className="text-lg font-semibold">How ProdMatch tracks these companies</h2>
           <div className="mt-3 space-y-3 text-sm leading-relaxed text-muted-foreground">
             <p>
-              ProdMatch&apos;s adaptive crawler visits each of the 18 companies&apos;
+              ProdMatch&apos;s adaptive crawler visits each of the 51 companies&apos;
               official career pages every 24 hours. We never use job-board
               aggregators — every listing links directly to the company&apos;s own
               application URL. When a company changes their career-site DOM, our

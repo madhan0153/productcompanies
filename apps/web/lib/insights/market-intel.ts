@@ -59,7 +59,7 @@ const ROLE_COLORS = [
 ] as const;
 
 // Order in which we *prefer* to show role families when the user has no
-// distinguishing tech stack — by total India market depth on the 18 cos.
+// distinguishing tech stack — by total India market depth on the approved companies.
 const FALLBACK_ORDER = [
   "backend", "ml_ai", "data_engineering", "frontend", "fullstack",
   "devops_platform", "mobile", "qa_sdet", "security",

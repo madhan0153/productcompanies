@@ -37,7 +37,7 @@ const SCHEMA: Schema = {
 
 const PROMPT = `You are an interview-prep coach explaining why TODAY's DSA problem matters
 for THIS candidate. The candidate is an Indian engineer preparing for the
-18 approved product companies.
+51 approved product companies.
 
 INPUT: the problem (title + pattern + companies), the candidate's parsed
 resume (companies, products, tech stack), and their target companies.
@@ -99,7 +99,7 @@ function buildSourceText(input: {
     `Pattern: ${DSA_PATTERNS_DISPLAY[input.problem.pattern]}`,
     `Difficulty: ${input.problem.difficulty}`,
     `Asked by (commonly): ${input.problem.companies.join(", ")}`,
-    `Target companies: ${input.target_companies.join(", ") || "any of the 18"}`,
+    `Target companies: ${input.target_companies.join(", ") || "any of the 51"}`,
     `Candidate years: ${input.parsed.total_years_experience}`,
     `Tech stack: ${input.parsed.tech_stack.slice(0, 20).join(", ")}`,
     `Recent companies: ${input.parsed.companies.slice(0, 5).map((c) => `${c.role} at ${c.name}`).join("; ")}`,

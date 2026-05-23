@@ -129,7 +129,7 @@ function FleetTrend({ series }: { series: ReturnType<typeof buildDailySeries> })
             <TrendingUp className="h-4 w-4 text-primary" /> 14-day trend
           </p>
           <p className="text-[11px] text-muted-foreground">
-            Total crawl runs across all 18 crawlers, color-coded by status.
+            Total crawl runs across all 51 crawlers, color-coded by status.
           </p>
         </div>
         <div className="text-right">

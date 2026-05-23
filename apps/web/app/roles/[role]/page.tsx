@@ -22,7 +22,7 @@ export async function generateMetadata({ params }: { params: Promise<{ role: str
   const r = publicRoleBySlug(role);
   if (!r) return { title: "Role not found" };
   const title = `${r.plural} Jobs at Product Companies in India`;
-  const description = `Open ${r.label} roles at 18 verified product companies in India — Google, Razorpay, Swiggy and more. Refreshed daily from official career pages.`;
+  const description = `Open ${r.label} roles at 51 verified product companies in India — Google, Razorpay, Swiggy and more. Refreshed daily from official career pages.`;
   return {
     title,
     description,
@@ -61,7 +61,7 @@ export default async function RolePage({ params }: { params: Promise<{ role: str
       question: `Which Indian product companies hire ${r.plural.toLowerCase()}?`,
       answer: byCompany.size > 0
         ? `${[...byCompany.values()].map((c) => c.name).slice(0, 10).join(", ")}.`
-        : `Browse all 18 product companies ProdMatch tracks; many hire across multiple role functions.`,
+        : `Browse all 51 product companies ProdMatch tracks; many hire across multiple role functions.`,
     },
   ];
 
@@ -165,7 +165,7 @@ export default async function RolePage({ params }: { params: Promise<{ role: str
               Browse other{" "}
               <Link href="/roles" className="text-primary hover:underline">roles</Link>{" "}
               or all{" "}
-              <Link href="/companies" className="text-primary hover:underline">18 product companies</Link>.
+              <Link href="/companies" className="text-primary hover:underline">51 product companies</Link>.
             </p>
           )}
         </section>

@@ -31,7 +31,7 @@
 //   - Seniority signal was double-counted with experience (years already
 //     captures it). The candidate's "seniority" field was rarely set and
 //     when set, just re-flavoured what years_experience already said.
-//   - Compensation was useless: 95%+ of JDs from the 18 product-co career
+//   - Compensation was useless: 95%+ of JDs from the 51 product-co career
 //     pages don't post salary bands. The dimension defaulted to 1/2 on
 //     almost every match, distorting comparisons.
 //   The 9 points are redistributed proportionally to the substantive dims.

@@ -271,7 +271,7 @@ function buildSourceText(input: StudyPlanInput): string {
   const lines: string[] = [];
   lines.push(`Weeks: ${input.weeks}`);
   lines.push(`Target role function: ${input.target_role_function}`);
-  lines.push(`Target companies: ${input.target_companies.join(", ") || "any of the 18 approved"}`);
+  lines.push(`Target companies: ${input.target_companies.join(", ") || "any of the 51 approved"}`);
   if (input.readiness) {
     lines.push(`Readiness scores: DSA=${input.readiness.dsa_score}, SD=${input.readiness.system_design_score}, Behavioral=${input.readiness.behavioral_score}, Domain=${input.readiness.domain_score}`);
   } else {

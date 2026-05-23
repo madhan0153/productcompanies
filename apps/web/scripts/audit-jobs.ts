@@ -1,4 +1,4 @@
-// Audit job-row quality across the 18 companies. Surfaces:
+// Audit job-row quality across the 51 companies. Surfaces:
 //   - % with non-trivial description
 //   - % with apply_url
 //   - rows that won't survive JD parse (description < 60 chars)

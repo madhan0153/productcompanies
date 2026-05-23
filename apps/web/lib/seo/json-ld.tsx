@@ -53,7 +53,7 @@ export function organizationJsonLd() {
     url: origin,
     logo: `${origin}/icon`,
     description:
-      "AI-powered, India-first job matching for software engineers — explainable matches to high-package roles at 18 verified product companies, sourced from official career pages.",
+      "AI-powered, India-first job matching for software engineers — explainable matches to high-package roles at 51 verified product companies, sourced from official career pages.",
     sameAs: [
       // Add concrete profiles as they exist.
       "https://twitter.com/prodmatchai",
@@ -250,7 +250,7 @@ export function softwareApplicationJsonLd() {
     applicationSubCategory: "Job Matching",
     url: origin,
     description:
-      "AI-powered, India-first job matching for software engineers. Explainable matches to high-package roles at 18 verified product companies — sourced from official career pages, refreshed daily.",
+      "AI-powered, India-first job matching for software engineers. Explainable matches to high-package roles at 51 verified product companies — sourced from official career pages, refreshed daily.",
     offers: {
       "@type": "Offer",
       price: "0",
@@ -259,7 +259,7 @@ export function softwareApplicationJsonLd() {
     },
     featureList: [
       "AI resume parsing and matching",
-      "Daily-refreshed job inventory from 18 product companies",
+      "Daily-refreshed job inventory from 51 product companies",
       "Explainable Fit Card (strengths, gaps, reasoning)",
       "DSA practice with 17 patterns",
       "DPDP Act 2023 compliant data handling",

@@ -126,7 +126,7 @@ export function scoreCompany(
 
 /**
  * Fleet-level aggregate. Companies missing from CRAWLER_META are ignored —
- * we only count the 18 known crawlers in coverage ratios.
+ * we only count the known approved crawlers in coverage ratios.
  */
 export function scoreFleet(
   companies: CompanyRow[],

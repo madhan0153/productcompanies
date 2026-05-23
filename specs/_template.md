@@ -8,7 +8,7 @@
 
 Tick every rule in `specs/prodmatch-constitution.md` that this feature touches:
 
-- [ ] 1. 18 approved companies only
+- [ ] 1. 51 approved companies only
 - [ ] 2. Official career pages / APIs only
 - [ ] 3. No demo / synthetic jobs
 - [ ] 4. Schema changes are idempotent + in `supabase/schema.sql` only

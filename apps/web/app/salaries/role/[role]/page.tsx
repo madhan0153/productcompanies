@@ -20,7 +20,7 @@ export async function generateMetadata({ params }: { params: Promise<{ role: str
   const r = publicRoleBySlug(role);
   if (!r) return { title: "Salary not found", robots: { index: false } };
   const title = `${r.label} Salary at Product Companies in India 2026`;
-  const description = `Live ${r.label} salary aggregates across 18 product companies in India — Google, Razorpay, Swiggy, PhonePe and more. p25 / p50 / p75 bands from disclosed JDs, refreshed every 24 hours.`;
+  const description = `Live ${r.label} salary aggregates across 51 product companies in India — Google, Razorpay, Swiggy, PhonePe and more. p25 / p50 / p75 bands from disclosed JDs, refreshed every 24 hours.`;
   return {
     title,
     description,
@@ -51,7 +51,7 @@ export default async function RoleSalaryPage({ params }: { params: Promise<{ rol
     },
     {
       question: `How does ProdMatch compute these ${r.label} salary aggregates?`,
-      answer: `For every active ${r.label} JD ProdMatch crawls from the 18 product companies, we extract the disclosed compensation range and compute p25 / p50 / p75 / p90 per company. Bands with N < 3 are suppressed. Refreshes every 24 hours.`,
+      answer: `For every active ${r.label} JD ProdMatch crawls from the 51 product companies, we extract the disclosed compensation range and compute p25 / p50 / p75 / p90 per company. Bands with N < 3 are suppressed. Refreshes every 24 hours.`,
     },
   ];
 
@@ -81,7 +81,7 @@ export default async function RoleSalaryPage({ params }: { params: Promise<{ rol
           </h1>
           <p className="text-base leading-relaxed text-muted-foreground">
             Live {r.label} compensation bands across {report.rows.length} of
-            India&apos;s 18 product companies that have disclosed enough JD
+            India&apos;s 51 product companies that have disclosed enough JD
             bands (N ≥ 3) for ProdMatch to publish a verified figure.
           </p>
         </header>

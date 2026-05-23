@@ -74,7 +74,7 @@ export interface CoachContext {
   adjacency: Array<{ label: string; unlocked: number }>;
   hot_hubs: string[];
   total_active_roles: number;
-  approved_companies: string[]; // names of the 18 approved product companies
+  approved_companies: string[]; // names of the 51 approved product companies
 }
 
 function buildPrompt(ctx: CoachContext): string {

@@ -1,5 +1,5 @@
 // /companies/[slug]/[role] — company × role cross-product page.
-// 18 cos × 13 roles = 234 SEO pages from a single template.
+// 51 cos × 13 roles = 663 SEO pages from a single template.
 
 import type { Metadata } from "next";
 import Link from "next/link";

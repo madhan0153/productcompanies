@@ -24,7 +24,7 @@ function normTech(s: string): string {
 }
 
 // Raw adjacency edges. Each line: "A relates to B" (and vice-versa thanks to
-// the symmetric-closure step below). Curated for the 18 product-co stack —
+// the symmetric-closure step below). Curated for the 51 product-co stack —
 // not exhaustive across all tech.
 const RAW_ADJACENCY: Array<[string, string]> = [
   // ── Frontend ↔ mobile ──

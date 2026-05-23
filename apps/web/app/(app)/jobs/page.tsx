@@ -81,7 +81,7 @@ export default async function JobsPage({
       <div>
         <h1 className="text-2xl font-semibold tracking-tight">All jobs</h1>
         <p className="mt-1 text-sm text-muted-foreground">
-          {allJobs.length} active roles from 18 product companies
+          {allJobs.length} active roles from 51 product companies
         </p>
       </div>
 

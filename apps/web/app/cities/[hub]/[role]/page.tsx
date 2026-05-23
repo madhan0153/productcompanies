@@ -24,7 +24,7 @@ export async function generateMetadata({ params }: { params: Promise<{ hub: stri
   const r = publicRoleBySlug(role);
   if (!hub || !r) return { title: "Not found" };
   const title = `${r.label} Jobs in ${hub} at Product Companies · ProdMatch`;
-  const description = `Open ${r.label} roles in ${hub}, India at 18 product companies. Sourced from official career pages, refreshed daily.`;
+  const description = `Open ${r.label} roles in ${hub}, India at 51 product companies. Sourced from official career pages, refreshed daily.`;
   return {
     title,
     description,

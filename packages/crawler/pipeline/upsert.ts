@@ -184,7 +184,7 @@ function isAllowedApplyUrl(url: string | null | undefined): boolean {
   try {
     const host = new URL(url).hostname.toLowerCase();
     // Apply URLs must live on an official career-page domain. We accept
-    // anything inside the 18 approved companies' own domains or the major
+    // anything inside the 51 approved companies' own domains or the major
     // ATS providers they delegate to (Greenhouse, Workday, Lever, etc.).
     const ALLOWED_HOST_SUFFIXES = [
       "google.com", "amazon.jobs", "amazon.com", "microsoft.com", "metacareers.com",

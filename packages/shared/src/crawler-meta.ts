@@ -1,4 +1,4 @@
-// Static metadata about the 18 approved company crawlers.
+// Static metadata about the 51 approved company crawlers.
 //
 // Lives in @prodmatch/shared so both the crawler package and the web admin
 // UI can import it without dragging in Playwright as a dependency. This is
@@ -53,7 +53,7 @@ export interface CrawlerMeta {
  * resolveAdaptive() wiring in companies/<slug>.ts.
  */
 export const CRAWLER_META: readonly CrawlerMeta[] = [
-  // ─── Original 18 ────────────────────────────────────────────────────────
+  // ─── Original cohort ────────────────────────────────────────────────────
   { slug: "google",     name: "Google",     kind: "html-dom",   adaptive: true,  hasFixture: true  },
   { slug: "microsoft",  name: "Microsoft",  kind: "api",        adaptive: true,  hasFixture: true  },
   { slug: "meta",       name: "Meta",       kind: "api",        adaptive: true,  hasFixture: true  },

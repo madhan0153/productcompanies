@@ -7,7 +7,7 @@ import { useMatchNav } from "./match-transition-context";
 
 const QUOTES = [
   { text: "The best product engineers understand the business before they write the code.", tag: "Product mindset" },
-  { text: "India's top 18 product companies hire for impact, not just experience.", tag: "Hiring signal" },
+  { text: "India's top 51 product companies hire for impact, not just experience.", tag: "Hiring signal" },
   { text: "A 75+ match means the JD reads like your next career chapter.", tag: "Score guide" },
   { text: "Every role here is sourced directly from official career pages — no stale data.", tag: "Data quality" },
   { text: "Senior engineers at product companies solve scale problems. Junior ones learn to think at scale.", tag: "Career growth" },

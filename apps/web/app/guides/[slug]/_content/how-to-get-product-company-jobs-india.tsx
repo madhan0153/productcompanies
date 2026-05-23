@@ -9,7 +9,7 @@ import { absoluteUrl } from "@/lib/seo/site";
 export function HowToGetProductJobs() {
   const howTo = howToJsonLd({
     name: "How to get product-company jobs in India",
-    description: "Step-by-step process for landing a job at India's top 18 product companies.",
+    description: "Step-by-step process for landing a job at India's top 51 product companies.",
     totalTimeISO: "PT9M",
     steps: [
       { name: "Frame your resume in product-company language", text: "Replace 'maintained' / 'supported' / 'worked on' with impact + scale + ownership verbs. Quantify every project.", url: absoluteUrl("/profile/resume") },
@@ -87,7 +87,7 @@ export function HowToGetProductJobs() {
       <p>
         Product companies hire by <strong>role function</strong>, not by
         generic &quot;software engineer&quot;. The 13 functions ProdMatch
-        tracks across the 18 companies are: backend, frontend, full-stack,
+        tracks across the 51 companies are: backend, frontend, full-stack,
         data engineering, data analytics, ML/AI, DevOps/SRE, mobile, security,
         engineering management, product management, program management, and
         product design.
@@ -130,7 +130,7 @@ export function HowToGetProductJobs() {
       </p>
       <p>
         Realistic application volume: target <strong>20-30 carefully chosen roles</strong>{" "}
-        across the 18 companies. Spray-applying to 200 roles dilutes the
+        across the 51 companies. Spray-applying to 200 roles dilutes the
         signal you put into each application.
       </p>
 

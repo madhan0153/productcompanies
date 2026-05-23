@@ -12,7 +12,7 @@ const sql = `-- ProdMatch — Phase L: open public-read on companies + active jo
 -- The landing page hero, /companies, /cities, /salaries, etc. all hit
 -- as anon. Previously RLS only allowed reads to 'authenticated', so
 -- public pages silently fell back to curated metadata and showed
--- "Tracking 18 product companies · daily crawl" instead of the live
+-- "Tracking 51 product companies · daily crawl" instead of the live
 -- job count. This block re-grants:
 --
 --   companies   → anon + authenticated (everything)

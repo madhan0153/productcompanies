@@ -60,7 +60,7 @@ export function pickNextAction(inputs: NextActionInputs): NextAction | null {
   if (!inputs.hasResume) {
     return {
       title: "Upload your resume",
-      body: "We parse it and rank every active role across 18 product companies. Takes ~30 seconds.",
+      body: "We parse it and rank every active role across 51 product companies. Takes ~30 seconds.",
       cta: "Upload PDF",
       href: "/profile",
       tone: "critical",

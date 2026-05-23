@@ -11,7 +11,7 @@ export const revalidate = 3600;
 
 export const metadata: Metadata = {
   title: "Tech Skill Jobs at India's Product Companies — AWS, React, Java, Python",
-  description: "Open engineering roles by skill at India's 18 product companies — AWS, Python, Java, Go, React, TypeScript, Kubernetes, Spark, PyTorch and more. Refreshed daily from official career pages.",
+  description: "Open engineering roles by skill at India's 51 product companies — AWS, Python, Java, Go, React, TypeScript, Kubernetes, Spark, PyTorch and more. Refreshed daily from official career pages.",
   alternates: { canonical: "/skills" },
   openGraph: { title: "Tech skill jobs at India's product companies", url: absoluteUrl("/skills") },
 };
@@ -50,7 +50,7 @@ export default function SkillsIndexPage() {
           </h1>
           <p className="max-w-2xl text-sm leading-relaxed text-muted-foreground sm:text-base">
             Open engineering roles indexed by required tech skill across
-            India&apos;s 18 product companies. Find {PUBLIC_SKILLS[0]!.name},{" "}
+            India&apos;s 51 product companies. Find {PUBLIC_SKILLS[0]!.name},{" "}
             {PUBLIC_SKILLS[1]!.name}, {PUBLIC_SKILLS[2]!.name} and 30+ other
             skills tagged across the live JD inventory, refreshed daily.
           </p>

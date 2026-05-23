@@ -5,7 +5,7 @@ export function WomenInTechIndia() {
   const faq = [
     {
       question: "Which Indian product companies are best for women engineers in 2026?",
-      answer: "On publicly-reported DEI metrics, Microsoft India, Google India, Salesforce India, Atlassian and Razorpay lead — published gender-pay audits, formal returnship programs (Microsoft Returnship, Google Career Reboot, Atlassian Reignite), and engineering-leadership representation. Newer / smaller product cos (CRED, Groww, Zerodha) are improving but typically have fewer structured programs. Across all 18, the statutory 26-week paid maternity leave applies; several companies extend to 30+ weeks.",
+      answer: "On publicly-reported DEI metrics, Microsoft India, Google India, Salesforce India, Atlassian and Razorpay lead — published gender-pay audits, formal returnship programs (Microsoft Returnship, Google Career Reboot, Atlassian Reignite), and engineering-leadership representation. Newer / smaller product cos (CRED, Groww, Zerodha) are improving but typically have fewer structured programs. Across all 51, the statutory 26-week paid maternity leave applies; several companies extend to 30+ weeks.",
     },
     {
       question: "What's the salary gap between men and women at Indian product companies?",
@@ -17,7 +17,7 @@ export function WomenInTechIndia() {
     },
     {
       question: "What's the maternity leave policy at India's product companies?",
-      answer: "All 18 companies meet the Maternity Benefit Act minimum of 26 weeks paid. Several extend it: Google India and Microsoft India offer 26 weeks paid + flexible additional unpaid; Atlassian offers 30 weeks; Razorpay and PhonePe match the statutory minimum with phased return options. Adoption + surrogacy benefits vary.",
+      answer: "All 51 companies meet the Maternity Benefit Act minimum of 26 weeks paid. Several extend it: Google India and Microsoft India offer 26 weeks paid + flexible additional unpaid; Atlassian offers 30 weeks; Razorpay and PhonePe match the statutory minimum with phased return options. Adoption + surrogacy benefits vary.",
     },
     {
       question: "Where can I find women-focused tech communities in India?",
@@ -32,7 +32,7 @@ export function WomenInTechIndia() {
       <h2>What this guide is for</h2>
       <p>
         Practical, data-grounded guide for women software engineers
-        targeting India&apos;s 18 product-based companies in 2026. Covers
+        targeting India&apos;s 51 product-based companies in 2026. Covers
         publicly-reported DEI signals at each major company, the
         application loop, comp negotiation patterns, returnship paths,
         and the communities that actually move referrals.
@@ -148,7 +148,7 @@ export function WomenInTechIndia() {
       <p>
         ProdMatch is built so the application loop is the same whether
         you&apos;re a fresher, a returning engineer, or a senior IC — the
-        18 product companies, the same AI Fit Card, the same direct apply
+        51 product companies, the same AI Fit Card, the same direct apply
         link to the company&apos;s own career page.
       </p>
     </>

@@ -1,7 +1,3 @@
-// Reusable ProdMatch logo mark — the P with circuit node.
-// Used in the sidebar, mobile header, and PWA install prompt.
-// Mirrors the brand identity from the app icon.
-
 export function LogoMark({ size = 32, className }: { size?: number; className?: string }) {
   return (
     <svg
@@ -13,37 +9,34 @@ export function LogoMark({ size = 32, className }: { size?: number; className?: 
       className={className}
     >
       <defs>
-        <linearGradient id="pm-violet" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stopColor="#8B5CF6" />
-          <stop offset="100%" stopColor="#6D28D9" />
+        <linearGradient id="pm-mark-teal" x1="7" y1="5" x2="24" y2="24">
+          <stop offset="0%" stopColor="#22D3EE" />
+          <stop offset="100%" stopColor="#14B8A6" />
+        </linearGradient>
+        <linearGradient id="pm-mark-gold" x1="14" y1="25" x2="27" y2="14">
+          <stop offset="0%" stopColor="#F59E0B" />
+          <stop offset="100%" stopColor="#FDE68A" />
         </linearGradient>
       </defs>
-
-      {/* Vertical stem */}
-      <rect x="5" y="3" width="5.5" height="26" rx="2.5" fill="url(#pm-violet)" />
-
-      {/* Top horizontal bar */}
-      <rect x="5" y="3" width="15" height="5.5" rx="2.5" fill="url(#pm-violet)" />
-
-      {/* Bowl — outer arc */}
+      <rect x="2.5" y="2.5" width="27" height="27" rx="7" fill="#080D1D" />
+      <rect x="2.5" y="2.5" width="27" height="27" rx="7" stroke="#1E293B" strokeWidth="1" />
       <path
-        d="M20 3 Q28.5 3 28.5 11 Q28.5 19 20 19"
-        stroke="url(#pm-violet)"
-        strokeWidth="5.5"
+        d="M9 23.5V9.8C9 7.7 10.7 6 12.8 6h5.4C22 6 25 8.8 25 12.4s-3 6.4-6.8 6.4H13"
+        stroke="url(#pm-mark-teal)"
+        strokeWidth="3.2"
         strokeLinecap="round"
+        strokeLinejoin="round"
         fill="none"
       />
-
-      {/* Middle horizontal bar */}
-      <rect x="5" y="13.5" width="15" height="5.5" rx="2.5" fill="url(#pm-violet)" />
-
-      {/* Circuit connector line */}
-      <line x1="10.5" y1="19" x2="22" y2="19" stroke="#06B6D4" strokeWidth="1.8" strokeLinecap="round" />
-
-      {/* Cyan AI node */}
-      <circle cx="25.5" cy="19" r="3.5" fill="#06B6D4" />
-      {/* Soft glow ring */}
-      <circle cx="25.5" cy="19" r="5.5" fill="#06B6D4" fillOpacity="0.18" />
+      <path
+        d="M13.5 22.2l3.5 3.2 7.4-8.4"
+        stroke="url(#pm-mark-gold)"
+        strokeWidth="3"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        fill="none"
+      />
+      <circle cx="24.5" cy="16.8" r="2.3" fill="#FDE68A" fillOpacity="0.22" />
     </svg>
   );
 }

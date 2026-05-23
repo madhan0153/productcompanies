@@ -30,7 +30,7 @@ export const metadata: Metadata = {
     template: "%s · ProdMatch.ai",
   },
   description:
-    "AI-powered, India-first job matching for software engineers. Get explainable matches to high-package roles at 18 verified product companies — sourced from official career pages, refreshed daily.",
+    "AI-powered, India-first job matching for software engineers. Get explainable matches to high-package roles at 51 verified product companies — sourced from official career pages, refreshed daily.",
   applicationName: "ProdMatch.ai",
   authors: [{ name: "ProdMatch.ai" }],
   keywords: [
@@ -49,12 +49,12 @@ export const metadata: Metadata = {
     locale: "en_IN",
     url: siteOrigin(),
     title: "ProdMatch.ai — Match into India's top product companies",
-    description: "Explainable AI matches for engineering roles at 18 verified Indian product companies — Google, Razorpay, Swiggy, PhonePe and more.",
+    description: "Explainable AI matches for engineering roles at 51 verified Indian product companies — Google, Razorpay, Swiggy, PhonePe and more.",
   },
   twitter: {
     card: "summary_large_image",
     title: "ProdMatch.ai — India's product-company job engine",
-    description: "AI-ranked engineering roles at 18 verified product companies. Free. DPDP-compliant.",
+    description: "AI-ranked engineering roles at 51 verified product companies. Free. DPDP-compliant.",
   },
   alternates: {
     canonical: "/",

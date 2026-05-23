@@ -49,7 +49,7 @@ export default async function ComparePage({ params }: { params: Promise<{ slug: 
     },
     {
       question: `Should I use both ProdMatch and ${c.name}?`,
-      answer: `Yes. ProdMatch is narrow on purpose (18 verified product companies). ${c.name} covers a broader inventory. Use ProdMatch for product-company exclusivity and ${c.name} for ${c.strengths[0].toLowerCase()}.`,
+      answer: `Yes. ProdMatch is narrow on purpose (51 verified product companies). ${c.name} covers a broader inventory. Use ProdMatch for product-company exclusivity and ${c.name} for ${c.strengths[0].toLowerCase()}.`,
     },
   ];
 

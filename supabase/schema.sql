@@ -178,7 +178,7 @@ grant execute on function public.request_user_erasure(uuid) to service_role;
 -- 4. TABLES + INDEXES (sub-sections grouped by domain — see file header)
 -- -----------------------------------------------------------------------------
 
--- COMPANIES (the 18 approved product companies)
+-- COMPANIES (the 51 approved product companies)
 create table if not exists public.companies (
   id uuid primary key default gen_random_uuid(),
   slug text not null unique,
@@ -345,7 +345,7 @@ alter table public.matches add column if not exists hidden_reason  text;        
 create index if not exists idx_matches_user_verdict on public.matches(user_id, verdict);
 
 -- profiles: standalone resume strength score (Rezi-style 0-100 grounded in
--- live demand from the 18 approved companies, not generic ATS rules).
+-- live demand from the 51 approved companies, not generic ATS rules).
 alter table public.profiles add column if not exists resume_score           integer;       -- 0–100
 alter table public.profiles add column if not exists resume_score_breakdown jsonb;         -- per-dimension {label, score, weight}
 alter table public.profiles add column if not exists resume_tips            jsonb;         -- ranked list of {tip, why}
@@ -1492,7 +1492,7 @@ alter table public.dpdp_events            enable row level security;
 alter table public.background_jobs        enable row level security;
 
 -- companies: public read for everyone (companies info is public-domain —
---   18 approved product brands, names + slugs + logos sourced from their
+--   51 approved product brands, names + slugs + logos sourced from their
 --   own marketing pages). Writes via service role only.
 drop policy if exists "companies_read_authed" on public.companies;
 drop policy if exists "companies_read_public" on public.companies;
@@ -1914,7 +1914,7 @@ comment on column public.tailored_resumes.status is 'pending_review | finalised 
 
 -- -----------------------------------------------------------------------------
 -- === SECTION: SEED DATA ===
--- 8. SEED — 18 approved product companies (no jobs)
+-- 8. SEED — 51 approved product companies (no jobs)
 -- -----------------------------------------------------------------------------
 insert into public.companies (slug, name, careers_url, hubs) values
   ('google',     'Google',      'https://www.google.com/about/careers/applications/jobs/results?location=India',                          array['Bengaluru','Hyderabad','Gurugram','Pune']),
@@ -1980,7 +1980,7 @@ on conflict (slug) do update set
 
 -- =============================================================================
 -- DONE. Verify in Supabase Studio:
---   • 18 rows in `companies`, 0 rows in `jobs`
+--   • 51 rows in `companies`, 0 rows in `jobs`
 --   • RLS enabled on every table above
 --   • Storage bucket `resumes` exists and is private
 -- =============================================================================
