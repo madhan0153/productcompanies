@@ -34,9 +34,11 @@ export async function GET() {
   lines.push(
     `> ProdMatch.ai is an India-first AI job-matching engine for software ` +
     `engineers. It indexes the official career pages of 51 verified ` +
-    `product-based companies — Google, Microsoft, Meta, Amazon, Apple, ` +
-    `Atlassian, Nvidia, Oracle, Salesforce, SAP Labs, Razorpay, PhonePe, ` +
-    `Zerodha, CRED, Groww, Swiggy, Zomato, Flipkart — every 24 hours and ` +
+    `product-based companies, including Google, Microsoft, Meta, Amazon, ` +
+    `Apple, Atlassian, Nvidia, Oracle, Salesforce, SAP Labs, Razorpay, ` +
+    `PhonePe, Zerodha, CRED, Groww, Swiggy, Zomato, Flipkart, Adobe, Intuit, ` +
+    `Uber, PayPal, ServiceNow, Stripe, Freshworks, Zoho, Postman, ` +
+    `BrowserStack, Meesho, Dream11, InMobi, Unacademy, and Cars24 — every 24 hours and ` +
     `produces explainable, AI-ranked matches against each user's uploaded ` +
     `resume. ProdMatch never lists service-company or aggregator roles. ` +
     `All applications go through the company's own apply URL. Free to use. ` +
