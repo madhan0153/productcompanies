@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { Inter, Outfit } from "next/font/google";
+import Script from "next/script";
 import { Toaster } from "sonner";
 import { ThemeProvider } from "@/components/theme-provider";
 import { JsonLd, organizationJsonLd, softwareApplicationJsonLd, websiteJsonLd } from "@/lib/seo/json-ld";
@@ -82,6 +83,18 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <JsonLd data={[organizationJsonLd(), websiteJsonLd(), softwareApplicationJsonLd()]} />
       </head>
       <body className="font-sans">
+        {/* Microsoft Clarity — loaded after hydration so it never blocks
+            the critical rendering path. Only injected when the env var is
+            present, so local dev stays clean unless you opt in. */}
+        {process.env.NEXT_PUBLIC_CLARITY_ID && (
+          <Script
+            id="microsoft-clarity"
+            strategy="afterInteractive"
+            dangerouslySetInnerHTML={{
+              __html: `(function(c,l,a,r,i,t,y){c[a]=c[a]||function(){(c[a].q=c[a].q||[]).push(arguments)};t=l.createElement(r);t.async=1;t.src="https://www.clarity.ms/tag/"+i;y=l.getElementsByTagName(r)[0];y.parentNode.insertBefore(t,y);})(window,document,"clarity","script","${process.env.NEXT_PUBLIC_CLARITY_ID}");`,
+            }}
+          />
+        )}
         <ThemeProvider
           attribute="class"
           defaultTheme="light"
