@@ -24,7 +24,6 @@ const TILE_META: Record<
 > = {
   shortlist:    { label: "Priority",   activeTone: "text-success",    activeBg: "bg-success/10",   activeBorder: "border-success" },
   worth_a_look: { label: "Explore",    activeTone: "text-warning",    activeBg: "bg-warning/10",   activeBorder: "border-warning" },
-  filtered:     { label: "Filtered",   activeTone: "text-foreground", activeBg: "bg-secondary",    activeBorder: "border-foreground/40" },
 };
 
 interface BandStripProps {
@@ -67,12 +66,11 @@ export function BandStrip({
     return qs ? `/matches?${qs}` : "/matches";
   };
 
-  const order: MatchTab[] = ["shortlist", "worth_a_look", "filtered"];
+  const order: MatchTab[] = ["shortlist", "worth_a_look"];
 
   const countFor: Record<MatchTab, number> = {
     shortlist:    counts.shortlist,
     worth_a_look: counts.worthALook,
-    filtered:     counts.filtered,
   };
 
   const handleClick = (tab: MatchTab) => {

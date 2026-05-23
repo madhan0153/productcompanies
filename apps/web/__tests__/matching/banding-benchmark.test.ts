@@ -296,7 +296,6 @@ function runFullPipeline(resume: ResumeFixture, job: JobFixture): {
   const band = classifyMatch({
     score:         calibrated.score,
     hidden_reason: calibrated.hidden_reason,
-    seen_at:       null,
   });
 
   const notes =
@@ -430,7 +429,7 @@ test("fleet rollup — ≥85% of direct-role-match pairs land in Priority or Exp
       if (!direct && !adjacent) continue;
       directMatches++;
       const result = runFullPipeline(r, j);
-      if (result.band !== "filtered") visible++;
+      if (result.band !== null) visible++;
       else failures.push(`${r.label} × ${j.label}: ${result.notes}`);
     }
   }

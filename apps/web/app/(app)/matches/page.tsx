@@ -54,14 +54,10 @@ export default async function MatchesPage({
   const selectedHubs = (params.h ?? "").split(",").filter(Boolean);
   const minScore = params.min_score ? parseInt(params.min_score, 10) : null;
 
-  // Tabs spine. Back-compat with the legacy ?show= param.
-  const legacyShow = params.show;
-  const requestedTab = (params.tab as MatchTab | undefined) ??
-    (legacyShow === "all" ? "filtered" : undefined);
+  // Tabs spine. Only two visible tabs: Priority (shortlist) and Explore.
+  const requestedTab = params.tab as MatchTab | undefined;
   const tab: MatchTab =
-    requestedTab === "filtered" || requestedTab === "worth_a_look" || requestedTab === "shortlist"
-      ? requestedTab
-      : "shortlist";
+    requestedTab === "worth_a_look" ? "worth_a_look" : "shortlist";
 
 
   const { data: profile } = await (supabase
@@ -134,19 +130,14 @@ export default async function MatchesPage({
     return q;
   };
 
-  const [
-    cShortlist, cWorthALook, cFilteredLow, cFilteredHidden,
-  ] = await Promise.all([
+  const [cShortlist, cWorthALook] = await Promise.all([
     baseCountQuery().gte("score", 60).is("hidden_reason", null),
     baseCountQuery().gte("score", 40).lt("score", 60).is("hidden_reason", null),
-    baseCountQuery().lt("score", 40).is("hidden_reason", null),
-    baseCountQuery().not("hidden_reason", "is", null),
   ]);
 
   const bandCounts: BandCounts = {
     shortlist:  cShortlist.count ?? 0,
     worthALook: cWorthALook.count ?? 0,
-    filtered:   (cFilteredLow.count ?? 0) + (cFilteredHidden.count ?? 0),
   };
 
   // Single read for the tab's visible cards — capped at 500 so SSR stays
@@ -195,13 +186,7 @@ export default async function MatchesPage({
   const scopedRows = allRows.filter(passesScopeFilters);
 
   // Tab slicing — single source of truth.
-  const tabRows = scopedRows.filter((m) => {
-    const cls = classifyMatch(m);
-    if (tab === "shortlist")    return cls === "shortlist";
-    if (tab === "worth_a_look") return cls === "worth_a_look";
-    if (tab === "filtered")     return cls === "filtered";
-    return false;
-  });
+  const tabRows = scopedRows.filter((m) => classifyMatch(m) === tab);
 
   // Sprint 6 — fold in application status for the cards in view.
   const visibleJobIds = tabRows.map((m) => m.jobs.id);
@@ -286,9 +271,19 @@ export default async function MatchesPage({
         </div>
       </div>
 
-      {/* Computing banner — shown while a match-compute job is actively
-          running for this user (e.g. right after a resume replacement). */}
-      {isComputing && <ComputingBanner />}
+      {/* Computing banner (first-time) — no old matches exist yet */}
+      {isComputing && allRows.length === 0 && <ComputingBanner />}
+
+      {/* Stale-matches notice — old matches visible while new ones compute */}
+      {isComputing && allRows.length > 0 && (
+        <div className="flex items-start gap-2.5 rounded-lg border border-warning/30 bg-warning/5 px-3 py-2.5 text-xs text-warning">
+          <AlertCircle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+          <span>
+            <span className="font-semibold">Showing results from your previous resume.</span>{" "}
+            Your updated matches are being computed and will replace these automatically in 30–60 seconds.
+          </span>
+        </div>
+      )}
 
       {/* Band strip — sticky tab spine, right under title */}
       {allRows.length > 0 && (
@@ -316,16 +311,6 @@ export default async function MatchesPage({
         <ResumeScoreStrip score={resumeScore} />
       )}
 
-      {/* Filtered tab inline note */}
-      {tab === "filtered" && tabRows.length > 0 && (
-        <div className="flex items-start gap-2.5 rounded-md border border-dashed border-border bg-secondary/40 px-4 py-3 text-sm">
-          <AlertCircle className="mt-0.5 h-3.5 w-3.5 shrink-0 text-muted-foreground" />
-          <p className="text-muted-foreground">
-            These roles scored below 40, hit a hard cap, or were classified as a mismatch. Most users skip them — but if you want to see why each was filtered, open the Fit Card on any row.
-          </p>
-        </div>
-      )}
-
       {/* Card list */}
       <MatchCardArea>
         {tabRows.length > 0 ? (
@@ -344,9 +329,7 @@ export default async function MatchesPage({
             </StaggerList>
             {(() => {
               const tabExpected =
-                tab === "shortlist"    ? bandCounts.shortlist
-                : tab === "worth_a_look" ? bandCounts.worthALook
-                : bandCounts.filtered;
+                tab === "shortlist" ? bandCounts.shortlist : bandCounts.worthALook;
               if (tabExpected > tabRows.length) {
                 return (
                   <p className="rounded-md border border-dashed border-border bg-secondary/30 px-4 py-2.5 text-center text-xs text-muted-foreground">
@@ -394,7 +377,7 @@ function emptyStateForTab(tab: MatchTab, activeFilterCount: number): React.React
       <EmptyState
         icon={<Activity className="h-5 w-5" />}
         title="No priority matches yet"
-        body="Nothing scored -‰¥60 yet. Check Explore for partial fits, or set your preferred hubs / strengthen your resume to lift more roles."
+        body="Nothing scored ≥60 yet. Check Explore for partial fits, or strengthen your resume to lift more roles."
         actions={[
           { label: "See Explore matches", href: "/matches?tab=worth_a_look", variant: "primary" },
           { label: "Edit profile", href: "/profile", variant: "ghost" },
@@ -402,20 +385,12 @@ function emptyStateForTab(tab: MatchTab, activeFilterCount: number): React.React
       />
     );
   }
-  if (tab === "worth_a_look") {
-    return (
-      <EmptyState
-        icon={<Eye className="h-5 w-5" />}
-        title="Nothing in Explore"
-        body="No matches between 40 and 60. Most roles are likely either priority candidates or filtered out."
-      />
-    );
-  }
   return (
     <EmptyState
       icon={<Eye className="h-5 w-5" />}
-      title="No filtered roles"
-      body="Switch to Priority or Explore to see your matched roles."
+      title="Nothing in Explore"
+      body="No matches between 40 and 60. Check Priority for your strongest fits."
+      actions={[{ label: "See Priority matches", href: "/matches", variant: "primary" }]}
     />
   );
 }
