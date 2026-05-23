@@ -81,8 +81,8 @@ export default function PrivacyPage() {
           <Section title="Grievance Officer">
             <p>
               Email{" "}
-              <a className="text-primary hover:underline" href="mailto:grievance@prodmatch.ai">
-                grievance@prodmatch.ai
+              <a className="text-primary hover:underline" href="mailto:grievance@prodmatchai.in">
+                grievance@prodmatchai.in
               </a>{" "}
               with your concern. We respond within 7 working days.
             </p>

@@ -29,7 +29,7 @@ export default function TermsPage() {
         <section className="mt-8 space-y-6 text-sm leading-relaxed text-muted-foreground">
           <Section title="1. The service">
             ProdMatch.ai (&quot;ProdMatch&quot;) provides AI-ranked job matches
-            for software roles at 18 verified Indian product companies.
+            for software roles at 51 verified Indian product companies.
             The service is free for personal use.
           </Section>
 
@@ -77,8 +77,8 @@ export default function TermsPage() {
           <Section title="8. Contact">
             <p>
               Email{" "}
-              <a className="text-primary hover:underline" href="mailto:hello@prodmatch.ai">
-                hello@prodmatch.ai
+              <a className="text-primary hover:underline" href="mailto:hello@prodmatchai.in">
+                hello@prodmatchai.in
               </a>
               {" "}with any questions.
             </p>
