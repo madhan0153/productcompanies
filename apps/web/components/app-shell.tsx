@@ -5,8 +5,9 @@ import { usePathname, useRouter } from "next/navigation";
 import { LayoutGroup, motion, useReducedMotion } from "framer-motion";
 import {
   LayoutDashboard, Briefcase, ShieldCheck, LogOut, Menu, X, User,
-  BarChart3, Brain, ClipboardList, Zap, Search,
+  BarChart3, Brain, ClipboardList, Search,
 } from "lucide-react";
+import { LogoMark } from "@/components/logo-mark";
 import { useEffect, useRef, useState, Suspense } from "react";
 import { createSupabaseBrowserClient } from "@/lib/supabase/browser";
 import { useFocusTrap } from "@/hooks/use-focus-trap";
@@ -114,9 +115,7 @@ export function AppShell({ user, navBadges, banner, children }: Props) {
             href="/dashboard"
             className="flex items-center gap-2.5 rounded-md focus-ring tap-target-sm"
           >
-            <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary text-primary-foreground">
-              <Zap className="h-4 w-4" aria-hidden strokeWidth={2.5} />
-            </span>
+            <LogoMark size={32} />
             <span className="brand-mark text-base">ProdMatch</span>
           </Link>
           <button
@@ -248,9 +247,7 @@ export function AppShell({ user, navBadges, banner, children }: Props) {
             <Menu className="h-5 w-5" aria-hidden="true" />
           </button>
           <Link href="/dashboard" className="flex items-center gap-2 focus-ring rounded-md">
-            <span className="flex h-7 w-7 items-center justify-center rounded-md bg-primary text-primary-foreground">
-              <Zap className="h-3.5 w-3.5" strokeWidth={2.5} />
-            </span>
+            <LogoMark size={28} />
             <span className="brand-mark text-sm">ProdMatch</span>
           </Link>
           <button

@@ -1,9 +1,3 @@
-// Sprint 4 — Item 25. Dynamic PWA / favicon icon (Next 16 file-based).
-//
-// Renders a 32×32 monogram in the brand gradient. Cached at the edge, no
-// binary assets to commit. The same icon is reused for the apple-icon.tsx
-// sibling at a larger size.
-
 import { ImageResponse } from "next/og";
 
 export const size = { width: 32, height: 32 };
@@ -19,17 +13,38 @@ export default function Icon() {
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
-          background:
-            "linear-gradient(135deg, #8b5cf6 0%, #d946ef 100%)",
-          borderRadius: 6,
-          color: "white",
-          fontSize: 18,
-          fontWeight: 800,
-          fontFamily: "system-ui, -apple-system, sans-serif",
-          letterSpacing: -0.5,
+          background: "#0f0921",
+          borderRadius: 7,
         }}
       >
-        P
+        {/* P stem + top bar */}
+        <div style={{ position: "relative", width: 20, height: 26, display: "flex" }}>
+          {/* Vertical stem */}
+          <div style={{
+            position: "absolute", left: 0, top: 0, width: 5, height: 26,
+            borderRadius: 2.5,
+            background: "linear-gradient(180deg, #8B5CF6 0%, #6D28D9 100%)",
+          }} />
+          {/* Top bar */}
+          <div style={{
+            position: "absolute", left: 0, top: 0, width: 14, height: 5,
+            borderRadius: 2.5,
+            background: "linear-gradient(180deg, #8B5CF6 0%, #6D28D9 100%)",
+          }} />
+          {/* Middle bar */}
+          <div style={{
+            position: "absolute", left: 0, top: 10.5, width: 14, height: 5,
+            borderRadius: 2.5,
+            background: "linear-gradient(180deg, #8B5CF6 0%, #6D28D9 100%)",
+          }} />
+          {/* Cyan node */}
+          <div style={{
+            position: "absolute", right: -2, top: 9.5, width: 7, height: 7,
+            borderRadius: "50%",
+            background: "#06B6D4",
+            boxShadow: "0 0 6px #06B6D4",
+          }} />
+        </div>
       </div>
     ),
     size,
