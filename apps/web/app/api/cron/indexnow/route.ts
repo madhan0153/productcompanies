@@ -17,6 +17,8 @@ import { NextResponse, type NextRequest } from "next/server";
 import { requireCronAuth } from "@/lib/security/cron";
 import { CRAWLER_META, DSA_CATALOG } from "@prodmatch/shared";
 import { absoluteUrl, INDIA_HUBS, hubToSlug } from "@/lib/seo/site";
+import { COMPETITORS } from "@/lib/seo/comparisons";
+import { PILLAR_GUIDES } from "@/lib/seo/guides";
 import { PUBLIC_ROLES } from "@/lib/seo/roles";
 import { PUBLIC_SKILLS } from "@/lib/seo/skills";
 import { loadActiveJobs } from "@/lib/seo/data";
@@ -63,6 +65,12 @@ export async function POST(req: NextRequest) {
     for (const r of PUBLIC_ROLES) {
       urlList.push(absoluteUrl(`/companies/${c.slug}/${r.slug}`));
     }
+  }
+  for (const g of PILLAR_GUIDES) {
+    urlList.push(absoluteUrl(`/guides/${g.slug}`));
+  }
+  for (const c of COMPETITORS) {
+    urlList.push(absoluteUrl(`/compare/${c.slug}`));
   }
   for (const r of PUBLIC_ROLES) {
     urlList.push(absoluteUrl(`/salaries/role/${r.slug}`));

@@ -23,6 +23,9 @@ export interface Competitor {
   slug: string;
   name: string;
   url: string;
+  metaTitle?: string;
+  headline?: string;
+  ctaLabel?: string;
   shortDescription: string;
   /** One-paragraph who-it's-for. */
   positioning: string;
@@ -36,6 +39,55 @@ export interface Competitor {
 }
 
 export const COMPETITORS: readonly Competitor[] = [
+  {
+    slug: "ai-resume-matcher-india",
+    name: "AI Resume Matcher India",
+    url: "/guides/ai-resume-matcher-comparison",
+    metaTitle: "AI Resume Matcher India - ProdMatch vs Generic Resume Matchers",
+    headline: "AI resume matcher India: ProdMatch vs generic resume matchers",
+    ctaLabel: "Read the AI matcher guide",
+    shortDescription:
+      "Exact-search landing page for AI resume matcher India queries, focused on explainable product-company matching.",
+    positioning:
+      "Generic AI resume matchers usually compare a resume to one uploaded JD or optimize ATS wording. ProdMatch is narrower: it crawls official career pages for 51 product companies in India and ranks live roles against your resume with explainable strengths and gaps.",
+    strengths: [
+      "Useful for one-off JD comparison or ATS keyword checks",
+      "Often works without creating a job-search account",
+      "Good for rewriting bullets before applying",
+      "Broad enough for non-tech and non-India use cases",
+    ],
+    differences: [
+      {
+        feature: "Primary use case",
+        prodmatch: "Find and rank live product-company jobs in India from your resume",
+        competitor: "Compare or rewrite a resume against one pasted job description",
+      },
+      {
+        feature: "Job inventory",
+        prodmatch: "51 verified product companies, official career pages only",
+        competitor: "Usually no live job inventory, or user-provided job descriptions",
+      },
+      {
+        feature: "Explainability",
+        prodmatch: "Fit Card with strengths, gaps, reasoning, and calibrated score",
+        competitor: "Often ATS score or keyword coverage with limited role-context reasoning",
+      },
+      {
+        feature: "India fit",
+        prodmatch: "India hubs, LPA compensation language, DPDP Act consent and erasure",
+        competitor: "Often global wording, USD salary assumptions, generic privacy defaults",
+      },
+      {
+        feature: "Freshness",
+        prodmatch: "Daily crawler plus IndexNow submission after crawl completion",
+        competitor: "Depends on the user's pasted JD or the tool's own data freshness",
+      },
+    ],
+    verdictForProdMatch:
+      "Pick ProdMatch when you want an AI resume matcher for Indian product-company jobs, not just a resume rewrite or ATS keyword checker.",
+    verdictForCompetitor:
+      "Pick a generic AI resume matcher when you already have a specific JD and only need bullet rewriting or ATS keyword coverage.",
+  },
   {
     slug: "naukri",
     name: "Naukri.com",

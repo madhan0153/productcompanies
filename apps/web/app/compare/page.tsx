@@ -8,10 +8,10 @@ import { PublicNav } from "@/components/public-nav";
 import { PublicFooter } from "@/components/public-footer";
 
 export const metadata: Metadata = {
-  title: "ProdMatch vs Naukri vs LinkedIn vs Indeed — Honest Comparisons",
-  description: "Honest side-by-side comparisons of ProdMatch.ai against Naukri, LinkedIn, Indeed, Hirist, Instahyre, Cutshort, Glassdoor, Foundit for Indian tech job seekers.",
+  title: "ProdMatch vs Naukri vs LinkedIn vs AI Resume Matchers",
+  description: "Honest side-by-side comparisons of ProdMatch.ai against Naukri, LinkedIn, AI resume matchers, Indeed, Hirist, Instahyre, Cutshort, Glassdoor, Foundit for Indian tech job seekers.",
   alternates: { canonical: "/compare" },
-  openGraph: { title: "ProdMatch vs the major Indian job boards", url: absoluteUrl("/compare") },
+  openGraph: { title: "ProdMatch comparisons for Indian tech job seekers", url: absoluteUrl("/compare") },
 };
 
 export default function CompareIndexPage() {
@@ -36,7 +36,7 @@ export default function CompareIndexPage() {
             Honest comparisons
           </div>
           <h1 className="text-3xl font-bold tracking-tight sm:text-4xl">
-            ProdMatch vs every major Indian job board
+            ProdMatch vs Indian job boards and AI resume matchers
           </h1>
           <p className="text-sm leading-relaxed text-muted-foreground sm:text-base">
             We won&apos;t claim ProdMatch is better at everything. These pages

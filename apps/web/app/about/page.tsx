@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { ShieldCheck, Zap, MapPin, Sparkles } from "lucide-react";
-import { JsonLd, breadcrumbJsonLd } from "@/lib/seo/json-ld";
+import { JsonLd, breadcrumbJsonLd, organizationJsonLd } from "@/lib/seo/json-ld";
 import { absoluteUrl } from "@/lib/seo/site";
 import { PublicNav } from "@/components/public-nav";
 import { PublicFooter } from "@/components/public-footer";
@@ -23,6 +23,7 @@ export default function AboutPage() {
         { name: "Home", path: "/" },
         { name: "About", path: "/about" },
       ])} />
+      <JsonLd data={organizationJsonLd()} />
 
       <main className="mx-auto max-w-3xl px-4 pb-16 pt-8 sm:px-6 sm:pt-12">
         <header className="space-y-3">
@@ -42,7 +43,7 @@ export default function AboutPage() {
             India has the largest engineering talent pool in the world, but
             the bridge from IT-services / freshers / mid-career engineers to
             top product companies (Google, Microsoft, Razorpay, Swiggy,
-            Zerodha, PhonePe, and 12 more) is murky and informal. ProdMatch
+            Zerodha, PhonePe, and other approved product companies) is murky and informal. ProdMatch
             cuts that murk with two things: a daily crawl of the 51
             companies&apos; official career pages, and an AI that explains
             <em> why </em> a role matches your resume — strengths, gaps,
@@ -71,6 +72,27 @@ export default function AboutPage() {
             consent, full data export, one-click erasure, append-only
             audit log.
           </Section>
+        </section>
+
+        <section className="mt-10 rounded-xl border border-border bg-card p-5 sm:p-6">
+          <h2 className="text-base font-semibold">Editorial credentials</h2>
+          <div className="mt-3 space-y-3 text-sm leading-relaxed text-muted-foreground">
+            <p>
+              ProdMatch Editorial maintains public pages for Indian tech job
+              seekers using official career-page data, public employer
+              disclosures, job-description signals, and crawler audit logs.
+            </p>
+            <p>
+              Every indexed job must come from an approved company&apos;s own
+              career source. We do not publish aggregator listings, staffing
+              roles, paid placements, or sponsored ranking boosts.
+            </p>
+            <p>
+              Product claims are reviewed against the live app behavior:
+              explainable Fit Cards, DPDP consent, private resume storage,
+              user export, and erasure controls.
+            </p>
+          </div>
         </section>
 
         <section className="mt-10 rounded-xl border border-border bg-card p-5 sm:p-6">

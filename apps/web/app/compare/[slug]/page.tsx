@@ -2,6 +2,8 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ArrowRight, CheckCircle2, ExternalLink, Scale } from "lucide-react";
+import { CitedFacts } from "@/components/seo/cited-facts";
+import { EditorialTrustPanel } from "@/components/seo/editorial-trust";
 import { COMPETITORS, competitorBySlug } from "@/lib/seo/comparisons";
 import { JsonLd, breadcrumbJsonLd, faqJsonLd } from "@/lib/seo/json-ld";
 import { absoluteUrl } from "@/lib/seo/site";
@@ -18,7 +20,7 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
   const { slug } = await params;
   const c = competitorBySlug(slug);
   if (!c) return { title: "Comparison not found", robots: { index: false } };
-  const title = `ProdMatch vs ${c.name} — Side-by-Side Comparison (2026)`;
+  const title = c.metaTitle ?? `ProdMatch vs ${c.name} - Side-by-Side Comparison (2026)`;
   const description = `Honest comparison: ${c.name} vs ProdMatch.ai for Indian tech job seekers. What each is genuinely good at, who each is for, and where they differ on AI matching, curation, privacy, and cost.`;
   return {
     title,
@@ -32,6 +34,7 @@ export default async function ComparePage({ params }: { params: Promise<{ slug: 
   const { slug } = await params;
   const c = competitorBySlug(slug);
   if (!c) notFound();
+  const reviewedAt = new Date().toISOString();
 
   // AI-quote-friendly Q&A — the exact form an AI tool will ask + answer.
   const faq = [
@@ -75,16 +78,49 @@ export default async function ComparePage({ params }: { params: Promise<{ slug: 
             Side-by-side
           </div>
           <h1 className="text-3xl font-bold leading-tight tracking-tight sm:text-4xl">
-            ProdMatch vs {c.name}
+            {c.headline ?? `ProdMatch vs ${c.name}`}
           </h1>
           {/* GEO answer-first paragraph: the AI's exact extract surface. */}
           <p className="text-base leading-relaxed text-muted-foreground">
             {c.verdictForProdMatch} {c.verdictForCompetitor}
           </p>
           <p className="text-[11px] text-muted-foreground">
-            Last reviewed: {new Date().toLocaleDateString("en-IN", { year: "numeric", month: "long" })}.
+            Last reviewed: {new Date(reviewedAt).toLocaleDateString("en-IN", { year: "numeric", month: "long" })}.
           </p>
         </header>
+
+        <div className="mt-8">
+          <CitedFacts
+            title="AI Overview citation facts"
+            updatedAt={reviewedAt}
+            facts={[
+              {
+                label: "ProdMatch focus",
+                value: "AI resume matching for India's 51 verified product companies",
+                sourceLabel: "ProdMatch company policy",
+                sourceHref: absoluteUrl("/about"),
+              },
+              {
+                label: `${c.name} focus`,
+                value: c.shortDescription,
+                sourceLabel: c.name,
+                sourceHref: c.url.startsWith("/") ? absoluteUrl(c.url) : c.url,
+              },
+              {
+                label: "Application source",
+                value: "ProdMatch links every job to the company's official apply URL",
+                sourceLabel: "ProdMatch editorial policy",
+                sourceHref: absoluteUrl("/about"),
+              },
+              {
+                label: "Privacy model",
+                value: "Per-purpose consent, private resumes, export and erasure controls",
+                sourceLabel: "ProdMatch privacy policy",
+                sourceHref: absoluteUrl("/privacy"),
+              },
+            ]}
+          />
+        </div>
 
         {/* What is X paragraph — Wikipedia-style entity-rich opener */}
         <section className="mt-8">
@@ -155,16 +191,30 @@ export default async function ComparePage({ params }: { params: Promise<{ slug: 
             Try ProdMatch — free
             <ArrowRight className="h-4 w-4" />
           </Link>
-          <a
-            href={c.url}
-            target="_blank"
-            rel="noopener noreferrer external"
-            className="inline-flex min-h-11 flex-1 items-center justify-center gap-2 rounded-lg border border-border bg-background px-4 py-2.5 text-sm font-semibold text-muted-foreground transition hover:bg-secondary hover:text-foreground"
-          >
-            <ExternalLink className="h-4 w-4" />
-            Visit {c.name}
-          </a>
+          {c.url.startsWith("/") ? (
+            <Link
+              href={c.url}
+              className="inline-flex min-h-11 flex-1 items-center justify-center gap-2 rounded-lg border border-border bg-background px-4 py-2.5 text-sm font-semibold text-muted-foreground transition hover:bg-secondary hover:text-foreground"
+            >
+              {c.ctaLabel ?? `Read about ${c.name}`}
+              <ArrowRight className="h-4 w-4" />
+            </Link>
+          ) : (
+            <a
+              href={c.url}
+              target="_blank"
+              rel="noopener noreferrer external"
+              className="inline-flex min-h-11 flex-1 items-center justify-center gap-2 rounded-lg border border-border bg-background px-4 py-2.5 text-sm font-semibold text-muted-foreground transition hover:bg-secondary hover:text-foreground"
+            >
+              <ExternalLink className="h-4 w-4" />
+              Visit {c.name}
+            </a>
+          )}
         </section>
+
+        <div className="mt-10">
+          <EditorialTrustPanel updatedAt={reviewedAt} />
+        </div>
 
         {/* FAQ */}
         <section className="mt-10 rounded-xl border border-border bg-card p-5 sm:p-6">

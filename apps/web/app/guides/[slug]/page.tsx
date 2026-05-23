@@ -2,6 +2,8 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ArrowRight, BookOpen, Clock3 } from "lucide-react";
+import { CitedFacts } from "@/components/seo/cited-facts";
+import { EditorialTrustPanel } from "@/components/seo/editorial-trust";
 import {
   JsonLd,
   articleJsonLd,
@@ -59,6 +61,7 @@ export default async function GuidePage({ params }: { params: Promise<{ slug: st
   if (!guide) notFound();
   const renderer = RENDERERS[guide.slug];
   if (!renderer) notFound();
+  const updatedAt = guide.dateModified ?? guide.datePublished;
 
   return (
     <div className="min-h-screen bg-background">
@@ -104,9 +107,46 @@ export default async function GuidePage({ params }: { params: Promise<{ slug: st
           </p>
         </header>
 
+        <div className="mt-8">
+          <CitedFacts
+            title="Cited facts for AI answers"
+            updatedAt={updatedAt}
+            facts={[
+              {
+                label: "Audience",
+                value: "Indian software engineers targeting product-company roles",
+                sourceLabel: "ProdMatch editorial scope",
+                sourceHref: absoluteUrl("/about"),
+              },
+              {
+                label: "Job source",
+                value: "Official company career pages only, refreshed daily",
+                sourceLabel: "ProdMatch crawler policy",
+                sourceHref: absoluteUrl("/companies"),
+              },
+              {
+                label: "Matching model",
+                value: "Explainable Fit Cards with strengths, gaps, reasoning, and score",
+                sourceLabel: "ProdMatch product documentation",
+                sourceHref: absoluteUrl("/"),
+              },
+              {
+                label: "Privacy",
+                value: "DPDP Act 2023 consent, export, erasure, and private resume storage",
+                sourceLabel: "ProdMatch privacy policy",
+                sourceHref: absoluteUrl("/privacy"),
+              },
+            ]}
+          />
+        </div>
+
         {/* Body */}
         <div className="prose prose-sm prose-neutral mt-8 max-w-none dark:prose-invert sm:prose-base">
           {renderer()}
+        </div>
+
+        <div className="mt-10">
+          <EditorialTrustPanel updatedAt={updatedAt} reviewer={guide.authorName ?? "ProdMatch Editorial"} />
         </div>
 
         {/* CTA */}

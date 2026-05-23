@@ -5,6 +5,7 @@
 // on an internal data fault — Google would deindex.
 
 import { CRAWLER_META } from "@prodmatch/shared";
+import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { companyFactsBySlug } from "./company-metadata";
 
@@ -247,4 +248,51 @@ export async function loadCompanyTopSkills(companySlug: string): Promise<string[
     .sort((a, b) => b[1] - a[1])
     .slice(0, 20)
     .map(([skill]) => skill);
+}
+
+export interface CompanyFreshness {
+  startedAt: string;
+  finishedAt: string | null;
+  status: string;
+  jobsSeen: number;
+  jobsNew: number;
+  jobsUpdated: number;
+  jobsMarkedStale: number;
+  error: string | null;
+}
+
+export async function loadCompanyFreshness(companySlug: string): Promise<CompanyFreshness | null> {
+  try {
+    const supabase = createSupabaseAdminClient();
+    const { data: company } = await supabase
+      .from("companies")
+      .select("id")
+      .eq("slug", companySlug)
+      .maybeSingle();
+
+    if (!company?.id) return null;
+
+    const { data } = await supabase
+      .from("crawl_runs")
+      .select("started_at, finished_at, status, jobs_seen, jobs_new, jobs_updated, jobs_marked_stale, error")
+      .eq("company_id", company.id)
+      .order("started_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (!data) return null;
+
+    return {
+      startedAt: data.started_at,
+      finishedAt: data.finished_at,
+      status: data.status,
+      jobsSeen: data.jobs_seen,
+      jobsNew: data.jobs_new,
+      jobsUpdated: data.jobs_updated,
+      jobsMarkedStale: data.jobs_marked_stale,
+      error: data.error,
+    };
+  } catch {
+    return null;
+  }
 }

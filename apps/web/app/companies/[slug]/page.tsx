@@ -11,11 +11,14 @@ import { notFound } from "next/navigation";
 import { ArrowRight, Briefcase, ExternalLink, IndianRupee, MapPin, Target } from "lucide-react";
 import { CRAWLER_META } from "@prodmatch/shared";
 import { CompanyLogo } from "@/components/company-logo";
+import { CitedFacts } from "@/components/seo/cited-facts";
+import { EditorialTrustPanel } from "@/components/seo/editorial-trust";
 import { JsonLd, breadcrumbJsonLd, faqJsonLd } from "@/lib/seo/json-ld";
 import { absoluteUrl, hubToSlug } from "@/lib/seo/site";
 import { PUBLIC_ROLES, publicRoleFromCanonical } from "@/lib/seo/roles";
 import {
   loadActiveJobs,
+  loadCompanyFreshness,
   loadCompanyHubBreakdown,
   loadCompanyTopSkills,
 } from "@/lib/seo/data";
@@ -37,7 +40,7 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
   // We only need the count for description nuance; loading 1 row keeps this cheap.
   await loadActiveJobs({ companySlug: slug, limit: 1 });
 
-  const title = `${company.name} Careers in India — Open Engineering Roles`;
+  const title = `${company.name} Software Engineer Jobs India - Official Career Roles`;
   const description = `Browse open engineering roles at ${company.name} in India. Sourced from the official ${company.name} careers page and refreshed daily. AI fit-card analysis available after free sign-up.`;
 
   return {
@@ -60,13 +63,17 @@ export default async function CompanyPage({ params }: { params: Promise<{ slug: 
   // Curated always-true facts about this company.
   const facts = companyFactsBySlug(slug);
 
-  const [jobs, hubBreakdown, topSkillsLive] = await Promise.all([
+  const [jobs, hubBreakdown, topSkillsLive, freshness] = await Promise.all([
     loadActiveJobs({ companySlug: slug, limit: 60 }),
     loadCompanyHubBreakdown(slug),
     loadCompanyTopSkills(slug),
+    loadCompanyFreshness(slug),
   ]);
 
   const totalOpen = jobs.length;
+  const sourceUrl = facts?.careersUrl ?? null;
+  const updatedAt = freshness?.finishedAt ?? freshness?.startedAt ?? jobs[0]?.lastSeenAt ?? new Date().toISOString();
+  const latestCrawlStatus = freshness ? crawlStatusLabel(freshness.status) : "Awaiting first recorded crawl";
 
   // Hubs to display: prefer live breakdown when present; fall back to curated.
   const hubsRanked = Object.entries(hubBreakdown).length > 0
@@ -91,7 +98,7 @@ export default async function CompanyPage({ params }: { params: Promise<{ slug: 
     },
     {
       question: `How often does ProdMatch update ${company.name} listings?`,
-      answer: `${company.name}'s career page is crawled every 24 hours. Each open role you see was confirmed available within the last day.`,
+      answer: `${company.name}'s career page is crawled every 24 hours. Latest recorded status: ${latestCrawlStatus}. Roles shown here come from official career-page URLs only.`,
     },
     {
       question: `How do I see my AI fit score for ${company.name} roles?`,
@@ -166,6 +173,39 @@ export default async function CompanyPage({ params }: { params: Promise<{ slug: 
           </section>
         )}
 
+        <section className="mt-6">
+          <CitedFacts
+            title={`${company.name} job freshness facts`}
+            updatedAt={updatedAt}
+            facts={[
+              {
+                label: "Latest crawl status",
+                value: latestCrawlStatus,
+                sourceLabel: "ProdMatch crawler audit",
+              },
+              {
+                label: "Roles found",
+                value: freshness
+                  ? `${freshness.jobsSeen.toLocaleString("en-IN")} in latest crawl`
+                  : `${totalOpen.toLocaleString("en-IN")} live roles shown`,
+                sourceLabel: "ProdMatch crawler audit",
+              },
+              {
+                label: "Official source",
+                value: `${company.name} career page`,
+                sourceLabel: `${company.name} careers`,
+                sourceHref: sourceUrl,
+              },
+              {
+                label: "Coverage rule",
+                value: "Official career pages only; no aggregators or staffing listings",
+                sourceLabel: "ProdMatch editorial policy",
+                sourceHref: absoluteUrl("/about"),
+              },
+            ]}
+          />
+        </section>
+
         {/* ── About — always rendered when we have curated overview */}
         {facts?.overview && (
           <section className="mt-10">
@@ -175,6 +215,19 @@ export default async function CompanyPage({ params }: { params: Promise<{ slug: 
             </p>
           </section>
         )}
+
+        <section className="mt-10">
+          <h2 className="text-lg font-semibold sm:text-xl">
+            {company.name} software engineer jobs in India
+          </h2>
+          <p className="mt-3 text-sm leading-relaxed text-muted-foreground sm:text-base">
+            This page is the long-tail landing page for {company.name} software
+            engineering roles in India. ProdMatch refreshes official career
+            page data daily, maps each role to India hubs and product-company
+            role functions, and turns live listings into explainable resume
+            matches after sign-in.
+          </p>
+        </section>
 
         {/* ── Open roles — only when there are live roles */}
         {jobs.length > 0 ? (
@@ -354,6 +407,10 @@ export default async function CompanyPage({ params }: { params: Promise<{ slug: 
         </section>
 
         {/* ── Related companies ─────────────────────────────────────── */}
+        <div className="mt-10">
+          <EditorialTrustPanel updatedAt={updatedAt} />
+        </div>
+
         <section className="mt-10">
           <h2 className="text-lg font-semibold sm:text-xl">Other product companies</h2>
           <ul className="mt-4 flex flex-wrap gap-2">
@@ -415,6 +472,21 @@ function fmtComp(min: number | null, max: number | null): string | null {
   if (min != null && max != null) return `${min}–${max} LPA`;
   if (min != null) return `${min}+ LPA`;
   return `up to ${max} LPA`;
+}
+
+function crawlStatusLabel(status: string) {
+  switch (status) {
+    case "success":
+      return "Successful";
+    case "partial":
+      return "Partial success";
+    case "failed":
+      return "Failed - using last active roles until the next crawl";
+    case "running":
+      return "Running";
+    default:
+      return status;
+  }
 }
 
 // Reference role helper kept for future use (e.g. crosslinking to taxonomy).

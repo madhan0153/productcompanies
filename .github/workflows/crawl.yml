@@ -301,3 +301,46 @@ jobs:
             # lock window (the prior caller releases on response).
             sleep 5
           done
+
+  indexnow:
+    name: "Submit IndexNow URLs"
+    needs: [validate, crawl, recompute_matches]
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    if: >-
+      ${{
+        always()
+        && needs.validate.result == 'success'
+        && needs.crawl.result != 'skipped'
+        && needs.crawl.result != 'cancelled'
+        && github.event.inputs.dry_run != 'true'
+        && github.event.inputs.dry_run_parse != 'true'
+      }}
+    steps:
+      - name: Ping IndexNow and Bing
+        env:
+          APP_URL: ${{ secrets.APP_URL }}
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+        run: |
+          if [ -z "$APP_URL" ] || [ -z "$CRON_SECRET" ]; then
+            echo "::warning::APP_URL or CRON_SECRET missing - skipping IndexNow"
+            exit 0
+          fi
+
+          http_code=$(curl -sS -o /tmp/indexnow-resp.json -w "%{http_code}" \
+            -X POST "${APP_URL}/api/cron/indexnow" \
+            -H "Authorization: Bearer ${CRON_SECRET}" \
+            -H "Content-Type: application/json" \
+            --max-time 280)
+
+          cat /tmp/indexnow-resp.json
+
+          if [ "$http_code" = "503" ]; then
+            echo "::warning::IndexNow is not configured in the app env (INDEXNOW_KEY missing)"
+            exit 0
+          fi
+
+          if [ "$http_code" != "200" ]; then
+            echo "::warning::IndexNow returned HTTP $http_code"
+            exit 0
+          fi
