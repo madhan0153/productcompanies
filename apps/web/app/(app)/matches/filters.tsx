@@ -29,6 +29,8 @@ export function MatchFilters({ allCompanies, allHubs }: Props) {
   const [pending, start] = useTransition();
   const [open, setOpen] = useState(false);
 
+  const currentTab = params.get("tab") ?? "";
+
   const state: FilterState = useMemo(() => ({
     companies: (params.get("c") ?? "").split(",").filter(Boolean),
     hubs: (params.get("h") ?? "").split(",").filter(Boolean),
@@ -40,6 +42,9 @@ export function MatchFilters({ allCompanies, allHubs }: Props) {
     if (next.companies.length) sp.set("c", next.companies.join(","));
     if (next.hubs.length) sp.set("h", next.hubs.join(","));
     if (next.minScore !== null) sp.set("min_score", String(next.minScore));
+    // Preserve the active tab so applying a filter while on Filtered/Explore
+    // doesn't reset the user back to Priority (the default tab).
+    if (currentTab && currentTab !== "shortlist") sp.set("tab", currentTab);
     const qs = sp.toString();
     start(() => router.push(qs ? `/matches?${qs}` : "/matches"));
   };

@@ -608,39 +608,57 @@ export function getDsaProblemBySlug(slug: string): DsaProblem | undefined {
 /**
  * Pick the next problem for a user given their gap areas and history.
  *
- * Strategy (deterministic):
+ * Strategy (deterministic, per-user varied):
  *   1. Score each problem by:
  *      +3 if its pattern is in the candidate's weak-pattern list
  *      +2 if its companies list includes the candidate's target companies
  *      -10 if the user has solved this slug in the last `recencyDays` days
- *   2. Tie-break by lowest current difficulty until the user has solved >=5
- *      problems, then prefer medium over easy.
- *   3. If multiple still tie, choose by alphabetical slug order — keeps
- *      "today's pick" stable across page refreshes within the same day.
+ *      +2 if easy and solvedCount < 5 (ramp-up phase)
+ *      +2 if medium and solvedCount >= 5 (breadth phase)
+ *      +2 if hard and solvedCount >= 8 (challenge unlocked earlier)
+ *   2. Tie-break is user+date specific: different users see different
+ *      problems on the same day, but the same user sees the same problem
+ *      all day (stable for the whole calendar day).
  */
 export function pickNextDsaProblem(input: {
   weakPatterns: DsaPattern[];
   targetCompanies: string[];
   recentSlugs: Set<string>;
   solvedCount: number;
+  /** Deterministic per-user-per-day integer for stable personalised tie-breaking. */
+  userDateSeed?: number;
 }): DsaProblem | null {
   const weakSet = new Set(input.weakPatterns);
   const companySet = new Set(input.targetCompanies);
+  const seed = input.userDateSeed ?? 0;
   const candidates = DSA_CATALOG.map((p) => {
     let score = 0;
-    if (weakSet.has(p.pattern)) score += 3;
-    if (p.companies.some((c) => companySet.has(c))) score += 2;
-    if (input.recentSlugs.has(p.slug)) score -= 10;
-    if (input.solvedCount >= 5 && p.difficulty === "medium") score += 1;
-    if (input.solvedCount >= 15 && p.difficulty === "hard") score += 1;
-    if (input.solvedCount < 5 && p.difficulty === "easy") score += 2;
+    if (weakSet.has(p.pattern))                                 score += 3;
+    if (p.companies.some((c) => companySet.has(c)))            score += 2;
+    if (input.recentSlugs.has(p.slug))                         score -= 10;
+    if (input.solvedCount < 5  && p.difficulty === "easy")     score += 2;
+    if (input.solvedCount >= 5 && p.difficulty === "medium")   score += 2;
+    if (input.solvedCount >= 8 && p.difficulty === "hard")     score += 2;
     return { problem: p, score };
   });
   candidates.sort((a, b) => {
     if (b.score !== a.score) return b.score - a.score;
+    // Per-user stable shuffle within the same score tier.
+    const sa = (slugHash(a.problem.slug) + seed) % 997;
+    const sb = (slugHash(b.problem.slug) + seed) % 997;
+    if (sa !== sb) return sa - sb;
     return a.problem.slug.localeCompare(b.problem.slug);
   });
   const top = candidates[0];
   if (!top || top.score <= -10) return null;
   return top.problem;
+}
+
+/** Stable integer hash of a slug string — used for deterministic shuffle. */
+function slugHash(s: string): number {
+  let h = 0;
+  for (let i = 0; i < s.length; i++) {
+    h = (Math.imul(31, h) + s.charCodeAt(i)) | 0;
+  }
+  return Math.abs(h);
 }

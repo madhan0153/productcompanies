@@ -15,6 +15,7 @@ import { classifyMatch, type MatchTab, type BandCounts } from "./match-types";
 import { MatchesURLBeacon } from "./matches-url-beacon";
 import { MatchNavProvider } from "./match-transition-context";
 import { MatchCardArea } from "./match-card-area";
+import { ComputingBanner } from "./computing-banner";
 
 export const metadata: Metadata = { title: "Matches" };
 export const maxDuration = 60;
@@ -67,11 +68,38 @@ export default async function MatchesPage({
     .from("profiles")
     .select("resume_storage_path, resume_score, resume_score_at, last_match_compute_at")
     .eq("id", user.id)
-    .maybeSingle() as any) as { data: { resume_storage_path: string | null; resume_score: number | null; last_match_compute_at: string | null } | null };
+    .maybeSingle() as any) as { data: { resume_storage_path: string | null; resume_score: number | null; resume_score_at: string | null; last_match_compute_at: string | null } | null };
 
   const hasResume = !!profile?.resume_storage_path;
   const resumeScore = profile?.resume_score ?? null;
   const lastComputeAt = profile?.last_match_compute_at ?? null;
+
+  // Detect whether a match-compute job is actively running for this user.
+  // We show the ComputingBanner when:
+  //   1. An active durable job exists (queued | running), OR
+  //   2. The resume was (re-)parsed after the last compute finished —
+  //      meaning the current resume hasn't been matched against yet.
+  let isComputing = false;
+  if (hasResume) {
+    const resumeAt = profile?.resume_score_at ?? null;
+    const staleCompute = resumeAt && (!lastComputeAt || resumeAt > lastComputeAt);
+    if (staleCompute) {
+      isComputing = true;
+    } else {
+      // Check durable_jobs for an active match_compute job.
+      try {
+        const { count } = await (admin
+          .from("durable_jobs")
+          .select("id", { count: "exact", head: true })
+          .eq("user_id", user.id)
+          .eq("job_type", "match_compute")
+          .in("status", ["queued", "running"]) as any) as { count: number | null };
+        if ((count ?? 0) > 0) isComputing = true;
+      } catch {
+        // durable_jobs might not exist on fresh schemas — fail quietly.
+      }
+    }
+  }
 
   // End-user fix (EU-2): show "Jobs updated Nh ago" so users can trust the
   // freshness of the underlying inventory. Reads the most-recent successful
@@ -95,13 +123,14 @@ export default async function MatchesPage({
   // (company, hub) apply server-side so the strip honours them.
   // Dismiss was removed — there is no longer a user_hidden filter.
   const baseCountQuery = () => {
-
     let q: any = supabase
       .from("matches")
       .select("user_id, jobs!inner(id, hubs, companies!inner(slug))", { count: "exact", head: true })
       .eq("user_id", user.id);
     if (selectedCompanies.length > 0) q = q.in("jobs.companies.slug", selectedCompanies);
     if (selectedHubs.length > 0)      q = q.overlaps("jobs.hubs", selectedHubs);
+    // Apply minScore to counts so the strip numbers match the card list.
+    if (minScore !== null)            q = q.gte("score", minScore);
     return q;
   };
 
@@ -257,6 +286,10 @@ export default async function MatchesPage({
         </div>
       </div>
 
+      {/* Computing banner — shown while a match-compute job is actively
+          running for this user (e.g. right after a resume replacement). */}
+      {isComputing && <ComputingBanner />}
+
       {/* Band strip — sticky tab spine, right under title */}
       {allRows.length > 0 && (
         <BandStrip
@@ -327,11 +360,13 @@ export default async function MatchesPage({
         ) : allRows.length > 0 ? (
           emptyStateForTab(tab, selectedCompanies.length + selectedHubs.length + (minScore !== null ? 1 : 0))
         ) : hasResume ? (
-          <EmptyState
-            icon={<Activity className="h-5 w-5" />}
-            title="No matches computed yet"
-            body="Matches are computed automatically right after your resume parses and after every daily crawl. If you just uploaded, give it a minute and refresh."
-          />
+          isComputing ? null : (
+            <EmptyState
+              icon={<Activity className="h-5 w-5" />}
+              title="No matches computed yet"
+              body="Matches are computed automatically right after your resume parses and after every daily crawl. If you just uploaded, give it a minute and refresh."
+            />
+          )
         ) : null}
       </MatchCardArea>
     </div>

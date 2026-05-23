@@ -67,6 +67,7 @@ export async function getTodayDispatchAction(): Promise<ActionResult<TodayDispat
       targetCompanies,
       recentSlugs,
       solvedCount,
+      userDateSeed: makeUserDateSeed(user.id, today),
     });
     if (!problem) return { ok: false, error: "No recommended DSA problem is available right now." };
 
@@ -140,6 +141,7 @@ export async function skipTodayDsaAction(): Promise<ActionResult<{ slug: string 
       targetCompanies,
       recentSlugs: recent,
       solvedCount,
+      userDateSeed: makeUserDateSeed(user.id, today),
     });
     if (!next) return { ok: false, error: "No alternate problem available right now." };
 
@@ -315,6 +317,17 @@ function inferWeakPatterns(readiness: { dsa_score: number } | null): DsaPattern[
     return ["arrays_hashing", "two_pointers", "sliding_window", "linked_list", "trees", "stack_queue"];
   }
   return ["graphs", "trees", "heap_priority_queue", "dp_1d", "dp_2d", "binary_search", "backtracking", "intervals"];
+}
+
+/** Deterministic per-user-per-day integer — gives each user a different
+ *  tie-breaking order while keeping "today's pick" stable across refreshes. */
+function makeUserDateSeed(userId: string, dateIso: string): number {
+  const s = userId + dateIso;
+  let h = 0;
+  for (let i = 0; i < s.length; i++) {
+    h = (Math.imul(31, h) + s.charCodeAt(i)) | 0;
+  }
+  return Math.abs(h);
 }
 
 function windowStartIso(days: number): string {
