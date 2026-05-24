@@ -24,6 +24,7 @@ import {
   generateTailoredResume, type TailoredResumeContent,
 } from "@/lib/llm/prompts/tailor-resume";
 import { renderTailoredResumeDocx } from "@/lib/docx/tailored-resume";
+import { renderTailoredResumePdf } from "@/lib/pdf/tailored-resume";
 import {
   generateNegotiationMemo, type NegotiationMemoContent,
 } from "@/lib/llm/prompts/negotiation-memo";
@@ -132,7 +133,15 @@ async function preflight(jobId: string) {
 // ─────────────────────────────────────────────────────────────────────────────
 
 export type TailorResult =
-  | { ok: true; cached: boolean; download_url: string; content: TailoredResumeContent; generated_at: string }
+  | {
+      ok: true;
+      cached: boolean;
+      docx_url: string;
+      pdf_url: string;
+      print_url: string;
+      content: TailoredResumeContent;
+      generated_at: string;
+    }
   | { ok: false; error: string };
 
 export async function generateTailoredResumeAction(
@@ -148,13 +157,14 @@ export async function generateTailoredResumeAction(
 
   const { data: existing } = await (admin
     .from("tailored_resumes")
-    .select("id, content, docx_storage_path, resume_signature, job_signature, generated_at")
+    .select("id, content, docx_storage_path, pdf_storage_path, resume_signature, job_signature, generated_at")
     .eq("user_id", user.id)
     .eq("job_id", jobId)
     .maybeSingle() as any) as {
       data: {
         id: string; content: TailoredResumeContent;
         docx_storage_path: string | null;
+        pdf_storage_path: string | null;
         resume_signature: string | null;
         job_signature: string | null;
         generated_at: string;
@@ -165,17 +175,21 @@ export async function generateTailoredResumeAction(
     !!existing &&
     existing.resume_signature === profile.resume_signature &&
     existing.job_signature === job.signature &&
-    existing.docx_storage_path;
+    existing.docx_storage_path &&
+    existing.pdf_storage_path;
 
   if (!opts.force && isFreshCache && existing) {
-    const { data: signed } = await admin.storage
-      .from(STORAGE_BUCKET)
-      .createSignedUrl(existing.docx_storage_path!, SIGNED_URL_TTL_SECONDS);
-    if (signed?.signedUrl) {
+    const [{ data: signedDocx }, { data: signedPdf }] = await Promise.all([
+      admin.storage.from(STORAGE_BUCKET).createSignedUrl(existing.docx_storage_path!, SIGNED_URL_TTL_SECONDS),
+      admin.storage.from(STORAGE_BUCKET).createSignedUrl(existing.pdf_storage_path!, SIGNED_URL_TTL_SECONDS),
+    ]);
+    if (signedDocx?.signedUrl && signedPdf?.signedUrl) {
       return {
         ok: true,
         cached: true,
-        download_url: signed.signedUrl,
+        docx_url: signedDocx.signedUrl,
+        pdf_url: signedPdf.signedUrl,
+        print_url: `/jobs/${jobId}/tailor/print`,
         content: existing.content,
         generated_at: existing.generated_at,
       };
@@ -185,8 +199,14 @@ export async function generateTailoredResumeAction(
   }
 
   // ── LLM step (skipped on storage-only refresh) ─────────────────────────
+  const canRefreshFromCachedContent =
+    !!existing &&
+    !opts.force &&
+    existing.resume_signature === profile.resume_signature &&
+    existing.job_signature === job.signature;
+
   let content: TailoredResumeContent;
-  if (!opts.force && isFreshCache && existing) {
+  if (canRefreshFromCachedContent && existing) {
     content = existing.content;
   } else {
     const tailorLimit = checkRateLimit({
@@ -240,21 +260,32 @@ export async function generateTailoredResumeAction(
   }
 
   // ── DOCX render + upload ───────────────────────────────────────────────
-  const docxBuf = await renderTailoredResumeDocx(content);
-  const storagePath = `${user.id}/${jobId}-${Date.now()}.docx`;
-  const { error: uploadErr } = await admin.storage
-    .from(STORAGE_BUCKET)
-    .upload(storagePath, docxBuf, {
+  const [docxBuf, pdfBuf] = await Promise.all([
+    renderTailoredResumeDocx(content),
+    renderTailoredResumePdf(content),
+  ]);
+  const stamp = Date.now();
+  const docxPath = `${user.id}/${jobId}-${stamp}.docx`;
+  const pdfPath = `${user.id}/${jobId}-${stamp}.pdf`;
+  const [{ error: docxUploadErr }, { error: pdfUploadErr }] = await Promise.all([
+    admin.storage.from(STORAGE_BUCKET).upload(docxPath, docxBuf, {
       contentType: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
       upsert: false,
-    });
-  if (uploadErr) {
-    return { ok: false, error: `Storage error: ${uploadErr.message}` };
+    }),
+    admin.storage.from(STORAGE_BUCKET).upload(pdfPath, pdfBuf, {
+      contentType: "application/pdf",
+      upsert: false,
+    }),
+  ]);
+  if (docxUploadErr || pdfUploadErr) {
+    return { ok: false, error: `Storage error: ${(docxUploadErr ?? pdfUploadErr)?.message}` };
   }
 
   // ── Persist row (and clean up the prior .docx if there was one) ────────
-  if (existing?.docx_storage_path && existing.docx_storage_path !== storagePath) {
-    await admin.storage.from(STORAGE_BUCKET).remove([existing.docx_storage_path]).catch(() => {});
+  const oldPaths = [existing?.docx_storage_path, existing?.pdf_storage_path]
+    .filter((path): path is string => Boolean(path) && path !== docxPath && path !== pdfPath);
+  if (oldPaths.length > 0) {
+    await admin.storage.from(STORAGE_BUCKET).remove(oldPaths).catch(() => {});
   }
   const nowIso = new Date().toISOString();
 
@@ -262,7 +293,8 @@ export async function generateTailoredResumeAction(
     user_id:           user.id,
     job_id:            jobId,
     content:           content as unknown as Json,
-    docx_storage_path: storagePath,
+    docx_storage_path: docxPath,
+    pdf_storage_path:  pdfPath,
     resume_signature:  profile.resume_signature,
     job_signature:     job.signature,
     generated_at:      nowIso,
@@ -270,16 +302,19 @@ export async function generateTailoredResumeAction(
 
   // Mint a signed URL right after upload — admin client can sign for any
   // object in the bucket; the URL is valid for SIGNED_URL_TTL_SECONDS.
-  const { data: signed } = await admin.storage
-    .from(STORAGE_BUCKET)
-    .createSignedUrl(storagePath, SIGNED_URL_TTL_SECONDS);
+  const [{ data: signedDocx }, { data: signedPdf }] = await Promise.all([
+    admin.storage.from(STORAGE_BUCKET).createSignedUrl(docxPath, SIGNED_URL_TTL_SECONDS),
+    admin.storage.from(STORAGE_BUCKET).createSignedUrl(pdfPath, SIGNED_URL_TTL_SECONDS),
+  ]);
 
   revalidatePath(`/jobs/${jobId}`);
 
   return {
     ok: true,
     cached: false,
-    download_url: signed?.signedUrl ?? "",
+    docx_url: signedDocx?.signedUrl ?? "",
+    pdf_url: signedPdf?.signedUrl ?? "",
+    print_url: `/jobs/${jobId}/tailor/print`,
     content,
     generated_at: nowIso,
   };
@@ -418,6 +453,7 @@ export async function generateNegotiationMemoAction(
 
 export async function getTailoredResumeDownloadUrl(
   jobId: string,
+  format: "docx" | "pdf" = "docx",
 ): Promise<{ ok: true; url: string } | { ok: false; error: string }> {
   if (!UUID_RE.test(jobId)) return { ok: false, error: "Invalid job id." };
 
@@ -429,18 +465,19 @@ export async function getTailoredResumeDownloadUrl(
 
   const { data } = await (admin
     .from("tailored_resumes")
-    .select("docx_storage_path")
+    .select("docx_storage_path, pdf_storage_path")
     .eq("user_id", user.id)
     .eq("job_id", jobId)
-    .maybeSingle() as any) as { data: { docx_storage_path: string | null } | null };
+    .maybeSingle() as any) as { data: { docx_storage_path: string | null; pdf_storage_path: string | null } | null };
 
-  if (!data?.docx_storage_path) {
+  const path = format === "pdf" ? data?.pdf_storage_path : data?.docx_storage_path;
+  if (!path) {
     return { ok: false, error: "No tailored resume found. Generate one first." };
   }
 
   const { data: signed, error } = await admin.storage
     .from(STORAGE_BUCKET)
-    .createSignedUrl(data.docx_storage_path, SIGNED_URL_TTL_SECONDS);
+    .createSignedUrl(path, SIGNED_URL_TTL_SECONDS);
   if (error || !signed?.signedUrl) {
     return { ok: false, error: "Couldn't create download link. Try regenerating." };
   }

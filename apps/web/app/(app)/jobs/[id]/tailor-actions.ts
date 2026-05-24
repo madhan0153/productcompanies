@@ -42,6 +42,7 @@ import { computeAtsScorecard, type AtsScorecard } from "@/lib/matching/ats-score
 import { getQuotaState, resetsInHumanForm } from "@/lib/resume-intel/quota";
 import { recordResumeIntelEvent } from "@/lib/resume-intel/telemetry";
 import { renderTailoredResumeDocx } from "@/lib/docx/tailored-resume";
+import { renderTailoredResumePdf } from "@/lib/pdf/tailored-resume";
 import { logEvent } from "@/lib/observability/log";
 import { checkRateLimit, userActionKey } from "@/lib/security/rate-limit";
 import type { ParsedResume } from "@/lib/llm/prompts/resume-parse";
@@ -429,7 +430,7 @@ export async function applyTailoredDecisions(
 // ─────────────────────────────────────────────────────────────────────────────
 
 export type FinaliseTailoredResult =
-  | { ok: true; download_url: string; print_url: string }
+  | { ok: true; docx_url: string; pdf_url: string; print_url: string }
   | { ok: false; error: string };
 
 export async function finaliseTailored(jobId: string): Promise<FinaliseTailoredResult> {
@@ -466,22 +467,34 @@ export async function finaliseTailored(jobId: string): Promise<FinaliseTailoredR
     jdTitle: job.title,
   });
 
-  const docxBuffer = await renderTailoredResumeDocx(content);
-  const storagePath = `${user.id}/${jobId}-${Date.now()}.docx`;
+  const [docxBuffer, pdfBuffer] = await Promise.all([
+    renderTailoredResumeDocx(content),
+    renderTailoredResumePdf(content),
+  ]);
+  const stamp = Date.now();
+  const docxPath = `${user.id}/${jobId}-${stamp}.docx`;
+  const pdfPath = `${user.id}/${jobId}-${stamp}.pdf`;
 
-  const { error: uploadErr } = await admin.storage
-    .from(STORAGE_BUCKET)
-    .upload(storagePath, docxBuffer, {
+  const [{ error: docxUploadErr }, { error: pdfUploadErr }] = await Promise.all([
+    admin.storage.from(STORAGE_BUCKET).upload(docxPath, docxBuffer, {
       contentType: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
       upsert: false,
-    });
-  if (uploadErr) return { ok: false, error: `Storage error: ${uploadErr.message}` };
+    }),
+    admin.storage.from(STORAGE_BUCKET).upload(pdfPath, pdfBuffer, {
+      contentType: "application/pdf",
+      upsert: false,
+    }),
+  ]);
+  if (docxUploadErr || pdfUploadErr) {
+    return { ok: false, error: `Storage error: ${(docxUploadErr ?? pdfUploadErr)?.message}` };
+  }
 
 
   const { error: updateErr } = await (admin.from("tailored_resumes") as any)
     .update({
       content,
-      docx_storage_path: storagePath,
+      docx_storage_path: docxPath,
+      pdf_storage_path:  pdfPath,
       status: "finalised",
       updated_at: new Date().toISOString(),
     })
@@ -495,20 +508,26 @@ export async function finaliseTailored(jobId: string): Promise<FinaliseTailoredR
     scope_ref_id: row.id, ok: true,
   });
   void recordResumeIntelEvent({
+    user_id: user.id, kind: "render_pdf", scope: "tailored",
+    scope_ref_id: row.id, ok: true,
+  });
+  void recordResumeIntelEvent({
     user_id: user.id, kind: "finalise", scope: "tailored",
     scope_ref_id: row.id, ok: true,
   });
 
-  const { data: signed } = await admin.storage
-    .from(STORAGE_BUCKET)
-    .createSignedUrl(storagePath, SIGNED_URL_TTL);
+  const [{ data: signedDocx }, { data: signedPdf }] = await Promise.all([
+    admin.storage.from(STORAGE_BUCKET).createSignedUrl(docxPath, SIGNED_URL_TTL),
+    admin.storage.from(STORAGE_BUCKET).createSignedUrl(pdfPath, SIGNED_URL_TTL),
+  ]);
 
   revalidatePath(`/jobs/${jobId}`);
   revalidatePath(`/jobs/${jobId}/tailor`);
 
   return {
     ok: true,
-    download_url: signed?.signedUrl ?? "",
+    docx_url: signedDocx?.signedUrl ?? "",
+    pdf_url:  signedPdf?.signedUrl ?? "",
     print_url:    `/jobs/${jobId}/tailor/print`,
   };
 }
@@ -545,6 +564,7 @@ export async function discardTailored(jobId: string): Promise<{ ok: true } | { o
 
 export async function getTailoredDownloadUrl(
   jobId: string,
+  format: "docx" | "pdf" = "docx",
 ): Promise<{ ok: true; url: string } | { ok: false; error: string }> {
   const pre = await preflight(jobId);
   if (!pre.ok) return pre;
@@ -553,17 +573,18 @@ export async function getTailoredDownloadUrl(
 
   const { data: row } = await (admin
     .from("tailored_resumes")
-    .select("docx_storage_path, status")
+    .select("docx_storage_path, pdf_storage_path, status")
     .eq("user_id", user.id)
     .eq("job_id", jobId)
-    .maybeSingle() as any) as { data: { docx_storage_path: string | null; status: string } | null };
+    .maybeSingle() as any) as { data: { docx_storage_path: string | null; pdf_storage_path: string | null; status: string } | null };
 
-  if (!row || !row.docx_storage_path || row.status !== "finalised") {
+  const path = format === "pdf" ? row?.pdf_storage_path : row?.docx_storage_path;
+  if (!row || !path || row.status !== "finalised") {
     return { ok: false, error: "Not ready." };
   }
   const { data } = await admin.storage
     .from(STORAGE_BUCKET)
-    .createSignedUrl(row.docx_storage_path, SIGNED_URL_TTL);
+    .createSignedUrl(path, SIGNED_URL_TTL);
   if (!data?.signedUrl) return { ok: false, error: "Couldn't create download link." };
   return { ok: true, url: data.signedUrl };
 }

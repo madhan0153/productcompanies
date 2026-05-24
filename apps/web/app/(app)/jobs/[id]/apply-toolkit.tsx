@@ -30,7 +30,9 @@ type Tab = "tailor" | "recruiter";
 
 interface CachedTailor {
   content: TailoredResumeContent;
-  download_url: string;
+  docx_url: string;
+  pdf_url: string;
+  print_url: string;
   generated_at: string;
 }
 
@@ -204,17 +206,26 @@ function TailorTab({ jobId, initial }: { jobId: string; initial: CachedTailor | 
         toast.error("Couldn't tailor the resume", { description: r.error });
         return;
       }
-      setData({ content: r.content, download_url: r.download_url, generated_at: r.generated_at });
+      setData({
+        content: r.content,
+        docx_url: r.docx_url,
+        pdf_url: r.pdf_url,
+        print_url: r.print_url,
+        generated_at: r.generated_at,
+      });
       toast.success(r.cached ? "Loaded cached tailored resume" : "Tailored resume generated", {
-        description: "Click Download to save the .docx",
+        description: "Download the PDF to apply, or DOCX if you want to edit.",
       });
     });
   }
 
-  async function refreshSignedUrl() {
-    const r = await getTailoredResumeDownloadUrl(jobId);
+  async function refreshSignedUrl(format: "docx" | "pdf") {
+    const r = await getTailoredResumeDownloadUrl(jobId, format);
     if (r.ok) {
-      setData((prev) => (prev ? { ...prev, download_url: r.url } : prev));
+      setData((prev) => (prev ? {
+        ...prev,
+        [format === "pdf" ? "pdf_url" : "docx_url"]: r.url,
+      } : prev));
       window.open(r.url, "_blank", "noopener,noreferrer");
     } else {
       toast.error("Download link expired — regenerate the resume.");
@@ -225,7 +236,7 @@ function TailorTab({ jobId, initial }: { jobId: string; initial: CachedTailor | 
     return (
       <EmptyStateGenerate
         title="Tailor your resume for this role"
-        body="One-click: generates a JD-targeted .docx using your resume + the JD's must-haves. Cached per role — re-runs are instant."
+        body="One-click: generates a JD-targeted PDF for applying and a DOCX for edits."
         ctaLabel="Generate tailored resume"
         ctaIcon={<FileDown className="h-3.5 w-3.5" />}
         onClick={() => trigger(false)}
@@ -250,12 +261,29 @@ function TailorTab({ jobId, initial }: { jobId: string; initial: CachedTailor | 
         <div className="flex flex-wrap items-center gap-2">
           <button
             type="button"
-            onClick={() => refreshSignedUrl()}
+            onClick={() => refreshSignedUrl("pdf")}
             className="inline-flex items-center gap-1.5 rounded-lg bg-primary px-3 py-1.5 text-xs font-semibold text-primary-foreground transition hover:opacity-90"
           >
             <FileDown className="h-3.5 w-3.5" />
-            Download .docx
+            Download PDF
           </button>
+          <button
+            type="button"
+            onClick={() => refreshSignedUrl("docx")}
+            className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-card px-3 py-1.5 text-xs font-medium text-muted-foreground transition hover:border-primary/30 hover:text-foreground"
+          >
+            <FileDown className="h-3.5 w-3.5" />
+            Download DOCX
+          </button>
+          <a
+            href={`${data.print_url}?autoprint=1`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-card px-3 py-1.5 text-xs font-medium text-muted-foreground transition hover:border-primary/30 hover:text-foreground"
+          >
+            <FileDown className="h-3.5 w-3.5" />
+            Browser PDF
+          </a>
           <a
             href={`/jobs/${jobId}/tailor`}
             className="inline-flex items-center gap-1.5 rounded-lg border border-primary/30 bg-primary-soft px-3 py-1.5 text-xs font-medium text-primary transition hover:bg-primary-soft/80"
@@ -433,7 +461,7 @@ export function TailorPanel({
       <ToolkitGate
         icon={<Sparkles className="h-4 w-4" />}
         title="Upload your resume to unlock Tailor Resume"
-        body="Generates a JD-targeted .docx using your resume + the role's must-haves. Cached — re-runs are instant."
+        body="Generates a JD-targeted PDF for applying and a DOCX for edits."
         actionLabel="Upload resume"
         actionHref="/profile"
       />

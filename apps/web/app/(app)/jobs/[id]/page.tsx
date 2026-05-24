@@ -156,13 +156,13 @@ export default async function JobDetailPage({ params }: { params: Promise<{ id: 
       .maybeSingle() as any,
     admin
       .from("tailored_resumes")
-      .select("content, docx_storage_path, generated_at")
+      .select("content, docx_storage_path, pdf_storage_path, generated_at, status")
       .eq("user_id", user.id)
       .eq("job_id", id)
       .maybeSingle() as any,
   ]) as [
     { data: { resume_parsed: ParsedResume | null; resume_storage_path: string | null } | null },
-    { data: { content: TailoredResumeContent; docx_storage_path: string | null; generated_at: string } | null },
+    { data: { content: TailoredResumeContent; docx_storage_path: string | null; pdf_storage_path: string | null; generated_at: string; status: string | null } | null },
   ];
 
   const parsedResume = profileRow?.resume_parsed ?? null;
@@ -176,12 +176,15 @@ export default async function JobDetailPage({ params }: { params: Promise<{ id: 
       })
     : null;
 
-  let initialTailorUrl: string | null = null;
-  if (tailoredRow?.docx_storage_path) {
-    const { data: signed } = await admin.storage
-      .from("tailored-resumes")
-      .createSignedUrl(tailoredRow.docx_storage_path, 600);
-    initialTailorUrl = signed?.signedUrl ?? null;
+  let initialDocxUrl: string | null = null;
+  let initialPdfUrl: string | null = null;
+  if (tailoredRow?.status !== "pending_review" && tailoredRow?.docx_storage_path && tailoredRow?.pdf_storage_path) {
+    const [{ data: signedDocx }, { data: signedPdf }] = await Promise.all([
+      admin.storage.from("tailored-resumes").createSignedUrl(tailoredRow.docx_storage_path, 600),
+      admin.storage.from("tailored-resumes").createSignedUrl(tailoredRow.pdf_storage_path, 600),
+    ]);
+    initialDocxUrl = signedDocx?.signedUrl ?? null;
+    initialPdfUrl = signedPdf?.signedUrl ?? null;
   }
 
   // Fit tab is the default when a match exists (USP-first). Tailor otherwise.
@@ -374,9 +377,11 @@ export default async function JobDetailPage({ params }: { params: Promise<{ id: 
                 jobId={job.id}
                 hasResume={hasResume}
                 matchingConsent={consents.matching === true}
-                initialTailor={tailoredRow && initialTailorUrl ? {
+                initialTailor={tailoredRow && initialDocxUrl && initialPdfUrl ? {
                   content: tailoredRow.content,
-                  download_url: initialTailorUrl,
+                  docx_url: initialDocxUrl,
+                  pdf_url: initialPdfUrl,
+                  print_url: `/jobs/${id}/tailor/print`,
                   generated_at: tailoredRow.generated_at,
                 } : null}
               />

@@ -47,7 +47,7 @@ export function TailorReview({
   const [finalising, startFinalising] = useTransition();
   const [discarding, startDiscarding] = useTransition();
   const [error, setError] = useState<string | null>(null);
-  const [finalisedUrls, setFinalisedUrls] = useState<{ docx: string; print: string } | null>(null);
+  const [finalisedUrls, setFinalisedUrls] = useState<{ docx: string; pdf: string; print: string } | null>(null);
   void rowId;
 
   const saveDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -78,7 +78,7 @@ export function TailorReview({
       try {
         const res = await finaliseTailored(jobId);
         if (res.ok) {
-          setFinalisedUrls({ docx: res.download_url, print: res.print_url });
+          setFinalisedUrls({ docx: res.docx_url, pdf: res.pdf_url, print: res.print_url });
           router.refresh();
         } else {
           setError(res.error || "Couldn't finalise. Please retry.");
@@ -155,7 +155,7 @@ export function TailorReview({
       {diagnosis.weak_bullets.length === 0 ? (
         <div className="rounded-xl border border-success/30 bg-success/5 p-4 text-center text-sm text-success">
           <CheckCircle2 className="mx-auto mb-2 h-6 w-6" aria-hidden />
-          Your resume already covers this JD well. Finalise to render the canonical .docx.
+          Your resume already covers this JD well. Finalise to render the application-ready PDF and editable DOCX.
         </div>
       ) : (
         <section>
@@ -202,15 +202,23 @@ export function TailorReview({
             Tailored resume saved
           </p>
           <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
-            Ready for download. Your profile resume is unchanged.
+            Ready for download. Use PDF for applications and DOCX for edits.
           </p>
           <div className="mt-3 flex flex-wrap gap-2">
+            {finalisedUrls.pdf && (
+              <a
+                href={finalisedUrls.pdf}
+                className="press tap-target-sm inline-flex items-center gap-1 rounded-md bg-primary px-3 py-1.5 text-xs font-semibold text-primary-foreground transition hover:bg-primary/90 focus-ring"
+              >
+                <Download className="h-3 w-3" /> Download PDF
+              </a>
+            )}
             {finalisedUrls.docx && (
               <a
                 href={finalisedUrls.docx}
-                className="press tap-target-sm inline-flex items-center gap-1 rounded-md bg-primary px-3 py-1.5 text-xs font-semibold text-primary-foreground transition hover:bg-primary/90 focus-ring"
+                className="press tap-target-sm inline-flex items-center gap-1 rounded-md border border-border bg-card px-3 py-1.5 text-xs font-semibold text-foreground transition hover:bg-secondary focus-ring"
               >
-                <Download className="h-3 w-3" /> Download .docx
+                <Download className="h-3 w-3" /> Download DOCX
               </a>
             )}
             {finalisedUrls.print && (
