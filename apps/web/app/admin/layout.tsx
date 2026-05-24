@@ -20,7 +20,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
   return (
     <div className="min-h-screen bg-background">
       <AdminNav email={gate.email} />
-      {children}
+      <main className="md:pl-72">{children}</main>
     </div>
   );
 }
