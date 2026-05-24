@@ -6,7 +6,13 @@ import {
   getDsaPatternProgress,
   planDsaReview,
 } from "./dsa-learning";
-import { DSA_CATALOG, getDsaProblemBySlug } from "./dsa-catalog";
+import {
+  DSA_CATALOG,
+  DSA_ROLE_TRACKS,
+  getDsaRoleStats,
+  inferDsaRole,
+  pickNextDsaProblem,
+} from "./dsa-catalog";
 
 // ── planDsaReview ────────────────────────────────────────────────────────
 
@@ -69,15 +75,16 @@ test("getDsaLearningGuide: every catalog problem yields a non-empty guide", () =
   }
 });
 
-test("getDsaLearningGuide: code field is populated when codeByLang.typescript exists", () => {
-  const twoSum = getDsaProblemBySlug("two-sum");
-  if (!twoSum) {
-    // Skip cleanly if the catalog ever drops this slug.
-    return;
+test("getDsaLearningGuide: every guide has Python, Java, and C++ code", () => {
+  for (const problem of DSA_CATALOG.slice(0, 80)) {
+    const guide = getDsaLearningGuide(problem);
+    assert.ok(guide.codeByLang?.python, `${problem.slug} missing Python`);
+    assert.ok(guide.codeByLang?.java, `${problem.slug} missing Java`);
+    assert.ok(guide.codeByLang?.cpp, `${problem.slug} missing C++`);
+    assert.equal(guide.code, guide.codeByLang.python);
+    assert.ok(guide.edgeCases.length > 0, `${problem.slug} missing edge cases`);
+    assert.ok(guide.optimizations.length > 0, `${problem.slug} missing optimizations`);
   }
-  const guide = getDsaLearningGuide(twoSum);
-  assert.ok(guide.codeByLang?.typescript);
-  assert.equal(guide.code, guide.codeByLang.typescript);
 });
 
 // ── getDsaPatternProgress ────────────────────────────────────────────────
@@ -91,12 +98,56 @@ test("getDsaPatternProgress: empty completion returns 0/total per pattern", () =
 });
 
 test("getDsaPatternProgress: completed slugs increment the right pattern", () => {
-  const twoSum = getDsaProblemBySlug("two-sum");
-  if (!twoSum) return;
-  const rows = getDsaPatternProgress([twoSum.slug]);
-  const arraysHashing = rows.find((r) => r.pattern === twoSum.pattern);
+  const problem = DSA_CATALOG[0]!;
+  const rows = getDsaPatternProgress([problem.slug]);
+  const arraysHashing = rows.find((r) => r.pattern === problem.pattern);
   assert.ok(arraysHashing);
   assert.ok(arraysHashing!.completed >= 1);
+});
+
+test("DSA_CATALOG: role tracks have 90-120 premium problems with hard majority", () => {
+  const stats = getDsaRoleStats();
+  assert.equal(stats.length, DSA_ROLE_TRACKS.length);
+  for (const role of stats) {
+    assert.ok(role.problemCount >= 90, `${role.role} below 90`);
+    assert.ok(role.problemCount <= 120, `${role.role} above 120`);
+    assert.ok(role.hard > role.medium, `${role.role} should have more hard than medium`);
+    assert.ok(role.hard > role.easy, `${role.role} should have more hard than easy`);
+  }
+});
+
+test("pickNextDsaProblem: first role-specific pick is hard and avoids recent slugs", () => {
+  const recent = new Set<string>();
+  const first = pickNextDsaProblem({
+    weakPatterns: ["graphs"],
+    targetCompanies: ["google"],
+    recentSlugs: recent,
+    solvedCount: 0,
+    targetRole: "ai_ml_engineer",
+    userDateSeed: 42,
+  });
+  assert.ok(first);
+  assert.equal(first!.difficulty, "hard");
+  assert.equal(first!.primaryRole, "ai_ml_engineer");
+
+  recent.add(first!.slug);
+  const second = pickNextDsaProblem({
+    weakPatterns: ["graphs"],
+    targetCompanies: ["google"],
+    recentSlugs: recent,
+    solvedCount: 1,
+    targetRole: "ai_ml_engineer",
+    userDateSeed: 42,
+  });
+  assert.ok(second);
+  assert.notEqual(second!.slug, first!.slug);
+  assert.equal(second!.difficulty, "medium");
+});
+
+test("inferDsaRole: resume and stack signals map to specific tracks", () => {
+  assert.equal(inferDsaRole({ resume_text: "Built RAG ranking pipelines with embeddings and model serving" }), "ai_ml_engineer");
+  assert.equal(inferDsaRole({ tech_stack: ["Kubernetes", "Terraform", "Prometheus"] }), "devops_sre");
+  assert.equal(inferDsaRole({ current_role: "Senior Android Engineer" }), "mobile_engineer");
 });
 
 // ── DSA_PATTERN_ROADMAP ──────────────────────────────────────────────────

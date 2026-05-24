@@ -13,12 +13,11 @@ import { cn } from "@/lib/utils";
 /**
  * Multi-language code tabs for canonical solutions.
  *
- * Falls back to single-language rendering if codeByLang is missing — keeps
- * the older problems that only ship TypeScript working without a rewrite.
+ * Falls back to single-language rendering if codeByLang is missing.
  */
 export function CodeTabs({ guide }: { guide: DsaLearningGuide }) {
   const available = DSA_CODE_LANGS.filter((lang) => Boolean(guide.codeByLang?.[lang]));
-  const initial = available[0] ?? "typescript";
+  const initial = available[0] ?? "python";
   const [lang, setLang] = useState<DsaCodeLang>(initial);
   const [copied, setCopied] = useState(false);
 
@@ -59,9 +58,7 @@ export function CodeTabs({ guide }: { guide: DsaLearningGuide }) {
               </button>
             ))
           ) : (
-            // QA fix (B18): don't claim the legacy single-snippet is
-            // TypeScript when we don't actually know. The fallback only
-            // fires when codeByLang is absent; honest label is "Code".
+            // Fallback only fires when codeByLang is absent; honest label is "Code".
             <span className="px-2 text-[11px] font-medium text-muted-foreground">Code</span>
           )}
         </div>

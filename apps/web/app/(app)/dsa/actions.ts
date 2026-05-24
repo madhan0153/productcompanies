@@ -7,11 +7,14 @@ import {
   DSA_CATALOG,
   getDsaLearningGuide,
   getDsaProblemBySlug,
+  getDsaRoleTrack,
+  inferDsaRole,
   pickNextDsaProblem,
   planDsaReview,
   type DsaConfidence,
   type DsaPattern,
   type DsaProblem,
+  type DsaRole,
 } from "@prodmatch/shared";
 
 type ActionResult<T = void> =
@@ -25,7 +28,7 @@ type TodayDispatch = {
   is_complete: boolean;
 };
 
-const RECENT_DAYS_WINDOW = 14;
+const RECENT_DAYS_WINDOW = 60;
 
 export async function getTodayDispatchAction(): Promise<ActionResult<TodayDispatch>> {
   try {
@@ -46,7 +49,7 @@ export async function getTodayDispatchAction(): Promise<ActionResult<TodayDispat
           ok: true,
           data: {
             problem,
-            personalised_note: existing.personalised_note ?? defaultNote(true),
+            personalised_note: existing.personalised_note ?? defaultNote(true, problem.primaryRole),
             what_youll_learn: guide.approach.slice(0, 3),
             is_complete: existing.is_complete,
           },
@@ -61,23 +64,26 @@ export async function getTodayDispatchAction(): Promise<ActionResult<TodayDispat
       loadSolvedCount(supabase, user.id),
       loadTargetCompanies(supabase, user.id),
     ]);
+    const targetRole = inferProfileDsaRole(profile);
 
     const problem = pickNextDsaProblem({
       weakPatterns: inferWeakPatterns(readiness),
       targetCompanies,
       recentSlugs,
       solvedCount,
+      targetRole,
       userDateSeed: makeUserDateSeed(user.id, today),
     });
     if (!problem) return { ok: false, error: "No recommended DSA problem is available right now." };
 
     const guide = getDsaLearningGuide(problem);
-    const personalisedNote = defaultNote(Boolean(profile?.resume_parsed));
+    const personalisedNote = defaultNote(Boolean(profile?.resume_parsed), targetRole);
     await saveDispatch(supabase, {
       user_id: user.id,
       day: today,
       problem_slug: problem.slug,
       personalised_note: personalisedNote,
+      problem,
     });
 
     revalidatePath("/dsa");
@@ -125,13 +131,15 @@ export async function skipTodayDsaAction(): Promise<ActionResult<{ slug: string 
 
     // Build the same exclusion context as getTodayDispatchAction but add the
     // current day's slug too — the picker must avoid re-selecting it.
-    const [readiness, recentSlugs, solvedCount, targetCompanies, existing] = await Promise.all([
+    const [profile, readiness, recentSlugs, solvedCount, targetCompanies, existing] = await Promise.all([
+      loadProfile(supabase, user.id),
       loadReadiness(supabase, user.id),
       loadRecentSlugs(supabase, user.id),
       loadSolvedCount(supabase, user.id),
       loadTargetCompanies(supabase, user.id),
       loadExistingDispatch(supabase, user.id, today),
     ]);
+    const targetRole = inferProfileDsaRole(profile);
 
     const recent = new Set(recentSlugs);
     if (existing?.problem_slug) recent.add(existing.problem_slug);
@@ -141,6 +149,7 @@ export async function skipTodayDsaAction(): Promise<ActionResult<{ slug: string 
       targetCompanies,
       recentSlugs: recent,
       solvedCount,
+      targetRole,
       userDateSeed: makeUserDateSeed(user.id, today),
     });
     if (!next) return { ok: false, error: "No alternate problem available right now." };
@@ -149,7 +158,8 @@ export async function skipTodayDsaAction(): Promise<ActionResult<{ slug: string 
       user_id: user.id,
       day: today,
       problem_slug: next.slug,
-      personalised_note: existing?.personalised_note ?? "Skipped to a fresh problem.",
+      personalised_note: defaultNote(Boolean(profile?.resume_parsed), targetRole),
+      problem: next,
     });
 
     revalidatePath("/dsa");
@@ -305,10 +315,11 @@ export async function completeDsaAction(input: { day: string }): Promise<ActionR
   }
 }
 
-function defaultNote(hasResume: boolean): string {
+function defaultNote(hasResume: boolean, role?: DsaRole | null): string {
+  const roleLabel = getDsaRoleTrack(role ?? "software_engineer").label;
   return hasResume
-    ? "Today's problem is picked from your DSA roadmap and recent practice history."
-    : "Starting with a general DSA track. Upload a resume later to tune picks around your target role and companies.";
+    ? `Today's problem is tuned for the ${roleLabel} track, your recent 60-day history, and your practice gaps.`
+    : "Starting with a premium Software Engineer track. Upload a resume later to tune picks around your target role and companies.";
 }
 
 function inferWeakPatterns(readiness: { dsa_score: number } | null): DsaPattern[] {
@@ -359,17 +370,62 @@ async function loadExistingDispatch(
 async function loadProfile(
   supabase: Awaited<ReturnType<typeof createSupabaseServerClient>>,
   userId: string,
-): Promise<{ resume_parsed: unknown } | null> {
+): Promise<ProfileDsaContext | null> {
   try {
     const { data } = await (supabase
       .from("profiles")
-      .select("resume_parsed")
+      .select("resume_parsed, role_function, target_role_functions, current_role, tech_stack")
       .eq("id", userId)
-      .maybeSingle() as unknown as Promise<{ data: { resume_parsed: unknown } | null }>);
+      .maybeSingle() as unknown as Promise<{ data: ProfileDsaContext | null }>);
     return data ?? null;
   } catch {
     return null;
   }
+}
+
+type ProfileDsaContext = {
+  resume_parsed: unknown;
+  role_function: string | null;
+  target_role_functions: string[] | null;
+  current_role: string | null;
+  tech_stack: string[] | null;
+};
+
+function inferProfileDsaRole(profile: ProfileDsaContext | null): DsaRole {
+  if (!profile) return "software_engineer";
+  return inferDsaRole({
+    role_function: profile.role_function,
+    target_role_functions: profile.target_role_functions,
+    current_role: profile.current_role,
+    tech_stack: profile.tech_stack,
+    resume_text: resumeTextSignal(profile.resume_parsed),
+  });
+}
+
+function resumeTextSignal(value: unknown): string {
+  if (!value || typeof value !== "object") return "";
+  const record = value as Record<string, unknown>;
+  const pieces: string[] = [];
+  for (const key of ["headline", "summary", "title", "role", "targetRole"]) {
+    const item = record[key];
+    if (typeof item === "string") pieces.push(item);
+  }
+  const skills = record.skills;
+  if (Array.isArray(skills)) {
+    pieces.push(...skills.filter((skill): skill is string => typeof skill === "string"));
+  }
+  const experience = record.experience;
+  if (Array.isArray(experience)) {
+    for (const entry of experience.slice(0, 5)) {
+      if (!entry || typeof entry !== "object") continue;
+      const exp = entry as Record<string, unknown>;
+      for (const key of ["title", "role", "company", "summary"]) {
+        const item = exp[key];
+        if (typeof item === "string") pieces.push(item);
+      }
+    }
+  }
+  return pieces.join(" ");
 }
 
 async function loadReadiness(
@@ -438,16 +494,41 @@ async function loadTargetCompanies(
 
 async function saveDispatch(
   supabase: Awaited<ReturnType<typeof createSupabaseServerClient>>,
-  row: { user_id: string; day: string; problem_slug: string; personalised_note: string },
+  row: { user_id: string; day: string; problem_slug: string; personalised_note: string; problem?: DsaProblem },
 ): Promise<void> {
+  const baseRow = {
+    user_id: row.user_id,
+    day: row.day,
+    problem_slug: row.problem_slug,
+    personalised_note: row.personalised_note,
+    is_complete: false,
+    created_at: new Date().toISOString(),
+  };
+  const premiumRow = row.problem
+    ? {
+        ...baseRow,
+        role_track: row.problem.primaryRole,
+        difficulty: row.problem.difficulty,
+        company_slug: row.problem.context.companySlug,
+        context_month: row.problem.context.month,
+        context_snapshot: {
+          company: row.problem.context.company,
+          product_team: row.problem.context.productTeam,
+          product_surface: row.problem.context.productSurface,
+          disclaimer: row.problem.context.disclaimer,
+        },
+      }
+    : baseRow;
+
   try {
+    const { error } = await (supabase
+      .from("interview_daily_dispatch")
+      .upsert(premiumRow as unknown as never, { onConflict: "user_id,day" }) as unknown as Promise<{ error: { message: string } | null }>);
+    if (!error) return;
+
     await (supabase
       .from("interview_daily_dispatch")
-      .upsert({
-        ...row,
-        is_complete: false,
-        created_at: new Date().toISOString(),
-      } as unknown as never, { onConflict: "user_id,day" }) as unknown as Promise<{ error: { message: string } | null }>);
+      .upsert(baseRow as unknown as never, { onConflict: "user_id,day" }) as unknown as Promise<{ error: { message: string } | null }>);
   } catch {
     // DSA can still render without persistence; the next refresh may pick again.
   }

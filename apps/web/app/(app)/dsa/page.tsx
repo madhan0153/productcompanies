@@ -3,22 +3,25 @@ import Link from "next/link";
 import { Brain, Clock3, Layers, Target } from "lucide-react";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { absoluteUrl } from "@/lib/seo/site";
+import { getDsaRoleStats, getDsaRoleTrack, inferDsaRole, type DsaRole } from "@prodmatch/shared";
 import { DsaClient, type DsaHistoryRow, type DsaProgressRow } from "./dsa-client";
 
 // SEO: DSA practice is intentionally public — pattern + problem content
 // is rankable evergreen material. Per-user state (streak, history,
 // confidence ratings) only renders when a user is signed in.
 export const metadata: Metadata = {
-  title: "DSA Practice — 17 Patterns + Problems in TS, Python, Java",
-  description: "Free DSA practice for product-company interviews. 17 algorithmic patterns + hand-curated problems with TypeScript, Python and Java solutions, complexity analysis, and spaced-repetition tracking.",
+  title: "Role-Specific DSA Lab - Premium Product Interview Practice",
+  description: "Premium role-specific DSA drills for product-company interviews: AI/ML, backend, full stack, platform, mobile, security, data, and more with full Python, Java, and C++ solutions.",
   alternates: { canonical: "/dsa" },
   openGraph: {
-    title: "DSA Practice — Product-Company Interview Prep",
-    description: "Free, India-first DSA practice with TS/Py/Java solutions for product-company interviews.",
+    title: "Role-Specific DSA Lab - Product-Company Interview Prep",
+    description: "Daily no-repeat product simulations with full in-app solutions and role-aware dispatch.",
     url: absoluteUrl("/dsa"),
   },
 };
 export const dynamic = "force-dynamic";
+
+const TOTAL_ROLE_PROBLEMS = getDsaRoleStats().reduce((sum, role) => sum + role.problemCount, 0);
 
 export default async function DsaPage() {
   const supabase = await createSupabaseServerClient();
@@ -37,6 +40,8 @@ export default async function DsaPage() {
 
   const hasResume = Boolean(profile?.resume_parsed);
   const isAuthed = Boolean(user);
+  const targetRole = inferProfileDsaRole(profile);
+  const roleTrack = getDsaRoleTrack(targetRole);
 
   return (
     <div className="mx-auto max-w-5xl space-y-5">
@@ -47,17 +52,17 @@ export default async function DsaPage() {
           </span>
           <div className="min-w-0 flex-1">
             <p className="text-xs font-semibold uppercase tracking-wide text-primary">Interview practice</p>
-            <h1 className="mt-1 text-2xl font-semibold tracking-tight sm:text-3xl">DSA Practice</h1>
+            <h1 className="mt-1 text-2xl font-semibold tracking-tight sm:text-3xl">Role-Specific DSA Lab</h1>
             <p className="mt-1 max-w-2xl text-sm leading-relaxed text-muted-foreground">
-              One product-company style problem per day with the question, approach, clean solution, and progress tracking.
+              One fresh product-team simulation per day, tuned to your role, with full explanations and Python, Java, and C++ solutions.
             </p>
           </div>
         </div>
 
         <div className="grid grid-cols-3 gap-2">
-          <HeroStat icon={<Target className="h-4 w-4" />} label="Plan" value="Daily" />
-          <HeroStat icon={<Clock3 className="h-4 w-4" />} label="Session" value="20-45m" />
-          <HeroStat icon={<Brain className="h-4 w-4" />} label="Mode" value={hasResume ? "Tuned" : "Core"} />
+          <HeroStat icon={<Target className="h-4 w-4" />} label="Role track" value={roleTrack.label} />
+          <HeroStat icon={<Clock3 className="h-4 w-4" />} label="No-repeat" value="60 days" />
+          <HeroStat icon={<Brain className="h-4 w-4" />} label="Catalog" value={`${TOTAL_ROLE_PROBLEMS}+`} />
         </div>
 
         <Link
@@ -66,21 +71,21 @@ export default async function DsaPage() {
         >
           <span className="inline-flex items-center gap-2">
             <Layers className="h-4 w-4 text-primary" />
-            Browse all 17 patterns
+            Browse the role-aware roadmap
           </span>
-          <span className="text-xs text-muted-foreground">Roadmap order →</span>
+          <span className="text-xs text-muted-foreground">Patterns and roles</span>
         </Link>
       </header>
 
       {isAuthed ? (
-        <DsaClient history={history ?? []} progress={progress ?? []} hasResume={hasResume} />
+        <DsaClient history={history ?? []} progress={progress ?? []} hasResume={hasResume} targetRole={targetRole} />
       ) : (
         <div className="rounded-lg border border-primary/20 bg-primary-soft p-4">
           <p className="text-sm font-semibold">
             Sign in to track your streak, save confidence ratings, and get personalised picks.
           </p>
           <p className="mt-1 text-xs text-muted-foreground">
-            Free. No credit card. The 17 patterns and every problem are accessible without an account too.
+            Free. No credit card. The roadmap and self-contained problems are accessible without an account too.
           </p>
           <Link
             href="/auth/login?next=/dsa"
@@ -97,17 +102,51 @@ export default async function DsaPage() {
 async function loadProfileResumeState(
   supabase: Awaited<ReturnType<typeof createSupabaseServerClient>>,
   userId: string,
-): Promise<{ resume_parsed: unknown } | null> {
+): Promise<ProfileDsaContext | null> {
   try {
     const { data } = await (supabase
       .from("profiles")
-      .select("resume_parsed")
+      .select("resume_parsed, role_function, target_role_functions, current_role, tech_stack")
       .eq("id", userId)
-      .maybeSingle() as unknown as Promise<{ data: { resume_parsed: unknown } | null }>);
+      .maybeSingle() as unknown as Promise<{ data: ProfileDsaContext | null }>);
     return data ?? null;
   } catch {
     return null;
   }
+}
+
+type ProfileDsaContext = {
+  resume_parsed: unknown;
+  role_function: string | null;
+  target_role_functions: string[] | null;
+  current_role: string | null;
+  tech_stack: string[] | null;
+};
+
+function inferProfileDsaRole(profile: ProfileDsaContext | null): DsaRole {
+  if (!profile) return "software_engineer";
+  return inferDsaRole({
+    role_function: profile.role_function,
+    target_role_functions: profile.target_role_functions,
+    current_role: profile.current_role,
+    tech_stack: profile.tech_stack,
+    resume_text: resumeTextSignal(profile.resume_parsed),
+  });
+}
+
+function resumeTextSignal(value: unknown): string {
+  if (!value || typeof value !== "object") return "";
+  const record = value as Record<string, unknown>;
+  const pieces: string[] = [];
+  for (const key of ["headline", "summary", "title", "role", "targetRole"]) {
+    const item = record[key];
+    if (typeof item === "string") pieces.push(item);
+  }
+  const skills = record.skills;
+  if (Array.isArray(skills)) {
+    pieces.push(...skills.filter((skill): skill is string => typeof skill === "string"));
+  }
+  return pieces.join(" ");
 }
 
 async function loadDsaHistory(

@@ -1291,6 +1291,20 @@ create table if not exists public.interview_daily_dispatch (
 create index if not exists idx_daily_dispatch_user
   on public.interview_daily_dispatch(user_id, day desc);
 
+-- Phase DSA Premium: role-aware dispatch metadata. The canonical problem body
+-- remains in packages/shared/src/dsa-catalog.ts so the product stays
+-- self-contained and does not depend on external problem sites. These columns
+-- snapshot the dispatch context for analytics, no-repeat auditing, and future
+-- subscription packaging.
+alter table public.interview_daily_dispatch add column if not exists role_track text;
+alter table public.interview_daily_dispatch add column if not exists difficulty text;
+alter table public.interview_daily_dispatch add column if not exists company_slug text;
+alter table public.interview_daily_dispatch add column if not exists context_month text;
+alter table public.interview_daily_dispatch add column if not exists context_snapshot jsonb not null default '{}'::jsonb;
+
+create index if not exists idx_daily_dispatch_role_day
+  on public.interview_daily_dispatch(user_id, role_track, day desc);
+
 alter table public.interview_daily_dispatch enable row level security;
 do $$ begin
   if not exists (

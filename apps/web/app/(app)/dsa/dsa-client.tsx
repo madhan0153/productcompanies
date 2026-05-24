@@ -9,7 +9,6 @@ import {
   Brain,
   CalendarDays,
   CheckCircle2,
-  ExternalLink,
   Flame,
   Loader2,
   Shuffle,
@@ -17,15 +16,15 @@ import {
   Target,
 } from "lucide-react";
 import {
-  DSA_PATTERN_ROADMAP,
   DSA_PATTERNS_DISPLAY,
   getDsaLearningGuide,
+  getDsaRoleTrack,
   getDsaPatternProgress,
   getDsaProblemBySlug,
   type DsaConfidence,
   type DsaDifficulty,
-  type DsaPattern,
   type DsaProblem,
+  type DsaRole,
 } from "@prodmatch/shared";
 import { completeDsaAction, getTodayDispatchAction, skipTodayDsaAction } from "./actions";
 import { CodeTabs } from "./code-tabs";
@@ -58,9 +57,10 @@ interface Props {
   history: DsaHistoryRow[];
   progress: DsaProgressRow[];
   hasResume: boolean;
+  targetRole: DsaRole;
 }
 
-export function DsaClient({ history, progress, hasResume }: Props) {
+export function DsaClient({ history, progress, hasResume, targetRole }: Props) {
   const [today, setToday] = useState<TodayDispatch | null>(null);
   const [loaded, setLoaded] = useState(false);
   const [flash, setFlash] = useState<{ kind: "ok" | "err"; text: string } | null>(null);
@@ -97,6 +97,7 @@ export function DsaClient({ history, progress, hasResume }: Props) {
   }, [progress]);
 
   const todayGuide = today ? getDsaLearningGuide(today.problem) : null;
+  const activeRole = getDsaRoleTrack(today?.problem.primaryRole ?? targetRole);
   const learnBullets = today?.what_youll_learn.length ? today.what_youll_learn : todayGuide?.approach.slice(0, 3) ?? [];
   const todayProgress = today ? progressBySlug.get(today.problem.slug) ?? null : null;
 
@@ -196,6 +197,9 @@ export function DsaClient({ history, progress, hasResume }: Props) {
                   <span className="rounded-full bg-secondary px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
                     Today
                   </span>
+                  <span className="rounded-full border border-primary/30 bg-primary/5 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-primary">
+                    {activeRole.label}
+                  </span>
                   <DifficultyPill difficulty={today.problem.difficulty} />
                 </div>
                 <h2 className="mt-2 text-xl font-semibold leading-tight tracking-tight">
@@ -217,10 +221,17 @@ export function DsaClient({ history, progress, hasResume }: Props) {
               </p>
             )}
 
+            <div className="grid gap-2 rounded-lg border border-border bg-secondary/30 p-3 text-xs leading-relaxed text-muted-foreground sm:grid-cols-3">
+              <ContextCell label="Company context" value={`${today.problem.context.company} · ${today.problem.context.productTeam}`} />
+              <ContextCell label="Freshness" value={today.problem.context.month} />
+              <ContextCell label="Product surface" value={today.problem.context.productSurface} />
+              <p className="sm:col-span-3">{today.problem.context.disclaimer}</p>
+            </div>
+
             <div className="grid grid-cols-3 gap-2">
               <Metric icon={<Flame className="h-4 w-4" />} label="Streak" value={`${streak}d`} />
               <Metric icon={<CheckCircle2 className="h-4 w-4" />} label="Done" value={String(completedCount)} />
-              <Metric icon={<Target className="h-4 w-4" />} label="Pattern" value={shortPattern(today.problem.pattern)} />
+              <Metric icon={<Target className="h-4 w-4" />} label="Track" value={activeRole.label} />
             </div>
 
             <div className="flex flex-col gap-2 sm:flex-row">
@@ -233,15 +244,13 @@ export function DsaClient({ history, progress, hasResume }: Props) {
                 {pending ? <Loader2 className="h-4 w-4 animate-spin motion-reduce:animate-none" /> : <CheckCircle2 className="h-4 w-4" />}
                 {today.is_complete ? "Completed" : "Mark Done"}
               </button>
-              <a
-                href={today.problem.url}
-                target="_blank"
-                rel="noreferrer"
+              <Link
+                href={`/dsa/${today.problem.slug}`}
                 className="inline-flex min-h-11 flex-1 items-center justify-center gap-2 rounded-lg border border-border bg-background px-4 py-2.5 text-sm font-semibold text-muted-foreground transition hover:bg-secondary hover:text-foreground sm:flex-none"
               >
-                <ExternalLink className="h-4 w-4" />
-                Open on LeetCode
-              </a>
+                <BookOpen className="h-4 w-4" />
+                Full solution
+              </Link>
               {/* EU-6: skip today's pick (up to 3/day). Hidden once the
                   problem is marked complete — at that point there's no
                   pick to skip. */}
@@ -376,6 +385,15 @@ function Metric({ icon, label, value }: { icon: React.ReactNode; label: string; 
     <div className="border-l border-border pl-3 first:border-l-0 first:pl-0">
       <div className="flex items-center gap-1.5 text-primary">{icon}<span className="text-sm font-semibold">{value}</span></div>
       <p className="mt-0.5 text-[11px] text-muted-foreground">{label}</p>
+    </div>
+  );
+}
+
+function ContextCell({ label, value }: { label: string; value: string }) {
+  return (
+    <div>
+      <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">{label}</p>
+      <p className="mt-0.5 font-medium text-foreground">{value}</p>
     </div>
   );
 }
@@ -548,12 +566,6 @@ function DifficultyPill({ difficulty }: { difficulty: DsaDifficulty }) {
       {difficulty}
     </span>
   );
-}
-
-function shortPattern(pattern: DsaPattern): string {
-  const item = DSA_PATTERN_ROADMAP.find((p) => p.pattern === pattern);
-  if (!item) return "Core";
-  return item.label.replace("Dynamic Programming", "DP").replace("Priority Queue", "PQ");
 }
 
 function computeStreak(history: DsaHistoryRow[]): number {

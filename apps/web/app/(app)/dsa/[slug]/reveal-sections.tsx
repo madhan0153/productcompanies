@@ -69,6 +69,16 @@ export function RevealSections({ guide }: { guide: DsaLearningGuide }) {
             </ol>
             {(guide.codeByLang || guide.code) && <CodeTabs guide={guide} />}
             <p className="mt-3 text-sm font-medium text-muted-foreground">{guide.complexity}</p>
+            {(guide.edgeCases.length > 0 || guide.optimizations.length > 0) && (
+              <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                {guide.edgeCases.length > 0 && (
+                  <MiniList title="Edge cases" items={guide.edgeCases} />
+                )}
+                {guide.optimizations.length > 0 && (
+                  <MiniList title="Optimizations" items={guide.optimizations} />
+                )}
+              </div>
+            )}
           </div>
         ) : (
           <RevealCta
@@ -81,6 +91,22 @@ export function RevealSections({ guide }: { guide: DsaLearningGuide }) {
         )}
       </section>
     </>
+  );
+}
+
+function MiniList({ title, items }: { title: string; items: string[] }) {
+  return (
+    <div className="rounded-md border border-border bg-background p-3">
+      <p className="text-xs font-semibold uppercase tracking-wide text-foreground">{title}</p>
+      <ul className="mt-2 space-y-1.5">
+        {items.map((item) => (
+          <li key={item} className="flex gap-2 text-xs leading-relaxed text-muted-foreground">
+            <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-primary" />
+            <span>{item}</span>
+          </li>
+        ))}
+      </ul>
+    </div>
   );
 }
 

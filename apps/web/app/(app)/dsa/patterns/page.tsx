@@ -12,12 +12,12 @@ import { cn } from "@/lib/utils";
 import { PatternAnimation } from "./pattern-animations";
 
 export const metadata: Metadata = {
-  title: "17 DSA Patterns for Product-Company Interviews — Roadmap + Problems",
-  description: "Master 17 algorithmic patterns asked at Indian product companies: arrays + hashing, two pointers, sliding window, stacks, binary search, linked lists, trees, heap, graphs, DP, backtracking, intervals, tries, bit manipulation, math + geometry.",
+  title: "Role-Aware DSA Roadmap - Premium Product Interview Patterns",
+  description: "Browse ProdMatch's role-aware DSA roadmap across product interview patterns with self-contained, company-context simulations and full in-app solutions.",
   alternates: { canonical: "/dsa/patterns" },
   openGraph: {
-    title: "17 DSA Patterns for Interviews — Pattern Roadmap",
-    description: "Pattern-recognition roadmap for product-company DSA interviews. Foundational → graphs → DP.",
+    title: "Role-Aware DSA Roadmap",
+    description: "Pattern-recognition roadmap for role-specific product-company DSA practice.",
   },
 };
 export const dynamic = "force-static";
@@ -47,9 +47,9 @@ export default function DsaPatternsPage() {
           </span>
           <div className="min-w-0">
             <p className="text-xs font-semibold uppercase tracking-wide text-primary">DSA roadmap</p>
-            <h1 className="mt-1 text-2xl font-semibold tracking-tight sm:text-3xl">All Patterns</h1>
+            <h1 className="mt-1 text-2xl font-semibold tracking-tight sm:text-3xl">Role-Aware Patterns</h1>
             <p className="mt-1 max-w-2xl text-sm leading-relaxed text-muted-foreground">
-              Seventeen interview patterns in the order you should learn them. Foundations first, then graphs and DP.
+              Product interview patterns in the order you should learn them, backed by role-specific scenarios and owned solutions.
             </p>
           </div>
         </div>
