@@ -8,14 +8,15 @@ const PAGE = {
 };
 
 export async function renderTailoredResumePdf(content: TailoredResumeContent): Promise<Buffer> {
+  const titleName = clean(content.header?.name || "Candidate");
   return new Promise((resolve, reject) => {
     const chunks: Buffer[] = [];
     const doc = new PDFDocument({
       size: PAGE.size,
       margins: { top: PAGE.margin, right: PAGE.margin, bottom: PAGE.bottom, left: PAGE.margin },
       info: {
-        Title: `${content.header.name} - tailored resume`,
-        Author: content.header.name,
+        Title: `${titleName} - tailored resume`,
+        Author: titleName,
         Creator: "ProdMatch.ai",
         Producer: "ProdMatch.ai",
       },
@@ -38,18 +39,18 @@ function render(doc: PDFKit.PDFDocument, content: TailoredResumeContent) {
     if (doc.y + height > bottomY()) doc.addPage();
   };
 
-  const text = (value: string, options: PDFKit.Mixins.TextOptions = {}) => {
+  const text = (value: unknown, options: PDFKit.Mixins.TextOptions = {}) => {
     doc.text(clean(value), { width, ...options });
   };
 
   doc.fillColor("#111827").font("Helvetica-Bold").fontSize(20);
-  text(content.header.name, { align: "center" });
+  text(content.header?.name || "Candidate", { align: "center" });
   doc.moveDown(0.18);
 
   const meta = [
-    content.header.title,
-    content.header.location,
-    content.header.contact_line,
+    content.header?.title,
+    content.header?.location,
+    content.header?.contact_line,
   ].filter(Boolean).join(" | ");
   doc.fillColor("#374151").font("Helvetica").fontSize(9.5);
   text(meta, { align: "center" });
@@ -61,21 +62,21 @@ function render(doc: PDFKit.PDFDocument, content: TailoredResumeContent) {
     text(content.summary, { lineGap: 1.2 });
   }
 
-  if (content.skills.length > 0) {
+  if ((content.skills ?? []).length > 0) {
     section(doc, "Skills", ensureSpace, width);
-    for (const group of content.skills) {
+    for (const group of content.skills ?? []) {
       ensureSpace(18);
       doc.fillColor("#111827").font("Helvetica-Bold").fontSize(9.4).text(`${clean(group.group)}: `, {
         continued: true,
         width,
       });
-      doc.font("Helvetica").text(clean(group.items.join(", ")), { width });
+      doc.font("Helvetica").text(clean((group.items ?? []).join(", ")), { width });
     }
   }
 
-  if (content.experience.length > 0) {
+  if ((content.experience ?? []).length > 0) {
     section(doc, "Experience", ensureSpace, width);
-    for (const role of content.experience) {
+    for (const role of content.experience ?? []) {
       ensureSpace(58);
       doc.moveDown(0.22);
       const startY = doc.y;
@@ -93,28 +94,28 @@ function render(doc: PDFKit.PDFDocument, content: TailoredResumeContent) {
         });
       }
       doc.moveDown(0.18);
-      for (const bullet of role.bullets.slice(0, 5)) {
+      for (const bullet of (role.bullets ?? []).slice(0, 5)) {
         bulletLine(doc, clean(bullet), ensureSpace, width);
       }
     }
   }
 
-  if (content.projects && content.projects.length > 0) {
+  if ((content.projects ?? []).length > 0) {
     section(doc, "Selected Projects", ensureSpace, width);
-    for (const project of content.projects) {
+    for (const project of content.projects ?? []) {
       ensureSpace(42);
       doc.fillColor("#111827").font("Helvetica-Bold").fontSize(9.5).text(clean(project.name), { width });
-      if (project.tech.length > 0) {
-        doc.fillColor("#4B5563").font("Helvetica-Oblique").fontSize(8.8).text(clean(project.tech.join(", ")), { width });
+      if ((project.tech ?? []).length > 0) {
+        doc.fillColor("#4B5563").font("Helvetica-Oblique").fontSize(8.8).text(clean((project.tech ?? []).join(", ")), { width });
       }
       doc.fillColor("#111827").font("Helvetica").fontSize(9.2).text(clean(project.summary), { width, lineGap: 1 });
       doc.moveDown(0.2);
     }
   }
 
-  if (content.education.length > 0) {
+  if ((content.education ?? []).length > 0) {
     section(doc, "Education", ensureSpace, width);
-    for (const education of content.education) {
+    for (const education of content.education ?? []) {
       ensureSpace(20);
       const suffix = education.year ? `, ${education.year}` : "";
       doc.fillColor("#111827").font("Helvetica-Bold").fontSize(9.4).text(clean(education.degree), {
@@ -154,10 +155,10 @@ function bulletLine(
   doc.moveDown(0.12);
 }
 
-function clean(value: string) {
-  return value
-    .replace(/[•●◦]/g, "-")
-    .replace(/[–—]/g, "-")
+function clean(value: unknown) {
+  return String(value ?? "")
+    .replace(/[\u2022\u25cf\u25e6]/g, "-")
+    .replace(/[\u2013\u2014]/g, "-")
     .replace(/\s+/g, " ")
     .trim();
 }
