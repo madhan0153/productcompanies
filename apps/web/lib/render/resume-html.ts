@@ -1,7 +1,7 @@
 // Resume → HTML renderer. Shared by the PDF generator (Playwright print)
 // and by inline preview surfaces in the UI.
 //
-// Same data shape as the docx generator: TailoredResumeContent. Output is a
+// Same data shape as the PDF generator: TailoredResumeContent. Output is a
 // self-contained HTML string (no external CSS / fonts / scripts) so the
 // PDF generator can load it with `setContent()` and not wait on network.
 
@@ -89,7 +89,7 @@ const CSS = `
 
 /**
  * Render a resume content payload to a complete, self-contained HTML document.
- * The same payload powers both the docx output and this HTML/PDF rendering.
+ * The same payload powers the PDF rendering and this HTML preview.
  */
 export function renderResumeHtml(
   content: TailoredResumeContent,

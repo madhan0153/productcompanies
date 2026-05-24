@@ -361,7 +361,7 @@ function ResumeIntelSummary({
 }: IntelSummaryProps) {
   const diagnoses = events.filter((e) => e.kind === "diagnosis");
   const rewriteBatches = events.filter((e) => e.kind === "rewrite_batch");
-  const renders = events.filter((e) => e.kind === "render_docx");
+  const renders = events.filter((e) => e.kind === "render_pdf");
 
   const diagOk = diagnoses.filter((e) => e.ok).length;
   const diagFail = diagnoses.filter((e) => !e.ok).length;

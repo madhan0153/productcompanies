@@ -29,7 +29,6 @@ type Tab = "tailor" | "recruiter";
 
 interface CachedTailor {
   content: TailoredResumeContent;
-  docx_url: string;
   pdf_url: string;
   print_url: string;
   generated_at: string;
@@ -223,25 +222,24 @@ function TailorTab({ jobId, initial }: { jobId: string; initial: CachedTailor | 
       }
       setData({
         content: r.content,
-        docx_url: r.docx_url,
         pdf_url: r.pdf_url,
         print_url: r.print_url,
         generated_at: r.generated_at,
       });
       toast.success(r.cached ? "Tailored resume ready" : "Tailored resume generated", {
-        description: "PDF and DOCX downloads are ready.",
+        description: "Your PDF is ready.",
       });
       window.open(r.pdf_url, "_blank", "noopener,noreferrer");
       router.refresh();
     });
   }
 
-  async function refreshSignedUrl(format: "docx" | "pdf") {
-    const r = await getTailoredDownloadUrl(jobId, format);
+  async function refreshSignedUrl() {
+    const r = await getTailoredDownloadUrl(jobId);
     if (r.ok) {
       setData((prev) => (prev ? {
         ...prev,
-        [format === "pdf" ? "pdf_url" : "docx_url"]: r.url,
+        pdf_url: r.url,
       } : prev));
       window.open(r.url, "_blank", "noopener,noreferrer");
     } else {
@@ -253,8 +251,8 @@ function TailorTab({ jobId, initial }: { jobId: string; initial: CachedTailor | 
     return (
       <EmptyStateGenerate
         title="Generate a JD-matched resume"
-        body="Creates an application-ready PDF and editable DOCX directly from your resume and this JD. Only safe, evidence-backed edits are auto-applied."
-        ctaLabel="Generate & download"
+        body="Creates an application-ready PDF directly from your resume and this JD. Only safe, evidence-backed edits are auto-applied."
+        ctaLabel="Generate PDF"
         ctaIcon={<FileDown className="h-3.5 w-3.5" />}
         onClick={trigger}
         pending={pending}
@@ -278,19 +276,11 @@ function TailorTab({ jobId, initial }: { jobId: string; initial: CachedTailor | 
         <div className="flex flex-wrap items-center gap-2">
           <button
             type="button"
-            onClick={() => refreshSignedUrl("pdf")}
+            onClick={() => refreshSignedUrl()}
             className="inline-flex items-center gap-1.5 rounded-lg bg-primary px-3 py-1.5 text-xs font-semibold text-primary-foreground transition hover:opacity-90"
           >
             <FileDown className="h-3.5 w-3.5" />
             Download PDF
-          </button>
-          <button
-            type="button"
-            onClick={() => refreshSignedUrl("docx")}
-            className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-card px-3 py-1.5 text-xs font-medium text-muted-foreground transition hover:border-primary/30 hover:text-foreground"
-          >
-            <FileDown className="h-3.5 w-3.5" />
-            Download DOCX
           </button>
           <a
             href={`${data.print_url}?autoprint=1`}
@@ -471,7 +461,7 @@ export function TailorPanel({
       <ToolkitGate
         icon={<Sparkles className="h-4 w-4" />}
         title="Upload your resume to unlock Tailor Resume"
-        body="Generates a JD-targeted PDF for applying and a DOCX for edits."
+        body="Generates a JD-targeted PDF for applications."
         actionLabel="Upload resume"
         actionHref="/profile"
       />

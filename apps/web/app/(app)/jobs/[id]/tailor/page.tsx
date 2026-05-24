@@ -73,7 +73,7 @@ export default async function TailorPage({ params }: { params: Promise<{ id: str
           <span className="truncate">{job.title}</span>
         </h1>
         <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
-          Generate a JD-matched PDF and editable DOCX directly. <strong className="text-foreground/90">We never invent experience.</strong>
+          Generate a JD-matched PDF directly. <strong className="text-foreground/90">We never invent experience.</strong>
         </p>
       </header>
 

@@ -4,7 +4,7 @@
 // 50MB function size limit AND adds cold-start latency. For an enterprise
 // mobile-first app the better trade-off is:
 //
-//   1. Always provide the canonical .docx download (works everywhere,
+//   1. Always provide the canonical PDF download (works everywhere,
 //      ATS-friendly).
 //   2. Provide a /resume/print HTML view that opens in a new tab with
 //      `@media print` CSS already tuned for A4. The user taps "Print" in

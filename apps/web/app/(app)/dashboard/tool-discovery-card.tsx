@@ -21,7 +21,7 @@ export function ToolDiscoveryCard({ inputs }: { inputs: ToolDiscoveryInputs }) {
   // once used.
   const tools = [
     { used: false,                    icon: Sparkles,     name: "AI Coach",        desc: "Career questions, answered with your resume context.", href: "/coach" },
-    { used: inputs.tailoredCount > 0, icon: FileText,     name: "Tailored Resume", desc: "JD-anchored .docx in one click.",                      href: inputs.topJobId ? `/jobs/${inputs.topJobId}#apply` : "/matches" },
+    { used: inputs.tailoredCount > 0, icon: FileText,     name: "Tailored Resume", desc: "JD-anchored PDF in one click.",                        href: inputs.topJobId ? `/jobs/${inputs.topJobId}#apply` : "/matches" },
     { used: inputs.memoCount > 0,     icon: MessageSquare, name: "Negotiation Memo", desc: "Market-grounded ask + counter-offer prep.",          href: inputs.topJobId ? `/jobs/${inputs.topJobId}#apply` : "/matches" },
   ];
   const unused = tools.filter((t) => !t.used);

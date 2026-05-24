@@ -105,7 +105,7 @@ export function pickNextAction(inputs: NextActionInputs): NextAction | null {
   if (!inputs.coachOrToolUsed && inputs.topMatch) {
     return {
       title: `Generate a tailored resume for ${inputs.topMatch.title}`,
-      body: `Your top match at ${inputs.topMatch.company} (score ${Math.round(inputs.topMatch.score)}). One click produces a JD-anchored .docx.`,
+      body: `Your top match at ${inputs.topMatch.company} (score ${Math.round(inputs.topMatch.score)}). One click produces a JD-anchored PDF.`,
       cta: "Generate",
       href: `/jobs/${inputs.topMatch.jobId}#apply`,
       tone: "action",

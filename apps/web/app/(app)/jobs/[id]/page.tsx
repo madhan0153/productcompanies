@@ -156,13 +156,13 @@ export default async function JobDetailPage({ params }: { params: Promise<{ id: 
       .maybeSingle() as any,
     admin
       .from("tailored_resumes")
-      .select("content, docx_storage_path, pdf_storage_path, generated_at, status")
+      .select("content, pdf_storage_path, generated_at, status")
       .eq("user_id", user.id)
       .eq("job_id", id)
       .maybeSingle() as any,
   ]) as [
     { data: { resume_parsed: ParsedResume | null; resume_storage_path: string | null } | null },
-    { data: { content: TailoredResumeContent; docx_storage_path: string | null; pdf_storage_path: string | null; generated_at: string; status: string | null } | null },
+    { data: { content: TailoredResumeContent; pdf_storage_path: string | null; generated_at: string; status: string | null } | null },
   ];
 
   const parsedResume = profileRow?.resume_parsed ?? null;
@@ -176,14 +176,11 @@ export default async function JobDetailPage({ params }: { params: Promise<{ id: 
       })
     : null;
 
-  let initialDocxUrl: string | null = null;
   let initialPdfUrl: string | null = null;
-  if (tailoredRow?.status === "finalised" && tailoredRow?.docx_storage_path && tailoredRow?.pdf_storage_path) {
-    const [{ data: signedDocx }, { data: signedPdf }] = await Promise.all([
-      admin.storage.from("tailored-resumes").createSignedUrl(tailoredRow.docx_storage_path, 600),
-      admin.storage.from("tailored-resumes").createSignedUrl(tailoredRow.pdf_storage_path, 600),
-    ]);
-    initialDocxUrl = signedDocx?.signedUrl ?? null;
+  if (tailoredRow?.status === "finalised" && tailoredRow?.pdf_storage_path) {
+    const { data: signedPdf } = await admin.storage
+      .from("tailored-resumes")
+      .createSignedUrl(tailoredRow.pdf_storage_path, 600);
     initialPdfUrl = signedPdf?.signedUrl ?? null;
   }
 
@@ -378,9 +375,8 @@ export default async function JobDetailPage({ params }: { params: Promise<{ id: 
                 hasResume={hasResume}
                 matchingConsent={consents.matching === true}
                 resumeIntelligenceConsent={consents.resume_intelligence === true}
-                initialTailor={tailoredRow && initialDocxUrl && initialPdfUrl ? {
+                initialTailor={tailoredRow && initialPdfUrl ? {
                   content: tailoredRow.content,
-                  docx_url: initialDocxUrl,
                   pdf_url: initialPdfUrl,
                   print_url: `/jobs/${id}/tailor/print`,
                   generated_at: tailoredRow.generated_at,

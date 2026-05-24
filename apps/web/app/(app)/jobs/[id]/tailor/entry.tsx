@@ -17,7 +17,7 @@ export function TailorEntry({ jobId, quotaUsed, quotaLimit, quotaExhausted, must
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
-  const [urls, setUrls] = useState<{ pdf: string; docx: string; print: string } | null>(null);
+  const [urls, setUrls] = useState<{ pdf: string; print: string } | null>(null);
 
   const run = () => {
     setError(null);
@@ -28,7 +28,7 @@ export function TailorEntry({ jobId, quotaUsed, quotaLimit, quotaExhausted, must
         return;
       }
 
-      setUrls({ pdf: res.pdf_url, docx: res.docx_url, print: res.print_url });
+      setUrls({ pdf: res.pdf_url, print: res.print_url });
       window.open(res.pdf_url, "_blank", "noopener,noreferrer");
       router.refresh();
     });
@@ -39,7 +39,7 @@ export function TailorEntry({ jobId, quotaUsed, quotaLimit, quotaExhausted, must
       <div className="rounded-xl border border-border bg-card p-4 sm:p-5">
         <h2 className="text-base font-semibold sm:text-lg">Generate tailored resume</h2>
         <p className="mt-1 max-w-2xl text-xs leading-relaxed text-muted-foreground">
-          One click creates a JD-matched PDF and editable DOCX. ProdMatch only auto-applies safe, evidence-backed edits and leaves risky suggestions unchanged.
+          One click creates a JD-matched PDF. ProdMatch only auto-applies safe, evidence-backed edits and leaves risky suggestions unchanged.
         </p>
 
         {mustHaves.length > 0 && (
@@ -82,12 +82,12 @@ export function TailorEntry({ jobId, quotaUsed, quotaLimit, quotaExhausted, must
             {pending ? (
               <>
                 <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
-                Generating PDF and DOCX...
+                Generating PDF...
               </>
             ) : (
               <>
                 {urls ? <RefreshCw className="h-4 w-4" aria-hidden /> : <Sparkles className="h-4 w-4" aria-hidden />}
-                {urls ? "Regenerate" : "Generate & download"}
+                {urls ? "Regenerate" : "Generate PDF"}
               </>
             )}
           </button>
@@ -103,15 +103,6 @@ export function TailorEntry({ jobId, quotaUsed, quotaLimit, quotaExhausted, must
             >
               <FileDown className="h-3.5 w-3.5" aria-hidden />
               Download PDF
-            </a>
-            <a
-              href={urls.docx}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="press tap-target-sm inline-flex items-center gap-1.5 rounded-md border border-border bg-card px-3 py-1.5 text-xs font-semibold text-foreground transition hover:bg-secondary focus-ring"
-            >
-              <FileDown className="h-3.5 w-3.5" aria-hidden />
-              Download DOCX
             </a>
             <a
               href={`${urls.print}?autoprint=1`}

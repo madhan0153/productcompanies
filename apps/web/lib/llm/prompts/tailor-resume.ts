@@ -3,7 +3,7 @@
 // Takes the candidate's parsed resume + JD must/nice-to-have skills + the
 // Fit Card's resume_tweaks (if available) and produces a complete,
 // structured resume re-organised for this specific role. The output is a
-// JSON document the docx generator turns into a downloadable Word file.
+// JSON document the PDF renderer turns into a downloadable resume.
 //
 // Strict rules to prevent hallucination:
 //   - The model MAY reorder, reword for impact, and surface implicit
@@ -55,7 +55,7 @@ export interface TailoredResumeContent {
     summary: string;
   }>;
   /** A few sentences explaining the reasoning behind the changes — kept on
-   *  the result row for transparency, never goes into the .docx. */
+   *  the result row for transparency, never goes into the generated PDF. */
   tailoring_notes: string;
 }
 
