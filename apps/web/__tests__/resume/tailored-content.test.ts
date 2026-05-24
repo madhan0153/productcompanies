@@ -2,6 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { extractText, getDocumentProxy } from "unpdf";
 import { buildEvidenceBackedTailoredContent } from "../../lib/resume-intel/tailored-content";
+import { renderTailoredResumeDocx } from "../../lib/docx/tailored-resume";
 import { renderTailoredResumePdf } from "../../lib/pdf/tailored-resume";
 import type { BulletRewrite } from "../../lib/llm/prompts/bullet-rewrite";
 import type { ExtractedResumeContent } from "../../lib/llm/prompts/extract-resume-content";
@@ -105,4 +106,55 @@ test("builds a PDF-ready tailored resume from source bullets plus approved JD ed
   assert.match(pdfText, /Built Node\.js checkout APIs backed by PostgreSQL/);
   assert.match(pdfText, /Reduced checkout latency from 900ms to 420ms/);
   assert.doesNotMatch(pdfText, /Kafka/);
+});
+
+test("renders a direct tailored resume even when parsed identity fields are sparse", async () => {
+  const parsed = {
+    name: "",
+    current_role: "",
+    role_function: "backend",
+    target_role_functions: ["backend"],
+    total_years_experience: 0,
+    tech_stack: [],
+    soft_skills: [],
+    products_built: [],
+    companies: [],
+    education: [],
+    summary: "",
+    product_dna_score: 0,
+  } satisfies ParsedResume;
+
+  const diagnosis = {
+    overall_grade: "C",
+    headline: "Sparse resume with limited evidence.",
+    ats_risks: [],
+    weak_bullets: [],
+    missing_keywords: [],
+    recruiter_concerns: [],
+  } satisfies ResumeDiagnosis;
+
+  const content = buildEvidenceBackedTailoredContent({
+    resume: parsed,
+    extracted: null,
+    diagnosis,
+    rewrites: {},
+    decisions: {},
+    displayName: "",
+    preferredHubs: [],
+    jdTitle: "Software Engineer, Backend",
+    jdMustHaves: ["PostgreSQL"],
+    jdNiceToHaves: ["Redis"],
+  });
+
+  assert.equal(content.header.name, "Candidate");
+  assert.equal(content.header.title, "Software Engineer, Backend");
+  assert.equal(content.header.location, "India");
+
+  const [docx, pdf] = await Promise.all([
+    renderTailoredResumeDocx(content),
+    renderTailoredResumePdf(content),
+  ]);
+
+  assert.ok(docx.byteLength > 1000);
+  assert.ok(pdf.byteLength > 1000);
 });
