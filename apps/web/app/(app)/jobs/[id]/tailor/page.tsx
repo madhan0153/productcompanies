@@ -6,13 +6,8 @@ import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { getUserConsents } from "@/lib/dpdp/consent";
 import { getQuotaState } from "@/lib/resume-intel/quota";
-import { computeAtsScorecard } from "@/lib/matching/ats-scorecard";
 import { TailorEntry } from "./entry";
-import { TailorReview } from "./review";
-import type { ResumeDiagnosis } from "@/lib/llm/prompts/resume-diagnose";
-import type { BulletRewrite, RewriteMode } from "@/lib/llm/prompts/bullet-rewrite";
 import type { ParsedResume } from "@/lib/llm/prompts/resume-parse";
-import type { EnhancementDecision } from "../tailor-actions";
 
 export const metadata: Metadata = { title: "Tailor for this role" };
 export const dynamic = "force-dynamic";
@@ -28,25 +23,21 @@ export default async function TailorPage({ params }: { params: Promise<{ id: str
   const consents = await getUserConsents(user.id);
   const intelConsent = consents.resume_intelligence === true;
 
-
   const { data: profile } = await (supabase
     .from("profiles")
-    .select("resume_storage_path, resume_signature, resume_parsed, role_function")
+    .select("resume_storage_path, resume_signature, resume_parsed")
     .eq("id", user.id)
     .maybeSingle() as any) as {
       data: {
         resume_storage_path: string | null;
         resume_signature: string | null;
         resume_parsed: ParsedResume | null;
-        role_function: string | null;
       } | null;
     };
 
   const hasResume = !!profile?.resume_storage_path && !!profile.resume_signature && !!profile.resume_parsed;
 
   const admin = createSupabaseAdminClient();
-
-
   const { data: job } = await (admin
     .from("jobs")
     .select("id, title, must_have_skills, companies(name)")
@@ -56,48 +47,7 @@ export default async function TailorPage({ params }: { params: Promise<{ id: str
     };
   if (!job) notFound();
 
-
-  const { data: row } = await (admin
-    .from("tailored_resumes")
-    .select("id, status, mode, diagnosis, rewrites, decisions")
-    .eq("user_id", user.id)
-    .eq("job_id", id)
-    .maybeSingle() as any) as {
-      data: {
-        id: string;
-        status: "pending_review" | "finalised" | "discarded";
-        mode: "polish" | "tailor" | null;
-        diagnosis: ResumeDiagnosis | null;
-        rewrites: Record<string, BulletRewrite> | null;
-        decisions: Record<string, EnhancementDecision> | null;
-      } | null;
-    };
-
-  const pending = row?.status === "pending_review" && row.diagnosis ? row : null;
-
   const quota = await getQuotaState(user.id, "tailored");
-
-  // Synthesise resume text from parsed JSON for the deterministic ATS
-  // scorecard — the profiles table has no raw resume_text column.
-  const resumeText = profile?.resume_parsed
-    ? [
-        profile.resume_parsed.summary ?? "",
-        (profile.resume_parsed.tech_stack ?? []).join(", "),
-        (profile.resume_parsed.products_built ?? []).join("\n"),
-        (profile.resume_parsed.companies ?? []).map((c) => `${c.role ?? ""} — ${c.name}`).join("\n"),
-      ].join("\n")
-    : "";
-
-  const ats_before = hasResume && profile?.resume_parsed
-    ? computeAtsScorecard({
-        resume:        profile.resume_parsed,
-        resume_text:   resumeText,
-        role_function: profile.role_function ?? null,
-        // JD must-haves drive the keyword-density axis for the tailored
-        // flow — much sharper signal than the role-function default pool.
-        required_keywords: job.must_have_skills ?? [],
-      })
-    : null;
 
   return (
     <div className="space-y-4 pb-8">
@@ -116,15 +66,14 @@ export default async function TailorPage({ params }: { params: Promise<{ id: str
 
       <header>
         <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
-          {job.companies?.name ?? "—"} · Tailor resume
+          {job.companies?.name ?? "Company"} / Tailor resume
         </p>
         <h1 className="mt-0.5 flex items-center gap-2 text-lg font-semibold leading-tight sm:text-xl">
           <Sparkles className="h-4 w-4 text-primary" aria-hidden />
           <span className="truncate">{job.title}</span>
         </h1>
         <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
-          AI surfaces JD-relevant signal in your resume. You approve every change.{" "}
-          <strong className="text-foreground/90">We never invent experience.</strong>
+          Generate a JD-matched PDF and editable DOCX directly. <strong className="text-foreground/90">We never invent experience.</strong>
         </p>
       </header>
 
@@ -144,7 +93,7 @@ export default async function TailorPage({ params }: { params: Promise<{ id: str
         <div className="rounded-xl border border-primary/30 bg-primary-soft p-4">
           <p className="text-sm font-semibold">Enable Resume Intelligence consent</p>
           <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
-            One toggle in Privacy settings — we only run on your click.
+            One toggle in Privacy settings. We only run on your click.
           </p>
           <Link
             href="/settings/privacy"
@@ -155,25 +104,13 @@ export default async function TailorPage({ params }: { params: Promise<{ id: str
         </div>
       )}
 
-      {hasResume && intelConsent && !pending && (
+      {hasResume && intelConsent && (
         <TailorEntry
           jobId={id}
           quotaUsed={quota.used}
           quotaLimit={quota.limit}
           quotaExhausted={quota.exhausted}
           mustHaves={job.must_have_skills ?? []}
-        />
-      )}
-
-      {hasResume && intelConsent && pending && ats_before && (
-        <TailorReview
-          jobId={id}
-          rowId={pending.id}
-          mode={(pending.mode ?? "polish") as RewriteMode}
-          diagnosis={pending.diagnosis!}
-          rewrites={pending.rewrites ?? {}}
-          decisions={pending.decisions ?? {}}
-          atsBefore={ats_before}
         />
       )}
     </div>

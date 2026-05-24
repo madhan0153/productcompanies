@@ -178,7 +178,7 @@ export default async function JobDetailPage({ params }: { params: Promise<{ id: 
 
   let initialDocxUrl: string | null = null;
   let initialPdfUrl: string | null = null;
-  if (tailoredRow?.status !== "pending_review" && tailoredRow?.docx_storage_path && tailoredRow?.pdf_storage_path) {
+  if (tailoredRow?.status === "finalised" && tailoredRow?.docx_storage_path && tailoredRow?.pdf_storage_path) {
     const [{ data: signedDocx }, { data: signedPdf }] = await Promise.all([
       admin.storage.from("tailored-resumes").createSignedUrl(tailoredRow.docx_storage_path, 600),
       admin.storage.from("tailored-resumes").createSignedUrl(tailoredRow.pdf_storage_path, 600),

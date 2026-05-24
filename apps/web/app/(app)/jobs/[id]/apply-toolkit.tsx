@@ -2,15 +2,14 @@
 
 import { useState, useTransition, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
 import {
   Sparkles, FileDown, Eye, Loader2, RefreshCw,
   AlertCircle, ShieldCheck,
 } from "lucide-react";
-// Eye is still used in the TailorTab "Review changes" button shown AFTER generation.
 import { toast } from "sonner";
 import {
-  diagnoseTailored,
+  generateTailoredResumeDownload,
   getTailoredDownloadUrl,
 } from "./tailor-actions";
 import type { TailoredResumeContent } from "@/lib/llm/prompts/tailor-resume";
@@ -55,6 +54,15 @@ export function ApplyToolkit({
   initialTailor,
 }: Props) {
   const [tab, setTab] = useState<Tab>("tailor");
+  const reduceMotion = useReducedMotion();
+  const panelMotion = reduceMotion
+    ? { initial: false, animate: { opacity: 1 }, exit: { opacity: 1 }, transition: { duration: 0 } }
+    : {
+        initial: { opacity: 0, y: 4 },
+        animate: { opacity: 1, y: 0 },
+        exit: { opacity: 0, y: -4 },
+        transition: { duration: 0.2, ease: [0.22, 1, 0.36, 1] },
+      };
 
   useEffect(() => {
     const handler = (e: Event) => {
@@ -114,10 +122,7 @@ export function ApplyToolkit({
             <motion.div
               key="recruiter"
               role="tabpanel"
-              initial={{ opacity: 0, y: 4 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -4 }}
-              transition={{ duration: 0.2, ease: [0.22, 1, 0.36, 1] }}
+              {...panelMotion}
             >
               {recruiterView}
             </motion.div>
@@ -126,10 +131,7 @@ export function ApplyToolkit({
             <motion.div
               key="tailor"
               role="tabpanel"
-              initial={{ opacity: 0, y: 4 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -4 }}
-              transition={{ duration: 0.2, ease: [0.22, 1, 0.36, 1] }}
+              {...panelMotion}
             >
               <TailorTab jobId={jobId} initial={initialTailor} />
             </motion.div>
@@ -198,19 +200,26 @@ function TailorTab({ jobId, initial }: { jobId: string; initial: CachedTailor | 
   const [data, setData] = useState<CachedTailor | null>(initial);
   const [error, setError] = useState<string | null>(null);
 
-  function trigger(force: boolean) {
+  function trigger() {
     setError(null);
     start(async () => {
-      const r = await diagnoseTailored(jobId, "polish");
+      const r = await generateTailoredResumeDownload(jobId);
       if (!r.ok) {
         setError(r.error);
-        toast.error("Couldn't prepare review", { description: r.error });
+        toast.error("Couldn't generate resume", { description: r.error });
         return;
       }
-      toast.success(r.resumed ? "Review resumed" : force ? "Fresh review prepared" : "Review prepared", {
-        description: "Approve the JD-aligned changes before PDF/DOCX generation.",
+      setData({
+        content: r.content,
+        docx_url: r.docx_url,
+        pdf_url: r.pdf_url,
+        print_url: r.print_url,
+        generated_at: r.generated_at,
       });
-      router.push(`/jobs/${jobId}/tailor`);
+      toast.success(r.cached ? "Tailored resume ready" : "Tailored resume generated", {
+        description: "PDF and DOCX downloads are ready.",
+      });
+      window.open(r.pdf_url, "_blank", "noopener,noreferrer");
       router.refresh();
     });
   }
@@ -231,11 +240,11 @@ function TailorTab({ jobId, initial }: { jobId: string; initial: CachedTailor | 
   if (!data) {
     return (
       <EmptyStateGenerate
-        title="Review JD-aligned resume changes"
-        body="We preserve your source resume and only suggest evidence-backed edits for this JD. You approve every change before PDF/DOCX generation."
-        ctaLabel="Review suggestions"
+        title="Generate a JD-matched resume"
+        body="Creates an application-ready PDF and editable DOCX directly from your resume and this JD. Only safe, evidence-backed edits are auto-applied."
+        ctaLabel="Generate & download"
         ctaIcon={<FileDown className="h-3.5 w-3.5" />}
-        onClick={() => trigger(false)}
+        onClick={trigger}
         pending={pending}
         error={error}
       />
@@ -280,22 +289,14 @@ function TailorTab({ jobId, initial }: { jobId: string; initial: CachedTailor | 
             <FileDown className="h-3.5 w-3.5" />
             Browser PDF
           </a>
-          <a
-            href={`/jobs/${jobId}/tailor`}
-            className="inline-flex items-center gap-1.5 rounded-lg border border-primary/30 bg-primary-soft px-3 py-1.5 text-xs font-medium text-primary transition hover:bg-primary-soft/80"
-            title="Review proposed changes one by one"
-          >
-            <Eye className="h-3.5 w-3.5" />
-            Review changes
-          </a>
           <button
             type="button"
             disabled={pending}
-            onClick={() => trigger(true)}
+            onClick={trigger}
             className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-card px-3 py-1.5 text-xs font-medium text-muted-foreground transition hover:border-primary/30 hover:text-foreground disabled:opacity-60"
           >
             {pending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5" />}
-            Re-review
+            Regenerate
           </button>
         </div>
       </div>

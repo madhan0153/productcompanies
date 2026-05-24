@@ -48,9 +48,10 @@ import { recordResumeIntelEvent } from "@/lib/resume-intel/telemetry";
 import { renderTailoredResumeDocx } from "@/lib/docx/tailored-resume";
 import { renderTailoredResumePdf } from "@/lib/pdf/tailored-resume";
 import { logEvent } from "@/lib/observability/log";
-import { checkRateLimit, userActionKey } from "@/lib/security/rate-limit";
+import { checkRateLimit, checkRateLimitShared, userActionKey } from "@/lib/security/rate-limit";
 import type { ParsedResume } from "@/lib/llm/prompts/resume-parse";
 import type { Json } from "@/lib/supabase/types";
+import type { TailoredResumeContent } from "@/lib/llm/prompts/tailor-resume";
 
 export type EnhancementDecision = TailoredEnhancementDecision;
 
@@ -442,10 +443,262 @@ export type FinaliseTailoredResult =
   | { ok: true; docx_url: string; pdf_url: string; print_url: string }
   | { ok: false; error: string };
 
-export async function finaliseTailored(jobId: string): Promise<FinaliseTailoredResult> {
+export type GenerateTailoredResumeDownloadResult =
+  | {
+      ok: true;
+      docx_url: string;
+      pdf_url: string;
+      print_url: string;
+      content: TailoredResumeContent;
+      generated_at: string;
+      cached: boolean;
+    }
+  | { ok: false; error: string };
+
+type TailoredPreflight = Extract<Awaited<ReturnType<typeof preflight>>, { ok: true }>;
+
+type TailoredRenderRow = {
+  id: string;
+  status: string;
+  diagnosis: ResumeDiagnosis | null;
+  rewrites: Record<string, BulletRewrite> | null;
+  decisions: Record<string, EnhancementDecision> | null;
+  extracted_resume: ExtractedResumeContent | null;
+};
+
+type TailoredArtifactRow = TailoredRenderRow & {
+  content: TailoredResumeContent | null;
+  docx_storage_path: string | null;
+  pdf_storage_path: string | null;
+  generated_at: string;
+  mode: "polish" | "tailor" | null;
+  resume_signature: string | null;
+  job_signature: string | null;
+};
+
+function buildAutoDecisions(
+  diagnosis: ResumeDiagnosis,
+  rewrites: Record<string, BulletRewrite>,
+): Record<string, EnhancementDecision> {
+  const decisions: Record<string, EnhancementDecision> = {};
+  diagnosis.weak_bullets.forEach((_, index) => {
+    const rewrite = rewrites[String(index)];
+    const safeIndex = rewrite?.alternatives.findIndex((alt) => !alt.risk_flag) ?? -1;
+    decisions[String(index)] = safeIndex >= 0
+      ? { choice: `alt-${safeIndex}` }
+      : { choice: "kept" };
+  });
+  return decisions;
+}
+
+async function signTailoredArtifact(
+  admin: ReturnType<typeof createSupabaseAdminClient>,
+  docxPath: string,
+  pdfPath: string,
+  jobId: string,
+): Promise<FinaliseTailoredResult> {
+  const [{ data: signedDocx, error: docxErr }, { data: signedPdf, error: pdfErr }] = await Promise.all([
+    admin.storage.from(STORAGE_BUCKET).createSignedUrl(docxPath, SIGNED_URL_TTL),
+    admin.storage.from(STORAGE_BUCKET).createSignedUrl(pdfPath, SIGNED_URL_TTL),
+  ]);
+
+  if (docxErr || pdfErr || !signedDocx?.signedUrl || !signedPdf?.signedUrl) {
+    return { ok: false, error: "Couldn't create download links. Please retry." };
+  }
+
+  return {
+    ok: true,
+    docx_url: signedDocx.signedUrl,
+    pdf_url: signedPdf.signedUrl,
+    print_url: `/jobs/${jobId}/tailor/print`,
+  };
+}
+
+async function renderAndStoreTailoredArtifact(
+  pre: TailoredPreflight,
+  row: TailoredRenderRow,
+  decisions: Record<string, EnhancementDecision>,
+): Promise<GenerateTailoredResumeDownloadResult> {
+  const { user, admin, profile, job } = pre;
+
+  if (!row.diagnosis) return { ok: false, error: "No tailored diagnosis found." };
+
+  try {
+    const extracted = row.extracted_resume ?? await extractStoredResumeContent(
+      admin,
+      profile.resume_storage_path,
+      user.id,
+      job.id,
+    );
+
+    const content = buildEvidenceBackedTailoredContent({
+      resume: profile.resume_parsed!,
+      extracted,
+      diagnosis: row.diagnosis,
+      rewrites: row.rewrites ?? {},
+      decisions,
+      displayName: profile.display_name ?? profile.resume_parsed!.name,
+      preferredHubs: profile.preferred_hubs ?? [],
+      jdTitle: job.title,
+      jdMustHaves: job.must_have_skills ?? [],
+      jdNiceToHaves: job.nice_to_have_skills ?? [],
+    });
+
+    content.tailoring_notes =
+      `Generated directly for "${job.title}" using safe JD-backed edits only. Risky suggestions were left unchanged so the resume stays evidence-based.`;
+
+    const [docxBuffer, pdfBuffer] = await Promise.all([
+      renderTailoredResumeDocx(content),
+      renderTailoredResumePdf(content),
+    ]);
+    const stamp = Date.now();
+    const docxPath = `${user.id}/${job.id}-${stamp}.docx`;
+    const pdfPath = `${user.id}/${job.id}-${stamp}.pdf`;
+
+    const [{ error: docxUploadErr }, { error: pdfUploadErr }] = await Promise.all([
+      admin.storage.from(STORAGE_BUCKET).upload(docxPath, docxBuffer, {
+        contentType: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        upsert: false,
+      }),
+      admin.storage.from(STORAGE_BUCKET).upload(pdfPath, pdfBuffer, {
+        contentType: "application/pdf",
+        upsert: false,
+      }),
+    ]);
+    if (docxUploadErr || pdfUploadErr) {
+      return { ok: false, error: `Storage error: ${(docxUploadErr ?? pdfUploadErr)?.message}` };
+    }
+
+    const generatedAt = new Date().toISOString();
+    const { error: updateErr } = await (admin.from("tailored_resumes") as any)
+      .update({
+        content,
+        docx_storage_path: docxPath,
+        pdf_storage_path: pdfPath,
+        decisions,
+        status: "finalised",
+        generated_at: generatedAt,
+        updated_at: generatedAt,
+      })
+      .eq("user_id", user.id)
+      .eq("job_id", job.id);
+
+    if (updateErr) return { ok: false, error: "Couldn't save the tailored resume." };
+
+    void recordResumeIntelEvent({
+      user_id: user.id, kind: "render_docx", scope: "tailored",
+      scope_ref_id: row.id, ok: true,
+    });
+    void recordResumeIntelEvent({
+      user_id: user.id, kind: "render_pdf", scope: "tailored",
+      scope_ref_id: row.id, ok: true,
+    });
+    void recordResumeIntelEvent({
+      user_id: user.id, kind: "finalise", scope: "tailored",
+      scope_ref_id: row.id, ok: true,
+    });
+
+    const signed = await signTailoredArtifact(admin, docxPath, pdfPath, job.id);
+    if (!signed.ok) return signed;
+
+    revalidatePath(`/jobs/${job.id}`);
+    revalidatePath(`/jobs/${job.id}/tailor`);
+
+    return {
+      ...signed,
+      content,
+      generated_at: generatedAt,
+      cached: false,
+    };
+  } catch (err) {
+    logEvent("error", "tailored_resume_direct_render_failed", {
+      user_id: user.id.slice(0, 8),
+      job_id: job.id,
+      error: err instanceof Error ? err.name : "unknown",
+    });
+    void recordResumeIntelEvent({
+      user_id: user.id, kind: "finalise", scope: "tailored",
+      scope_ref_id: row.id, ok: false,
+      error_kind: err instanceof Error ? err.name : "unknown",
+    });
+    return { ok: false, error: "Couldn't generate the tailored resume. Please retry." };
+  }
+}
+
+export async function generateTailoredResumeDownload(
+  jobId: string,
+): Promise<GenerateTailoredResumeDownloadResult> {
   const pre = await preflight(jobId);
   if (!pre.ok) return pre;
   const { user, admin, profile, job } = pre;
+
+  const limit = await checkRateLimitShared({
+    key: userActionKey(user.id, "tailor-direct-download"),
+    limit: 8,
+    windowMs: 60 * 60 * 1000,
+  });
+  if (!limit.ok) {
+    return {
+      ok: false,
+      error: `Too many tailored resume requests. Please try again in ${Math.ceil(limit.retryAfterSeconds / 60)} minute(s).`,
+    };
+  }
+
+  const selectColumns = `
+    id, status, mode, resume_signature, job_signature,
+    content, docx_storage_path, pdf_storage_path, generated_at,
+    diagnosis, rewrites, decisions, extracted_resume
+  `;
+
+  const { data: existing } = await (admin
+    .from("tailored_resumes")
+    .select(selectColumns)
+    .eq("user_id", user.id)
+    .eq("job_id", jobId)
+    .maybeSingle() as any) as { data: TailoredArtifactRow | null };
+
+  const cacheMatches =
+    existing?.status === "finalised" &&
+    existing.mode === "tailor" &&
+    existing.resume_signature === profile.resume_signature &&
+    existing.job_signature === job.signature &&
+    existing.content &&
+    existing.docx_storage_path &&
+    existing.pdf_storage_path;
+
+  if (cacheMatches) {
+    const signed = await signTailoredArtifact(admin, existing.docx_storage_path!, existing.pdf_storage_path!, jobId);
+    if (!signed.ok) return signed;
+    return {
+      ...signed,
+      content: existing.content!,
+      generated_at: existing.generated_at,
+      cached: true,
+    };
+  }
+
+  const diagnosed = await diagnoseTailored(jobId, "tailor");
+  if (!diagnosed.ok) return diagnosed;
+
+  const { data: row } = await (admin
+    .from("tailored_resumes")
+    .select("id, status, diagnosis, rewrites, decisions, extracted_resume")
+    .eq("user_id", user.id)
+    .eq("job_id", jobId)
+    .maybeSingle() as any) as { data: TailoredRenderRow | null };
+
+  if (!row || !row.diagnosis) {
+    return { ok: false, error: "Couldn't prepare the tailored resume. Please retry." };
+  }
+
+  const decisions = buildAutoDecisions(row.diagnosis, row.rewrites ?? {});
+  return renderAndStoreTailoredArtifact(pre, row, decisions);
+}
+
+export async function finaliseTailored(jobId: string): Promise<FinaliseTailoredResult> {
+  const pre = await preflight(jobId);
+  if (!pre.ok) return pre;
+  const { user, admin } = pre;
 
 
   const { data: row } = await (admin
@@ -467,88 +720,13 @@ export async function finaliseTailored(jobId: string): Promise<FinaliseTailoredR
   if (!row || !row.diagnosis) return { ok: false, error: "No tailored diagnosis found." };
   if (row.status !== "pending_review") return { ok: false, error: "Already finalised." };
 
-  const extracted = row.extracted_resume ?? await extractStoredResumeContent(
-    admin,
-    profile.resume_storage_path,
-    user.id,
-    jobId,
-  );
-
-  const content = buildEvidenceBackedTailoredContent({
-    resume:    profile.resume_parsed!,
-    extracted,
-    diagnosis: row.diagnosis,
-    rewrites:  row.rewrites ?? {},
-    decisions: row.decisions ?? {},
-    displayName: profile.display_name ?? profile.resume_parsed!.name,
-    preferredHubs: profile.preferred_hubs ?? [],
-    jdTitle: job.title,
-    jdMustHaves: job.must_have_skills ?? [],
-    jdNiceToHaves: job.nice_to_have_skills ?? [],
-  });
-
-  const [docxBuffer, pdfBuffer] = await Promise.all([
-    renderTailoredResumeDocx(content),
-    renderTailoredResumePdf(content),
-  ]);
-  const stamp = Date.now();
-  const docxPath = `${user.id}/${jobId}-${stamp}.docx`;
-  const pdfPath = `${user.id}/${jobId}-${stamp}.pdf`;
-
-  const [{ error: docxUploadErr }, { error: pdfUploadErr }] = await Promise.all([
-    admin.storage.from(STORAGE_BUCKET).upload(docxPath, docxBuffer, {
-      contentType: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-      upsert: false,
-    }),
-    admin.storage.from(STORAGE_BUCKET).upload(pdfPath, pdfBuffer, {
-      contentType: "application/pdf",
-      upsert: false,
-    }),
-  ]);
-  if (docxUploadErr || pdfUploadErr) {
-    return { ok: false, error: `Storage error: ${(docxUploadErr ?? pdfUploadErr)?.message}` };
-  }
-
-
-  const { error: updateErr } = await (admin.from("tailored_resumes") as any)
-    .update({
-      content,
-      docx_storage_path: docxPath,
-      pdf_storage_path:  pdfPath,
-      status: "finalised",
-      updated_at: new Date().toISOString(),
-    })
-    .eq("user_id", user.id)
-    .eq("job_id", jobId);
-
-  if (updateErr) return { ok: false, error: "Couldn't save the finalised resume." };
-
-  void recordResumeIntelEvent({
-    user_id: user.id, kind: "render_docx", scope: "tailored",
-    scope_ref_id: row.id, ok: true,
-  });
-  void recordResumeIntelEvent({
-    user_id: user.id, kind: "render_pdf", scope: "tailored",
-    scope_ref_id: row.id, ok: true,
-  });
-  void recordResumeIntelEvent({
-    user_id: user.id, kind: "finalise", scope: "tailored",
-    scope_ref_id: row.id, ok: true,
-  });
-
-  const [{ data: signedDocx }, { data: signedPdf }] = await Promise.all([
-    admin.storage.from(STORAGE_BUCKET).createSignedUrl(docxPath, SIGNED_URL_TTL),
-    admin.storage.from(STORAGE_BUCKET).createSignedUrl(pdfPath, SIGNED_URL_TTL),
-  ]);
-
-  revalidatePath(`/jobs/${jobId}`);
-  revalidatePath(`/jobs/${jobId}/tailor`);
-
+  const generated = await renderAndStoreTailoredArtifact(pre, row, row.decisions ?? {});
+  if (!generated.ok) return generated;
   return {
     ok: true,
-    docx_url: signedDocx?.signedUrl ?? "",
-    pdf_url:  signedPdf?.signedUrl ?? "",
-    print_url:    `/jobs/${jobId}/tailor/print`,
+    docx_url: generated.docx_url,
+    pdf_url: generated.pdf_url,
+    print_url: generated.print_url,
   };
 }
 
