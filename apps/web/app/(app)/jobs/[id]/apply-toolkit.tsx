@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useTransition, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Sparkles, FileDown, Eye, Loader2, RefreshCw,
@@ -9,10 +10,9 @@ import {
 // Eye is still used in the TailorTab "Review changes" button shown AFTER generation.
 import { toast } from "sonner";
 import {
-  generateTailoredResumeAction,
-  getTailoredResumeDownloadUrl,
-  type TailorResult,
-} from "./toolkit-actions";
+  diagnoseTailored,
+  getTailoredDownloadUrl,
+} from "./tailor-actions";
 import type { TailoredResumeContent } from "@/lib/llm/prompts/tailor-resume";
 
 // Sprint 5/6 — Apply Toolkit shell.
@@ -193,6 +193,7 @@ function ToolkitGate({
 // ── Resume tailoring panel ──────────────────────────────────────────────────
 
 function TailorTab({ jobId, initial }: { jobId: string; initial: CachedTailor | null }) {
+  const router = useRouter();
   const [pending, start] = useTransition();
   const [data, setData] = useState<CachedTailor | null>(initial);
   const [error, setError] = useState<string | null>(null);
@@ -200,27 +201,22 @@ function TailorTab({ jobId, initial }: { jobId: string; initial: CachedTailor | 
   function trigger(force: boolean) {
     setError(null);
     start(async () => {
-      const r: TailorResult = await generateTailoredResumeAction(jobId, { force });
+      const r = await diagnoseTailored(jobId, "polish");
       if (!r.ok) {
         setError(r.error);
-        toast.error("Couldn't tailor the resume", { description: r.error });
+        toast.error("Couldn't prepare review", { description: r.error });
         return;
       }
-      setData({
-        content: r.content,
-        docx_url: r.docx_url,
-        pdf_url: r.pdf_url,
-        print_url: r.print_url,
-        generated_at: r.generated_at,
+      toast.success(r.resumed ? "Review resumed" : force ? "Fresh review prepared" : "Review prepared", {
+        description: "Approve the JD-aligned changes before PDF/DOCX generation.",
       });
-      toast.success(r.cached ? "Loaded cached tailored resume" : "Tailored resume generated", {
-        description: "Download the PDF to apply, or DOCX if you want to edit.",
-      });
+      router.push(`/jobs/${jobId}/tailor`);
+      router.refresh();
     });
   }
 
   async function refreshSignedUrl(format: "docx" | "pdf") {
-    const r = await getTailoredResumeDownloadUrl(jobId, format);
+    const r = await getTailoredDownloadUrl(jobId, format);
     if (r.ok) {
       setData((prev) => (prev ? {
         ...prev,
@@ -235,9 +231,9 @@ function TailorTab({ jobId, initial }: { jobId: string; initial: CachedTailor | 
   if (!data) {
     return (
       <EmptyStateGenerate
-        title="Tailor your resume for this role"
-        body="One-click: generates a JD-targeted PDF for applying and a DOCX for edits."
-        ctaLabel="Generate tailored resume"
+        title="Review JD-aligned resume changes"
+        body="We preserve your source resume and only suggest evidence-backed edits for this JD. You approve every change before PDF/DOCX generation."
+        ctaLabel="Review suggestions"
         ctaIcon={<FileDown className="h-3.5 w-3.5" />}
         onClick={() => trigger(false)}
         pending={pending}
@@ -299,7 +295,7 @@ function TailorTab({ jobId, initial }: { jobId: string; initial: CachedTailor | 
             className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-card px-3 py-1.5 text-xs font-medium text-muted-foreground transition hover:border-primary/30 hover:text-foreground disabled:opacity-60"
           >
             {pending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5" />}
-            Regenerate
+            Re-review
           </button>
         </div>
       </div>

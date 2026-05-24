@@ -39,6 +39,10 @@ import {
   type ExtractedResumeContent,
 } from "@/lib/llm/prompts/extract-resume-content";
 import { computeAtsScorecard, type AtsScorecard } from "@/lib/matching/ats-scorecard";
+import {
+  buildEvidenceBackedTailoredContent,
+  type TailoredEnhancementDecision,
+} from "@/lib/resume-intel/tailored-content";
 import { getQuotaState, resetsInHumanForm } from "@/lib/resume-intel/quota";
 import { recordResumeIntelEvent } from "@/lib/resume-intel/telemetry";
 import { renderTailoredResumeDocx } from "@/lib/docx/tailored-resume";
@@ -46,16 +50,9 @@ import { renderTailoredResumePdf } from "@/lib/pdf/tailored-resume";
 import { logEvent } from "@/lib/observability/log";
 import { checkRateLimit, userActionKey } from "@/lib/security/rate-limit";
 import type { ParsedResume } from "@/lib/llm/prompts/resume-parse";
-import type { TailoredResumeContent } from "@/lib/llm/prompts/tailor-resume";
+import type { Json } from "@/lib/supabase/types";
 
-// Per-bullet decision the user makes in the review screen. Inlined here
-// (was previously imported from the now-deleted profile-level enhance flow).
-export interface EnhancementDecision {
-  /** "kept" | "skipped" | "edited" | "alt-<n>" (accepted alternative index) */
-  choice: string;
-  /** If choice='edited', the final edited bullet text. */
-  text?: string;
-}
+export type EnhancementDecision = TailoredEnhancementDecision;
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const STORAGE_BUCKET = "tailored-resumes";
@@ -107,6 +104,30 @@ function friendlyLlmError(err: unknown): string {
     }
   }
   return "Something went wrong. Please retry.";
+}
+
+async function extractStoredResumeContent(
+  admin: ReturnType<typeof createSupabaseAdminClient>,
+  storagePath: string | null,
+  userId: string,
+  jobId: string,
+): Promise<ExtractedResumeContent | null> {
+  if (!storagePath) return null;
+  try {
+    const { data: blob, error: dlErr } = await admin.storage
+      .from("resumes")
+      .download(storagePath);
+    if (dlErr || !blob) return null;
+    const bytes = Buffer.from(await blob.arrayBuffer());
+    return await extractResumeContent(bytes.toString("base64"));
+  } catch (err) {
+    logEvent("warn", "tailor_bullet_extraction_failed", {
+      user_id: userId.slice(0, 8),
+      job_id: jobId,
+      error: err instanceof Error ? err.name : "unknown",
+    });
+    return null;
+  }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -257,25 +278,12 @@ export async function diagnoseTailored(
   // (2.5) Extract REAL bullets from the source PDF. Same trick as the
   //       enhancement flow — profiles.resume_parsed only has titles, not
   //       the bullet content the rewriter needs to work with.
-  let extracted: ExtractedResumeContent | null = null;
-  if (profile.resume_storage_path) {
-    try {
-      const { data: blob, error: dlErr } = await admin.storage
-        .from("resumes")
-        .download(profile.resume_storage_path);
-      if (!dlErr && blob) {
-        const bytes = Buffer.from(await blob.arrayBuffer());
-        const base64 = bytes.toString("base64");
-        extracted = await extractResumeContent(base64);
-      }
-    } catch (err) {
-      logEvent("warn", "tailor_bullet_extraction_failed", {
-        user_id: user.id.slice(0, 8),
-        job_id: jobId,
-        error: err instanceof Error ? err.name : "unknown",
-      });
-    }
-  }
+  const extracted = await extractStoredResumeContent(
+    admin,
+    profile.resume_storage_path,
+    user.id,
+    jobId,
+  );
 
   const resumeTextForDiagnosis = extracted
     ? renderExtractedAsText(extracted)
@@ -371,6 +379,7 @@ export async function diagnoseTailored(
       pdf_storage_path:  null,
       resume_signature: profile.resume_signature,
       job_signature:    job.signature,
+      extracted_resume: extracted as unknown as Json,
       diagnosis,
       rewrites: rewritesById,
       decisions: {},
@@ -441,7 +450,7 @@ export async function finaliseTailored(jobId: string): Promise<FinaliseTailoredR
 
   const { data: row } = await (admin
     .from("tailored_resumes")
-    .select("id, status, diagnosis, rewrites, decisions")
+    .select("id, status, diagnosis, rewrites, decisions, extracted_resume")
     .eq("user_id", user.id)
     .eq("job_id", jobId)
     .maybeSingle() as any) as {
@@ -451,20 +460,31 @@ export async function finaliseTailored(jobId: string): Promise<FinaliseTailoredR
         diagnosis: ResumeDiagnosis | null;
         rewrites: Record<string, BulletRewrite> | null;
         decisions: Record<string, EnhancementDecision> | null;
+        extracted_resume: ExtractedResumeContent | null;
       } | null;
     };
 
   if (!row || !row.diagnosis) return { ok: false, error: "No tailored diagnosis found." };
   if (row.status !== "pending_review") return { ok: false, error: "Already finalised." };
 
-  const content = buildTailoredContent({
+  const extracted = row.extracted_resume ?? await extractStoredResumeContent(
+    admin,
+    profile.resume_storage_path,
+    user.id,
+    jobId,
+  );
+
+  const content = buildEvidenceBackedTailoredContent({
     resume:    profile.resume_parsed!,
+    extracted,
     diagnosis: row.diagnosis,
     rewrites:  row.rewrites ?? {},
     decisions: row.decisions ?? {},
     displayName: profile.display_name ?? profile.resume_parsed!.name,
     preferredHubs: profile.preferred_hubs ?? [],
     jdTitle: job.title,
+    jdMustHaves: job.must_have_skills ?? [],
+    jdNiceToHaves: job.nice_to_have_skills ?? [],
   });
 
   const [docxBuffer, pdfBuffer] = await Promise.all([
@@ -587,115 +607,6 @@ export async function getTailoredDownloadUrl(
     .createSignedUrl(path, SIGNED_URL_TTL);
   if (!data?.signedUrl) return { ok: false, error: "Couldn't create download link." };
   return { ok: true, url: data.signedUrl };
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// helpers — mirrors enhance-actions buildEnhancedContent but JD-aware.
-// ─────────────────────────────────────────────────────────────────────────────
-
-function resolveBulletText(
-  weak: ResumeDiagnosis["weak_bullets"][number],
-  rewrite: BulletRewrite | undefined,
-  decision: EnhancementDecision | undefined,
-): string {
-  if (!decision || decision.choice === "kept" || decision.choice === "skipped") return weak.original;
-  if (decision.choice === "edited" && decision.text) return decision.text;
-  const m = /^alt-(\d+)$/.exec(decision.choice);
-  if (m && rewrite) {
-    const idx = parseInt(m[1], 10);
-    return rewrite.alternatives[idx]?.text ?? weak.original;
-  }
-  return weak.original;
-}
-
-interface BuildTailoredInput {
-  resume: ParsedResume;
-  diagnosis: ResumeDiagnosis;
-  rewrites: Record<string, BulletRewrite>;
-  decisions: Record<string, EnhancementDecision>;
-  displayName: string;
-  preferredHubs: string[];
-  jdTitle: string;
-}
-
-function buildTailoredContent(input: BuildTailoredInput): TailoredResumeContent {
-  const { resume, diagnosis, rewrites, decisions, displayName, preferredHubs, jdTitle } = input;
-
-  const weakByCompany = new Map<string, ResumeDiagnosis["weak_bullets"]>();
-  for (const b of diagnosis.weak_bullets) {
-    if (b.section === "experience" && b.company) {
-      const arr = weakByCompany.get(b.company) ?? [];
-      arr.push(b);
-      weakByCompany.set(b.company, arr);
-    }
-  }
-
-  const summaryWeak = diagnosis.weak_bullets.find((b) => b.section === "summary");
-  let summary = resume.summary || "";
-  if (summaryWeak) {
-    const idx = diagnosis.weak_bullets.indexOf(summaryWeak);
-    summary = resolveBulletText(summaryWeak, rewrites[idx], decisions[String(idx)]);
-  }
-
-  const skills = [{ group: "Skills", items: resume.tech_stack ?? [] }];
-
-  const experience: TailoredResumeContent["experience"] = (resume.companies ?? []).map((c) => {
-    const weakHere = weakByCompany.get(c.name) ?? [];
-    const baseBullets: string[] = c.role ? [c.role] : [];
-    const patched = baseBullets.map((b, bIdx) => {
-      const match = weakHere.find((w) => w.bullet_index === bIdx);
-      if (!match) return b;
-      const idx = diagnosis.weak_bullets.indexOf(match);
-      return resolveBulletText(match, rewrites[idx], decisions[String(idx)]);
-    });
-    const extras = weakHere
-      .filter((w) => w.bullet_index >= patched.length)
-      .map((w) => {
-        const idx = diagnosis.weak_bullets.indexOf(w);
-        return resolveBulletText(w, rewrites[idx], decisions[String(idx)]);
-      });
-    return {
-      company:  c.name,
-      role:     c.role || "",
-      duration: c.years > 0 ? `${c.years}+ yrs` : "",
-      bullets:  [...patched, ...extras].slice(0, 5),
-    };
-  });
-
-  const projectsWeak = diagnosis.weak_bullets.filter((b) => b.section === "projects");
-  const products = resume.products_built ?? [];
-  const projects: TailoredResumeContent["projects"] = products.slice(0, 4).map((p, idx) => {
-    const match = projectsWeak.find((w) => w.bullet_index === idx);
-    const text = match
-      ? resolveBulletText(match, rewrites[diagnosis.weak_bullets.indexOf(match)], decisions[String(diagnosis.weak_bullets.indexOf(match))])
-      : p;
-    return { name: text.split(":")[0]?.slice(0, 80) || `Project ${idx + 1}`, tech: [], summary: text };
-  });
-
-  const education: TailoredResumeContent["education"] = (resume.education ?? []).map((e) => ({
-    institution: e.institution,
-    degree:      e.degree,
-    year:        e.year ?? null,
-  }));
-
-  // JD-aware title: prefer the candidate's own current_role but lean toward
-  // the JD's role family for the header (no fact change — just framing).
-  const headerTitle = resume.current_role || jdTitle || "Software Engineer";
-
-  return {
-    header: {
-      name:         displayName,
-      title:        headerTitle,
-      location:     preferredHubs[0] || "India",
-      contact_line: "",
-    },
-    summary,
-    skills,
-    experience,
-    education,
-    projects,
-    tailoring_notes: `Tailored for "${jdTitle}" — every change reviewed and accepted by you.`,
-  };
 }
 
 export interface AtsBeforeAfter {

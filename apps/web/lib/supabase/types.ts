@@ -108,6 +108,7 @@ export interface Database {
           generated_at: string; updated_at: string;
           /** Phase R1 — diff-review workflow */
           diagnosis: Json | null;
+          extracted_resume: Json | null;
           rewrites: Json | null;
           decisions: Json | null;
           pdf_storage_path: string | null;
@@ -120,6 +121,7 @@ export interface Database {
           resume_signature?: string | null; job_signature?: string | null;
           generated_at?: string; updated_at?: string;
           diagnosis?: Json | null;
+          extracted_resume?: Json | null;
           rewrites?: Json | null;
           decisions?: Json | null;
           pdf_storage_path?: string | null;
@@ -132,6 +134,7 @@ export interface Database {
           resume_signature?: string | null; job_signature?: string | null;
           generated_at?: string; updated_at?: string;
           diagnosis?: Json | null;
+          extracted_resume?: Json | null;
           rewrites?: Json | null;
           decisions?: Json | null;
           pdf_storage_path?: string | null;

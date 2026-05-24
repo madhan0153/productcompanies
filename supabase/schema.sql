@@ -762,6 +762,7 @@ create table if not exists public.tailored_resumes (
   docx_storage_path   text,
   resume_signature    text,
   job_signature       text,
+  extracted_resume    jsonb,
   generated_at        timestamptz not null default now(),
   updated_at          timestamptz not null default now(),
   unique (user_id, job_id)
@@ -1819,6 +1820,7 @@ end $$;
 --     skip the review screen and behave like the pre-R1 flow.
 alter table public.tailored_resumes
   add column if not exists diagnosis         jsonb,
+  add column if not exists extracted_resume  jsonb,
   add column if not exists rewrites          jsonb default '{}'::jsonb,
   add column if not exists decisions         jsonb default '{}'::jsonb,
   add column if not exists pdf_storage_path  text,
