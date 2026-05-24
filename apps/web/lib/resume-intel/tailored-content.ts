@@ -51,10 +51,10 @@ export function buildEvidenceBackedTailoredContent(
   }
 
   const summaryWeak = diagnosis.weak_bullets.find((b) => b.section === "summary");
-  let summary = extracted?.summary || resume.summary || "";
+  let summary = cleanText(extracted?.summary || resume.summary);
   if (summaryWeak) {
     const idx = diagnosis.weak_bullets.indexOf(summaryWeak);
-    summary = resolveBulletText(summaryWeak, rewrites[idx], decisions[String(idx)]);
+    summary = cleanText(resolveBulletText(summaryWeak, rewrites[idx], decisions[String(idx)]));
   }
 
   const jdTerms = [...jdMustHaves, ...jdNiceToHaves];
@@ -63,50 +63,51 @@ export function buildEvidenceBackedTailoredContent(
   const skills = [{
     group: "Skills",
     items: orderSourceSkillsForJd([...sourceSkills, ...sourceBackedJdTerms], jdTerms),
-  }];
+  }].filter((group) => group.items.length > 0);
 
   const sourceExperience = extracted?.experience?.length
     ? extracted.experience
     : (resume.companies ?? []).map((c) => ({
-        company: c.name,
-        role: c.role || "",
+        company: cleanText(c.name, "Company"),
+        role: cleanText(c.role),
         duration: c.years > 0 ? `${c.years}+ yrs` : "",
         bullets: c.role ? [c.role] : [],
       }));
 
   const experience: TailoredResumeContent["experience"] = sourceExperience.map((c) => {
-    const weakHere = weakByCompany.get(normaliseKey(c.company)) ?? [];
-    const baseBullets = c.bullets.filter(Boolean);
+    const company = cleanText(c.company, "Company");
+    const weakHere = weakByCompany.get(normaliseKey(company)) ?? [];
+    const baseBullets = c.bullets.map((bullet) => cleanText(bullet)).filter(Boolean);
     const patched = baseBullets.map((b, bIdx) => {
       const match = weakHere.find((w) => w.bullet_index === bIdx);
       if (!match) return b;
       const idx = diagnosis.weak_bullets.indexOf(match);
-      return resolveBulletText(match, rewrites[idx], decisions[String(idx)]);
+      return cleanText(resolveBulletText(match, rewrites[idx], decisions[String(idx)]));
     });
     const extras = weakHere
       .filter((w) => w.bullet_index >= patched.length)
       .map((w) => {
         const idx = diagnosis.weak_bullets.indexOf(w);
-        return resolveBulletText(w, rewrites[idx], decisions[String(idx)]);
+        return cleanText(resolveBulletText(w, rewrites[idx], decisions[String(idx)]));
       })
       .filter((text) => text && !baseBullets.some((base) => sameText(base, text)));
     return {
-      company: c.company,
-      role: c.role || "",
-      duration: c.duration || "",
+      company,
+      role: cleanText(c.role, "Engineer"),
+      duration: cleanText(c.duration),
       bullets: [...patched, ...extras].slice(0, 5),
     };
-  });
+  }).filter((role) => role.company || role.role || role.bullets.length > 0);
 
   const projectsWeak = diagnosis.weak_bullets.filter((b) => b.section === "projects");
   const sourceProjects = extracted?.projects?.length
     ? extracted.projects.map((p, idx) => ({
-        name: p.name || `Project ${idx + 1}`,
-        summary: p.bullets.filter(Boolean).join(" "),
+        name: cleanText(p.name, `Project ${idx + 1}`),
+        summary: p.bullets.map((bullet) => cleanText(bullet)).filter(Boolean).join(" "),
       }))
     : (resume.products_built ?? []).map((p, idx) => ({
-        name: p.split(":")[0]?.slice(0, 80) || `Project ${idx + 1}`,
-        summary: p,
+        name: cleanText(p.split(":")[0]?.slice(0, 80), `Project ${idx + 1}`),
+        summary: cleanText(p),
       }));
   const projects: TailoredResumeContent["projects"] = sourceProjects.slice(0, 4).map((p, idx) => {
     const match = projectsWeak.find((w) => w.bullet_index === idx);
@@ -117,32 +118,34 @@ export function buildEvidenceBackedTailoredContent(
           decisions[String(diagnosis.weak_bullets.indexOf(match))],
         )
       : p.summary;
-    return { name: p.name, tech: [], summary: text };
-  });
+    return { name: cleanText(p.name, `Project ${idx + 1}`), tech: [], summary: cleanText(text) };
+  }).filter((project) => project.name || project.summary);
 
   const education: TailoredResumeContent["education"] =
     extracted?.education?.length
       ? extracted.education.map((e) => ({
-          institution: e.institution,
-          degree: e.degree,
+          institution: cleanText(e.institution, "Institution"),
+          degree: cleanText(e.degree, "Degree"),
           year: e.year ?? null,
         }))
       : (resume.education ?? []).map((e) => ({
-          institution: e.institution,
-          degree: e.degree,
+          institution: cleanText(e.institution, "Institution"),
+          degree: cleanText(e.degree, "Degree"),
           year: e.year ?? null,
         }));
 
-  const headerTitle = resume.current_role || jdTitle || "Software Engineer";
+  const headerTitle = cleanText(resume.current_role || jdTitle, "Software Engineer");
+  const candidateName = cleanText(displayName || resume.name, "Candidate");
+  const primaryLocation = cleanText(preferredHubs[0], "India");
 
   return {
     header: {
-      name: displayName,
+      name: candidateName,
       title: headerTitle,
-      location: preferredHubs[0] || "India",
+      location: primaryLocation,
       contact_line: "",
     },
-    summary,
+    summary: summary || `${headerTitle} focused on product engineering roles.`,
     skills,
     experience,
     education,
@@ -168,6 +171,16 @@ function resolveBulletText(
 
 function normaliseKey(value: string) {
   return value.toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
+}
+
+function cleanText(value: unknown, fallback = "") {
+  if (typeof value !== "string") return fallback;
+  const cleaned = value
+    .replace(/[\u2022\u25cf\u25e6]/g, "-")
+    .replace(/[\u2013\u2014]/g, "-")
+    .replace(/\s+/g, " ")
+    .trim();
+  return cleaned || fallback;
 }
 
 function sameText(a: string, b: string) {
