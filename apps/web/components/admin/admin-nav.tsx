@@ -41,18 +41,16 @@ export function AdminNav({ email }: { email: string | null }) {
 
   return (
     <>
-      <header className="sticky top-0 z-30 border-b border-border bg-background/90 backdrop-blur md:hidden">
-        <div className="px-4 py-3">
-          <Brand email={email} />
-          <nav aria-label="Admin sections" className="-mx-4 mt-3 flex gap-1.5 overflow-x-auto px-4 pb-1">
-            {[...NAV, ...OPS].map((item) => (
-              <MobileLink key={item.href} item={item} active={isActive(pathname, item.href)} />
-            ))}
-          </nav>
-        </div>
-      </header>
+      <nav
+        aria-label="Admin quick navigation"
+        className="fixed inset-x-3 bottom-3 z-40 grid grid-cols-5 gap-1 rounded-2xl border border-border bg-card/95 p-1 shadow-pop backdrop-blur-xl md:hidden"
+      >
+        {[NAV[0], NAV[1], NAV[2], OPS[0], OPS[2]].map((item) => (
+          <MobileDockLink key={item.href} item={item} active={isActive(pathname, item.href)} />
+        ))}
+      </nav>
 
-      <aside className="fixed inset-y-0 left-0 z-30 hidden w-72 border-r border-border bg-background/95 px-4 py-5 backdrop-blur md:block">
+      <aside className="fixed inset-y-0 left-0 z-30 hidden w-72 border-r border-border bg-card/95 px-4 py-5 backdrop-blur-xl md:block">
         <Brand email={email} />
         <nav aria-label="Admin sections" className="mt-8 space-y-1">
           {NAV.map((item) => (
@@ -75,7 +73,7 @@ export function AdminNav({ email }: { email: string | null }) {
 function Brand({ email }: { email: string | null }) {
   return (
     <div className="flex items-center gap-3">
-      <span className="inline-flex h-10 w-10 items-center justify-center rounded-lg border border-primary/25 bg-primary/10 text-primary">
+      <span className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-primary/25 bg-primary-soft text-primary-soft-foreground">
         <ShieldAlert className="h-5 w-5" />
       </span>
       <div className="min-w-0">
@@ -86,7 +84,7 @@ function Brand({ email }: { email: string | null }) {
   );
 }
 
-function MobileLink({
+function MobileDockLink({
   item,
   active,
 }: {
@@ -98,14 +96,14 @@ function MobileLink({
     <Link
       href={item.href}
       aria-current={active ? "page" : undefined}
-      className={`inline-flex shrink-0 items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-medium transition-colors motion-reduce:transition-none ${
+      className={`press flex min-h-12 flex-col items-center justify-center gap-0.5 rounded-xl px-1.5 text-[10px] font-medium transition-colors motion-reduce:transition-none ${
         active
-          ? "border-primary/40 bg-primary/10 text-primary"
-          : "border-border bg-card/40 text-muted-foreground hover:border-primary/30 hover:text-foreground"
+          ? "bg-primary-soft text-primary-soft-foreground"
+          : "text-muted-foreground hover:bg-secondary hover:text-foreground"
       }`}
     >
-      <Icon className="h-3.5 w-3.5" />
-      {item.label}
+      <Icon className="h-4 w-4" />
+      <span className="max-w-full truncate">{item.label.replace("Crawler Intel", "Crawler").replace("Operations", "Ops")}</span>
     </Link>
   );
 }
@@ -126,8 +124,8 @@ function SideLink({
       aria-current={active ? "page" : undefined}
       className={`flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium transition-colors motion-reduce:transition-none ${
         active
-          ? "bg-primary/10 text-primary"
-          : "text-muted-foreground hover:bg-card/60 hover:text-foreground"
+          ? "bg-primary-soft text-primary-soft-foreground"
+          : "text-muted-foreground hover:bg-secondary/70 hover:text-foreground"
       } ${compact ? "text-xs" : ""}`}
     >
       <Icon className="h-4 w-4" />
