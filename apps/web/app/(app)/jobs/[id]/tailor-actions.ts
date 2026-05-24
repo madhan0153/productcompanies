@@ -523,7 +523,11 @@ async function renderAndStoreTailoredArtifact(
 
   if (!row.diagnosis) return { ok: false, error: "No tailored diagnosis found." };
 
+  let stage: "extract" | "build_content" | "render" | "upload" | "persist" | "sign" = "extract";
+  const uploadedPaths: string[] = [];
+
   try {
+    stage = "extract";
     const extracted = row.extracted_resume ?? await extractStoredResumeContent(
       admin,
       profile.resume_storage_path,
@@ -531,13 +535,14 @@ async function renderAndStoreTailoredArtifact(
       job.id,
     );
 
+    stage = "build_content";
     const content = buildEvidenceBackedTailoredContent({
       resume: profile.resume_parsed!,
       extracted,
       diagnosis: row.diagnosis,
       rewrites: row.rewrites ?? {},
       decisions,
-      displayName: profile.display_name ?? profile.resume_parsed!.name,
+      displayName: profile.display_name || profile.resume_parsed!.name || "Candidate",
       preferredHubs: profile.preferred_hubs ?? [],
       jdTitle: job.title,
       jdMustHaves: job.must_have_skills ?? [],
@@ -547,6 +552,7 @@ async function renderAndStoreTailoredArtifact(
     content.tailoring_notes =
       `Generated directly for "${job.title}" using safe JD-backed edits only. Risky suggestions were left unchanged so the resume stays evidence-based.`;
 
+    stage = "render";
     const [docxBuffer, pdfBuffer] = await Promise.all([
       renderTailoredResumeDocx(content),
       renderTailoredResumePdf(content),
@@ -555,6 +561,7 @@ async function renderAndStoreTailoredArtifact(
     const docxPath = `${user.id}/${job.id}-${stamp}.docx`;
     const pdfPath = `${user.id}/${job.id}-${stamp}.pdf`;
 
+    stage = "upload";
     const [{ error: docxUploadErr }, { error: pdfUploadErr }] = await Promise.all([
       admin.storage.from(STORAGE_BUCKET).upload(docxPath, docxBuffer, {
         contentType: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
@@ -566,10 +573,16 @@ async function renderAndStoreTailoredArtifact(
       }),
     ]);
     if (docxUploadErr || pdfUploadErr) {
-      return { ok: false, error: `Storage error: ${(docxUploadErr ?? pdfUploadErr)?.message}` };
+      await Promise.allSettled([
+        admin.storage.from(STORAGE_BUCKET).remove([docxPath]),
+        admin.storage.from(STORAGE_BUCKET).remove([pdfPath]),
+      ]);
+      return { ok: false, error: "Couldn't store the tailored resume. Please retry." };
     }
+    uploadedPaths.push(docxPath, pdfPath);
 
     const generatedAt = new Date().toISOString();
+    stage = "persist";
     const { error: updateErr } = await (admin.from("tailored_resumes") as any)
       .update({
         content,
@@ -583,7 +596,10 @@ async function renderAndStoreTailoredArtifact(
       .eq("user_id", user.id)
       .eq("job_id", job.id);
 
-    if (updateErr) return { ok: false, error: "Couldn't save the tailored resume." };
+    if (updateErr) {
+      await admin.storage.from(STORAGE_BUCKET).remove(uploadedPaths);
+      return { ok: false, error: "Couldn't save the tailored resume. Please retry." };
+    }
 
     void recordResumeIntelEvent({
       user_id: user.id, kind: "render_docx", scope: "tailored",
@@ -598,6 +614,7 @@ async function renderAndStoreTailoredArtifact(
       scope_ref_id: row.id, ok: true,
     });
 
+    stage = "sign";
     const signed = await signTailoredArtifact(admin, docxPath, pdfPath, job.id);
     if (!signed.ok) return signed;
 
@@ -614,14 +631,19 @@ async function renderAndStoreTailoredArtifact(
     logEvent("error", "tailored_resume_direct_render_failed", {
       user_id: user.id.slice(0, 8),
       job_id: job.id,
+      stage,
       error: err instanceof Error ? err.name : "unknown",
+      message: err instanceof Error ? err.message.slice(0, 160) : undefined,
     });
+    if (uploadedPaths.length > 0) {
+      await admin.storage.from(STORAGE_BUCKET).remove(uploadedPaths);
+    }
     void recordResumeIntelEvent({
       user_id: user.id, kind: "finalise", scope: "tailored",
       scope_ref_id: row.id, ok: false,
       error_kind: err instanceof Error ? err.name : "unknown",
     });
-    return { ok: false, error: "Couldn't generate the tailored resume. Please retry." };
+    return { ok: false, error: "Couldn't generate the tailored resume file. Please retry." };
   }
 }
 
