@@ -2,6 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { extractText, getDocumentProxy } from "unpdf";
 import { buildEvidenceBackedTailoredContent } from "../../lib/resume-intel/tailored-content";
+import { buildDeterministicTailoredDiagnosis } from "../../lib/resume-intel/tailored-fallback";
 import { renderTailoredResumeDocx } from "../../lib/docx/tailored-resume";
 import { renderTailoredResumePdf } from "../../lib/pdf/tailored-resume";
 import type { BulletRewrite } from "../../lib/llm/prompts/bullet-rewrite";
@@ -149,6 +150,60 @@ test("renders a direct tailored resume even when parsed identity fields are spar
   assert.equal(content.header.name, "Candidate");
   assert.equal(content.header.title, "Software Engineer, Backend");
   assert.equal(content.header.location, "India");
+
+  const [docx, pdf] = await Promise.all([
+    renderTailoredResumeDocx(content),
+    renderTailoredResumePdf(content),
+  ]);
+
+  assert.ok(docx.byteLength > 1000);
+  assert.ok(pdf.byteLength > 1000);
+});
+
+test("builds a renderable deterministic tailored resume when LLM diagnosis is unavailable", async () => {
+  const parsed = {
+    name: "Fallback Candidate",
+    current_role: "Backend Engineer",
+    role_function: "backend",
+    target_role_functions: ["backend"],
+    total_years_experience: 3,
+    tech_stack: ["Node.js", "PostgreSQL", "Redis"],
+    soft_skills: [],
+    products_built: ["Payments API: built idempotent retry handling"],
+    companies: [{ name: "FintechCo", role: "Backend Engineer", years: 3, is_product_company: true }],
+    education: [{ degree: "B.Tech", institution: "Example University", year: 2021 }],
+    summary: "Backend engineer building payments and order APIs.",
+    product_dna_score: 75,
+  } satisfies ParsedResume;
+
+  const diagnosis = buildDeterministicTailoredDiagnosis({
+    resume: parsed,
+    extracted: null,
+    jdTitle: "Software Engineer, Backend",
+    jdMustHaves: ["Node.js", "PostgreSQL", "Kafka"],
+    jdNiceToHaves: ["Redis"],
+  });
+
+  assert.equal(diagnosis.weak_bullets.length, 0);
+  assert.ok(diagnosis.missing_keywords.some((item) => item.keyword === "Kafka"));
+
+  const content = buildEvidenceBackedTailoredContent({
+    resume: parsed,
+    extracted: null,
+    diagnosis,
+    rewrites: {},
+    decisions: {},
+    displayName: parsed.name,
+    preferredHubs: ["Hyderabad"],
+    jdTitle: "Software Engineer, Backend",
+    jdMustHaves: ["Node.js", "PostgreSQL", "Kafka"],
+    jdNiceToHaves: ["Redis"],
+  });
+
+  assert.equal(content.header.name, "Fallback Candidate");
+  assert.ok(content.skills[0].items.includes("Node.js"));
+  assert.ok(content.skills[0].items.includes("PostgreSQL"));
+  assert.ok(!content.skills[0].items.includes("Kafka"));
 
   const [docx, pdf] = await Promise.all([
     renderTailoredResumeDocx(content),

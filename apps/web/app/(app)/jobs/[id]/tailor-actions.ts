@@ -43,6 +43,7 @@ import {
   buildEvidenceBackedTailoredContent,
   type TailoredEnhancementDecision,
 } from "@/lib/resume-intel/tailored-content";
+import { buildDeterministicTailoredDiagnosis } from "@/lib/resume-intel/tailored-fallback";
 import { getQuotaState, resetsInHumanForm } from "@/lib/resume-intel/quota";
 import { recordResumeIntelEvent } from "@/lib/resume-intel/telemetry";
 import { renderTailoredResumeDocx } from "@/lib/docx/tailored-resume";
@@ -215,6 +216,7 @@ export type DiagnoseTailoredResult =
 export async function diagnoseTailored(
   jobId: string,
   mode: RewriteMode = "polish",
+  options: { allowDeterministicFallback?: boolean } = {},
 ): Promise<DiagnoseTailoredResult> {
   const pre = await preflight(jobId);
   if (!pre.ok) return pre;
@@ -321,7 +323,21 @@ export async function diagnoseTailored(
       llm_tier: "heavy", ok: false,
       error_kind: err instanceof LlmRunError ? err.detail.kind : "unknown",
     });
-    return { ok: false, error: friendlyLlmError(err) };
+    if (!options.allowDeterministicFallback) {
+      return { ok: false, error: friendlyLlmError(err) };
+    }
+    diagnosis = buildDeterministicTailoredDiagnosis({
+      resume: profile.resume_parsed!,
+      extracted,
+      jdTitle: job.title,
+      jdMustHaves: job.must_have_skills ?? [],
+      jdNiceToHaves: job.nice_to_have_skills ?? [],
+    });
+    logEvent("warn", "tailored_resume_diagnosis_fallback_used", {
+      user_id: user.id.slice(0, 8),
+      job_id: jobId,
+      error: err instanceof LlmRunError ? err.detail.kind : err instanceof Error ? err.name : "unknown",
+    });
   }
 
   // (4) Step 2 — rewrites with mode + JD must-haves threaded.
@@ -514,6 +530,34 @@ async function signTailoredArtifact(
   };
 }
 
+async function ensureTailoredResumeBucket(
+  admin: ReturnType<typeof createSupabaseAdminClient>,
+): Promise<void> {
+  const storage = admin.storage as unknown as {
+    getBucket(bucket: string): Promise<{ error: { message?: string; statusCode?: string; status?: number } | null }>;
+    createBucket(bucket: string, options: { public: boolean }): Promise<{ error: { message?: string } | null }>;
+  };
+
+  const { error } = await storage.getBucket(STORAGE_BUCKET);
+  if (!error) return;
+
+  const status = Number(error.statusCode ?? error.status ?? 0);
+  const notFound = status === 404 || /not found|does not exist/i.test(error.message ?? "");
+  if (!notFound) {
+    logEvent("warn", "tailored_resume_bucket_check_failed", {
+      reason: (error.message ?? "unknown").slice(0, 120),
+    });
+    return;
+  }
+
+  const { error: createErr } = await storage.createBucket(STORAGE_BUCKET, { public: false });
+  if (createErr && !/already exists|duplicate/i.test(createErr.message ?? "")) {
+    logEvent("warn", "tailored_resume_bucket_create_failed", {
+      reason: (createErr.message ?? "unknown").slice(0, 120),
+    });
+  }
+}
+
 async function renderAndStoreTailoredArtifact(
   pre: TailoredPreflight,
   row: TailoredRenderRow,
@@ -562,6 +606,7 @@ async function renderAndStoreTailoredArtifact(
     const pdfPath = `${user.id}/${job.id}-${stamp}.pdf`;
 
     stage = "upload";
+    await ensureTailoredResumeBucket(admin);
     const [{ error: docxUploadErr }, { error: pdfUploadErr }] = await Promise.all([
       admin.storage.from(STORAGE_BUCKET).upload(docxPath, docxBuffer, {
         contentType: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
@@ -690,16 +735,21 @@ export async function generateTailoredResumeDownload(
 
   if (cacheMatches) {
     const signed = await signTailoredArtifact(admin, existing.docx_storage_path!, existing.pdf_storage_path!, jobId);
-    if (!signed.ok) return signed;
-    return {
-      ...signed,
-      content: existing.content!,
-      generated_at: existing.generated_at,
-      cached: true,
-    };
+    if (signed.ok) {
+      return {
+        ...signed,
+        content: existing.content!,
+        generated_at: existing.generated_at,
+        cached: true,
+      };
+    }
+    logEvent("warn", "tailored_resume_cached_artifact_sign_failed", {
+      user_id: user.id.slice(0, 8),
+      job_id: jobId,
+    });
   }
 
-  const diagnosed = await diagnoseTailored(jobId, "tailor");
+  const diagnosed = await diagnoseTailored(jobId, "tailor", { allowDeterministicFallback: true });
   if (!diagnosed.ok) return diagnosed;
 
   const { data: row } = await (admin

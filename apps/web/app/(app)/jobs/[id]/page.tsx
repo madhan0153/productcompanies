@@ -377,6 +377,7 @@ export default async function JobDetailPage({ params }: { params: Promise<{ id: 
                 jobId={job.id}
                 hasResume={hasResume}
                 matchingConsent={consents.matching === true}
+                resumeIntelligenceConsent={consents.resume_intelligence === true}
                 initialTailor={tailoredRow && initialDocxUrl && initialPdfUrl ? {
                   content: tailoredRow.content,
                   docx_url: initialDocxUrl,

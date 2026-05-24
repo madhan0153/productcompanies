@@ -41,6 +41,7 @@ interface Props {
   companyName: string;
   hasResume: boolean;
   matchingConsent: boolean;
+  resumeIntelligenceConsent: boolean;
   recruiterView: React.ReactNode;
   /** Initial server-loaded artifact (when present). Lets the page paint
    *  in the just-cached state without a client-side roundtrip. */
@@ -49,7 +50,7 @@ interface Props {
 
 export function ApplyToolkit({
   jobId,
-  hasResume, matchingConsent,
+  hasResume, matchingConsent, resumeIntelligenceConsent,
   recruiterView,
   initialTailor,
 }: Props) {
@@ -90,6 +91,17 @@ export function ApplyToolkit({
         icon={<ShieldCheck className="h-4 w-4" />}
         title="Enable AI Matching consent"
         body="The Apply Toolkit uses AI to tailor your resume. Enable matching consent in Settings → Privacy."
+        actionLabel="Open privacy settings"
+        actionHref="/settings/privacy"
+      />
+    );
+  }
+  if (!resumeIntelligenceConsent) {
+    return (
+      <ToolkitGate
+        icon={<ShieldCheck className="h-4 w-4" />}
+        title="Enable Resume Intelligence"
+        body="Tailored resume generation needs Resume Intelligence consent in Settings > Privacy."
         actionLabel="Open privacy settings"
         actionHref="/settings/privacy"
       />
@@ -446,11 +458,12 @@ function EmptyStateGenerate({
 // ── Standalone panels — rendered directly as top-level tabs ───────────────────
 
 export function TailorPanel({
-  jobId, hasResume, matchingConsent, initialTailor,
+  jobId, hasResume, matchingConsent, resumeIntelligenceConsent, initialTailor,
 }: {
   jobId: string;
   hasResume: boolean;
   matchingConsent: boolean;
+  resumeIntelligenceConsent: boolean;
   initialTailor: CachedTailor | null;
 }) {
   if (!hasResume) {
@@ -470,6 +483,17 @@ export function TailorPanel({
         icon={<ShieldCheck className="h-4 w-4" />}
         title="Enable AI Matching to tailor your resume"
         body="Enable matching consent in Settings → Privacy to use this feature."
+        actionLabel="Open privacy settings"
+        actionHref="/settings/privacy"
+      />
+    );
+  }
+  if (!resumeIntelligenceConsent) {
+    return (
+      <ToolkitGate
+        icon={<ShieldCheck className="h-4 w-4" />}
+        title="Enable Resume Intelligence"
+        body="Enable Resume Intelligence in Settings > Privacy to generate JD-tailored resumes."
         actionLabel="Open privacy settings"
         actionHref="/settings/privacy"
       />
