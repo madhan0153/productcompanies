@@ -36,6 +36,25 @@ import { dream11Config } from "./dream11.js";
 import { freshworksConfig } from "./freshworks.js";
 import { unacademyConfig } from "./unacademy.js";
 import { cars24Config } from "./cars24.js";
+import { arcesiumConfig } from "./arcesium.js";
+import { chargebeeConfig } from "./chargebee.js";
+import { clevertapConfig } from "./clevertap.js";
+import { delhiveryConfig } from "./delhivery.js";
+import { lenskartConfig } from "./lenskart.js";
+import { myntraConfig } from "./myntra.js";
+import { nykaaConfig } from "./nykaa.js";
+import { olaConfig } from "./ola.js";
+import { paytmConfig } from "./paytm.js";
+import { policybazaarConfig } from "./policybazaar.js";
+import { zohoConfig } from "./zoho.js";
+import { moengageConfig } from "./moengage.js";
+import { nobrokerConfig } from "./nobroker.js";
+import { pineLabsConfig } from "./pine-labs.js";
+import { practoConfig } from "./practo.js";
+import { sharechatConfig } from "./sharechat.js";
+import { udaanConfig } from "./udaan.js";
+import { wingifyConfig } from "./wingify.js";
+import { yellowAiConfig } from "./yellow-ai.js";
 
 export const COMPANY_CONFIGS: Record<string, CompanyConfig> = {
   google: googleConfig,
@@ -70,6 +89,25 @@ export const COMPANY_CONFIGS: Record<string, CompanyConfig> = {
   freshworks: freshworksConfig,
   unacademy: unacademyConfig,
   cars24: cars24Config,
+  arcesium: arcesiumConfig,
+  chargebee: chargebeeConfig,
+  clevertap: clevertapConfig,
+  delhivery: delhiveryConfig,
+  lenskart: lenskartConfig,
+  myntra: myntraConfig,
+  nykaa: nykaaConfig,
+  ola: olaConfig,
+  paytm: paytmConfig,
+  policybazaar: policybazaarConfig,
+  zoho: zohoConfig,
+  moengage: moengageConfig,
+  nobroker: nobrokerConfig,
+  "pine-labs": pineLabsConfig,
+  practo: practoConfig,
+  sharechat: sharechatConfig,
+  udaan: udaanConfig,
+  wingify: wingifyConfig,
+  "yellow-ai": yellowAiConfig,
 };
 
 export const ALL_SLUGS = Object.keys(COMPANY_CONFIGS);

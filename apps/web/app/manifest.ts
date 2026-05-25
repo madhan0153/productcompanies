@@ -18,9 +18,10 @@ export default function manifest(): MetadataRoute.Manifest {
     orientation: "portrait-primary",
     categories: ["productivity", "business"],
     lang: "en-IN",
-    // Icons come from the colocated app/icon.tsx + app/apple-icon.tsx routes.
-    // Next injects them automatically; we don't list them again here.
-    icons: [],
+    icons: [
+      { src: "/icon.png", sizes: "any", type: "image/png", purpose: "any" },
+      { src: "/apple-icon.png", sizes: "180x180", type: "image/png", purpose: "any" },
+    ],
     shortcuts: [
       { name: "Matches",       short_name: "Matches",  url: "/matches",      description: "View your ranked matches" },
       { name: "Applications",  short_name: "Apps",     url: "/applications", description: "Track your application pipeline" },
