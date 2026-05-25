@@ -10,6 +10,14 @@ const serverSchema = z.object({
   RESEND_FROM_EMAIL: z.string().optional(),
   CRON_SECRET: z.string().optional(),
   DPDP_POLICY_VERSION: z.string().default("1"),
+  DODO_PAYMENTS_API_KEY: optStr,
+  DODO_PAYMENTS_WEBHOOK_KEY: optStr,
+  DODO_PAYMENTS_ENVIRONMENT: z.enum(["test_mode", "live_mode"]).default("test_mode"),
+  DODO_PRODUCT_PRO_MONTHLY_ID: optStr,
+  DODO_PRODUCT_PRO_YEARLY_ID: optStr,
+  DODO_PRODUCT_CAREER_SPRINT_MONTHLY_ID: optStr,
+  DODO_PRODUCT_CAREER_SPRINT_YEARLY_ID: optStr,
+  DODO_PRODUCT_TAILOR_CREDITS_50_ID: optStr,
   // Sprint 3 Item 12 — comma-separated allowlist of emails that can access
   // /admin/*. Empty / unset = admin pages return 404 (no access for anyone).
   ADMIN_EMAILS: optStr,
@@ -57,5 +65,13 @@ export const serverEnv = parseEnv(serverSchema, {
   RESEND_FROM_EMAIL: process.env.RESEND_FROM_EMAIL,
   CRON_SECRET: process.env.CRON_SECRET,
   DPDP_POLICY_VERSION: process.env.DPDP_POLICY_VERSION,
+  DODO_PAYMENTS_API_KEY: process.env.DODO_PAYMENTS_API_KEY,
+  DODO_PAYMENTS_WEBHOOK_KEY: process.env.DODO_PAYMENTS_WEBHOOK_KEY,
+  DODO_PAYMENTS_ENVIRONMENT: process.env.DODO_PAYMENTS_ENVIRONMENT,
+  DODO_PRODUCT_PRO_MONTHLY_ID: process.env.DODO_PRODUCT_PRO_MONTHLY_ID,
+  DODO_PRODUCT_PRO_YEARLY_ID: process.env.DODO_PRODUCT_PRO_YEARLY_ID,
+  DODO_PRODUCT_CAREER_SPRINT_MONTHLY_ID: process.env.DODO_PRODUCT_CAREER_SPRINT_MONTHLY_ID,
+  DODO_PRODUCT_CAREER_SPRINT_YEARLY_ID: process.env.DODO_PRODUCT_CAREER_SPRINT_YEARLY_ID,
+  DODO_PRODUCT_TAILOR_CREDITS_50_ID: process.env.DODO_PRODUCT_TAILOR_CREDITS_50_ID,
   ADMIN_EMAILS: process.env.ADMIN_EMAILS,
 });
