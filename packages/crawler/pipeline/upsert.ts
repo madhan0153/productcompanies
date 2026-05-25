@@ -191,9 +191,19 @@ function isAllowedApplyUrl(url: string | null | undefined): boolean {
       "apple.com", "atlassian.com", "nvidia.com", "oracle.com", "salesforce.com",
       "sap.com", "saplabs.com", "razorpay.com", "phonepe.com", "zerodha.com",
       "cred.club", "groww.in", "swiggy.com", "zomato.com", "flipkart.com",
+      "adobe.com", "intuit.com", "uber.com", "paypal.com", "servicenow.com",
+      "browserstack.com", "stripe.com", "inmobi.com", "postman.com",
+      "meesho.io", "dream11.com", "freshworks.com", "unacademy.com", "cars24.com",
+      "arcesium.com", "chargebee.com", "clevertap.com", "delhivery.com",
+      "lenskart.com", "myntra.com", "nykaa.com", "olacabs.com", "olaelectric.com",
+      "paytm.com", "policybazaar.com", "zoho.com", "moengage.com", "nobroker.in",
+      "pinelabs.com", "practo.com", "sharechat.com", "udaan.com", "wingify.com",
+      "yellow.ai",
       "myworkdayjobs.com", "greenhouse.io", "lever.co", "ashbyhq.com",
       "smartrecruiters.com", "workable.com", "recruitee.com",
       "icims.com", "successfactors.com", "workdayjobs.com", "workday.com",
+      "turbohire.co", "kula.ai", "ainterviews.com", "trakstar.com", "keka.com",
+      "mynexthire.com", "spire2grow.com", "param.ai", "darwinbox.in",
     ];
     return ALLOWED_HOST_SUFFIXES.some((suffix) => host === suffix || host.endsWith("." + suffix));
   } catch {

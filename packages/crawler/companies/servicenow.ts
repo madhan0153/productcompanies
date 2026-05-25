@@ -1,10 +1,9 @@
-// ServiceNow — Workday tenant.
-//   https://servicenow.wd1.myworkdayjobs.com/External_Career_Site
-import { workdayConfig } from "./_workday.js";
+// ServiceNow currently mirrors its official careers jobs through
+// SmartRecruiters; the older Workday CXS endpoint now returns HTTP 422.
+import { smartRecruitersConfig } from "./_smartrecruiters.js";
 
-export const servicenowConfig = workdayConfig({
-  slug:   "servicenow",
-  tenant: "servicenow",
-  pod:    "wd1",
-  site:   "External_Career_Site",
+export const servicenowConfig = smartRecruitersConfig({
+  slug: "servicenow",
+  company: "ServiceNow",
+  maxJobs: 700,
 });

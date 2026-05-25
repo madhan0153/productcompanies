@@ -88,15 +88,17 @@ jobs:
           - name: api_global
             slugs: microsoft,meta,amazon,atlassian,nvidia,oracle,salesforce
           - name: api_workday
-            slugs: adobe,intuit,uber,paypal,servicenow,browserstack
+            slugs: adobe,intuit,uber,paypal,browserstack
           - name: api_greenhouse
             slugs: stripe,inmobi,postman
           - name: api_lever
             slugs: meesho,dream11
           - name: api_smartrecruiters
-            slugs: freshworks,unacademy,cars24
+            slugs: freshworks,unacademy,cars24,servicenow,nobroker
           - name: api_india
             slugs: razorpay,phonepe,cred,groww,swiggy,flipkart
+          - name: api_india_expansion
+            slugs: arcesium,chargebee,clevertap,delhivery,lenskart,myntra,nykaa,ola,paytm,policybazaar,zoho,moengage,pine-labs,practo,sharechat,udaan,wingify,yellow-ai
     timeout-minutes: 120    # per group; was 350 wall-clock for the whole run
     env:
       # Surfaces as `runId` in every structured log line emitted by the crawler.
