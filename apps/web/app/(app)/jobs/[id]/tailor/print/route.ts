@@ -1,5 +1,5 @@
 // Tailored resume print-view route.
-// Mirrors the enhanced version — auth-protected, returns printable HTML
+// Mirrors the enhanced version â€” auth-protected, returns printable HTML
 // that triggers Save-as-PDF natively in the browser.
 
 import { NextResponse, type NextRequest } from "next/server";
@@ -9,6 +9,7 @@ import { renderPrintableResumeHtml } from "@/lib/render/resume-pdf";
 import type { TailoredResumeContent } from "@/lib/llm/prompts/tailor-resume";
 
 export const dynamic = "force-dynamic";
+export const runtime = "nodejs";
 
 export async function GET(
   req: NextRequest,
