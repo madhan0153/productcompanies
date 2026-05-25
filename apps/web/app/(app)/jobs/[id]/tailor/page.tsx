@@ -11,6 +11,7 @@ import type { ParsedResume } from "@/lib/llm/prompts/resume-parse";
 
 export const metadata: Metadata = { title: "Tailor for this role" };
 export const dynamic = "force-dynamic";
+export const runtime = "nodejs";
 export const maxDuration = 60;
 
 export default async function TailorPage({ params }: { params: Promise<{ id: string }> }) {
