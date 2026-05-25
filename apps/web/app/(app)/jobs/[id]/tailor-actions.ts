@@ -1,17 +1,17 @@
 "use server";
 
-// JD-Tailored Resume — Phase R3 diff-review server actions.
+// JD-Tailored Resume â€” Phase R3 diff-review server actions.
 //
-// Builds on the same diagnose → rewrite → render pipeline as Capability A,
+// Builds on the same diagnose â†’ rewrite â†’ render pipeline as Capability A,
 // but scopes everything to a specific (user, job) pair and threads the JD's
 // must-haves through both prompts. Modes:
-//   • polish  (default) — minimal, voice-preserving edits.
-//   • tailor  — aggressive JD-aligned rewrites with risk flags visible.
+//   â€¢ polish  (default) â€” minimal, voice-preserving edits.
+//   â€¢ tailor  â€” aggressive JD-aligned rewrites with risk flags visible.
 //
 // Cache contract: tailored_resumes is unique on (user_id, job_id). When a
 // new diagnosis is requested for the same pair:
-//   - if a 'finalised' row exists for the SAME (resume_signature, job_signature, mode) → return it
-//   - if a 'pending_review' row exists for the same triplet → resume it
+//   - if a 'finalised' row exists for the SAME (resume_signature, job_signature, mode) â†’ return it
+//   - if a 'pending_review' row exists for the same triplet â†’ resume it
 //   - otherwise discard and start fresh
 
 import { revalidatePath } from "next/cache";
@@ -60,7 +60,7 @@ const STORAGE_BUCKET = "tailored-resumes";
 const SIGNED_URL_TTL = 600;
 
 // Synthesise an ATS-shaped text payload from the parsed JSON. Used by the
-// diagnosis prompt to quote verbatim — the profiles table has no raw
+// diagnosis prompt to quote verbatim â€” the profiles table has no raw
 // resume_text column so we reconstruct it from what the parser already
 // captured.
 function synthesiseResumeText(parsed: ParsedResume): string {
@@ -75,21 +75,21 @@ function synthesiseResumeText(parsed: ParsedResume): string {
     parts.push("\nExperience");
     for (const c of companies) {
       const dur = c.years > 0 ? ` (${c.years}+ yrs)` : "";
-      parts.push(`${c.role || "Engineer"} — ${c.name}${dur}`);
-      if (c.role) parts.push(`• ${c.role}`);
+      parts.push(`${c.role || "Engineer"} â€” ${c.name}${dur}`);
+      if (c.role) parts.push(`â€¢ ${c.role}`);
     }
   }
   const products = parsed.products_built ?? [];
   if (products.length > 0) {
     parts.push("\nProjects");
-    for (const p of products) parts.push(`• ${p}`);
+    for (const p of products) parts.push(`â€¢ ${p}`);
   }
   const edu = parsed.education ?? [];
   if (edu.length > 0) {
     parts.push("\nEducation");
     for (const e of edu) {
       const y = e.year ? `, ${e.year}` : "";
-      parts.push(`${e.degree} — ${e.institution}${y}`);
+      parts.push(`${e.degree} â€” ${e.institution}${y}`);
     }
   }
   return parts.join("\n");
@@ -131,9 +131,9 @@ async function extractStoredResumeContent(
   }
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
+// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 // Preflight
-// ─────────────────────────────────────────────────────────────────────────────
+// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 async function preflight(jobId: string) {
   if (!UUID_RE.test(jobId)) {
@@ -145,7 +145,7 @@ async function preflight(jobId: string) {
 
   const consents = await getUserConsents(user.id);
   if (!consents.resume_intelligence) {
-    return { ok: false as const, error: "Enable 'Resume Intelligence' in Settings → Privacy to tailor resumes with review." };
+    return { ok: false as const, error: "Enable 'Resume Intelligence' in Settings â†’ Privacy to tailor resumes with review." };
   }
   if (!consents.matching) {
     return { ok: false as const, error: "Enable AI Matching consent to use the Apply Toolkit." };
@@ -172,7 +172,7 @@ async function preflight(jobId: string) {
     return { ok: false as const, error: "Upload your resume first." };
   }
 
-  // The profiles table has no raw resume_text column — synthesise an
+  // The profiles table has no raw resume_text column â€” synthesise an
   // ATS-shaped text payload from the parsed JSON so the diagnosis prompt
   // can still quote verbatim. Same content the parser already extracted.
   const profile = {
@@ -204,9 +204,9 @@ async function preflight(jobId: string) {
   return { ok: true as const, user, supabase, admin, profile, job };
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
+// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 // diagnose
-// ─────────────────────────────────────────────────────────────────────────────
+// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 export type DiagnoseTailoredResult =
   | { ok: true; id: string; resumed: boolean }
@@ -252,7 +252,7 @@ export async function diagnoseTailored(
     existing.status === "pending_review" &&
     existing.diagnosis
   ) {
-    // Resume the pending review — no LLM cost.
+    // Resume the pending review â€” no LLM cost.
     return { ok: true, id: existing.id, resumed: true };
   }
 
@@ -278,7 +278,7 @@ export async function diagnoseTailored(
   }
 
   // (2.5) Extract REAL bullets from the source PDF. Same trick as the
-  //       enhancement flow — profiles.resume_parsed only has titles, not
+  //       enhancement flow â€” profiles.resume_parsed only has titles, not
   //       the bullet content the rewriter needs to work with.
   const extracted = await extractStoredResumeContent(
     admin,
@@ -291,12 +291,12 @@ export async function diagnoseTailored(
     ? renderExtractedAsText(extracted)
     : profile.resume_text;
 
-  // Thin resumes (titles without bullets) proceed — the diagnosis will
+  // Thin resumes (titles without bullets) proceed â€” the diagnosis will
   // simply flag fewer weak bullets. For the auto-enhance flow we also
   // run a gap-fill step that generates plausible content for empty
   // sections; the per-bullet review flow doesn't, by design.
 
-  // (3) Step 1 — diagnose with JD context, against the rich extracted text.
+  // (3) Step 1 â€” diagnose with JD context, against the rich extracted text.
   let diagnosis: ResumeDiagnosis;
   try {
     const result = await diagnoseResume({
@@ -339,7 +339,7 @@ export async function diagnoseTailored(
     });
   }
 
-  // (4) Step 2 — rewrites with mode + JD must-haves threaded.
+  // (4) Step 2 â€” rewrites with mode + JD must-haves threaded.
   const rewriteRequests: RewriteRequest[] = diagnosis.weak_bullets.map((b, idx) => ({
     index: idx,
     original: b.original,
@@ -382,7 +382,7 @@ export async function diagnoseTailored(
     }
   }
 
-  // (5) Persist — upsert on (user_id, job_id). Reset prior artifacts so
+  // (5) Persist â€” upsert on (user_id, job_id). Reset prior artifacts so
   //     the review screen always starts from the current diagnosis.
   const now = new Date().toISOString();
 
@@ -390,7 +390,7 @@ export async function diagnoseTailored(
     .upsert({
       user_id:          user.id,
       job_id:           jobId,
-      content:          {} as unknown,  // legacy NOT NULL; set on finalise
+      content:          {} as unknown,
       docx_storage_path: null,
       pdf_storage_path:  null,
       resume_signature: profile.resume_signature,
@@ -415,9 +415,9 @@ export async function diagnoseTailored(
   return { ok: true, id: (row as { id: string }).id, resumed: false };
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
+// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 // decisions save
-// ─────────────────────────────────────────────────────────────────────────────
+// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 export async function applyTailoredDecisions(
   jobId: string,
@@ -450,9 +450,9 @@ export async function applyTailoredDecisions(
   return { ok: true };
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
+// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 // finalise (render PDF)
-// ─────────────────────────────────────────────────────────────────────────────
+// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 export type FinaliseTailoredResult =
   | { ok: true; pdf_url: string; print_url: string }
@@ -524,30 +524,21 @@ async function signTailoredPdf(
   };
 }
 
-async function ensureTailoredResumeBucket(
-  admin: ReturnType<typeof createSupabaseAdminClient>,
-): Promise<void> {
-  const storage = admin.storage as unknown as {
-    getBucket(bucket: string): Promise<{ error: { message?: string; statusCode?: string; status?: number } | null }>;
-    createBucket(bucket: string, options: { public: boolean }): Promise<{ error: { message?: string } | null }>;
-  };
-
-  const { error } = await storage.getBucket(STORAGE_BUCKET);
-  if (!error) return;
-
-  const status = Number(error.statusCode ?? error.status ?? 0);
-  const notFound = status === 404 || /not found|does not exist/i.test(error.message ?? "");
-  if (!notFound) {
-    logEvent("warn", "tailored_resume_bucket_check_failed", {
-      reason: (error.message ?? "unknown").slice(0, 120),
-    });
-    return;
+function safeRecordResumeIntelEvent(input: Parameters<typeof recordResumeIntelEvent>[0]): void {
+  try {
+    void recordResumeIntelEvent(input);
+  } catch {
+    // Telemetry must never block the user flow.
   }
+}
 
-  const { error: createErr } = await storage.createBucket(STORAGE_BUCKET, { public: false });
-  if (createErr && !/already exists|duplicate/i.test(createErr.message ?? "")) {
-    logEvent("warn", "tailored_resume_bucket_create_failed", {
-      reason: (createErr.message ?? "unknown").slice(0, 120),
+function safeRevalidate(path: string): void {
+  try {
+    revalidatePath(path);
+  } catch (error) {
+    logEvent("warn", "tailored_resume_revalidate_failed", {
+      path,
+      error: error instanceof Error ? error.name : "unknown",
     });
   }
 }
@@ -596,7 +587,6 @@ async function renderAndStoreTailoredArtifact(
     const pdfPath = `${user.id}/${job.id}-${stamp}.pdf`;
 
     stage = "upload";
-    await ensureTailoredResumeBucket(admin);
     const { error: pdfUploadErr } = await admin.storage.from(STORAGE_BUCKET).upload(pdfPath, pdfBuffer, {
       contentType: "application/pdf",
       upsert: false,
@@ -627,21 +617,21 @@ async function renderAndStoreTailoredArtifact(
       return { ok: false, error: "Couldn't save the tailored resume. Please retry." };
     }
 
-    void recordResumeIntelEvent({
-      user_id: user.id, kind: "render_pdf", scope: "tailored",
-      scope_ref_id: row.id, ok: true,
-    });
-    void recordResumeIntelEvent({
-      user_id: user.id, kind: "finalise", scope: "tailored",
-      scope_ref_id: row.id, ok: true,
-    });
-
     stage = "sign";
     const signed = await signTailoredPdf(admin, pdfPath, job.id);
     if (!signed.ok) return signed;
 
-    revalidatePath(`/jobs/${job.id}`);
-    revalidatePath(`/jobs/${job.id}/tailor`);
+    safeRecordResumeIntelEvent({
+      user_id: user.id, kind: "render_pdf", scope: "tailored",
+      scope_ref_id: row.id, ok: true,
+    });
+    safeRecordResumeIntelEvent({
+      user_id: user.id, kind: "finalise", scope: "tailored",
+      scope_ref_id: row.id, ok: true,
+    });
+
+    safeRevalidate(`/jobs/${job.id}`);
+    safeRevalidate(`/jobs/${job.id}/tailor`);
 
     return {
       ...signed,
@@ -660,7 +650,7 @@ async function renderAndStoreTailoredArtifact(
     if (uploadedPaths.length > 0) {
       await admin.storage.from(STORAGE_BUCKET).remove(uploadedPaths);
     }
-    void recordResumeIntelEvent({
+    safeRecordResumeIntelEvent({
       user_id: user.id, kind: "finalise", scope: "tailored",
       scope_ref_id: row.id, ok: false,
       error_kind: err instanceof Error ? err.name : "unknown",
@@ -777,9 +767,9 @@ export async function finaliseTailored(jobId: string): Promise<FinaliseTailoredR
   };
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
+// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 // discard
-// ─────────────────────────────────────────────────────────────────────────────
+// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 export async function discardTailored(jobId: string): Promise<{ ok: true } | { ok: false; error: string }> {
   const pre = await preflight(jobId);
@@ -795,17 +785,17 @@ export async function discardTailored(jobId: string): Promise<{ ok: true } | { o
 
   if (error) return { ok: false, error: "Couldn't discard. Please retry." };
 
-  void recordResumeIntelEvent({
+  safeRecordResumeIntelEvent({
     user_id: user.id, kind: "discard", scope: "tailored", ok: true,
   });
 
-  revalidatePath(`/jobs/${jobId}`);
+  safeRevalidate(`/jobs/${jobId}`);
   return { ok: true };
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
+// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 // signed download URL
-// ─────────────────────────────────────────────────────────────────────────────
+// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 export async function getTailoredDownloadUrl(
   jobId: string,
@@ -841,7 +831,7 @@ export interface AtsBeforeAfter {
 }
 
 /**
- * Optional helper for the review screen — computes the ats_before scorecard
+ * Optional helper for the review screen â€” computes the ats_before scorecard
  * on demand. We don't persist it on tailored_resumes (keeps the row schema
  * minimal); the page calls this to render the side panel.
  */
