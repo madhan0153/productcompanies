@@ -2,6 +2,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { renderTailoredResumePdf } from "@/lib/pdf/tailored-resume";
+import { logEvent } from "@/lib/observability/log";
 import type { TailoredResumeContent } from "@/lib/llm/prompts/tailor-resume";
 
 export const dynamic = "force-dynamic";
@@ -44,7 +45,13 @@ export async function GET(
         "content-disposition": `inline; filename="tailored-resume-${jobId}.pdf"`,
       },
     });
-  } catch {
+  } catch (err) {
+    logEvent("error", "tailored_resume_pdf_route_render_failed", {
+      user_id: user.id.slice(0, 8),
+      job_id: jobId,
+      error: err instanceof Error ? err.name : "unknown",
+      message: err instanceof Error ? err.message.slice(0, 160) : undefined,
+    });
     return NextResponse.json({ error: "Couldn't render PDF." }, { status: 500 });
   }
 }

@@ -6,6 +6,7 @@
 // PDF generator can load it with `setContent()` and not wait on network.
 
 import type { TailoredResumeContent } from "@/lib/llm/prompts/tailor-resume";
+import { normalizeTailoredResumeContent } from "./tailored-resume-content";
 
 function escape(s: string): string {
   return s
@@ -95,13 +96,14 @@ export function renderResumeHtml(
   content: TailoredResumeContent,
   options: { title?: string } = {},
 ): string {
-  const title = escape(options.title ?? `${content.header.name} — Resume`);
+  const normalized = normalizeTailoredResumeContent(content);
+  const title = escape(options.title ?? `${normalized.header.name} — Resume`);
 
-  const skills = (content.skills ?? []).map((g) => `
+  const skills = (normalized.skills ?? []).map((g) => `
     <div class="skills-group"><strong>${escape(g.group)}:</strong> ${escape((g.items ?? []).join(", "))}</div>
   `).join("\n");
 
-  const experience = (content.experience ?? []).map((r) => `
+  const experience = (normalized.experience ?? []).map((r) => `
     <div class="role">
       <div class="role-line">
         <div>
@@ -116,13 +118,13 @@ export function renderResumeHtml(
     </div>
   `).join("\n");
 
-  const education = (content.education ?? []).map((e) => `
+  const education = (normalized.education ?? []).map((e) => `
     <div class="edu-item"><strong>${escape(e.degree)}</strong> — ${escape(e.institution)}${e.year ? `, ${e.year}` : ""}</div>
   `).join("\n");
 
-  const projects = (content.projects ?? []).length > 0 ? `
+  const projects = (normalized.projects ?? []).length > 0 ? `
     <h2>Projects</h2>
-    ${(content.projects ?? []).map((p) => `
+    ${(normalized.projects ?? []).map((p) => `
       <div class="proj-item">
         <strong>${escape(p.name)}</strong>${p.tech?.length ? ` <span style="color:#6b7280">(${escape(p.tech.join(", "))})</span>` : ""}<br/>
         ${escape(p.summary)}
@@ -139,15 +141,15 @@ export function renderResumeHtml(
   <style>${CSS}</style>
 </head>
 <body>
-  <h1>${escape(content.header.name)}</h1>
+  <h1>${escape(normalized.header.name)}</h1>
   <div class="header-meta">
-    ${escape(content.header.title)}${content.header.location ? ` · ${escape(content.header.location)}` : ""}
-    ${content.header.contact_line ? `<br/>${escape(content.header.contact_line)}` : ""}
+    ${escape(normalized.header.title)}${normalized.header.location ? ` · ${escape(normalized.header.location)}` : ""}
+    ${normalized.header.contact_line ? `<br/>${escape(normalized.header.contact_line)}` : ""}
   </div>
 
-  ${content.summary ? `
+  ${normalized.summary ? `
   <h2>Summary</h2>
-  <p class="summary">${escape(content.summary)}</p>
+  <p class="summary">${escape(normalized.summary)}</p>
   ` : ""}
 
   ${skills ? `

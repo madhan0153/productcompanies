@@ -9,6 +9,7 @@ import type { BulletRewrite } from "../../lib/llm/prompts/bullet-rewrite";
 import type { ExtractedResumeContent } from "../../lib/llm/prompts/extract-resume-content";
 import type { ResumeDiagnosis } from "../../lib/llm/prompts/resume-diagnose";
 import type { ParsedResume } from "../../lib/llm/prompts/resume-parse";
+import type { TailoredResumeContent } from "../../lib/llm/prompts/tailor-resume";
 
 test("builds a PDF-ready tailored resume from source bullets plus approved JD edits only", async () => {
   const parsed = {
@@ -211,5 +212,30 @@ test("builds a renderable deterministic tailored resume when LLM diagnosis is un
   ]);
 
   assert.ok(docx.byteLength > 1000);
+  assert.ok(pdf.byteLength > 1000);
+});
+
+test("renders PDF from legacy cached tailored content with scalar list fields", async () => {
+  const content = {
+    header: {
+      name: "Legacy Candidate",
+      title: "Backend Engineer",
+      location: "Bengaluru",
+      contact_line: "",
+    },
+    summary: "Backend engineer building reliable APIs.",
+    skills: [{ group: "Backend", items: "Node.js, PostgreSQL, Redis" }],
+    experience: [{
+      company: "ProductCart",
+      role: "Backend Engineer",
+      duration: "2021 - Present",
+      bullets: "Built order APIs in Node.js.\nReduced latency with Redis caching.",
+    }],
+    education: [{ institution: "Sample Institute", degree: "B.Tech", year: "2020" }],
+    projects: [{ name: "Checkout Platform", tech: "Node.js, PostgreSQL", summary: "Built checkout APIs." }],
+    tailoring_notes: "",
+  } as unknown as TailoredResumeContent;
+
+  const pdf = await renderTailoredResumePdf(content);
   assert.ok(pdf.byteLength > 1000);
 });

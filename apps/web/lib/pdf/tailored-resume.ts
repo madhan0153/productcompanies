@@ -1,5 +1,6 @@
 import PDFDocument from "pdfkit";
 import type { TailoredResumeContent } from "@/lib/llm/prompts/tailor-resume";
+import { normalizeTailoredResumeContent } from "../render/tailored-resume-content";
 
 const PAGE = {
   size: "A4" as const,
@@ -8,7 +9,8 @@ const PAGE = {
 };
 
 export async function renderTailoredResumePdf(content: TailoredResumeContent): Promise<Buffer> {
-  const titleName = clean(content.header?.name || "Candidate");
+  const normalized = normalizeTailoredResumeContent(content);
+  const titleName = clean(normalized.header.name || "Candidate");
   return new Promise((resolve, reject) => {
     const chunks: Buffer[] = [];
     const doc = new PDFDocument({
@@ -26,7 +28,7 @@ export async function renderTailoredResumePdf(content: TailoredResumeContent): P
     doc.on("end", () => resolve(Buffer.concat(chunks)));
     doc.on("error", reject);
 
-    render(doc, content);
+    render(doc, normalized);
     doc.end();
   });
 }
