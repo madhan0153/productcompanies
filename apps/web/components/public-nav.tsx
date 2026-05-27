@@ -30,6 +30,12 @@ export function PublicNav() {
             Roles
           </Link>
           <Link
+            href="/pricing"
+            className="hidden min-h-9 items-center rounded-md px-2 font-medium text-muted-foreground transition hover:bg-secondary hover:text-foreground sm:inline-flex"
+          >
+            Pricing
+          </Link>
+          <Link
             href="/auth/login"
             className="ml-1 inline-flex min-h-9 items-center gap-1.5 rounded-md bg-primary px-3 font-semibold text-primary-foreground transition hover:bg-primary/90"
           >

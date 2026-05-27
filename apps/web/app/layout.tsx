@@ -25,6 +25,15 @@ const outfit = Outfit({
 
 export const metadata: Metadata = {
   metadataBase: new URL(siteOrigin()),
+  icons: {
+    icon: [
+      { url: "/logo-prodmatchai.png", type: "image/png" },
+    ],
+    apple: [
+      { url: "/logo-prodmatchai.png", sizes: "180x180", type: "image/png" },
+    ],
+    shortcut: "/logo-prodmatchai.png",
+  },
   title: {
     default: "ProdMatch.ai — Match into India's top product companies",
     template: "%s · ProdMatch.ai",
