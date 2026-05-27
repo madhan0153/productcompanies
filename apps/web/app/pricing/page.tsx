@@ -2,12 +2,13 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
-  Check, Zap, Rocket, Star, CreditCard, ShieldCheck, ArrowRight,
-  Clock, Sparkles, X as XIcon,
+  Check, Zap, Rocket, Star, CreditCard, ShieldCheck, ArrowRight, ArrowLeft,
+  Clock, Sparkles, X as XIcon, LayoutDashboard,
 } from "lucide-react";
 import { PRICING_COPY, PRICING } from "@/lib/billing/catalog";
+import { createSupabaseBrowserClient } from "@/lib/supabase/browser";
 
 type Interval = "monthly" | "yearly";
 
@@ -55,9 +56,28 @@ export default function PricingPage() {
   const router = useRouter();
   const [interval, setInterval] = useState<Interval>("monthly");
   const [state, setState] = useState<CheckoutState>({ loading: null, error: null });
+  const [isSignedIn, setIsSignedIn] = useState<boolean | null>(null);
+
+  // Detect auth state on the client so the nav can show the right CTA.
+  // null = unknown (initial paint), true = signed in, false = signed out.
+  useEffect(() => {
+    const supabase = createSupabaseBrowserClient();
+    let cancelled = false;
+    supabase.auth.getUser().then(({ data }) => {
+      if (!cancelled) setIsSignedIn(Boolean(data?.user));
+    });
+    return () => { cancelled = true; };
+  }, []);
 
   async function startCheckout(product: string) {
     setState({ loading: product, error: null });
+
+    // Pre-open a blank tab synchronously with the click so popup blockers
+    // don't intercept. We'll set its location once we have the checkout URL.
+    // This preserves the mobile context of the current tab — when the user
+    // returns, they're back on a properly-rendered mobile page.
+    const popup = typeof window !== "undefined" ? window.open("about:blank", "_blank") : null;
+
     try {
       const res = await fetch("/api/billing/checkout", {
         method: "POST",
@@ -66,6 +86,7 @@ export default function PricingPage() {
       });
       const data = await res.json();
       if (!res.ok) {
+        if (popup) popup.close();
         if (res.status === 401) {
           router.push(`/auth/login?next=/pricing`);
           return;
@@ -73,21 +94,54 @@ export default function PricingPage() {
         setState({ loading: null, error: data.error ?? "Checkout failed. Please try again." });
         return;
       }
-      window.location.href = data.checkoutUrl;
+      if (popup && !popup.closed) {
+        popup.location.href = data.checkoutUrl;
+      } else {
+        // Popup blocked → fall back to same-tab navigation
+        window.location.href = data.checkoutUrl;
+      }
+      // Reset the loading state since we're staying on this page
+      setState({ loading: null, error: null });
     } catch {
+      if (popup) popup.close();
       setState({ loading: null, error: "Network error. Please try again." });
     }
   }
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Nav */}
+      {/* Nav — auth-aware. Signed-in users get a "back to dashboard" link
+          (since they already have an account). Signed-out users see Sign in. */}
       <header className="sticky top-0 z-30 border-b border-border bg-background/95 backdrop-blur-md">
-        <div className="mx-auto flex h-14 max-w-6xl items-center justify-between px-4 sm:px-6">
-          <Link href="/" className="brand-mark text-base">ProdMatch</Link>
-          <Link href="/auth/login" className="text-sm text-muted-foreground transition-colors hover:text-foreground">
-            Sign in
-          </Link>
+        <div className="mx-auto flex h-14 max-w-6xl items-center justify-between gap-3 px-4 sm:px-6">
+          {isSignedIn ? (
+            <Link
+              href="/dashboard"
+              className="inline-flex items-center gap-1.5 text-sm text-muted-foreground transition-colors hover:text-foreground"
+            >
+              <ArrowLeft className="h-3.5 w-3.5" />
+              Back to app
+            </Link>
+          ) : (
+            <Link href="/" className="brand-mark text-base">ProdMatch</Link>
+          )}
+          {isSignedIn ? (
+            <Link
+              href="/dashboard"
+              className="inline-flex items-center gap-1.5 rounded-md bg-primary px-3 py-1.5 text-xs font-semibold text-primary-foreground transition hover:bg-primary/90"
+            >
+              <LayoutDashboard className="h-3.5 w-3.5" />
+              Dashboard
+            </Link>
+          ) : (
+            <Link
+              href="/auth/login"
+              className="inline-flex items-center gap-1.5 rounded-md bg-primary px-3 py-1.5 text-xs font-semibold text-primary-foreground transition hover:bg-primary/90"
+            >
+              Sign in
+              <ArrowRight className="h-3 w-3" />
+            </Link>
+          )}
         </div>
       </header>
 
@@ -254,6 +308,27 @@ export default function PricingPage() {
         {/* FAQ */}
         <Faq />
       </main>
+
+      {/* Mobile sticky back-bar for signed-in users — they shouldn't feel
+          stuck on a marketing page without a way back into the app. */}
+      {isSignedIn && (
+        <div className="fixed inset-x-2 bottom-2 z-40 flex items-center gap-2 rounded-2xl border border-border bg-card/96 p-2 shadow-pop backdrop-blur-xl sm:hidden">
+          <Link
+            href="/dashboard"
+            className="inline-flex h-10 flex-1 items-center justify-center gap-1.5 rounded-xl border border-border bg-background text-xs font-medium text-foreground hover:bg-secondary"
+          >
+            <ArrowLeft className="h-3.5 w-3.5" />
+            Back to app
+          </Link>
+          <Link
+            href="/settings/billing"
+            className="inline-flex h-10 flex-1 items-center justify-center gap-1.5 rounded-xl bg-primary text-xs font-semibold text-primary-foreground hover:bg-primary/90"
+          >
+            <CreditCard className="h-3.5 w-3.5" />
+            My billing
+          </Link>
+        </div>
+      )}
     </div>
   );
 }

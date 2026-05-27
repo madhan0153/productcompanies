@@ -50,10 +50,37 @@ function BillingSuccessContent() {
   useEffect(() => {
     if (onWrongHost) return; // can't poll our API from localhost in prod context
 
+    let cancelled = false;
+
+    // Phase 1: a one-shot direct sync using the subscription_id from the URL.
+    // This bypasses webhook latency entirely — we query Dodo's API directly,
+    // create the local subscription/entitlement rows, and refresh. If this
+    // succeeds, the user sees "activated" almost instantly.
+    async function syncFromReturn() {
+      if (!subId) return;
+      try {
+        const res = await fetch("/api/billing/sync", {
+          method:  "POST",
+          headers: { "Content-Type": "application/json" },
+          cache:   "no-store",
+          body:    JSON.stringify({ subscription_id: subId, product }),
+        });
+        if (!res.ok || cancelled) return;
+        const data = await res.json() as { plan?: string };
+        if (data.plan && data.plan !== "free") {
+          if (pollRef.current) clearInterval(pollRef.current);
+          setPlan(data.plan);
+          setPhase("activated");
+        }
+      } catch { /* fall through to webhook polling */ }
+    }
+
+    // Phase 2: redundant polling for the webhook-driven path, in case sync
+    // failed (e.g. Dodo API down) but the webhook eventually arrives.
     async function refresh() {
       try {
         const res = await fetch("/api/billing/refresh", { method: "POST", cache: "no-store" });
-        if (!res.ok) return;
+        if (!res.ok || cancelled) return;
         const data = await res.json() as { plan?: string };
         if (data.plan && data.plan !== "free") {
           if (pollRef.current) clearInterval(pollRef.current);
@@ -63,7 +90,9 @@ function BillingSuccessContent() {
       } catch { /* keep polling */ }
     }
 
-    refresh();
+    // Fire the direct sync immediately, then start polling as a safety net.
+    syncFromReturn().then(() => { if (!cancelled) refresh(); });
+
     pollRef.current = setInterval(() => {
       const elapsed = Date.now() - startRef.current;
       setSecondsLeft(Math.max(0, Math.ceil((MAX_POLL_MS - elapsed) / 1000)));
@@ -75,8 +104,11 @@ function BillingSuccessContent() {
       refresh();
     }, POLL_INTERVAL_MS);
 
-    return () => { if (pollRef.current) clearInterval(pollRef.current); };
-  }, [onWrongHost]);
+    return () => {
+      cancelled = true;
+      if (pollRef.current) clearInterval(pollRef.current);
+    };
+  }, [onWrongHost, subId, product]);
 
   // Auto-redirect to return_to once activated (with brief celebration window)
   useEffect(() => {

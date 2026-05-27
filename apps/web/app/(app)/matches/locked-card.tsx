@@ -1,107 +1,121 @@
-import Link from "next/link";
-import { Lock, Sparkles } from "lucide-react";
+"use client";
 
-// Emotional, India-focused copy that runs deterministically per card.
-// Each card picks one quote based on its job_id hash — stable across renders,
-// varied across the list so the page doesn't feel templated.
+import { useEffect, useState } from "react";
+import Link from "next/link";
+import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
+import { Lock, Sparkles, ArrowRight } from "lucide-react";
+
+// India-focused emotional copy — rotates inside ONE single card rather than
+// being scattered across many. Each quote earns its 4-second slot.
 const QUOTES: string[] = [
   "Your next ₹40 LPA role might be one tap away.",
   "Top product companies are hiring engineers like you — right now.",
-  "Don't let the algorithm decide your career. Unlock all matches.",
+  "Don't let the algorithm decide your career.",
   "Built for engineers who don't settle for the first offer.",
   "Your skills deserve better than \"we'll get back to you\".",
   "Hundreds of engineers crack their dream role with ProdMatch every month.",
-  "Pro at ₹3/day — less than your morning chai.",
+  "Less than your morning chai — ₹3 a day.",
   "More strong-fit roles are waiting. Don't miss them.",
   "Unlimited matches. Tailor any resume. Land that offer.",
-  "You're worth the upgrade. Your dream company thinks so too.",
-  "Stop applying to the wrong roles. See every right one.",
-  "The next role that pays you what you're worth is locked behind this card.",
-  "Your career sprint starts the moment you upgrade.",
+  "Your dream company is already in your match list.",
+  "Stop applying to wrong roles. See every right one.",
   "Indian engineers like you are getting ₹50 LPA offers via ProdMatch.",
 ];
 
-function hashIndex(jobId: string, mod: number): number {
-  let h = 0;
-  for (let i = 0; i < jobId.length; i++) h = (h * 31 + jobId.charCodeAt(i)) | 0;
-  return Math.abs(h) % mod;
-}
-
 interface Props {
-  jobId:        string;
-  companyName?: string | null;
-  /** When true, render a small "locked" badge inline (no overlay). Used in dense lists. */
-  compact?:     boolean;
+  /** Total number of locked rows beyond the free quota. */
+  count:  number;
+  /** Which tab we're on — copy adapts. */
+  tab:    "shortlist" | "worth_a_look";
 }
 
-export function LockedMatchCard({ jobId, companyName, compact }: Props) {
-  const quote = QUOTES[hashIndex(jobId, QUOTES.length)];
+/**
+ * The lock-screen. A single, attention-grabbing card with rotating quotes
+ * and one clear CTA. Replaces the previous grid of N blurred cards which
+ * felt clumsy on mobile.
+ */
+export function LockedMatchesPanel({ count, tab }: Props) {
+  const reduce = useReducedMotion();
+  const [idx, setIdx] = useState(0);
 
-  if (compact) {
-    return (
-      <Link
-        href="/pricing"
-        className="group relative block overflow-hidden rounded-xl border border-dashed border-primary/30 bg-card p-4 transition hover:border-primary hover:shadow-elev1"
-      >
-        <div className="flex items-center gap-3">
-          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
-            <Lock className="h-4 w-4" />
-          </div>
-          <div className="min-w-0 flex-1">
-            <p className="text-sm font-semibold text-foreground/90">
-              Premium match — unlock with Pro
-            </p>
-            <p className="mt-0.5 truncate text-xs italic text-muted-foreground">
-              &ldquo;{quote}&rdquo;
-            </p>
-          </div>
-          <Sparkles className="h-4 w-4 shrink-0 text-primary opacity-60 transition group-hover:opacity-100" />
-        </div>
-      </Link>
-    );
-  }
+  useEffect(() => {
+    if (reduce) return;
+    const tick = setInterval(() => setIdx((i) => (i + 1) % QUOTES.length), 4_000);
+    return () => clearInterval(tick);
+  }, [reduce]);
+
+  const tabLabel = tab === "shortlist" ? "priority" : "explore";
+  const quote    = QUOTES[idx];
 
   return (
-    <Link
-      href="/pricing"
-      className="group relative block overflow-hidden rounded-2xl border border-border bg-card transition hover:border-primary/40"
-    >
-      {/* Blurred preview "shape" — looks like a match card with content blurred */}
-      <div className="pointer-events-none select-none p-4 blur-[10px] saturate-150 opacity-40">
-        <div className="flex items-center gap-3">
-          <div className="h-10 w-10 rounded-lg bg-muted" />
-          <div className="flex-1 space-y-1.5">
-            <div className="h-3 w-2/3 rounded bg-muted" />
-            <div className="h-2.5 w-1/2 rounded bg-muted/70" />
-          </div>
-          <div className="h-6 w-12 rounded-full bg-primary/40" />
-        </div>
-        <div className="mt-4 grid grid-cols-3 gap-2">
-          <div className="h-2 rounded bg-muted/60" />
-          <div className="h-2 rounded bg-muted/60" />
-          <div className="h-2 rounded bg-muted/60" />
-        </div>
-        <div className="mt-3 h-2 w-full rounded bg-muted/40" />
-        <div className="mt-1.5 h-2 w-4/5 rounded bg-muted/40" />
-      </div>
+    <div className="relative mt-5 overflow-hidden rounded-3xl border border-primary/20 bg-gradient-to-br from-primary/8 via-background to-violet-500/8 p-6 shadow-elev1 sm:p-8">
+      {/* Decorative sparkles */}
+      <div className="pointer-events-none absolute -right-10 -top-10 h-40 w-40 rounded-full bg-primary/15 blur-3xl" aria-hidden />
+      <div className="pointer-events-none absolute -bottom-12 -left-10 h-40 w-40 rounded-full bg-violet-500/15 blur-3xl" aria-hidden />
 
-      {/* Overlay — emotional CTA */}
-      <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-gradient-to-b from-background/85 via-background/95 to-background px-5 text-center backdrop-blur-[2px]">
-        <div className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-primary/30 bg-primary/10 text-primary shadow-sm">
-          <Lock className="h-4 w-4" />
+      <div className="relative z-10 flex flex-col items-center text-center">
+        {/* Locked badge */}
+        <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-primary/30 bg-background/80 px-3 py-1.5 backdrop-blur">
+          <Lock className="h-3.5 w-3.5 text-primary" />
+          <span className="text-[11px] font-semibold uppercase tracking-widest text-primary">
+            {count} more {tabLabel} {count === 1 ? "match" : "matches"} locked
+          </span>
         </div>
-        <p className="max-w-xs text-sm font-semibold leading-snug text-balance">
-          &ldquo;{quote}&rdquo;
+
+        {/* Animated quote */}
+        <div className="relative min-h-[3.75rem] w-full max-w-md sm:min-h-[4.5rem]">
+          <AnimatePresence mode="wait">
+            <motion.p
+              key={idx}
+              initial={reduce ? false : { opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={reduce ? undefined : { opacity: 0, y: -8 }}
+              transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] as const }}
+              className="font-display text-lg font-semibold leading-snug text-balance sm:text-xl"
+            >
+              &ldquo;{quote}&rdquo;
+            </motion.p>
+          </AnimatePresence>
+        </div>
+
+        {/* Progress dots */}
+        <div className="mt-4 flex items-center gap-1.5" aria-hidden>
+          {QUOTES.slice(0, 6).map((_, i) => {
+            const active = i === (idx % 6);
+            return (
+              <span
+                key={i}
+                className={`h-1 rounded-full transition-all duration-500 ${
+                  active ? "w-5 bg-primary" : "w-1 bg-primary/30"
+                }`}
+              />
+            );
+          })}
+        </div>
+
+        {/* Primary CTA */}
+        <Link
+          href="/pricing"
+          className="group mt-6 inline-flex items-center gap-2 rounded-full bg-primary px-6 py-3 text-sm font-bold text-primary-foreground shadow-pop transition hover:bg-primary/90 sm:text-base"
+        >
+          <Sparkles className="h-4 w-4" />
+          Unlock all matches — ₹3/day
+          <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
+        </Link>
+
+        {/* Trust line */}
+        <p className="mt-3 text-[11px] text-muted-foreground">
+          Cancel anytime · DPDP-compliant · UPI / Cards / Net banking
         </p>
-        <p className="text-[11px] text-muted-foreground">
-          {companyName ? <>One of {companyName}&apos;s open roles is hidden. </> : null}
-          Unlock with Pro · ₹3/day
-        </p>
-        <span className="inline-flex items-center gap-1 rounded-full bg-primary px-3 py-1.5 text-xs font-semibold text-primary-foreground shadow-sm transition group-hover:bg-primary/90">
-          <Sparkles className="h-3 w-3" />
-          See this match
-        </span>
+
+        {/* Blurred peek strip — decorative “there's more” signal */}
+        <div className="mt-6 flex w-full max-w-md items-center gap-2 px-2 opacity-50">
+          <div className="h-1.5 flex-1 rounded-full bg-primary/30" />
+          <div className="h-1.5 flex-1 rounded-full bg-primary/20" />
+          <div className="h-1.5 flex-1 rounded-full bg-primary/15" />
+          <div className="h-1.5 flex-1 rounded-full bg-primary/10" />
+        </div>
       </div>
-    </Link>
+    </div>
   );
 }

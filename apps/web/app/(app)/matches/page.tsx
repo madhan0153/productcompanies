@@ -16,7 +16,7 @@ import { MatchesURLBeacon } from "./matches-url-beacon";
 import { MatchNavProvider } from "./match-transition-context";
 import { MatchCardArea } from "./match-card-area";
 import { ComputingBanner } from "./computing-banner";
-import { LockedMatchCard } from "./locked-card";
+import { LockedMatchesPanel } from "./locked-card";
 import { getEntitlements } from "@/lib/billing/entitlements";
 import { PLAN_LIMITS } from "@/lib/billing/catalog";
 
@@ -227,9 +227,7 @@ export default async function MatchesPage({
       lockedRows = tabRowsAll.slice(EXPLORE_FREE);
     }
   }
-  // Cap locked previews so we don't render hundreds of placeholders.
-  const lockedPreview = lockedRows.slice(0, 8);
-  const lockedRemainder = Math.max(0, lockedRows.length - lockedPreview.length);
+  const lockedCount = lockedRows.length;
 
   // Sprint 6 — fold in application status for the cards in view.
   const visibleJobIds = tabRows.map((m) => m.jobs.id);
@@ -373,31 +371,10 @@ export default async function MatchesPage({
               ))}
             </StaggerList>
 
-            {/* Locked premium previews for free users */}
-            {isFreePlan && lockedPreview.length > 0 && (
-              <div className="mt-4 space-y-3">
-                <div className="flex items-center gap-2 px-1">
-                  <span className="h-px flex-1 bg-border" />
-                  <span className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">
-                    {lockedPreview.length + lockedRemainder} more {tab === "shortlist" ? "priority" : "explore"} matches with Pro
-                  </span>
-                  <span className="h-px flex-1 bg-border" />
-                </div>
-                <div className="grid gap-3 sm:grid-cols-2">
-                  {lockedPreview.map((m) => (
-                    <LockedMatchCard
-                      key={`locked-${m.jobs.id}`}
-                      jobId={m.jobs.id}
-                      companyName={m.jobs.companies?.name ?? null}
-                    />
-                  ))}
-                </div>
-                {lockedRemainder > 0 && (
-                  <p className="text-center text-xs text-muted-foreground">
-                    + <span className="font-semibold tabular-nums text-foreground">{lockedRemainder}</span> more locked matches
-                  </p>
-                )}
-              </div>
+            {/* Locked premium panel for free users — single beautiful card
+                with rotating quotes (replaces the clumsy 8-card grid). */}
+            {isFreePlan && lockedCount > 0 && (
+              <LockedMatchesPanel count={lockedCount} tab={tab} />
             )}
 
             {(() => {

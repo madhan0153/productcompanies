@@ -104,6 +104,9 @@ export function UpgradeModal({ open, onClose, trigger, returnTo }: UpgradeModalP
 
   async function startCheckout(product: string) {
     setLoading(product);
+    // Pre-open a tab synchronously with the click — preserves mobile context
+    // and survives strict popup blockers (counts as direct user gesture).
+    const popup = typeof window !== "undefined" ? window.open("about:blank", "_blank") : null;
     try {
       const res = await fetch("/api/billing/checkout", {
         method: "POST",
@@ -112,6 +115,7 @@ export function UpgradeModal({ open, onClose, trigger, returnTo }: UpgradeModalP
       });
       const data = await res.json();
       if (!res.ok) {
+        if (popup) popup.close();
         if (res.status === 401) {
           router.push(`/auth/login?next=${encodeURIComponent(window.location.pathname)}`);
           return;
@@ -120,8 +124,15 @@ export function UpgradeModal({ open, onClose, trigger, returnTo }: UpgradeModalP
         alert(data.error ?? "Checkout failed. Please try again.");
         return;
       }
-      window.location.href = data.checkoutUrl;
+      if (popup && !popup.closed) {
+        popup.location.href = data.checkoutUrl;
+      } else {
+        window.location.href = data.checkoutUrl;
+      }
+      setLoading(null);
+      onClose();
     } catch {
+      if (popup) popup.close();
       setLoading(null);
       alert("Network error. Please try again.");
     }
