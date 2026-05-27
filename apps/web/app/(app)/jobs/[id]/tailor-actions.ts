@@ -46,6 +46,7 @@ import {
 import { buildDeterministicTailoredDiagnosis } from "@/lib/resume-intel/tailored-fallback";
 import { getQuotaState, resetsInHumanForm } from "@/lib/resume-intel/quota";
 import { recordResumeIntelEvent } from "@/lib/resume-intel/telemetry";
+import { consumeCredit, getCreditBalance } from "@/lib/billing/credits";
 import { logEvent } from "@/lib/observability/log";
 import { checkRateLimit, checkRateLimitShared, userActionKey } from "@/lib/security/rate-limit";
 import type { ParsedResume } from "@/lib/llm/prompts/resume-parse";
@@ -267,11 +268,17 @@ export async function diagnoseTailored(
 
   // (2) Quota check (only the LLM-spending path).
   const quota = await getQuotaState(user.id, "tailored");
+  const shouldSpendCredit = quota.exhausted;
   if (quota.exhausted) {
-    return {
-      ok: false,
-      error: `You've used your ${quota.limit} tailored-resume diagnoses for this 30-day window. Resets ${resetsInHumanForm(quota.resets_at)}.`,
-    };
+    const creditBalance = await getCreditBalance(user.id, "tailored_resume");
+    if (creditBalance > 0) {
+      // Continue: a successful generation below will spend one Tailor Credit.
+    } else {
+      return {
+        ok: false,
+        error: `You've used your ${quota.limit} tailored resumes for this 30-day window. Upgrade to Pro for Rs 3.3/day or use a Tailor Credit. Resets ${resetsInHumanForm(quota.resets_at)}.`,
+      };
+    }
   }
 
   // (2.5) Extract REAL bullets from the source PDF. Same trick as the
@@ -309,6 +316,18 @@ export async function diagnoseTailored(
       },
     });
     diagnosis = result.diagnosis;
+    if (shouldSpendCredit) {
+      const spend = await consumeCredit({
+        userId: user.id,
+        kind: "tailored_resume",
+        reason: "tailored_resume_over_plan_limit",
+        referenceKey: `tailored:${user.id}:${jobId}:${profile.resume_signature}:${job.signature ?? "job"}`,
+        metadata: { job_id: jobId },
+      });
+      if (!spend.ok) {
+        return { ok: false, error: "No Tailor Credits available. Upgrade to Pro or buy a credit pack to continue." };
+      }
+    }
     void recordResumeIntelEvent({
       user_id: user.id, kind: "diagnosis", scope: "tailored",
       llm_tier: "heavy", latency_ms: result.latency_ms, ok: true,

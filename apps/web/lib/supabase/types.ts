@@ -15,6 +15,11 @@ export type CrawlStatus = "running" | "success" | "partial" | "failed";
 export type SeniorityLevel = "intern" | "junior" | "mid" | "senior" | "staff" | "principal" | "lead" | "manager" | "director" | "vp";
 
 export type Verdict = "strong_fit" | "stretch" | "underqualified" | "mismatch" | "off_target";
+export type BillingProvider = "dodo" | "razorpay" | "stripe" | "manual";
+export type BillingPlan = "free" | "pro" | "career_sprint";
+export type SubscriptionStatus = "incomplete" | "active" | "trialing" | "on_hold" | "past_due" | "cancelled" | "expired" | "failed";
+export type CreditKind = "tailored_resume" | "resume_reparse" | "priority_recompute";
+export type EntitlementGrantType = "pro_12_months" | "pro_lifetime" | "career_sprint_3_months" | "credits_fixed";
 
 export interface Database {
   public: {
@@ -219,6 +224,175 @@ export interface Database {
           created_at?: string;
         };
         Update: never;
+        Relationships: [];
+      };
+      billing_customers: {
+        Row: {
+          user_id: string; dodo_customer_id: string | null; razorpay_customer_id: string | null;
+          stripe_customer_id: string | null; billing_email: string | null;
+          country: string | null; currency: string; created_at: string; updated_at: string;
+        };
+        Insert: {
+          user_id: string; dodo_customer_id?: string | null; razorpay_customer_id?: string | null;
+          stripe_customer_id?: string | null; billing_email?: string | null;
+          country?: string | null; currency?: string; created_at?: string; updated_at?: string;
+        };
+        Update: {
+          user_id?: string; dodo_customer_id?: string | null; razorpay_customer_id?: string | null;
+          stripe_customer_id?: string | null; billing_email?: string | null;
+          country?: string | null; currency?: string; updated_at?: string;
+        };
+        Relationships: [];
+      };
+      subscriptions: {
+        Row: {
+          id: string; user_id: string; provider: BillingProvider;
+          provider_customer_id: string | null; provider_subscription_id: string | null;
+          provider_product_id: string | null; plan: BillingPlan; status: SubscriptionStatus;
+          current_period_start: string | null; current_period_end: string | null;
+          cancel_at_period_end: boolean; cancelled_at: string | null;
+          metadata: Json; created_at: string; updated_at: string;
+        };
+        Insert: {
+          id?: string; user_id: string; provider: BillingProvider;
+          provider_customer_id?: string | null; provider_subscription_id?: string | null;
+          provider_product_id?: string | null; plan: BillingPlan; status?: SubscriptionStatus;
+          current_period_start?: string | null; current_period_end?: string | null;
+          cancel_at_period_end?: boolean; cancelled_at?: string | null;
+          metadata?: Json; created_at?: string; updated_at?: string;
+        };
+        Update: {
+          id?: string; user_id?: string; provider?: BillingProvider;
+          provider_customer_id?: string | null; provider_subscription_id?: string | null;
+          provider_product_id?: string | null; plan?: BillingPlan; status?: SubscriptionStatus;
+          current_period_start?: string | null; current_period_end?: string | null;
+          cancel_at_period_end?: boolean; cancelled_at?: string | null;
+          metadata?: Json; updated_at?: string;
+        };
+        Relationships: [];
+      };
+      user_entitlements: {
+        Row: {
+          user_id: string; plan: BillingPlan; source: string; active_until: string | null;
+          tailored_resume_limit: number; priority_level: number; feature_flags: Json;
+          refreshed_at: string; created_at: string; updated_at: string;
+        };
+        Insert: {
+          user_id: string; plan?: BillingPlan; source?: string; active_until?: string | null;
+          tailored_resume_limit?: number; priority_level?: number; feature_flags?: Json;
+          refreshed_at?: string; created_at?: string; updated_at?: string;
+        };
+        Update: {
+          user_id?: string; plan?: BillingPlan; source?: string; active_until?: string | null;
+          tailored_resume_limit?: number; priority_level?: number; feature_flags?: Json;
+          refreshed_at?: string; updated_at?: string;
+        };
+        Relationships: [];
+      };
+      credit_ledger: {
+        Row: {
+          id: string; user_id: string; kind: CreditKind; amount: number; reason: string;
+          reference_key: string | null; expires_at: string | null; metadata: Json; created_at: string;
+        };
+        Insert: {
+          id?: string; user_id: string; kind: CreditKind; amount: number; reason: string;
+          reference_key?: string | null; expires_at?: string | null; metadata?: Json; created_at?: string;
+        };
+        Update: never;
+        Relationships: [];
+      };
+      payment_events: {
+        Row: {
+          id: string; provider: BillingProvider; provider_event_id: string; event_type: string;
+          user_id: string | null; processed_at: string | null; processing_error: string | null;
+          payload: Json; created_at: string;
+        };
+        Insert: {
+          id?: string; provider: BillingProvider; provider_event_id: string; event_type: string;
+          user_id?: string | null; processed_at?: string | null; processing_error?: string | null;
+          payload?: Json; created_at?: string;
+        };
+        Update: { processed_at?: string | null; processing_error?: string | null; user_id?: string | null; payload?: Json };
+        Relationships: [];
+      };
+      invoices: {
+        Row: {
+          id: string; user_id: string; provider: BillingProvider; provider_invoice_id: string | null;
+          provider_payment_id: string | null; subscription_id: string | null; amount: number;
+          currency: string; status: string; hosted_invoice_url: string | null; receipt_url: string | null;
+          tax_amount: number | null; metadata: Json; created_at: string; updated_at: string;
+        };
+        Insert: {
+          id?: string; user_id: string; provider: BillingProvider; provider_invoice_id?: string | null;
+          provider_payment_id?: string | null; subscription_id?: string | null; amount: number;
+          currency?: string; status: string; hosted_invoice_url?: string | null; receipt_url?: string | null;
+          tax_amount?: number | null; metadata?: Json; created_at?: string; updated_at?: string;
+        };
+        Update: {
+          status?: string; hosted_invoice_url?: string | null; receipt_url?: string | null;
+          tax_amount?: number | null; metadata?: Json; updated_at?: string;
+        };
+        Relationships: [];
+      };
+      refunds: {
+        Row: {
+          id: string; user_id: string; invoice_id: string | null; provider: BillingProvider;
+          provider_refund_id: string | null; amount: number | null; currency: string;
+          status: string; reason: string | null; metadata: Json; requested_at: string; updated_at: string;
+        };
+        Insert: {
+          id?: string; user_id: string; invoice_id?: string | null; provider: BillingProvider;
+          provider_refund_id?: string | null; amount?: number | null; currency?: string;
+          status?: string; reason?: string | null; metadata?: Json; requested_at?: string; updated_at?: string;
+        };
+        Update: {
+          provider_refund_id?: string | null; amount?: number | null; status?: string;
+          reason?: string | null; metadata?: Json; updated_at?: string;
+        };
+        Relationships: [];
+      };
+      promo_codes: {
+        Row: {
+          id: string; code_label: string | null; code_hash: string; salt: string;
+          grant_type: EntitlementGrantType; credit_kind: CreditKind | null;
+          credit_amount: number | null; duration_days: number | null;
+          max_redemptions: number | null; redeemed_count: number;
+          expires_at: string | null; is_active: boolean; created_by: string | null;
+          created_at: string; updated_at: string;
+        };
+        Insert: {
+          id?: string; code_label?: string | null; code_hash: string; salt?: string;
+          grant_type: EntitlementGrantType; credit_kind?: CreditKind | null;
+          credit_amount?: number | null; duration_days?: number | null;
+          max_redemptions?: number | null; redeemed_count?: number;
+          expires_at?: string | null; is_active?: boolean; created_by?: string | null;
+          created_at?: string; updated_at?: string;
+        };
+        Update: {
+          redeemed_count?: number; is_active?: boolean; updated_at?: string;
+        };
+        Relationships: [];
+      };
+      promo_redemptions: {
+        Row: { id: string; promo_code_id: string; user_id: string; redeemed_at: string };
+        Insert: { id?: string; promo_code_id: string; user_id: string; redeemed_at?: string };
+        Update: never;
+        Relationships: [];
+      };
+      entitlement_grants: {
+        Row: {
+          id: string; user_id: string; grant_type: EntitlementGrantType; plan: BillingPlan | null;
+          credit_kind: CreditKind | null; credit_amount: number | null; starts_at: string;
+          expires_at: string | null; source: string; source_ref: string | null; reason: string | null;
+          granted_by: string | null; revoked_at: string | null; created_at: string; updated_at: string;
+        };
+        Insert: {
+          id?: string; user_id: string; grant_type: EntitlementGrantType; plan?: BillingPlan | null;
+          credit_kind?: CreditKind | null; credit_amount?: number | null; starts_at?: string;
+          expires_at?: string | null; source: string; source_ref?: string | null; reason?: string | null;
+          granted_by?: string | null; revoked_at?: string | null; created_at?: string; updated_at?: string;
+        };
+        Update: { revoked_at?: string | null; updated_at?: string };
         Relationships: [];
       };
       negotiation_memos: {

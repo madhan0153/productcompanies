@@ -1994,6 +1994,338 @@ on conflict (slug) do update set
   updated_at = now();
 
 
+-- -----------------------------------------------------------------------------
+-- Phase M1 - Monetization + payment entitlements
+-- -----------------------------------------------------------------------------
+-- Billing is deliberately separate from authorization. Founder/friend grants
+-- unlock paid membership features only; admin access remains controlled by the
+-- server-side ADMIN_EMAILS allowlist in the web app.
+
+do $$ begin
+  create type billing_provider as enum ('dodo', 'razorpay', 'stripe', 'manual');
+exception when duplicate_object then null; end $$;
+
+do $$ begin
+  create type billing_plan as enum ('free', 'pro', 'career_sprint');
+exception when duplicate_object then null; end $$;
+
+do $$ begin
+  create type subscription_status as enum (
+    'incomplete', 'active', 'trialing', 'on_hold', 'past_due',
+    'cancelled', 'expired', 'failed'
+  );
+exception when duplicate_object then null; end $$;
+
+do $$ begin
+  create type credit_kind as enum ('tailored_resume', 'resume_reparse', 'priority_recompute');
+exception when duplicate_object then null; end $$;
+
+do $$ begin
+  create type billing_event_type as enum (
+    'checkout_started', 'checkout_completed', 'subscription_changed',
+    'payment_succeeded', 'payment_failed', 'refund_succeeded',
+    'promo_redeemed', 'admin_grant_created'
+  );
+exception when duplicate_object then null; end $$;
+
+do $$ begin
+  create type entitlement_grant_type as enum (
+    'pro_12_months', 'pro_lifetime', 'career_sprint_3_months', 'credits_fixed'
+  );
+exception when duplicate_object then null; end $$;
+
+create table if not exists public.billing_customers (
+  user_id              uuid primary key references auth.users(id) on delete cascade,
+  dodo_customer_id      text,
+  razorpay_customer_id  text,
+  stripe_customer_id    text,
+  billing_email         text,
+  country               text default 'IN',
+  currency              text not null default 'INR',
+  created_at            timestamptz not null default now(),
+  updated_at            timestamptz not null default now()
+);
+
+create unique index if not exists ux_billing_customers_dodo
+  on public.billing_customers(dodo_customer_id) where dodo_customer_id is not null;
+create unique index if not exists ux_billing_customers_razorpay
+  on public.billing_customers(razorpay_customer_id) where razorpay_customer_id is not null;
+create unique index if not exists ux_billing_customers_stripe
+  on public.billing_customers(stripe_customer_id) where stripe_customer_id is not null;
+
+create table if not exists public.subscriptions (
+  id                       uuid primary key default gen_random_uuid(),
+  user_id                  uuid not null references auth.users(id) on delete cascade,
+  provider                 billing_provider not null,
+  provider_customer_id      text,
+  provider_subscription_id  text,
+  provider_product_id       text,
+  plan                     billing_plan not null,
+  status                   subscription_status not null default 'incomplete',
+  current_period_start      timestamptz,
+  current_period_end        timestamptz,
+  cancel_at_period_end      boolean not null default false,
+  cancelled_at             timestamptz,
+  metadata                 jsonb not null default '{}'::jsonb,
+  created_at               timestamptz not null default now(),
+  updated_at               timestamptz not null default now()
+);
+
+create unique index if not exists ux_subscriptions_provider_subscription
+  on public.subscriptions(provider, provider_subscription_id)
+  where provider_subscription_id is not null;
+create index if not exists idx_subscriptions_user_status
+  on public.subscriptions(user_id, status, current_period_end desc);
+
+create table if not exists public.user_entitlements (
+  user_id                   uuid primary key references auth.users(id) on delete cascade,
+  plan                      billing_plan not null default 'free',
+  source                    text not null default 'free',
+  active_until              timestamptz,
+  tailored_resume_limit     integer not null default 5,
+  priority_level            integer not null default 0,
+  feature_flags             jsonb not null default '{}'::jsonb,
+  refreshed_at              timestamptz not null default now(),
+  created_at                timestamptz not null default now(),
+  updated_at                timestamptz not null default now()
+);
+
+create table if not exists public.credit_ledger (
+  id              uuid primary key default gen_random_uuid(),
+  user_id          uuid not null references auth.users(id) on delete cascade,
+  kind             credit_kind not null,
+  amount           integer not null,
+  reason           text not null,
+  reference_key    text,
+  expires_at       timestamptz,
+  metadata         jsonb not null default '{}'::jsonb,
+  created_at       timestamptz not null default now(),
+  constraint credit_ledger_nonzero_amount check (amount <> 0)
+);
+
+create unique index if not exists ux_credit_ledger_reference
+  on public.credit_ledger(user_id, kind, reference_key)
+  where reference_key is not null;
+create index if not exists idx_credit_ledger_user_kind
+  on public.credit_ledger(user_id, kind, created_at desc);
+
+create table if not exists public.payment_events (
+  id                 uuid primary key default gen_random_uuid(),
+  provider           billing_provider not null,
+  provider_event_id  text not null,
+  event_type         text not null,
+  user_id            uuid references auth.users(id) on delete set null,
+  processed_at       timestamptz,
+  processing_error   text,
+  payload            jsonb not null default '{}'::jsonb,
+  created_at         timestamptz not null default now(),
+  unique(provider, provider_event_id)
+);
+
+create index if not exists idx_payment_events_user
+  on public.payment_events(user_id, created_at desc);
+
+create table if not exists public.invoices (
+  id                   uuid primary key default gen_random_uuid(),
+  user_id               uuid not null references auth.users(id) on delete cascade,
+  provider              billing_provider not null,
+  provider_invoice_id   text,
+  provider_payment_id   text,
+  subscription_id       uuid references public.subscriptions(id) on delete set null,
+  amount                integer not null,
+  currency              text not null default 'INR',
+  status                text not null,
+  hosted_invoice_url    text,
+  receipt_url           text,
+  tax_amount            integer,
+  metadata              jsonb not null default '{}'::jsonb,
+  created_at            timestamptz not null default now(),
+  updated_at            timestamptz not null default now()
+);
+
+create unique index if not exists ux_invoices_provider_invoice
+  on public.invoices(provider, provider_invoice_id) where provider_invoice_id is not null;
+create index if not exists idx_invoices_user_created
+  on public.invoices(user_id, created_at desc);
+
+create table if not exists public.refunds (
+  id                  uuid primary key default gen_random_uuid(),
+  user_id              uuid not null references auth.users(id) on delete cascade,
+  invoice_id           uuid references public.invoices(id) on delete set null,
+  provider             billing_provider not null,
+  provider_refund_id   text,
+  amount               integer,
+  currency             text not null default 'INR',
+  status               text not null default 'requested',
+  reason               text,
+  metadata             jsonb not null default '{}'::jsonb,
+  requested_at         timestamptz not null default now(),
+  updated_at           timestamptz not null default now()
+);
+
+create index if not exists idx_refunds_user_requested
+  on public.refunds(user_id, requested_at desc);
+
+create table if not exists public.promo_codes (
+  id               uuid primary key default gen_random_uuid(),
+  code_label        text,
+  code_hash         text not null,
+  salt              text not null default encode(gen_random_bytes(16), 'hex'),
+  grant_type        entitlement_grant_type not null,
+  credit_kind       credit_kind,
+  credit_amount     integer,
+  duration_days     integer,
+  max_redemptions   integer,
+  redeemed_count    integer not null default 0,
+  expires_at        timestamptz,
+  is_active         boolean not null default true,
+  created_by        uuid references auth.users(id) on delete set null,
+  created_at        timestamptz not null default now(),
+  updated_at        timestamptz not null default now(),
+  constraint promo_codes_credit_amount_chk check (
+    grant_type <> 'credits_fixed' or (credit_kind is not null and credit_amount is not null and credit_amount > 0)
+  )
+);
+
+create unique index if not exists ux_promo_codes_hash
+  on public.promo_codes(code_hash);
+
+create table if not exists public.promo_redemptions (
+  id             uuid primary key default gen_random_uuid(),
+  promo_code_id  uuid not null references public.promo_codes(id) on delete cascade,
+  user_id        uuid not null references auth.users(id) on delete cascade,
+  redeemed_at    timestamptz not null default now(),
+  unique(promo_code_id, user_id)
+);
+
+create index if not exists idx_promo_redemptions_user
+  on public.promo_redemptions(user_id, redeemed_at desc);
+
+create table if not exists public.entitlement_grants (
+  id              uuid primary key default gen_random_uuid(),
+  user_id          uuid not null references auth.users(id) on delete cascade,
+  grant_type       entitlement_grant_type not null,
+  plan             billing_plan,
+  credit_kind      credit_kind,
+  credit_amount    integer,
+  starts_at        timestamptz not null default now(),
+  expires_at       timestamptz,
+  source           text not null,
+  source_ref       uuid,
+  reason           text,
+  granted_by       uuid references auth.users(id) on delete set null,
+  revoked_at       timestamptz,
+  created_at       timestamptz not null default now(),
+  updated_at       timestamptz not null default now()
+);
+
+create index if not exists idx_entitlement_grants_user
+  on public.entitlement_grants(user_id, starts_at desc);
+
+do $$
+declare
+  t text;
+  tables text[] := array[
+    'billing_customers', 'subscriptions', 'user_entitlements',
+    'invoices', 'refunds', 'promo_redemptions', 'entitlement_grants',
+    'credit_ledger', 'payment_events', 'promo_codes'
+  ];
+begin
+  foreach t in array tables loop
+    execute format('alter table public.%I enable row level security;', t);
+  end loop;
+end $$;
+
+drop policy if exists billing_customers_select_own on public.billing_customers;
+create policy billing_customers_select_own on public.billing_customers
+  for select to authenticated using (user_id = (select auth.uid()));
+
+drop policy if exists subscriptions_select_own on public.subscriptions;
+create policy subscriptions_select_own on public.subscriptions
+  for select to authenticated using (user_id = (select auth.uid()));
+
+drop policy if exists user_entitlements_select_own on public.user_entitlements;
+create policy user_entitlements_select_own on public.user_entitlements
+  for select to authenticated using (user_id = (select auth.uid()));
+
+drop policy if exists credit_ledger_select_own on public.credit_ledger;
+create policy credit_ledger_select_own on public.credit_ledger
+  for select to authenticated using (user_id = (select auth.uid()));
+
+drop policy if exists invoices_select_own on public.invoices;
+create policy invoices_select_own on public.invoices
+  for select to authenticated using (user_id = (select auth.uid()));
+
+drop policy if exists refunds_select_own on public.refunds;
+create policy refunds_select_own on public.refunds
+  for select to authenticated using (user_id = (select auth.uid()));
+
+drop policy if exists refunds_insert_own on public.refunds;
+create policy refunds_insert_own on public.refunds
+  for insert to authenticated with check (user_id = (select auth.uid()));
+
+drop policy if exists promo_redemptions_select_own on public.promo_redemptions;
+create policy promo_redemptions_select_own on public.promo_redemptions
+  for select to authenticated using (user_id = (select auth.uid()));
+
+drop policy if exists entitlement_grants_select_own on public.entitlement_grants;
+create policy entitlement_grants_select_own on public.entitlement_grants
+  for select to authenticated using (user_id = (select auth.uid()));
+
+do $$
+declare
+  t text;
+  tables text[] := array[
+    'billing_customers', 'subscriptions', 'user_entitlements',
+    'invoices', 'refunds', 'promo_codes', 'entitlement_grants'
+  ];
+begin
+  foreach t in array tables loop
+    execute format('drop trigger if exists %I on public.%I;', 'trg_' || t || '_updated_at', t);
+    execute format(
+      'create trigger %I before update on public.%I for each row execute function public.tg_set_updated_at();',
+      'trg_' || t || '_updated_at', t
+    );
+  end loop;
+end $$;
+
+-- Updated erasure function including local billing-entitlement state. Payment
+-- processors remain separate controllers for their hosted receipts and KYC data.
+create or replace function public.request_user_erasure(uid uuid)
+returns void
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  delete from public.interview_notes where application_id in (
+    select id from public.applications where user_id = uid
+  );
+  delete from public.refunds where user_id = uid;
+  delete from public.invoices where user_id = uid;
+  delete from public.credit_ledger where user_id = uid;
+  delete from public.entitlement_grants where user_id = uid;
+  delete from public.promo_redemptions where user_id = uid;
+  delete from public.payment_events where user_id = uid;
+  delete from public.user_entitlements where user_id = uid;
+  delete from public.subscriptions where user_id = uid;
+  delete from public.billing_customers where user_id = uid;
+  delete from public.applications where user_id = uid;
+  delete from public.matches where user_id = uid;
+  delete from public.stories where user_id = uid;
+  delete from public.offers where user_id = uid;
+  delete from public.digest_subscriptions where user_id = uid;
+  delete from public.consents where user_id = uid;
+  delete from public.profiles where id = uid;
+
+  insert into public.dpdp_events (user_id, event, metadata)
+  values (uid, 'erasure_completed', jsonb_build_object('completed_at', now()));
+end;
+$$;
+revoke all on function public.request_user_erasure(uuid) from public, anon, authenticated;
+grant execute on function public.request_user_erasure(uuid) to service_role;
+
+
 -- =============================================================================
 -- DONE. Verify in Supabase Studio:
 --   • 51 rows in `companies`, 0 rows in `jobs`

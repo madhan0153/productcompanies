@@ -13,12 +13,13 @@
 // times without incurring further quota.
 
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
+import { getEntitlements } from "@/lib/billing/entitlements";
 
 const WINDOW_DAYS = 30;
 
 export const QUOTA = {
-  enhanced: 5,
-  tailored: 30,
+  enhanced: 0,
+  tailored: 5,
 } as const;
 
 export type QuotaScope = keyof typeof QUOTA;
@@ -66,7 +67,8 @@ export async function getQuotaState(
   }
 
   const used = data?.length ?? 0;
-  const limit = QUOTA[scope];
+  const entitlement = scope === "tailored" ? await getEntitlements(userId) : null;
+  const limit = entitlement?.tailoredResumeLimit ?? QUOTA[scope];
   const oldest = data && data.length > 0 ? data[0].created_at : null;
   const resets_at = oldest
     ? new Date(new Date(oldest).getTime() + WINDOW_DAYS * 86_400_000).toISOString()
