@@ -3,24 +3,21 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { Check, Zap, Rocket, Star, CreditCard, ShieldCheck, ArrowRight } from "lucide-react";
-import { PLAN_LIMITS, PRICING_COPY } from "@/lib/billing/catalog";
-
-// ─── Types ────────────────────────────────────────────────────────────────────
+import {
+  Check, Zap, Rocket, Star, CreditCard, ShieldCheck, ArrowRight,
+  Clock, Sparkles, X as XIcon,
+} from "lucide-react";
+import { PRICING_COPY, PRICING } from "@/lib/billing/catalog";
 
 type Interval = "monthly" | "yearly";
 
-interface CheckoutState {
-  loading: string | null;
-  error: string | null;
-}
+interface CheckoutState { loading: string | null; error: string | null; }
 
-// ─── Plan configs ─────────────────────────────────────────────────────────────
+// ─── Feature lists per tier (concrete, outcome-focused) ───────────────────────
 
 const FREE_FEATURES = [
-  "Upload & AI-parse your resume",
-  "30 explainable matches per month",
-  "5 tailored resumes per month",
+  "20 explainable matches / 30 days",
+  "5 tailored resumes / 30 days",
   "Strengths · gaps · reasoning on every match",
   "Job tracking & application pipeline",
   "Weekly job digest email",
@@ -29,32 +26,30 @@ const FREE_FEATURES = [
 
 const PRO_FEATURES = [
   "Everything in Free",
-  "Unlimited matches",
-  "30 tailored resumes per month",
+  "Unlimited matches (all priority roles)",
+  "30 tailored resumes / month",
+  "5 resume re-parses / month",
   "Advanced signals & filters",
-  "Interview study plan",
-  "DSA personalisation by role",
+  "Interview study plan + DSA personalization",
   "Ad-free interface",
 ];
 
 const SPRINT_FEATURES = [
   "Everything in Pro",
-  "100 tailored resumes per month",
-  "Priority LLM queue",
+  "100 tailored resumes / month",
+  "20 resume re-parses / month",
+  "Priority LLM queue (jumps the line)",
   "Priority match recompute",
   "Company-wise apply plan",
-  "Resume re-parse credits",
-  "Premium market insight exports",
+  "Premium market-insight exports",
 ];
 
 const CREDIT_FEATURES = [
-  "50 Tailor Credits — use any time",
-  "Credits never expire",
-  "Works on tailored resumes, re-parses, & priority recomputes",
-  "No subscription required",
+  "50 Tailor Credits — never expire",
+  "Use across tailored resumes, re-parses, priority recomputes",
+  "No subscription, no auto-renew",
+  "Stacks on top of free quota",
 ];
-
-// ─── Component ────────────────────────────────────────────────────────────────
 
 export default function PricingPage() {
   const router = useRouter();
@@ -88,23 +83,24 @@ export default function PricingPage() {
     <div className="min-h-screen bg-background">
       {/* Nav */}
       <header className="sticky top-0 z-30 border-b border-border bg-background/95 backdrop-blur-md">
-        <div className="mx-auto flex h-14 max-w-5xl items-center justify-between px-4 sm:px-6">
+        <div className="mx-auto flex h-14 max-w-6xl items-center justify-between px-4 sm:px-6">
           <Link href="/" className="brand-mark text-base">ProdMatch</Link>
-          <Link href="/auth/login" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
+          <Link href="/auth/login" className="text-sm text-muted-foreground transition-colors hover:text-foreground">
             Sign in
           </Link>
         </div>
       </header>
 
-      <main className="mx-auto max-w-5xl px-4 pb-24 pt-14 sm:px-6">
+      <main className="mx-auto max-w-6xl px-4 pb-24 pt-12 sm:px-6">
         {/* Hero */}
         <div className="mb-10 text-center">
           <p className="mb-2 text-sm font-semibold uppercase tracking-widest text-primary">Pricing</p>
-          <h1 className="mb-3 font-display text-3xl font-bold tracking-tight sm:text-4xl">
-            Stop wasting 20 hours tailoring resumes
+          <h1 className="mb-3 font-display text-3xl font-bold tracking-tight sm:text-5xl">
+            Stop wasting 20 hours per job
           </h1>
-          <p className="mx-auto max-w-xl text-muted-foreground">
-            Free builds trust. Pro is for active job-seekers who want unlimited discovery and job-specific resumes on demand.
+          <p className="mx-auto max-w-2xl text-balance text-muted-foreground">
+            Free shows you 20 great matches a month and lets you tailor 5 resumes.
+            Pro removes every limit for less than the price of a chai a day.
           </p>
         </div>
 
@@ -124,7 +120,7 @@ export default function PricingPage() {
                 {i === "monthly" ? "Monthly" : "Yearly"}
                 {i === "yearly" && (
                   <span className="ml-2 rounded-full bg-emerald-500/15 px-1.5 py-0.5 text-[10px] font-semibold text-emerald-600 dark:text-emerald-400">
-                    Save ~16%
+                    Save {PRICING_COPY.proYearlySavingsPct}%
                   </span>
                 )}
               </button>
@@ -132,33 +128,50 @@ export default function PricingPage() {
           </div>
         </div>
 
-        {/* Error banner */}
         {state.error && (
           <div className="mb-6 rounded-xl border border-rose-500/30 bg-rose-500/8 p-4 text-center text-sm text-rose-600 dark:text-rose-400">
             {state.error}
           </div>
         )}
 
-        {/* Plan cards */}
+        {/* Plan cards — order: Sprint, Pro (highlighted), Credits, Free.
+            Career Sprint first anchors the perceived value of Pro. */}
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          {/* Free */}
+          {/* Career Sprint — anchor */}
           <PlanCard
-            icon={<Star className="h-5 w-5 text-muted-foreground" />}
-            name="Free"
-            price="₹0"
-            priceSub="forever"
+            icon={<Rocket className="h-5 w-5 text-violet-500" />}
+            name="Career Sprint"
+            tagline="30–60 day job push"
+            primary={interval === "monthly" ? PRICING_COPY.sprintPerDay : PRICING_COPY.sprintPerDay}
+            secondary={interval === "monthly"
+              ? `${PRICING_COPY.sprintMonthly}/month, cancel anytime`
+              : `${PRICING_COPY.sprintYearly}/year · save ${PRICING_COPY.sprintYearlySavings}`}
+            anchor={interval === "yearly" ? `was ${PRICING_COPY.sprintYearlyAnchor}/yr` : undefined}
             highlight={false}
-            features={FREE_FEATURES}
-            cta={<Link href="/auth/login" className="inline-flex h-10 w-full items-center justify-center rounded-lg border border-border bg-background px-4 text-sm font-medium text-foreground transition hover:bg-secondary">Get started free</Link>}
+            features={SPRINT_FEATURES}
+            cta={
+              <button
+                onClick={() => startCheckout(interval === "monthly" ? "career_sprint_monthly" : "career_sprint_yearly")}
+                disabled={!!state.loading}
+                className="inline-flex h-10 w-full items-center justify-center rounded-lg border border-violet-500/40 bg-violet-500/10 px-4 text-sm font-semibold text-violet-700 transition hover:bg-violet-500/15 disabled:opacity-60 dark:text-violet-300"
+              >
+                {state.loading === (interval === "monthly" ? "career_sprint_monthly" : "career_sprint_yearly")
+                  ? "Redirecting…" : "Start Sprint"}
+              </button>
+            }
           />
 
-          {/* Pro */}
+          {/* Pro — most popular */}
           <PlanCard
             icon={<Zap className="h-5 w-5 text-primary" />}
             name="Pro"
             badge="Most popular"
-            price={interval === "monthly" ? PRICING_COPY.proDaily : PRICING_COPY.proYearly}
-            priceSub={interval === "monthly" ? PRICING_COPY.proMonthlyBilling : "billed annually"}
+            tagline="Active applicants"
+            primary={interval === "monthly" ? PRICING_COPY.proPerDay : PRICING_COPY.proPerDay}
+            secondary={interval === "monthly"
+              ? `${PRICING_COPY.proMonthly}/month, cancel anytime`
+              : `${PRICING_COPY.proYearly}/year · save ${PRICING_COPY.proYearlySavings}`}
+            anchor={interval === "yearly" ? `was ${PRICING_COPY.proYearlyAnchor}/yr` : undefined}
             highlight={true}
             features={PRO_FEATURES}
             cta={
@@ -168,39 +181,19 @@ export default function PricingPage() {
                 className="inline-flex h-10 w-full items-center justify-center rounded-lg bg-primary px-4 text-sm font-semibold text-primary-foreground transition hover:bg-primary/90 disabled:opacity-60"
               >
                 {state.loading === (interval === "monthly" ? "pro_monthly" : "pro_yearly")
-                  ? "Redirecting…"
-                  : "Upgrade to Pro"}
+                  ? "Redirecting…" : "Upgrade to Pro"}
               </button>
             }
           />
 
-          {/* Career Sprint */}
+          {/* Credit Pack — one-time */}
           <PlanCard
-            icon={<Rocket className="h-5 w-5 text-violet-500" />}
-            name="Career Sprint"
-            price={interval === "monthly" ? PRICING_COPY.careerSprintMonthly : PRICING_COPY.careerSprintYearly}
-            priceSub={interval === "monthly" ? "per month" : "billed annually"}
-            highlight={false}
-            features={SPRINT_FEATURES}
-            cta={
-              <button
-                onClick={() => startCheckout(interval === "monthly" ? "career_sprint_monthly" : "career_sprint_yearly")}
-                disabled={!!state.loading}
-                className="inline-flex h-10 w-full items-center justify-center rounded-lg border border-border bg-background px-4 text-sm font-medium text-foreground transition hover:bg-secondary disabled:opacity-60"
-              >
-                {state.loading === (interval === "monthly" ? "career_sprint_monthly" : "career_sprint_yearly")
-                  ? "Redirecting…"
-                  : "Start Sprint"}
-              </button>
-            }
-          />
-
-          {/* Credit Pack */}
-          <PlanCard
+            id="credits"
             icon={<CreditCard className="h-5 w-5 text-amber-500" />}
             name="Credit Pack"
-            price="₹999"
-            priceSub="one-time · no subscription"
+            tagline="No subscription"
+            primary={PRICING_COPY.creditPerUse}
+            secondary={`${PRICING_COPY.creditPack50} · one-time`}
             highlight={false}
             features={CREDIT_FEATURES}
             cta={
@@ -213,10 +206,36 @@ export default function PricingPage() {
               </button>
             }
           />
+
+          {/* Free */}
+          <PlanCard
+            icon={<Star className="h-5 w-5 text-muted-foreground" />}
+            name="Free"
+            tagline="Try before you buy"
+            primary="₹0"
+            secondary="forever"
+            highlight={false}
+            features={FREE_FEATURES}
+            cta={
+              <Link
+                href="/auth/login"
+                className="inline-flex h-10 w-full items-center justify-center rounded-lg border border-border bg-background px-4 text-center text-sm font-medium text-foreground transition hover:bg-secondary"
+              >
+                Get started free
+              </Link>
+            }
+          />
+        </div>
+
+        {/* Trust banner */}
+        <div className="mt-6 grid gap-3 sm:grid-cols-3">
+          <Trust icon={<ShieldCheck className="h-4 w-4 text-emerald-500" />} text="Cancel anytime, keep access till period ends" />
+          <Trust icon={<Clock className="h-4 w-4 text-amber-500" />} text="7-day refund on monthly plans, no questions" />
+          <Trust icon={<Sparkles className="h-4 w-4 text-primary" />} text="DPDP-compliant · UPI, cards, net banking" />
         </div>
 
         {/* Founders / promo CTA */}
-        <div className="mt-8 flex items-center justify-center gap-3 rounded-xl border border-border bg-secondary/30 px-6 py-4 text-sm">
+        <div className="mt-6 flex items-center justify-center gap-3 rounded-xl border border-border bg-secondary/30 px-6 py-4 text-sm">
           <ShieldCheck className="h-4 w-4 shrink-0 text-emerald-500" />
           <span className="text-muted-foreground">
             Early supporter or Founder's Friend?{" "}
@@ -226,7 +245,10 @@ export default function PricingPage() {
           </span>
         </div>
 
-        {/* Feature comparison table */}
+        {/* Contrast comparison: DIY vs ProdMatch */}
+        <ContrastTable />
+
+        {/* Full feature comparison */}
         <ComparisonTable />
 
         {/* FAQ */}
@@ -239,19 +261,23 @@ export default function PricingPage() {
 // ─── Sub-components ────────────────────────────────────────────────────────────
 
 function PlanCard({
-  icon, name, badge, price, priceSub, highlight, features, cta,
+  id, icon, name, badge, tagline, primary, secondary, anchor, highlight, features, cta,
 }: {
+  id?: string;
   icon: React.ReactNode;
   name: string;
   badge?: string;
-  price: string;
-  priceSub: string;
+  tagline?: string;
+  primary: string;
+  secondary: string;
+  anchor?: string;
   highlight: boolean;
   features: string[];
   cta: React.ReactNode;
 }) {
   return (
     <div
+      id={id}
       className={`relative flex flex-col rounded-2xl border p-5 ${
         highlight
           ? "border-primary bg-primary/5 shadow-[0_0_0_1px_hsl(var(--primary)/0.4),0_8px_32px_hsl(var(--primary)/0.12)]"
@@ -263,14 +289,24 @@ function PlanCard({
           {badge}
         </span>
       )}
-      <div className="mb-3 flex items-center gap-2">
-        {icon}
-        <span className="font-semibold">{name}</span>
+      <div className="mb-3 flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          {icon}
+          <span className="font-semibold">{name}</span>
+        </div>
+        {tagline && (
+          <span className="rounded-full bg-secondary px-2 py-0.5 text-[10px] uppercase tracking-wider text-muted-foreground">
+            {tagline}
+          </span>
+        )}
       </div>
       <div className="mb-1">
-        <span className="font-display text-3xl font-bold">{price}</span>
+        {anchor && (
+          <span className="mr-2 text-xs text-muted-foreground line-through">{anchor}</span>
+        )}
+        <span className="font-display text-3xl font-bold">{primary}</span>
       </div>
-      <p className="mb-4 text-xs text-muted-foreground">{priceSub}</p>
+      <p className="mb-4 text-xs text-muted-foreground">{secondary}</p>
       <ul className="mb-6 flex-1 space-y-2">
         {features.map((f) => (
           <li key={f} className="flex items-start gap-2 text-xs text-muted-foreground">
@@ -284,18 +320,67 @@ function PlanCard({
   );
 }
 
+function Trust({ icon, text }: { icon: React.ReactNode; text: string }) {
+  return (
+    <div className="flex items-center gap-2 rounded-lg border border-border bg-card px-3 py-2 text-xs text-muted-foreground">
+      {icon}
+      <span>{text}</span>
+    </div>
+  );
+}
+
+function ContrastTable() {
+  return (
+    <div className="mt-12 rounded-2xl border border-border bg-secondary/30 p-6">
+      <h2 className="mb-1 text-center font-display text-xl font-bold">Why people upgrade</h2>
+      <p className="mb-5 text-center text-xs text-muted-foreground">
+        Tailoring a resume manually vs. with Pro — for one job application:
+      </p>
+      <div className="grid gap-4 md:grid-cols-2">
+        <div className="rounded-xl border border-rose-500/20 bg-rose-500/5 p-4">
+          <p className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-rose-600 dark:text-rose-400">
+            Doing it yourself
+          </p>
+          <ul className="space-y-1.5 text-sm">
+            <li className="flex items-start gap-2"><XIcon className="mt-0.5 h-3.5 w-3.5 shrink-0 text-rose-500" /><span>25-40 min reading JD & guessing keywords</span></li>
+            <li className="flex items-start gap-2"><XIcon className="mt-0.5 h-3.5 w-3.5 shrink-0 text-rose-500" /><span>15 min rewriting bullets</span></li>
+            <li className="flex items-start gap-2"><XIcon className="mt-0.5 h-3.5 w-3.5 shrink-0 text-rose-500" /><span>No idea if you're a fit until rejection</span></li>
+          </ul>
+          <p className="mt-3 text-xs text-muted-foreground">
+            ≈ <strong className="text-foreground">40 min × 20 roles = ~13 hours / month</strong>
+          </p>
+        </div>
+        <div className="rounded-xl border border-primary/30 bg-primary/5 p-4">
+          <p className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-primary">
+            With Pro
+          </p>
+          <ul className="space-y-1.5 text-sm">
+            <li className="flex items-start gap-2"><Check className="mt-0.5 h-3.5 w-3.5 shrink-0 text-emerald-500" /><span>Fit score with strengths & gaps in seconds</span></li>
+            <li className="flex items-start gap-2"><Check className="mt-0.5 h-3.5 w-3.5 shrink-0 text-emerald-500" /><span>Tailored resume PDF in ~30 seconds</span></li>
+            <li className="flex items-start gap-2"><Check className="mt-0.5 h-3.5 w-3.5 shrink-0 text-emerald-500" /><span>Skip mismatch roles, focus on real fits</span></li>
+          </ul>
+          <p className="mt-3 text-xs text-muted-foreground">
+            ≈ <strong className="text-foreground">2 min × 20 roles = ~40 min / month</strong>, all for <strong className="text-foreground">{PRICING_COPY.proPerDay}</strong>
+          </p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function ComparisonTable() {
   const rows: { label: string; free: string; pro: string; sprint: string }[] = [
-    { label: "Matches / month",        free: "30",          pro: "Unlimited",    sprint: "Unlimited" },
-    { label: "Tailored resumes",       free: "5 / month",   pro: "30 / month",   sprint: "100 / month" },
-    { label: "Explainable scoring",    free: "✓",           pro: "✓",            sprint: "✓" },
-    { label: "Interview study plan",   free: "—",           pro: "✓",            sprint: "✓" },
-    { label: "DSA personalisation",    free: "—",           pro: "✓",            sprint: "✓" },
-    { label: "Advanced signals",       free: "—",           pro: "✓",            sprint: "✓" },
-    { label: "Priority LLM queue",     free: "—",           pro: "—",            sprint: "✓" },
-    { label: "Company apply plan",     free: "—",           pro: "—",            sprint: "✓" },
-    { label: "Premium exports",        free: "—",           pro: "—",            sprint: "✓" },
-    { label: "DPDP export / erasure",  free: "Always free", pro: "Always free",  sprint: "Always free" },
+    { label: "Matches / 30 days",     free: "20 (6 priority)", pro: "Unlimited",    sprint: "Unlimited" },
+    { label: "Tailored resumes",      free: "5 / month",       pro: "30 / month",   sprint: "100 / month" },
+    { label: "Resume re-parses",      free: "—",               pro: "5 / month",    sprint: "20 / month" },
+    { label: "Explainable scoring",   free: "✓",               pro: "✓",            sprint: "✓" },
+    { label: "Interview study plan",  free: "—",               pro: "✓",            sprint: "✓" },
+    { label: "DSA personalization",   free: "—",               pro: "✓",            sprint: "✓" },
+    { label: "Advanced signals",      free: "—",               pro: "✓",            sprint: "✓" },
+    { label: "Priority LLM queue",    free: "—",               pro: "—",            sprint: "✓" },
+    { label: "Company apply plan",    free: "—",               pro: "—",            sprint: "✓" },
+    { label: "Premium exports",       free: "—",               pro: "—",            sprint: "✓" },
+    { label: "DPDP export / erasure", free: "Always free",     pro: "Always free",  sprint: "Always free" },
   ];
 
   return (
@@ -316,7 +401,7 @@ function ComparisonTable() {
               <tr key={r.label} className="hover:bg-secondary/20">
                 <td className="px-4 py-3 text-muted-foreground">{r.label}</td>
                 {[r.free, r.pro, r.sprint].map((val, i) => (
-                  <td key={i} className={`px-4 py-3 text-center tabular-nums ${val === "✓" ? "text-emerald-500 font-bold" : val === "—" ? "text-muted-foreground" : "font-medium"}`}>
+                  <td key={i} className={`px-4 py-3 text-center tabular-nums ${val === "✓" ? "font-bold text-emerald-500" : val === "—" ? "text-muted-foreground" : "font-medium"}`}>
                     {val}
                   </td>
                 ))}
@@ -333,26 +418,30 @@ function Faq() {
   const items = [
     {
       q: "Can I cancel anytime?",
-      a: "Yes. Cancel from your billing settings and you keep access until the end of the billing period.",
+      a: "Yes. Cancel from your billing settings — you keep access until the end of the billing period. No phone call, no email, just two clicks.",
+    },
+    {
+      q: "What's the refund policy?",
+      a: "7-day no-questions refund on monthly plans. Annual plans are refundable pro-rated within the first 14 days.",
     },
     {
       q: "What's a Tailor Credit?",
-      a: "One credit = one tailored resume, one resume re-parse, or one priority recompute. Credits from packs never expire.",
+      a: "One credit = one tailored resume, one resume re-parse, or one priority recompute. Credits from packs never expire and stack on top of your plan.",
     },
     {
-      q: "Do credits carry over between months?",
-      a: "Monthly plan limits reset each month. Credits bought as one-time packs never expire — they're yours.",
+      q: "Why is Pro called ₹3/day and not ₹99/month?",
+      a: "Both are true. ₹99 is the monthly billing. ₹3/day reflects what it actually costs you per day of access. Pick whichever makes sense to you.",
+    },
+    {
+      q: "Do I need a credit card to try free?",
+      a: "No. The free tier is forever free, no card required. Upgrade only if and when you need more.",
     },
     {
       q: "Is my data safe?",
-      a: "Your resume is stored in a private bucket only you can read. We comply fully with India's DPDP Act 2023. You can export or erase all your data at any time — for free.",
+      a: "Your resume is stored in a private bucket only you can read. We comply fully with India's DPDP Act 2023. Export or erase all your data at any time — free.",
     },
     {
-      q: "What payment methods are accepted?",
-      a: "UPI, cards, net banking, and wallets via Dodo Payments. All transactions are in INR.",
-    },
-    {
-      q: "Does Career Sprint override my lifetime Pro access?",
+      q: "Does Career Sprint override my lifetime Pro grant?",
       a: "Yes — while Sprint is active you get Sprint features. When Sprint ends, your lifetime Pro access automatically resumes.",
     },
   ];
@@ -370,13 +459,11 @@ function Faq() {
       </div>
       <p className="mt-8 text-center text-xs text-muted-foreground">
         More questions?{" "}
-        <Link href="/about" className="underline underline-offset-2 hover:text-foreground">
-          About us
-        </Link>{" "}
-        ·{" "}
-        <Link href="/privacy" className="underline underline-offset-2 hover:text-foreground">
-          Privacy policy
-        </Link>
+        <Link href="/about" className="underline underline-offset-2 hover:text-foreground">About us</Link>
+        {" · "}
+        <Link href="/privacy" className="underline underline-offset-2 hover:text-foreground">Privacy</Link>
+        {" · "}
+        <Link href="/terms" className="underline underline-offset-2 hover:text-foreground">Terms</Link>
       </p>
     </div>
   );

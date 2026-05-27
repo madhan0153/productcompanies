@@ -13,17 +13,21 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Unauthenticated" }, { status: 401 });
   }
 
-  let body: { product?: string };
+  let body: { product?: string; returnTo?: string };
   try {
     body = await req.json();
   } catch {
     return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
   }
 
-  const { product } = body;
+  const { product, returnTo } = body;
   if (!product || !(product in CHECKOUT_PRODUCTS)) {
     return NextResponse.json({ error: "Invalid product" }, { status: 400 });
   }
+  // Only accept same-origin paths (no external redirects)
+  const safeReturnTo = typeof returnTo === "string" && returnTo.startsWith("/") && !returnTo.startsWith("//")
+    ? returnTo
+    : undefined;
 
   // Require sign-in before checkout — user.email is always present for auth users
   const email = user.email;
@@ -33,9 +37,10 @@ export async function POST(req: NextRequest) {
 
   try {
     const session = await createDodoCheckoutSession({
-      product: product as CheckoutProductId,
-      userId:  user.id,
+      product:  product as CheckoutProductId,
+      userId:   user.id,
       email,
+      returnTo: safeReturnTo,
     });
     return NextResponse.json({ checkoutUrl: session.checkout_url });
   } catch (err) {

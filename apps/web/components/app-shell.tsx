@@ -8,6 +8,7 @@ import {
   BarChart3, Brain, ClipboardList, Search,
 } from "lucide-react";
 import { LogoMark } from "@/components/logo-mark";
+import { UsageChip } from "@/components/billing/usage-chip";
 import { useEffect, useRef, useState, Suspense } from "react";
 import { createSupabaseBrowserClient } from "@/lib/supabase/browser";
 import { useFocusTrap } from "@/hooks/use-focus-trap";
@@ -31,11 +32,13 @@ type Props = {
   user: { email: string; displayName: string | null; dnascore: number | null };
   /** Sprint 6 — Mobile bottom-nav badges. Counts of items needing attention. */
   navBadges?: { matches?: number; applications?: number };
+  /** Billing entitlement snapshot for the always-visible usage chip. */
+  usage?: { plan: "free" | "pro" | "career_sprint"; tailorUsed: number; tailorLimit: number; tailorCredits: number };
   banner?: React.ReactNode;
   children: React.ReactNode;
 };
 
-export function AppShell({ user, navBadges, banner, children }: Props) {
+export function AppShell({ user, navBadges, usage, banner, children }: Props) {
   const pathname = usePathname();
   const router = useRouter();
   const [open, setOpen] = useState(false);
@@ -214,6 +217,16 @@ export function AppShell({ user, navBadges, banner, children }: Props) {
                 </div>
               )}
             </div>
+            {usage && (
+              <div className="mt-3 flex justify-center">
+                <UsageChip
+                  plan={usage.plan}
+                  tailorUsed={usage.tailorUsed}
+                  tailorLimit={usage.tailorLimit}
+                  tailorCredits={usage.tailorCredits}
+                />
+              </div>
+            )}
           </div>
         </div>
       </aside>
@@ -250,9 +263,22 @@ export function AppShell({ user, navBadges, banner, children }: Props) {
             <LogoMark size={28} />
             <span className="brand-mark text-sm">ProdMatch</span>
           </Link>
+          {usage && (
+            <div className="ml-auto">
+              <UsageChip
+                plan={usage.plan}
+                tailorUsed={usage.tailorUsed}
+                tailorLimit={usage.tailorLimit}
+                tailorCredits={usage.tailorCredits}
+              />
+            </div>
+          )}
           <button
             onClick={() => setPaletteOpen(true)}
-            className="ml-auto inline-flex items-center justify-center rounded-md p-2 text-muted-foreground transition hover:bg-secondary hover:text-foreground focus-ring tap-target-sm"
+            className={cn(
+              "inline-flex items-center justify-center rounded-md p-2 text-muted-foreground transition hover:bg-secondary hover:text-foreground focus-ring tap-target-sm",
+              !usage && "ml-auto",
+            )}
             aria-label="Search"
           >
             <Search className="h-5 w-5" aria-hidden />

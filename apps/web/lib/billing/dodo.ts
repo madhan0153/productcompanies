@@ -38,6 +38,8 @@ export async function createDodoCheckoutSession(input: {
   userId: string;
   email: string;
   name?: string | null;
+  /** Where to send the user after successful activation. Must be a same-origin path. */
+  returnTo?: string;
 }): Promise<DodoCheckoutSession> {
   const apiKey = serverEnv.DODO_PAYMENTS_API_KEY;
   if (!apiKey) throw new Error("DODO_PAYMENTS_API_KEY is not configured.");
@@ -49,6 +51,9 @@ export async function createDodoCheckoutSession(input: {
   const returnUrl = new URL("/billing/success", clientEnv.NEXT_PUBLIC_APP_URL);
   returnUrl.searchParams.set("product", input.product);
   returnUrl.searchParams.set("session", sessionNonce);
+  if (input.returnTo && input.returnTo.startsWith("/")) {
+    returnUrl.searchParams.set("return_to", input.returnTo);
+  }
 
   const cancelUrl = new URL("/pricing", clientEnv.NEXT_PUBLIC_APP_URL);
   cancelUrl.searchParams.set("cancelled", "1");

@@ -2,8 +2,9 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { AlertCircle, FileDown, Loader2, RefreshCw, Sparkles } from "lucide-react";
+import { AlertCircle, FileDown, Loader2, RefreshCw, Sparkles, Zap } from "lucide-react";
 import { generateTailoredResumeDownload } from "../tailor-actions";
+import { UpgradeModal } from "@/components/billing/upgrade-modal";
 
 interface Props {
   jobId: string;
@@ -18,12 +19,22 @@ export function TailorEntry({ jobId, quotaUsed, quotaLimit, quotaExhausted, must
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
   const [urls, setUrls] = useState<{ pdf: string; print: string } | null>(null);
+  const [upgradeOpen, setUpgradeOpen] = useState(false);
 
   const run = () => {
+    if (quotaExhausted) {
+      setUpgradeOpen(true);
+      return;
+    }
     setError(null);
     startTransition(async () => {
       const res = await generateTailoredResumeDownload(jobId);
       if (!res.ok) {
+        // If the failure is quota-related, surface the upgrade modal instead of a plain error
+        if (/quota|exhausted|tailor credit|upgrade to pro/i.test(res.error)) {
+          setUpgradeOpen(true);
+          return;
+        }
         setError(res.error);
         return;
       }
@@ -117,10 +128,19 @@ export function TailorEntry({ jobId, quotaUsed, quotaLimit, quotaExhausted, must
         )}
 
         {quotaExhausted && (
-          <div className="mt-3 flex items-start gap-2 rounded-md border border-warning/30 bg-warning/5 px-3 py-2 text-xs text-warning">
-            <AlertCircle className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden />
-            <p>You&apos;ve used your monthly tailored resume quota. Window resets a few weeks from your first run.</p>
-          </div>
+          <button
+            type="button"
+            onClick={() => setUpgradeOpen(true)}
+            className="mt-3 flex w-full items-start gap-2 rounded-md border border-amber-500/40 bg-amber-500/8 px-3 py-2.5 text-left text-xs text-amber-700 transition hover:bg-amber-500/12 dark:text-amber-400"
+          >
+            <Zap className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden />
+            <div className="flex-1">
+              <p className="font-semibold">You&apos;ve used all {quotaLimit} free tailors this month.</p>
+              <p className="mt-0.5 text-amber-700/80 dark:text-amber-400/80">
+                Tap to unlock unlimited tailoring with Pro — ₹3/day.
+              </p>
+            </div>
+          </button>
         )}
 
         {error && (
@@ -130,6 +150,13 @@ export function TailorEntry({ jobId, quotaUsed, quotaLimit, quotaExhausted, must
           </div>
         )}
       </div>
+
+      <UpgradeModal
+        open={upgradeOpen}
+        onClose={() => setUpgradeOpen(false)}
+        trigger="tailor_exhausted"
+        returnTo={typeof window !== "undefined" ? window.location.pathname : undefined}
+      />
     </div>
   );
 }

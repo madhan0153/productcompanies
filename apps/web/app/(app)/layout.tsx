@@ -6,6 +6,7 @@ import { AppShell } from "@/components/app-shell";
 import { FreshnessBanner } from "@/components/freshness-banner";
 import { PublicNav } from "@/components/public-nav";
 import { PublicFooter } from "@/components/public-footer";
+import { getUserUsage } from "@/lib/billing/usage";
 
 // SEO: DSA practice URLs sit inside the (app) route group for code colocation
 // but should be readable without authentication so search engines + AI tools
@@ -49,7 +50,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   const stuckSince = new Date(Date.now() - 7 * 24 * 3_600_000).toISOString();
 
   // Sprint 6 — badge counts for the mobile bottom nav. Cheap head-counts.
-  const [{ data: profile }, unseenStrong, stuckApps] = await Promise.all([
+  const [{ data: profile }, unseenStrong, stuckApps, usage] = await Promise.all([
     supabase
       .from("profiles")
       .select("id, display_name, product_dna_score")
@@ -67,6 +68,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
       .eq("user_id", user.id)
       .eq("status", "applied")
       .lt("applied_at", stuckSince),
+    getUserUsage(user.id).catch(() => null),
   ]);
   void since7d;
 
@@ -75,10 +77,19 @@ export default async function AppLayout({ children }: { children: React.ReactNod
     applications: stuckApps.count ?? 0,
   };
 
+  const tailorMetric = usage?.metrics.find((m) => m.key === "tailored");
+  const usageProp = usage && tailorMetric ? {
+    plan:          usage.plan,
+    tailorUsed:    tailorMetric.used,
+    tailorLimit:   tailorMetric.unlimited ? 9999 : (tailorMetric.limit as number),
+    tailorCredits: usage.credits.tailored,
+  } : undefined;
+
   return (
     <AppShell
       user={{ email: user.email ?? "", displayName: profile?.display_name ?? null, dnascore: profile?.product_dna_score ?? null }}
       navBadges={navBadges}
+      usage={usageProp}
       banner={
         <Suspense fallback={null}>
           <FreshnessBanner />
