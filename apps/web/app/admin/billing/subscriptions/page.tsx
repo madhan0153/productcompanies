@@ -47,8 +47,8 @@ export default async function AdminSubscriptionsPage() {
       .limit(100) as any,
     admin
       .from("refunds")
-      .select("id, user_id, amount, status, reason, created_at")
-      .order("created_at", { ascending: false })
+      .select("id, user_id, amount, status, reason, requested_at")
+      .order("requested_at", { ascending: false })
       .limit(20) as any,
   ]);
 

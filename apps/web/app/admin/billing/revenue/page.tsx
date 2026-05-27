@@ -29,7 +29,7 @@ interface InvoiceRow {
 
 interface RefundRow {
   amount: number | null;
-  created_at: string;
+  requested_at: string;
 }
 
 export default async function AdminRevenuePage() {
@@ -58,8 +58,8 @@ export default async function AdminRevenuePage() {
       .select("amount, currency, status, created_at")
       .gte("created_at", since60d).lt("created_at", since30d).eq("status", "paid") as any,
     admin.from("refunds")
-      .select("amount, created_at")
-      .gte("created_at", since30d) as any,
+      .select("amount, requested_at")
+      .gte("requested_at", since30d) as any,
     admin.from("subscriptions")
       .select("id", { count: "exact", head: true })
       .gte("cancelled_at", since30d) as any,
