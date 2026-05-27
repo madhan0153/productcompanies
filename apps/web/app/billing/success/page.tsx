@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useRef, useState } from "react";
+import { Suspense, useEffect, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { CheckCircle2, Loader2, ArrowRight } from "lucide-react";
 import { CHECKOUT_PRODUCTS, PLAN_LIMITS, type CheckoutProductId } from "@/lib/billing/catalog";
@@ -13,7 +13,21 @@ import { CHECKOUT_PRODUCTS, PLAN_LIMITS, type CheckoutProductId } from "@/lib/bi
 const MAX_POLL_MS  = 10_000;
 const POLL_INTERVAL_MS = 1_500;
 
+// Page wrapper provides the Suspense boundary required by Next.js for
+// any client component that calls useSearchParams() during static export.
 export default function BillingSuccessPage() {
+  return (
+    <Suspense fallback={
+      <div className="flex min-h-screen items-center justify-center bg-background">
+        <Loader2 className="h-10 w-10 animate-spin text-primary" />
+      </div>
+    }>
+      <BillingSuccessContent />
+    </Suspense>
+  );
+}
+
+function BillingSuccessContent() {
   const params  = useSearchParams();
   const product = params.get("product") as CheckoutProductId | null;
 
