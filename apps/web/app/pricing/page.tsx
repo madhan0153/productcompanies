@@ -230,7 +230,7 @@ export default function PricingPage() {
         {/* Trust banner */}
         <div className="mt-6 grid gap-3 sm:grid-cols-3">
           <Trust icon={<ShieldCheck className="h-4 w-4 text-emerald-500" />} text="Cancel anytime, keep access till period ends" />
-          <Trust icon={<Clock className="h-4 w-4 text-amber-500" />} text="7-day refund on monthly plans, no questions" />
+          <Trust icon={<Clock className="h-4 w-4 text-amber-500" />} text="No long-term commitment, billed monthly or yearly" />
           <Trust icon={<Sparkles className="h-4 w-4 text-primary" />} text="DPDP-compliant · UPI, cards, net banking" />
         </div>
 
@@ -419,10 +419,6 @@ function Faq() {
     {
       q: "Can I cancel anytime?",
       a: "Yes. Cancel from your billing settings — you keep access until the end of the billing period. No phone call, no email, just two clicks.",
-    },
-    {
-      q: "What's the refund policy?",
-      a: "7-day no-questions refund on monthly plans. Annual plans are refundable pro-rated within the first 14 days.",
     },
     {
       q: "What's a Tailor Credit?",

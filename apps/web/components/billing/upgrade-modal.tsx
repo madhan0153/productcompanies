@@ -248,8 +248,7 @@ export function UpgradeModal({ open, onClose, trigger, returnTo }: UpgradeModalP
 
               {/* Trust strip */}
               <div className="border-t border-border/60 pt-3 text-center text-[10px] leading-relaxed text-muted-foreground">
-                Cancel anytime · 7-day refund on monthly · DPDP-compliant ·
-                UPI · Cards · Net banking
+                Cancel anytime · DPDP-compliant · UPI · Cards · Net banking
               </div>
             </div>
           </motion.div>

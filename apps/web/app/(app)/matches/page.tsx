@@ -16,6 +16,9 @@ import { MatchesURLBeacon } from "./matches-url-beacon";
 import { MatchNavProvider } from "./match-transition-context";
 import { MatchCardArea } from "./match-card-area";
 import { ComputingBanner } from "./computing-banner";
+import { LockedMatchCard } from "./locked-card";
+import { getEntitlements } from "@/lib/billing/entitlements";
+import { PLAN_LIMITS } from "@/lib/billing/catalog";
 
 export const metadata: Metadata = { title: "Matches" };
 export const maxDuration = 60;
@@ -186,7 +189,47 @@ export default async function MatchesPage({
   const scopedRows = allRows.filter(passesScopeFilters);
 
   // Tab slicing — single source of truth.
-  const tabRows = scopedRows.filter((m) => classifyMatch(m) === tab);
+  const tabRowsAll = scopedRows.filter((m) => classifyMatch(m) === tab);
+
+  // ── Free-tier gating ────────────────────────────────────────────────────
+  // Free users see 6 priority matches (from DIFFERENT companies, highest
+  // score per company) + 14 explore matches. Anything beyond renders as
+  // blurred locked cards with emotional copy. Paid users see everything.
+  const entitlements = await getEntitlements(user.id).catch(() => null);
+  const isFreePlan   = !entitlements || entitlements.plan === "free";
+  const PRIORITY_FREE = PLAN_LIMITS.free.priorityMatchesShown;  // 6
+  const EXPLORE_FREE  = PLAN_LIMITS.free.matchesViewLimit - PRIORITY_FREE; // 14
+
+  let tabRows = tabRowsAll;
+  let lockedRows: typeof tabRowsAll = [];
+
+  if (isFreePlan) {
+    if (tab === "shortlist") {
+      // Priority: dedupe by company_id, keep highest-scoring role per company,
+      // take top 6 across companies, lock the rest.
+      const seenCompanies = new Set<string>();
+      const uniqueByCompany: typeof tabRowsAll = [];
+      const overflow: typeof tabRowsAll = [];
+      for (const row of tabRowsAll) {
+        const slug = row.jobs.companies?.slug ?? row.jobs.id;
+        if (!seenCompanies.has(slug) && uniqueByCompany.length < PRIORITY_FREE) {
+          seenCompanies.add(slug);
+          uniqueByCompany.push(row);
+        } else {
+          overflow.push(row);
+        }
+      }
+      tabRows    = uniqueByCompany;
+      lockedRows = overflow;
+    } else {
+      // Explore: simple top-N by existing sort, lock the rest.
+      tabRows    = tabRowsAll.slice(0, EXPLORE_FREE);
+      lockedRows = tabRowsAll.slice(EXPLORE_FREE);
+    }
+  }
+  // Cap locked previews so we don't render hundreds of placeholders.
+  const lockedPreview = lockedRows.slice(0, 8);
+  const lockedRemainder = Math.max(0, lockedRows.length - lockedPreview.length);
 
   // Sprint 6 — fold in application status for the cards in view.
   const visibleJobIds = tabRows.map((m) => m.jobs.id);
@@ -274,14 +317,16 @@ export default async function MatchesPage({
       {/* Computing banner (first-time) — no old matches exist yet */}
       {isComputing && allRows.length === 0 && <ComputingBanner />}
 
-      {/* Stale-matches notice — old matches visible while new ones compute */}
+      {/* Quiet "refresh in progress" indicator — preserves trust by not
+          implying the displayed results are wrong. The new matches replace
+          these silently when ready. */}
       {isComputing && allRows.length > 0 && (
-        <div className="flex items-start gap-2.5 rounded-lg border border-warning/30 bg-warning/5 px-3 py-2.5 text-xs text-warning">
-          <AlertCircle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
-          <span>
-            <span className="font-semibold">Showing results from your previous resume.</span>{" "}
-            Your updated matches are being computed and will replace these automatically in 30–60 seconds.
+        <div className="flex items-center justify-center gap-2 rounded-full border border-border bg-secondary/50 px-3 py-1.5 text-[11px] text-muted-foreground">
+          <span className="relative flex h-1.5 w-1.5">
+            <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-primary opacity-60" />
+            <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-primary" />
           </span>
+          Refreshing matches with your latest resume — they&apos;ll update automatically.
         </div>
       )}
 
@@ -327,7 +372,39 @@ export default async function MatchesPage({
                 />
               ))}
             </StaggerList>
+
+            {/* Locked premium previews for free users */}
+            {isFreePlan && lockedPreview.length > 0 && (
+              <div className="mt-4 space-y-3">
+                <div className="flex items-center gap-2 px-1">
+                  <span className="h-px flex-1 bg-border" />
+                  <span className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">
+                    {lockedPreview.length + lockedRemainder} more {tab === "shortlist" ? "priority" : "explore"} matches with Pro
+                  </span>
+                  <span className="h-px flex-1 bg-border" />
+                </div>
+                <div className="grid gap-3 sm:grid-cols-2">
+                  {lockedPreview.map((m) => (
+                    <LockedMatchCard
+                      key={`locked-${m.jobs.id}`}
+                      jobId={m.jobs.id}
+                      companyName={m.jobs.companies?.name ?? null}
+                    />
+                  ))}
+                </div>
+                {lockedRemainder > 0 && (
+                  <p className="text-center text-xs text-muted-foreground">
+                    + <span className="font-semibold tabular-nums text-foreground">{lockedRemainder}</span> more locked matches
+                  </p>
+                )}
+              </div>
+            )}
+
             {(() => {
+              // Paid users: show "showing N of M" if the visible list is
+              // truncated below the true band count. Free users: hide this
+              // (the locked-cards strip above already conveys the count).
+              if (isFreePlan) return null;
               const tabExpected =
                 tab === "shortlist" ? bandCounts.shortlist : bandCounts.worthALook;
               if (tabExpected > tabRows.length) {

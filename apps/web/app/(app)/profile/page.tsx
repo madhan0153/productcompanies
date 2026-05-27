@@ -11,6 +11,8 @@ import { listResumeVersions, type ResumeVersionLite } from "./actions";
 import { ResumeVersionsPanel } from "./resume-versions-panel";
 import { ParseStatusBanner } from "./parse-status-banner";
 import { ProfileTabs } from "./profile-tabs";
+import { getUserUsage } from "@/lib/billing/usage";
+import { DaysLeftBadge } from "@/components/billing/days-left-badge";
 
 export const metadata: Metadata = { title: "My Profile" };
 // The resume upload action does an AI PDF parse (10-20s) + profile upsert.
@@ -82,6 +84,10 @@ export default async function ProfilePage() {
     }
   }
 
+  // Pull plan / tailored count for the in-page subscription panel.
+  const usage = await getUserUsage(user.id).catch(() => null);
+  const tailorMetric = usage?.metrics.find((m) => m.key === "tailored") ?? null;
+
   return (
     <div className="max-w-3xl space-y-4 pb-8">
       {/* Parse-status banner — shows during background parse (incl. when the
@@ -94,11 +100,16 @@ export default async function ProfilePage() {
 
       {/* ── Compact header — single row ─────────────────────────── */}
       <div className="flex items-center justify-between gap-3">
-        <div className="min-w-0">
+        <div className="min-w-0 flex-1">
           <h1 className="text-xl font-semibold tracking-tight sm:text-2xl">My Profile</h1>
           <p className="mt-0.5 text-[11px] text-muted-foreground sm:text-xs">
             Used only for AI matching. Never shared or sold.
           </p>
+          {usage && (
+            <div className="mt-2">
+              <DaysLeftBadge plan={usage.plan} activeUntil={usage.activeUntil} variant="pill" />
+            </div>
+          )}
         </div>
         {hasResume && dnaScore !== null && (
           // EU-3: explain the score on tap/hover. The number on its own was
@@ -124,6 +135,18 @@ export default async function ProfilePage() {
           </Tooltip>
         )}
       </div>
+
+      {/* Subscription summary — plan + tailored count + remaining days */}
+      {usage && tailorMetric && (
+        <TailorPlanCard
+          plan={usage.plan}
+          activeUntil={usage.activeUntil}
+          used={tailorMetric.used}
+          limit={tailorMetric.limit as number}
+          unlimited={tailorMetric.unlimited}
+          credits={usage.credits.tailored}
+        />
+      )}
 
       {/* First-time path: no parsed resume, no parse in flight — show only
           the upload card. Tabs would be empty noise here. */}
@@ -222,6 +245,73 @@ export default async function ProfilePage() {
 }
 
 // ── Sub-components ────────────────────────────────────────────────────────────
+
+function TailorPlanCard({
+  plan, activeUntil, used, limit, unlimited, credits,
+}: {
+  plan: "free" | "pro" | "career_sprint";
+  activeUntil: string | null;
+  used: number;
+  limit: number;
+  unlimited: boolean;
+  credits: number;
+}) {
+  const planFriendly = plan === "career_sprint" ? "Career Sprint" : plan === "pro" ? "Pro" : "Free";
+  const daysLeft = activeUntil
+    ? Math.max(0, Math.ceil((new Date(activeUntil).getTime() - Date.now()) / 86_400_000))
+    : null;
+
+  const tone = plan === "career_sprint"
+    ? { border: "border-violet-500/30", bg: "bg-violet-500/5", accent: "text-violet-600 dark:text-violet-300" }
+    : plan === "pro"
+      ? { border: "border-primary/30", bg: "bg-primary/5", accent: "text-primary" }
+      : { border: "border-border", bg: "bg-card", accent: "text-muted-foreground" };
+
+  return (
+    <div className={`flex flex-wrap items-center gap-4 rounded-xl border p-4 ${tone.border} ${tone.bg}`}>
+      <div className="min-w-0 flex-1">
+        <p className={`text-[10px] font-semibold uppercase tracking-widest ${tone.accent}`}>
+          Subscription
+        </p>
+        <p className="mt-0.5 text-base font-semibold">
+          {planFriendly} {plan === "free" ? "" : "plan"}
+        </p>
+        <p className="mt-0.5 text-[11px] text-muted-foreground">
+          {plan === "free"
+            ? <>Upgrade to Pro for unlimited matching & 30 tailors a month.</>
+            : activeUntil === null
+              ? <>Lifetime access.</>
+              : daysLeft && daysLeft > 0
+                ? <>{daysLeft} day{daysLeft === 1 ? "" : "s"} left in your billing cycle</>
+                : <>Renews today</>}
+        </p>
+      </div>
+
+      <div className="flex flex-wrap items-center gap-3 text-right">
+        <div>
+          <p className="text-[10px] uppercase tracking-wider text-muted-foreground">Tailored resumes</p>
+          <p className="font-display text-xl font-bold tabular-nums">
+            {unlimited
+              ? <span className="text-emerald-600 dark:text-emerald-400">∞</span>
+              : <>{used}<span className="text-muted-foreground"> / {limit}</span></>}
+          </p>
+        </div>
+        {credits > 0 && (
+          <div>
+            <p className="text-[10px] uppercase tracking-wider text-amber-600 dark:text-amber-400">Credits</p>
+            <p className="font-display text-xl font-bold tabular-nums text-amber-600 dark:text-amber-400">{credits}</p>
+          </div>
+        )}
+        <a
+          href="/settings/billing"
+          className="inline-flex h-8 items-center rounded-md border border-border bg-background px-3 text-xs font-medium hover:bg-secondary"
+        >
+          Manage
+        </a>
+      </div>
+    </div>
+  );
+}
 
 function dnaScoreLabel(score: number): string {
   // Neutral, progression-oriented labels describing product-company signal

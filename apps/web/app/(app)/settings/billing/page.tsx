@@ -106,46 +106,48 @@ export default async function BillingSettingsPage() {
         </div>
       </section>
 
-      {/* ── Usage grid ────────────────────────────────────────────────────── */}
-      <section className="mb-5">
-        <div className="mb-3 flex items-center justify-between">
-          <h2 className="text-sm font-semibold">Usage this 30-day window</h2>
-          <p className="text-[11px] text-muted-foreground">
-            Resets {usage.metrics.find((m) => m.resetsAt)?.resetsAt ? resetsInWords(usage.metrics.find((m) => m.resetsAt)!.resetsAt) : "next cycle"}
-          </p>
-        </div>
-        <div className="grid gap-3 sm:grid-cols-2">
-          {usage.metrics.map((m) => {
-            const pct = m.unlimited ? 0 : Math.min(100, Math.round((m.used / Math.max(1, m.limit as number)) * 100));
-            const tone = m.exhausted ? "rose" : pct >= 80 ? "amber" : "primary";
-            return (
-              <div key={m.key} className="rounded-xl border border-border bg-card p-4">
-                <div className="mb-1 flex items-center justify-between">
-                  <p className="text-xs font-medium text-muted-foreground">{m.label}</p>
-                  <span className="text-xs font-semibold tabular-nums">
-                    {m.unlimited ? "Unlimited" : `${m.used} / ${m.limit}`}
-                  </span>
-                </div>
-                {!m.unlimited && (
-                  <div className="relative h-1.5 overflow-hidden rounded-full bg-border">
-                    <div
-                      className={`absolute inset-y-0 left-0 rounded-full transition-all ${
-                        tone === "rose" ? "bg-rose-500" : tone === "amber" ? "bg-amber-500" : "bg-primary"
-                      }`}
-                      style={{ width: `${pct}%` }}
-                    />
-                  </div>
-                )}
-                {m.exhausted && !m.unlimited && (
-                  <p className="mt-2 text-[11px] text-rose-600 dark:text-rose-400">
-                    Limit reached — resets {resetsInWords(m.resetsAt)}.
-                  </p>
-                )}
+      {/* ── Usage — Tailored Resumes only (simplified per user feedback) ──── */}
+      {(() => {
+        const tailor = usage.metrics.find((m) => m.key === "tailored");
+        if (!tailor) return null;
+        const pct = tailor.unlimited ? 0 : Math.min(100, Math.round((tailor.used / Math.max(1, tailor.limit as number)) * 100));
+        const tone = tailor.exhausted ? "rose" : pct >= 80 ? "amber" : "primary";
+        return (
+          <section className="mb-5 rounded-xl border border-border bg-card p-5 shadow-elev1">
+            <div className="mb-3 flex items-center justify-between">
+              <div>
+                <p className="text-sm font-semibold">Tailored resumes</p>
+                <p className="mt-0.5 text-[11px] text-muted-foreground">
+                  Resets {tailor.resetsAt ? resetsInWords(tailor.resetsAt) : "next cycle"}
+                </p>
               </div>
-            );
-          })}
-        </div>
-      </section>
+              <span className="font-display text-xl font-bold tabular-nums">
+                {tailor.unlimited
+                  ? <span className="text-emerald-600 dark:text-emerald-400">Unlimited</span>
+                  : `${tailor.used} / ${tailor.limit}`}
+              </span>
+            </div>
+            {!tailor.unlimited && (
+              <div className="relative h-2 overflow-hidden rounded-full bg-border">
+                <div
+                  className={`absolute inset-y-0 left-0 rounded-full transition-all ${
+                    tone === "rose" ? "bg-rose-500" : tone === "amber" ? "bg-amber-500" : "bg-primary"
+                  }`}
+                  style={{ width: `${pct}%` }}
+                />
+              </div>
+            )}
+            {tailor.exhausted && !tailor.unlimited && (
+              <p className="mt-2 text-[11px] text-rose-600 dark:text-rose-400">
+                Limit reached.{" "}
+                {usage.plan === "free"
+                  ? <>Upgrade to Pro for 30/month, or grab a credit pack.</>
+                  : <>Buy Tailor Credits or upgrade to Career Sprint for 100/month.</>}
+              </p>
+            )}
+          </section>
+        );
+      })()}
 
       {/* ── Tailor Credits ────────────────────────────────────────────────── */}
       <section className="mb-5 rounded-xl border border-border bg-card p-5 shadow-elev1">
@@ -224,8 +226,8 @@ export default async function BillingSettingsPage() {
         </p>
         <ul className="space-y-1">
           <li>• Export or erase your data anytime — always free, DPDP-compliant.</li>
-          <li>• 7-day refund on monthly subscriptions, no questions asked.</li>
           <li>• Cancel anytime — your access stays until the end of the billing period.</li>
+          <li>• Your resume sits in a private storage bucket only you can read.</li>
         </ul>
         <div className="mt-3 flex flex-wrap gap-3 text-[11px]">
           <Link href="/settings/privacy" className="underline-offset-2 hover:underline">Privacy & DPDP</Link>

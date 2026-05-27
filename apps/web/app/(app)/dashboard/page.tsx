@@ -14,6 +14,8 @@ import { DnaBreakdownInline } from "@/components/dna-breakdown-panel";
 import type { DnaBreakdown } from "@/lib/matching/dna-breakdown";
 import { computeMarketSignals, type MarketJobLite } from "@/lib/insights/market-intel";
 import { getUserConsents } from "@/lib/dpdp/consent";
+import { getUserUsage } from "@/lib/billing/usage";
+import { DaysLeftBadge } from "@/components/billing/days-left-badge";
 
 // Sprint 6 dashboard surfaces — colocated under app/(app)/dashboard.
 import { MatchBandCard, type MatchBandCounts } from "./match-band-card";
@@ -232,6 +234,10 @@ export default async function DashboardPage() {
     5,
   );
 
+  // Subscription summary for the hero pill. Soft-fail so a billing outage
+  // never blocks the dashboard from rendering.
+  const dashboardUsage = await getUserUsage(user.id).catch(() => null);
+
   const pipeline = (appsByStatus ?? []).reduce<Record<string, number>>((acc, r) => {
     acc[r.status] = (acc[r.status] ?? 0) + 1;
     return acc;
@@ -329,11 +335,16 @@ export default async function DashboardPage() {
       {/* ── Hero — compact, always flex-row ──────────────────────── */}
       <div className="rounded-xl border border-border bg-card p-4 sm:p-5">
         <div className="flex items-center justify-between gap-3">
-          <div className="min-w-0">
+          <div className="min-w-0 flex-1">
             <p className="text-xs text-muted-foreground">{greeting}</p>
             <h1 className="mt-0.5 text-xl font-semibold tracking-tight sm:text-2xl">{greetingSubject}</h1>
             {subline !== "Your career intelligence command center." && (
               <p className="mt-0.5 text-xs text-muted-foreground">{subline}</p>
+            )}
+            {dashboardUsage && (
+              <div className="mt-2">
+                <DaysLeftBadge plan={dashboardUsage.plan} activeUntil={dashboardUsage.activeUntil} variant="pill" />
+              </div>
             )}
           </div>
 
