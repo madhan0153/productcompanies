@@ -288,16 +288,8 @@ export default function PricingPage() {
           <Trust icon={<Sparkles className="h-4 w-4 text-primary" />} text="DPDP-compliant · UPI, cards, net banking" />
         </div>
 
-        {/* Founders / promo CTA */}
-        <div className="mt-6 flex items-center justify-center gap-3 rounded-xl border border-border bg-secondary/30 px-6 py-4 text-sm">
-          <ShieldCheck className="h-4 w-4 shrink-0 text-emerald-500" />
-          <span className="text-muted-foreground">
-            Early supporter or Founder's Friend?{" "}
-            <Link href="/early-access" className="font-medium text-foreground underline underline-offset-2 hover:text-primary">
-              Redeem your access code
-            </Link>
-          </span>
-        </div>
+        {/* Inline coupon redemption — dynamic, mobile-first */}
+        <CouponRedemption isSignedIn={isSignedIn} />
 
         {/* Contrast comparison: DIY vs ProdMatch */}
         <ContrastTable />
@@ -334,6 +326,96 @@ export default function PricingPage() {
 }
 
 // ─── Sub-components ────────────────────────────────────────────────────────────
+
+function CouponRedemption({ isSignedIn }: { isSignedIn: boolean | null }) {
+  const router = useRouter();
+  const [code, setCode]     = useState("");
+  const [pending, setPending] = useState(false);
+  const [result, setResult] = useState<{ ok: boolean; msg: string } | null>(null);
+
+  async function submit(e: React.FormEvent) {
+    e.preventDefault();
+    if (!code.trim()) return;
+
+    if (isSignedIn === false) {
+      router.push(`/auth/login?next=/pricing`);
+      return;
+    }
+
+    setPending(true);
+    setResult(null);
+    try {
+      const res  = await fetch("/api/billing/promo", {
+        method:  "POST",
+        headers: { "Content-Type": "application/json" },
+        body:    JSON.stringify({ code: code.trim() }),
+      });
+      const data = await res.json() as { ok?: boolean; message?: string; error?: string };
+      if (!res.ok) {
+        setResult({ ok: false, msg: data.error ?? "Could not redeem code." });
+      } else {
+        setResult({ ok: true, msg: data.message ?? "Code redeemed! Refreshing…" });
+        setCode("");
+        // Reflect new entitlement everywhere — refresh after a brief celebration window
+        setTimeout(() => router.refresh(), 1400);
+      }
+    } catch {
+      setResult({ ok: false, msg: "Network error. Please try again." });
+    } finally {
+      setPending(false);
+    }
+  }
+
+  return (
+    <div className="mt-6 rounded-2xl border border-border bg-gradient-to-br from-secondary/40 to-secondary/10 p-5 sm:p-6">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-5">
+        <div className="flex items-center gap-2 sm:flex-1">
+          <span className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-emerald-500/15 text-emerald-600 dark:text-emerald-400">
+            <ShieldCheck className="h-4 w-4" />
+          </span>
+          <div className="min-w-0">
+            <p className="text-sm font-semibold leading-tight">Have a coupon code?</p>
+            <p className="mt-0.5 text-[11px] text-muted-foreground">
+              Redeem in one tap — applies instantly to your account.
+            </p>
+          </div>
+        </div>
+        <form onSubmit={submit} className="flex w-full gap-2 sm:w-auto">
+          <input
+            type="text"
+            value={code}
+            onChange={(e) => setCode(e.target.value.toUpperCase())}
+            placeholder="ENTER CODE"
+            disabled={pending}
+            spellCheck={false}
+            autoComplete="off"
+            maxLength={64}
+            className="h-10 flex-1 rounded-lg border border-border bg-background px-3 font-mono text-sm uppercase tracking-widest placeholder:font-sans placeholder:text-xs placeholder:tracking-normal focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20 disabled:opacity-60 sm:w-44 sm:flex-none"
+          />
+          <button
+            type="submit"
+            disabled={pending || !code.trim()}
+            className="inline-flex h-10 items-center gap-1.5 rounded-lg bg-primary px-4 text-sm font-semibold text-primary-foreground transition hover:bg-primary/90 disabled:opacity-60"
+          >
+            {pending ? "Redeeming…" : "Redeem"}
+            {!pending && <ArrowRight className="h-3.5 w-3.5" />}
+          </button>
+        </form>
+      </div>
+
+      {result && (
+        <div className={`mt-3 flex items-start gap-2 rounded-lg border px-3 py-2 text-xs ${
+          result.ok
+            ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300"
+            : "border-rose-500/30 bg-rose-500/10 text-rose-700 dark:text-rose-300"
+        }`}>
+          {result.ok ? <Check className="mt-0.5 h-3.5 w-3.5 shrink-0" /> : <XIcon className="mt-0.5 h-3.5 w-3.5 shrink-0" />}
+          <span>{result.msg}</span>
+        </div>
+      )}
+    </div>
+  );
+}
 
 function PlanCard({
   id, icon, name, badge, tagline, primary, secondary, anchor, highlight, features, cta,

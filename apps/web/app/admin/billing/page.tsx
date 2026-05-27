@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { Gift, KeyRound, Wallet, Users, ArrowRight } from "lucide-react";
+import { Gift, KeyRound, Wallet, Users, ArrowRight, TrendingUp } from "lucide-react";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import {
   MetricStrip, MiniMetric, PageHeader,
@@ -51,7 +51,13 @@ export default async function AdminBillingPage() {
       </MetricStrip>
 
       {/* Action cards */}
-      <div className="mb-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+      <div className="mb-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        <ActionCard
+          href="/admin/billing/revenue"
+          icon={<TrendingUp className="h-5 w-5 text-emerald-500" />}
+          title="Revenue & retention"
+          description="MRR, churn, at-risk list, plan mix — the whole money picture in one screen."
+        />
         <ActionCard
           href="/admin/billing/grants"
           icon={<Users className="h-5 w-5 text-primary" />}
@@ -59,14 +65,14 @@ export default async function AdminBillingPage() {
           description="Give Pro / Career Sprint to any user by email. Lifetime, 12-month, or custom duration."
         />
         <ActionCard
-          href="/admin/billing/promos"
+          href="/admin/billing/coupons"
           icon={<Gift className="h-5 w-5 text-violet-500" />}
-          title="Promo codes"
-          description="Create access codes for friends, early supporters, marketing, or partnerships."
+          title="Coupons"
+          description="Create promo codes / coupons with custom discounts, expiry, and redemption caps."
         />
         <ActionCard
           href="/admin/billing/subscriptions"
-          icon={<Wallet className="h-5 w-5 text-emerald-500" />}
+          icon={<Wallet className="h-5 w-5 text-amber-500" />}
           title="Subscriptions"
           description="View active subs, cancel, or trigger refunds via Dodo Payments."
         />

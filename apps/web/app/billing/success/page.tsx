@@ -7,6 +7,7 @@ import { CheckCircle2, Loader2, ArrowRight, AlertTriangle, Copy } from "lucide-r
 import {
   CHECKOUT_PRODUCTS, PLAN_LIMITS, planLabel, type CheckoutProductId,
 } from "@/lib/billing/catalog";
+import { CelebrationOverlay } from "./celebration";
 
 // Dodo redirects to /billing/success?product=...&session=...&return_to=...
 // after a completed checkout. We poll /api/billing/refresh until the webhook
@@ -39,6 +40,7 @@ function BillingSuccessContent() {
   const [plan, setPlan]   = useState<string | null>(null);
   const [secondsLeft, setSecondsLeft] = useState(Math.ceil(MAX_POLL_MS / 1000));
   const [copied, setCopied] = useState(false);
+  const [syncError, setSyncError] = useState<string | null>(null);
 
   const pollRef  = useRef<ReturnType<typeof setInterval> | null>(null);
   const startRef = useRef(Date.now());
@@ -63,16 +65,35 @@ function BillingSuccessContent() {
           method:  "POST",
           headers: { "Content-Type": "application/json" },
           cache:   "no-store",
-          body:    JSON.stringify({ subscription_id: subId, product }),
+          body:    JSON.stringify({
+            subscription_id: subId,
+            product,
+            emailHint: email || undefined,
+          }),
         });
-        if (!res.ok || cancelled) return;
-        const data = await res.json() as { plan?: string };
+        if (cancelled) return;
+        const data = await res.json() as { plan?: string; error?: string; details?: unknown };
+        if (!res.ok) {
+          // Surface the error to the user so they can take action / contact support
+          console.warn("[billing/success] sync failed", res.status, data);
+          if (res.status === 403) {
+            // Ownership mismatch — most actionable error
+            setSyncError(
+              typeof data.error === "string"
+                ? `${data.error} Try refreshing — or contact support with subscription id ${subId}.`
+                : "We couldn't link this subscription to your account."
+            );
+          }
+          return;
+        }
         if (data.plan && data.plan !== "free") {
           if (pollRef.current) clearInterval(pollRef.current);
           setPlan(data.plan);
           setPhase("activated");
         }
-      } catch { /* fall through to webhook polling */ }
+      } catch (err) {
+        console.warn("[billing/success] sync error", err);
+      }
     }
 
     // Phase 2: redundant polling for the webhook-driven path, in case sync
@@ -170,6 +191,19 @@ function BillingSuccessContent() {
             </p>
             <p className="mt-2 text-[11px] text-muted-foreground">{secondsLeft}s remaining</p>
           </div>
+
+          {syncError && (
+            <div className="rounded-lg border border-amber-500/30 bg-amber-500/10 p-3 text-left text-xs text-amber-700 dark:text-amber-300">
+              <p className="font-semibold">Heads up</p>
+              <p className="mt-1">{syncError}</p>
+              {subId && (
+                <p className="mt-2 break-all">
+                  <span className="opacity-70">Subscription:</span>{" "}
+                  <code className="text-foreground">{subId}</code>
+                </p>
+              )}
+            </div>
+          )}
         </div>
       </Centered>
     );
@@ -179,19 +213,11 @@ function BillingSuccessContent() {
   if (phase === "activated") {
     return (
       <Centered>
-        <div className="max-w-md space-y-5 text-center">
-          <div className="relative inline-block">
-            <CheckCircle2 className="h-14 w-14 text-emerald-500" />
-            <span className="absolute -right-1 -top-1 animate-ping rounded-full bg-emerald-500/30 p-3" />
-          </div>
-          <div>
-            <h1 className="font-display text-2xl font-bold">
-              {planLabel((plan ?? "pro") as "pro" | "career_sprint" | "free")} is live 🎉
-            </h1>
-            <p className="mt-1 text-sm text-muted-foreground">
-              Your account is upgraded. Receipts will land in your inbox.
-            </p>
-          </div>
+        <div className="max-w-md space-y-5">
+          <CelebrationOverlay
+            plan={(plan ?? "pro") as "pro" | "career_sprint" | "free"}
+            active
+          />
 
           {planLimits && (
             <div className="space-y-2 rounded-xl border border-border bg-card p-4 text-left">
@@ -202,21 +228,21 @@ function BillingSuccessContent() {
             </div>
           )}
 
-          <Link
-            href={returnTo || "/dashboard"}
-            className="inline-flex h-11 items-center gap-2 rounded-lg bg-primary px-5 text-sm font-semibold text-primary-foreground transition hover:bg-primary/90"
-          >
-            {returnTo ? "Continue where you left off" : "Go to dashboard"}
-            <ArrowRight className="h-4 w-4" />
-          </Link>
-          {returnTo && (
-            <p className="text-[11px] text-muted-foreground">
-              Auto-redirecting in a moment…
-            </p>
-          )}
-          <Link href="/settings/billing" className="block text-xs text-muted-foreground hover:text-foreground">
-            View plan & billing →
-          </Link>
+          <div className="flex flex-col items-center gap-2 text-center">
+            <Link
+              href={returnTo || "/dashboard"}
+              className="inline-flex h-11 items-center gap-2 rounded-lg bg-primary px-6 text-sm font-semibold text-primary-foreground transition hover:bg-primary/90"
+            >
+              {returnTo ? "Continue where you left off" : "Go to dashboard"}
+              <ArrowRight className="h-4 w-4" />
+            </Link>
+            {returnTo && (
+              <p className="text-[11px] text-muted-foreground">Auto-redirecting in a moment…</p>
+            )}
+            <Link href="/settings/billing" className="text-xs text-muted-foreground hover:text-foreground">
+              View plan & billing →
+            </Link>
+          </div>
         </div>
       </Centered>
     );
