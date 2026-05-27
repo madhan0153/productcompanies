@@ -449,10 +449,12 @@ export interface Database {
       profiles: {
         Row: {
           id: string; display_name: string | null; current_role: string | null;
+          job_title: string | null;
           years_experience: number | null; current_lpa: number | null;
           target_lpa: number | null; preferred_hubs: string[] | null;
           tech_stack: string[] | null; seniority: SeniorityLevel | null;
           resume_storage_path: string | null; resume_parsed: Json | null;
+          resume_parse_error: string | null; resume_parsing_at: string | null;
           product_dna_score: number | null; dna_breakdown: Json | null;
           resume_signature: string | null;
           coach_plan: Json | null; coach_plan_at: string | null;
@@ -461,14 +463,17 @@ export interface Database {
           resume_tips: Json | null; resume_score_at: string | null;
           resume_embedding: number[] | null; resume_embedding_at: string | null;
           last_match_compute_at: string | null;
+          suspended_at: string | null; suspension_reason: string | null;
           created_at: string; updated_at: string;
         };
         Insert: {
           id: string; display_name?: string | null; current_role?: string | null;
+          job_title?: string | null;
           years_experience?: number | null; current_lpa?: number | null;
           target_lpa?: number | null; preferred_hubs?: string[] | null;
           tech_stack?: string[] | null; seniority?: SeniorityLevel | null;
           resume_storage_path?: string | null; resume_parsed?: Json | null;
+          resume_parse_error?: string | null; resume_parsing_at?: string | null;
           product_dna_score?: number | null; dna_breakdown?: Json | null;
           resume_signature?: string | null;
           coach_plan?: Json | null; coach_plan_at?: string | null;
@@ -477,14 +482,17 @@ export interface Database {
           resume_tips?: Json | null; resume_score_at?: string | null;
           resume_embedding?: number[] | null; resume_embedding_at?: string | null;
           last_match_compute_at?: string | null;
+          suspended_at?: string | null; suspension_reason?: string | null;
           created_at?: string; updated_at?: string;
         };
         Update: {
           id?: string; display_name?: string | null; current_role?: string | null;
+          job_title?: string | null;
           years_experience?: number | null; current_lpa?: number | null;
           target_lpa?: number | null; preferred_hubs?: string[] | null;
           tech_stack?: string[] | null; seniority?: SeniorityLevel | null;
           resume_storage_path?: string | null; resume_parsed?: Json | null;
+          resume_parse_error?: string | null; resume_parsing_at?: string | null;
           product_dna_score?: number | null; dna_breakdown?: Json | null;
           resume_signature?: string | null;
           coach_plan?: Json | null; coach_plan_at?: string | null;
@@ -493,6 +501,7 @@ export interface Database {
           resume_tips?: Json | null; resume_score_at?: string | null;
           resume_embedding?: number[] | null; resume_embedding_at?: string | null;
           last_match_compute_at?: string | null;
+          suspended_at?: string | null; suspension_reason?: string | null;
           updated_at?: string;
         };
         Relationships: [];
@@ -675,6 +684,41 @@ export interface Database {
           metadata?: Json | null; created_at?: string;
         };
         Update: Record<string, never>;
+        Relationships: [];
+      };
+      background_jobs: {
+        Row: {
+          id: string; user_id: string | null; job_type: string; status: string;
+          payload: Json; error_code: string | null; error_message: string | null;
+          queued_at: string; started_at: string | null; finished_at: string | null;
+          attempts: number | null;
+        };
+        Insert: {
+          id?: string; user_id?: string | null; job_type: string; status?: string;
+          payload?: Json; error_code?: string | null; error_message?: string | null;
+          queued_at?: string; started_at?: string | null; finished_at?: string | null;
+          attempts?: number | null;
+        };
+        Update: {
+          status?: string; error_code?: string | null; error_message?: string | null;
+          started_at?: string | null; finished_at?: string | null; attempts?: number | null;
+        };
+        Relationships: [];
+      };
+      admin_actions: {
+        Row: {
+          id: string; actor_id: string | null; actor_email: string;
+          action_type: string; target_user_id: string | null; target_ref: string | null;
+          status: string; metadata: Json; created_at: string;
+        };
+        Insert: {
+          id?: string; actor_id?: string | null; actor_email: string;
+          action_type: string; target_user_id?: string | null; target_ref?: string | null;
+          status?: string; metadata?: Json; created_at?: string;
+        };
+        Update: {
+          status?: string; metadata?: Json;
+        };
         Relationships: [];
       };
     };

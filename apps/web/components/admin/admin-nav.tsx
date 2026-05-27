@@ -9,13 +9,14 @@ import {
   Briefcase,
   ChevronLeft,
   ChevronRight,
+  CreditCard,
   DatabaseZap,
   FileText,
   LayoutDashboard,
   LibraryBig,
-  Radar,
   Settings,
   ShieldAlert,
+  Terminal,
   Users,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -25,6 +26,7 @@ import { cn } from "@/lib/utils";
 const NAV_PRIMARY = [
   { href: "/admin",           label: "Overview",      icon: LayoutDashboard },
   { href: "/admin/users",     label: "Users",         icon: Users },
+  { href: "/admin/billing",   label: "Billing",       icon: CreditCard },
   { href: "/admin/resumes",   label: "Resumes",       icon: FileText },
   { href: "/admin/jobs",      label: "Jobs & Matches",icon: Briefcase },
   { href: "/admin/analytics", label: "Analytics",     icon: BarChart3 },
@@ -34,18 +36,19 @@ const NAV_PRIMARY = [
 ] as const;
 
 const NAV_OPS = [
-  { href: "/admin/crawler-intel", label: "Crawler Intel", icon: DatabaseZap },
-  { href: "/admin/ai-ops",        label: "AI Ops",        icon: BrainCircuit },
-  { href: "/admin/health",        label: "Operations",    icon: Activity },
+  { href: "/admin/ops",            label: "Ops Console",   icon: Terminal },
+  { href: "/admin/crawler-intel",  label: "Crawler Intel", icon: DatabaseZap },
+  { href: "/admin/ai-ops",         label: "AI Ops",        icon: BrainCircuit },
+  { href: "/admin/health",         label: "Health",        icon: Activity },
 ] as const;
 
-// Bottom dock shows 5 key items on mobile
+// Bottom dock shows 5 key items on mobile — action-oriented
 const DOCK_ITEMS = [
   NAV_PRIMARY[0], // Overview
   NAV_PRIMARY[1], // Users
-  NAV_PRIMARY[3], // Jobs
-  NAV_OPS[0],     // Crawler Intel
-  NAV_PRIMARY[7], // Security
+  NAV_PRIMARY[2], // Billing
+  NAV_OPS[0],     // Ops Console
+  NAV_PRIMARY[8], // Security
 ] as const;
 
 // ─── Root component ───────────────────────────────────────────────────────────
@@ -157,6 +160,7 @@ function DockLink({
   const short = item.label
     .replace("Jobs & Matches", "Jobs")
     .replace("Crawler Intel", "Crawler")
+    .replace("Ops Console", "Ops")
     .replace("Operations", "Ops");
   return (
     <Link

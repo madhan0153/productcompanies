@@ -149,7 +149,7 @@ export default function PricingPage() {
             priceSub="forever"
             highlight={false}
             features={FREE_FEATURES}
-            cta={<Link href="/auth/login" className="btn-secondary w-full text-center text-sm">Get started free</Link>}
+            cta={<Link href="/auth/login" className="inline-flex h-10 w-full items-center justify-center rounded-lg border border-border bg-background px-4 text-sm font-medium text-foreground transition hover:bg-secondary">Get started free</Link>}
           />
 
           {/* Pro */}
@@ -165,7 +165,7 @@ export default function PricingPage() {
               <button
                 onClick={() => startCheckout(interval === "monthly" ? "pro_monthly" : "pro_yearly")}
                 disabled={!!state.loading}
-                className="btn-primary w-full text-sm disabled:opacity-60"
+                className="inline-flex h-10 w-full items-center justify-center rounded-lg bg-primary px-4 text-sm font-semibold text-primary-foreground transition hover:bg-primary/90 disabled:opacity-60"
               >
                 {state.loading === (interval === "monthly" ? "pro_monthly" : "pro_yearly")
                   ? "Redirecting…"
@@ -186,7 +186,7 @@ export default function PricingPage() {
               <button
                 onClick={() => startCheckout(interval === "monthly" ? "career_sprint_monthly" : "career_sprint_yearly")}
                 disabled={!!state.loading}
-                className="btn-secondary w-full text-sm disabled:opacity-60"
+                className="inline-flex h-10 w-full items-center justify-center rounded-lg border border-border bg-background px-4 text-sm font-medium text-foreground transition hover:bg-secondary disabled:opacity-60"
               >
                 {state.loading === (interval === "monthly" ? "career_sprint_monthly" : "career_sprint_yearly")
                   ? "Redirecting…"
@@ -207,7 +207,7 @@ export default function PricingPage() {
               <button
                 onClick={() => startCheckout("tailor_credits_50")}
                 disabled={!!state.loading}
-                className="btn-secondary w-full text-sm disabled:opacity-60"
+                className="inline-flex h-10 w-full items-center justify-center rounded-lg border border-border bg-background px-4 text-sm font-medium text-foreground transition hover:bg-secondary disabled:opacity-60"
               >
                 {state.loading === "tailor_credits_50" ? "Redirecting…" : "Buy 50 credits"}
               </button>

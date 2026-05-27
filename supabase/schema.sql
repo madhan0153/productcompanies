@@ -2327,6 +2327,47 @@ grant execute on function public.request_user_erasure(uuid) to service_role;
 
 
 -- =============================================================================
+-- Phase M2 — Admin audit log + user suspension flag
+--   Captures every admin action so we have an immutable trail of who did
+--   what (grants, refunds, suspensions, deletes). Powered by server actions
+--   inside /admin/* pages — there is no manual SQL editing.
+-- =============================================================================
+
+create table if not exists public.admin_actions (
+  id              uuid primary key default gen_random_uuid(),
+  actor_id        uuid references auth.users(id) on delete set null,
+  actor_email     text not null,
+  action_type     text not null,
+  target_user_id  uuid references auth.users(id) on delete set null,
+  target_ref      text,
+  status          text not null default 'success',
+  metadata        jsonb not null default '{}'::jsonb,
+  created_at      timestamptz not null default now()
+);
+
+create index if not exists idx_admin_actions_created
+  on public.admin_actions(created_at desc);
+create index if not exists idx_admin_actions_actor
+  on public.admin_actions(actor_id, created_at desc);
+create index if not exists idx_admin_actions_target
+  on public.admin_actions(target_user_id, created_at desc);
+
+alter table public.admin_actions enable row level security;
+-- Only service role writes/reads. No public select policy on purpose.
+
+-- User suspension flag on profiles (idempotent column add)
+do $$
+begin
+  if not exists (
+    select 1 from information_schema.columns
+    where table_schema = 'public' and table_name = 'profiles' and column_name = 'suspended_at'
+  ) then
+    alter table public.profiles add column suspended_at timestamptz;
+    alter table public.profiles add column suspension_reason text;
+  end if;
+end $$;
+
+-- =============================================================================
 -- DONE. Verify in Supabase Studio:
 --   • 51 rows in `companies`, 0 rows in `jobs`
 --   • RLS enabled on every table above

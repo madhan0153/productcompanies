@@ -104,7 +104,7 @@ export default function BillingSuccessPage() {
 
           <Link
             href="/dashboard"
-            className="btn-primary inline-flex items-center gap-2"
+            className="inline-flex items-center gap-2 rounded-lg bg-primary px-5 py-2.5 text-sm font-semibold text-primary-foreground transition hover:bg-primary/90"
           >
             Go to dashboard <ArrowRight className="h-4 w-4" />
           </Link>
@@ -127,7 +127,7 @@ export default function BillingSuccessPage() {
             </Link>
             <button
               onClick={() => { startRef.current = Date.now(); setPhase("polling"); }}
-              className="btn-secondary text-sm"
+              className="rounded-lg border border-border bg-background px-5 py-2.5 text-sm font-medium hover:bg-secondary"
             >
               Try again
             </button>

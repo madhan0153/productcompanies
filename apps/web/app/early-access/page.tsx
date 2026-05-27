@@ -71,7 +71,7 @@ export default function EarlyAccessPage() {
                 Your billing entitlements are active. Head to your dashboard to see your plan.
               </p>
             </div>
-            <Link href="/dashboard" className="btn-primary inline-flex items-center gap-2">
+            <Link href="/dashboard" className="inline-flex items-center gap-2 rounded-lg bg-primary px-5 py-2.5 text-sm font-semibold text-primary-foreground transition hover:bg-primary/90">
               Go to dashboard <ArrowRight className="h-4 w-4" />
             </Link>
           </div>
@@ -104,7 +104,7 @@ export default function EarlyAccessPage() {
             <button
               type="submit"
               disabled={phase === "loading" || !code.trim()}
-              className="btn-primary w-full disabled:opacity-60"
+              className="inline-flex h-10 w-full items-center justify-center rounded-lg bg-primary px-4 text-sm font-semibold text-primary-foreground transition hover:bg-primary/90 disabled:opacity-60"
             >
               {phase === "loading" ? "Redeeming…" : "Redeem code"}
             </button>

@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
-import { Users, Search, UserCheck, FileText, AlertCircle } from "lucide-react";
+import Link from "next/link";
+import { Users, Search, UserCheck, FileText, AlertCircle, ArrowRight } from "lucide-react";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import {
   Badge, CopyButton, CsvButton, DataGrid, IdentityCell,
@@ -162,10 +163,12 @@ export default async function AdminUsersPage({
             />
           )}
           renderCells={(r) => [
-            <IdentityCell key="user"
-              title={r.name ?? r.email}
-              subtitle={`${r.email} · joined ${dateShort(r.joinedAt)}`}
-            />,
+            <Link key="user" href={`/admin/users/${r.id}`} className="block hover:text-primary">
+              <IdentityCell
+                title={r.name ?? r.email}
+                subtitle={`${r.email} · joined ${dateShort(r.joinedAt)}`}
+              />
+            </Link>,
             <IdentityCell key="role"
               title={r.role}
               subtitle={r.targetRoles.slice(0, 2).join(", ") || undefined}
@@ -177,7 +180,9 @@ export default async function AdminUsersPage({
             <Badge key="status" tone={r.suspended ? "danger" : "ok"}>
               {r.suspended ? "Suspended" : "Active"}
             </Badge>,
-            <CopyButton key="copy" id={r.id} />,
+            <Link key="open" href={`/admin/users/${r.id}`} className="inline-flex items-center gap-1 rounded-md bg-secondary px-2 py-1 text-[11px] font-medium hover:bg-secondary/70">
+              Open <ArrowRight className="h-3 w-3" />
+            </Link>,
           ]}
         />
       </Panel>

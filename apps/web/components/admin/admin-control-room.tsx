@@ -15,12 +15,15 @@ import {
   BarChart3,
   Briefcase,
   BrainCircuit,
+  CreditCard,
   FileText,
   Gauge,
+  Gift,
   LibraryBig,
   Radar,
   Settings,
   ShieldAlert,
+  Terminal,
   Users,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -97,16 +100,16 @@ const ATTENTION_ICONS: Record<string, React.ComponentType<{ className?: string }
   "settings-health":  Settings,
 };
 
-// Quick-access grid shown below the attention panel
+// Action-oriented quick access — operations admins do daily
 const QUICK_LINKS = [
-  { href: "/admin/users",      label: "Users",         desc: "Search, view, manage",    icon: Users },
-  { href: "/admin/resumes",    label: "Resumes",       desc: "Parse state & history",   icon: FileText },
-  { href: "/admin/jobs",       label: "Jobs & Matches",desc: "Quality, enrichment",     icon: Briefcase },
-  { href: "/admin/crawler-intel", label: "Crawler Intel", desc: "Fleet drift & health", icon: Radar },
-  { href: "/admin/analytics",  label: "Analytics",     desc: "Skills, roles, trends",   icon: BarChart3 },
-  { href: "/admin/ai-ops",     label: "AI Ops",        desc: "Providers & routing",     icon: BrainCircuit },
-  { href: "/admin/content",    label: "Content",       desc: "DSA problems & guides",   icon: LibraryBig },
-  { href: "/admin/security",   label: "Security",      desc: "Logs & DPDP audit",       icon: ShieldAlert },
+  { href: "/admin/billing/grants",  label: "Grant access",  desc: "Pro/Sprint by email",    icon: Users },
+  { href: "/admin/billing/promos",  label: "Promo codes",   desc: "Create access codes",    icon: Gift },
+  { href: "/admin/billing",         label: "Billing",       desc: "Subs · invoices",        icon: CreditCard },
+  { href: "/admin/ops",             label: "Ops Console",   desc: "Triggers · queue · keys",icon: Terminal },
+  { href: "/admin/users",           label: "Users",         desc: "Search, suspend, delete",icon: Users },
+  { href: "/admin/jobs",            label: "Jobs & Matches",desc: "Quality, enrichment",    icon: Briefcase },
+  { href: "/admin/crawler-intel",   label: "Crawler Intel", desc: "Fleet drift & health",   icon: Radar },
+  { href: "/admin/ai-ops",          label: "AI Ops",        desc: "Providers & routing",    icon: BrainCircuit },
 ] as const;
 
 // ─── Root component ───────────────────────────────────────────────────────────
