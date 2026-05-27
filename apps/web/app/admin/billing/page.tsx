@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { Gift, KeyRound, Wallet, Users, ArrowRight, TrendingUp } from "lucide-react";
+import { Gift, KeyRound, Wallet, Users, ArrowRight, TrendingUp, Stethoscope } from "lucide-react";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import {
   MetricStrip, MiniMetric, PageHeader,
@@ -75,6 +75,12 @@ export default async function AdminBillingPage() {
           icon={<Wallet className="h-5 w-5 text-amber-500" />}
           title="Subscriptions"
           description="View active subs, cancel, or trigger refunds via Dodo Payments."
+        />
+        <ActionCard
+          href="/admin/billing/reconcile"
+          icon={<Stethoscope className="h-5 w-5 text-rose-500" />}
+          title="Reconcile payment"
+          description="User paid but plan didn't activate? Paste their subscription_id and force-sync from Dodo."
         />
       </div>
 
