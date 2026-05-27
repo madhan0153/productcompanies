@@ -1,11 +1,13 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import {
-  TrendingUp, TrendingDown, Users, AlertCircle, ArrowLeft, ArrowUpRight,
-  Wallet, Repeat, UserMinus, Gift, RefreshCw, ChevronRight,
+  AlertCircle, ArrowLeft, ChevronRight, Gift, RefreshCw, TrendingUp,
+  Users as UsersIcon, Wallet,
 } from "lucide-react";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
-import { PageHeader, Badge, timeAgo } from "@/components/admin/admin-ui";
+import {
+  Badge, Card, KPI, ListRow, SectionHeader, Spark, StatusDot,
+} from "@/components/admin/pm";
 
 export const metadata: Metadata = { title: "Admin · Revenue & Retention" };
 export const dynamic = "force-dynamic";
@@ -33,11 +35,10 @@ interface RefundRow {
 }
 
 export default async function AdminRevenuePage() {
-  const admin = createSupabaseAdminClient();
-  const now   = Date.now();
+  const admin    = createSupabaseAdminClient();
+  const now      = Date.now();
   const since30d = new Date(now - 30 * 86_400_000).toISOString();
   const since60d = new Date(now - 60 * 86_400_000).toISOString();
-  const since7d  = new Date(now - 7  * 86_400_000).toISOString();
 
   const [
     subsAllResult,
@@ -50,47 +51,51 @@ export default async function AdminRevenuePage() {
     admin.from("subscriptions")
       .select("id, user_id, plan, status, current_period_end, created_at")
       .order("created_at", { ascending: false })
-      .limit(500) as any,
+      .limit(500) as never,
     admin.from("invoices")
       .select("amount, currency, status, created_at")
-      .gte("created_at", since30d).eq("status", "paid") as any,
+      .gte("created_at", since30d).eq("status", "paid") as never,
     admin.from("invoices")
       .select("amount, currency, status, created_at")
-      .gte("created_at", since60d).lt("created_at", since30d).eq("status", "paid") as any,
+      .gte("created_at", since60d).lt("created_at", since30d).eq("status", "paid") as never,
     admin.from("refunds")
       .select("amount, requested_at")
-      .gte("requested_at", since30d) as any,
+      .gte("requested_at", since30d) as never,
     admin.from("subscriptions")
       .select("id", { count: "exact", head: true })
-      .gte("cancelled_at", since30d) as any,
+      .gte("cancelled_at", since30d) as never,
     admin.from("subscriptions")
       .select("id", { count: "exact", head: true })
-      .in("status", ["active", "trialing"]) as any,
+      .in("status", ["active", "trialing"]) as never,
   ]);
 
-  const subs            = (subsAllResult.data ?? []) as SubRow[];
-  const paidThis30d     = ((paidThis30dResult.data ?? []) as InvoiceRow[])
-                            .reduce((s, r) => s + (r.amount ?? 0), 0);
-  const paidPrev30d     = ((paidPrev30dResult.data ?? []) as InvoiceRow[])
-                            .reduce((s, r) => s + (r.amount ?? 0), 0);
-  const refunds30d      = ((refunds30dResult.data ?? []) as RefundRow[])
-                            .reduce((s, r) => s + (r.amount ?? 0), 0);
-  const cancelled30d    = cancelledThis30dResult.count ?? 0;
-  const activeSubs      = activeSubsCountResult.count ?? 0;
+  const subs         = ((subsAllResult as { data: SubRow[] | null }).data ?? []);
+  const paidThis30d  = ((paidThis30dResult as { data: InvoiceRow[] | null }).data ?? [])
+                          .reduce((s, r) => s + (r.amount ?? 0), 0);
+  const paidPrev30d  = ((paidPrev30dResult as { data: InvoiceRow[] | null }).data ?? [])
+                          .reduce((s, r) => s + (r.amount ?? 0), 0);
+  const refunds30d   = ((refunds30dResult as { data: RefundRow[] | null }).data ?? [])
+                          .reduce((s, r) => s + (r.amount ?? 0), 0);
+  const cancelled30d = (cancelledThis30dResult as { count: number | null }).count ?? 0;
+  const activeSubs   = (activeSubsCountResult as { count: number | null }).count ?? 0;
 
-  // MRR approximation: sum of active monthly subs (use invoices paid in last 30d)
-  const mrr = paidThis30d;
-  const arr = mrr * 12;
+  const mrr           = paidThis30d;
+  const arr           = mrr * 12;
   const netRevenue30d = paidThis30d - refunds30d;
-  const mrrDelta = paidThis30d - paidPrev30d;
-  const mrrDeltaPct = paidPrev30d > 0
+  const mrrDelta      = paidThis30d - paidPrev30d;
+  const mrrDeltaPct   = paidPrev30d > 0
     ? Math.round(((paidThis30d - paidPrev30d) / paidPrev30d) * 1000) / 10
     : null;
-  const churnRate = activeSubs > 0
+  const churnRate     = activeSubs > 0
     ? Math.round((cancelled30d / activeSubs) * 1000) / 10
     : 0;
 
-  // Subscription mix by plan
+  // Build a 30-day MRR pulse from invoice timestamps (one bucket per day)
+  const mrrPulse = buildDailyTotals(
+    ((paidThis30dResult as { data: InvoiceRow[] | null }).data ?? []),
+    30,
+  );
+
   const planMix = new Map<string, { count: number; revenue: number }>();
   for (const sub of subs) {
     if (sub.status !== "active") continue;
@@ -99,12 +104,10 @@ export default async function AdminRevenuePage() {
     planMix.set(sub.plan, entry);
   }
 
-  // Recent paying users (last 7d)
   const recentSubs = subs
     .filter((s) => new Date(s.created_at).getTime() > now - 7 * 86_400_000)
     .slice(0, 8);
 
-  // Fetch emails for recent subs
   const userIds = Array.from(new Set(recentSubs.map((s) => s.user_id))).filter(Boolean);
   const emailMap = new Map<string, string>();
   if (userIds.length > 0) {
@@ -114,237 +117,308 @@ export default async function AdminRevenuePage() {
     }
   }
 
-  // At-risk: cancellations pending or past_due
   const atRisk = subs.filter((s) => s.status === "past_due" || s.status === "on_hold").slice(0, 6);
 
   return (
-    <div className="mx-auto w-full max-w-[1440px] px-4 py-5 pb-28 sm:px-6 lg:px-8">
-      <Link href="/admin/billing" className="mb-3 inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground">
-        <ArrowLeft className="h-3 w-3" /> Back to Billing
+    <div style={{ maxWidth: 1280, margin: "0 auto", padding: "20px 16px 96px" }}>
+      <Link
+        href="/admin/billing"
+        style={{
+          display: "inline-flex", alignItems: "center", gap: 6,
+          fontSize: 12, color: "var(--text-3)", marginBottom: 12,
+        }}
+      >
+        <ArrowLeft size={12} /> Back to Billing
       </Link>
 
-      <PageHeader
-        eyebrow="Admin · Revenue"
-        title="Revenue & Retention"
-        description="MRR, churn, and the at-risk list — your money in one screen."
-      />
+      {/* Hero */}
+      <header style={{ marginBottom: 18 }}>
+        <p style={{
+          fontSize: 11, fontWeight: 600, textTransform: "uppercase",
+          letterSpacing: "0.14em", color: "var(--accent)",
+        }}>
+          Admin · Revenue
+        </p>
+        <h1 style={{
+          marginTop: 6, fontSize: 28, fontWeight: 600,
+          letterSpacing: -0.9, color: "var(--text)",
+        }}>
+          <span className="pm-num">₹{(mrr / 100).toLocaleString("en-IN", { maximumFractionDigits: 0 })}</span>
+          <span style={{ color: "var(--text-3)", fontSize: 16, fontWeight: 500, marginLeft: 10, letterSpacing: -0.2 }}>
+            MRR · ₹{(arr / 100).toLocaleString("en-IN", { maximumFractionDigits: 0 })} ARR
+          </span>
+        </h1>
+        <p style={{ marginTop: 6, fontSize: 13, color: "var(--text-2)" }}>
+          {mrrDeltaPct !== null
+            ? `${mrrDelta >= 0 ? "+" : ""}₹${(Math.abs(mrrDelta) / 100).toLocaleString("en-IN")} vs prior 30d · ${mrrDeltaPct > 0 ? "+" : ""}${mrrDeltaPct}% MoM`
+            : "First 30-day window — comparison kicks in next month."}
+        </p>
+      </header>
 
-      {/* ── Hero KPI grid ─────────────────────────────────────────────────── */}
-      <section className="mb-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+      {/* KPI strip */}
+      <div style={{
+        display: "grid", gap: 12,
+        gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))",
+      }}>
         <KPI
-          icon={<Wallet className="h-4 w-4" />}
           label="MRR (30d)"
           value={`₹${(mrr / 100).toLocaleString("en-IN", { maximumFractionDigits: 0 })}`}
-          sub={mrrDeltaPct !== null
-            ? `${mrrDelta >= 0 ? "+" : ""}${(mrrDelta / 100).toLocaleString("en-IN")} vs prior 30d (${mrrDeltaPct > 0 ? "+" : ""}${mrrDeltaPct}%)`
-            : "First period"}
-          tone={mrrDelta >= 0 ? "ok" : "warn"}
+          delta={mrrDeltaPct !== null ? `${mrrDeltaPct > 0 ? "+" : ""}${mrrDeltaPct}%` : undefined}
+          hint="From paid invoices"
           accent
         />
         <KPI
-          icon={<TrendingUp className="h-4 w-4" />}
-          label="ARR (projected)"
-          value={`₹${(arr / 100).toLocaleString("en-IN", { maximumFractionDigits: 0 })}`}
-          sub="MRR × 12"
-        />
-        <KPI
-          icon={<Users className="h-4 w-4" />}
           label="Active subs"
-          value={String(activeSubs)}
-          sub={`${cancelled30d} cancelled in 30d`}
+          value={activeSubs.toLocaleString("en-IN")}
+          hint={`${cancelled30d} cancelled in 30d`}
         />
         <KPI
-          icon={<UserMinus className="h-4 w-4" />}
           label="Churn (30d)"
           value={`${churnRate}%`}
-          sub={cancelled30d === 0 ? "Zero churn 🎉" : `${cancelled30d} cancellations`}
-          tone={churnRate > 5 ? "warn" : "ok"}
+          delta={churnRate <= 5 ? "+ healthy" : "− watch"}
+          hint={cancelled30d === 0 ? "Zero cancellations" : `${cancelled30d} cancellations`}
         />
-      </section>
+        <KPI
+          label="Net revenue"
+          value={`₹${(netRevenue30d / 100).toLocaleString("en-IN")}`}
+          hint={`${refunds30d > 0 ? `−₹${(refunds30d / 100).toLocaleString("en-IN")} refunds` : "No refunds"}`}
+        />
+      </div>
 
-      {/* ── Net revenue + Plan mix row ────────────────────────────────────── */}
-      <section className="mb-6 grid gap-4 lg:grid-cols-[1fr_1.5fr]">
-        {/* Net revenue card */}
-        <div className="rounded-2xl border border-border bg-card p-5 shadow-elev1">
-          <div className="mb-3 flex items-center justify-between">
-            <p className="text-sm font-semibold">Net revenue (30d)</p>
-            <Repeat className="h-4 w-4 text-muted-foreground" />
+      {/* MRR pulse */}
+      <SectionHeader title="MRR pulse" sub="Paid revenue across the last 30 days" />
+      <Card p={18}>
+        <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between" }}>
+          <div>
+            <div className="pm-num" style={{ fontSize: 30, fontWeight: 600, letterSpacing: -0.9 }}>
+              ₹{(mrr / 100).toLocaleString("en-IN")}
+            </div>
+            <div style={{ fontSize: 12, color: "var(--text-3)", marginTop: 2 }}>
+              Across {activeSubs} active subscriptions
+            </div>
           </div>
-          <p className="font-display text-3xl font-bold tabular-nums">
-            ₹{(netRevenue30d / 100).toLocaleString("en-IN")}
-          </p>
-          <div className="mt-3 space-y-1.5 text-xs">
-            <Row label="Gross paid"       value={`₹${(paidThis30d / 100).toLocaleString("en-IN")}`} positive />
-            <Row label="Refunds"          value={`−₹${(refunds30d / 100).toLocaleString("en-IN")}`} negative={refunds30d > 0} />
-            <div className="my-1 border-t border-border" />
-            <Row label="Net"              value={`₹${(netRevenue30d / 100).toLocaleString("en-IN")}`} bold />
-          </div>
+          <Badge tone={mrrDelta >= 0 ? "ok" : "warn"}>
+            {mrrDelta >= 0 ? "On plan" : "Below prior"}
+          </Badge>
         </div>
+        <Spark data={mrrPulse.length > 0 ? mrrPulse : [0, 0, 0, 0]} h={60} style={{ marginTop: 8 }} />
+      </Card>
 
-        {/* Plan mix */}
-        <div className="rounded-2xl border border-border bg-card p-5 shadow-elev1">
-          <div className="mb-4 flex items-center justify-between">
-            <p className="text-sm font-semibold">Revenue by plan</p>
-            <Link href="/admin/billing/subscriptions" className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground">
-              All subs <ChevronRight className="h-3 w-3" />
-            </Link>
-          </div>
+      {/* By plan + Net revenue breakdown */}
+      <div style={{
+        marginTop: 22,
+        display: "grid", gap: 16,
+        gridTemplateColumns: "minmax(0, 1fr) minmax(0, 1.4fr)",
+      }}>
+        <Card>
+          <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 10 }}>Net revenue · 30d</div>
+          <BreakdownRow label="Gross paid" value={paidThis30d} tone="ok" />
+          <BreakdownRow label="Refunds"    value={-refunds30d} tone={refunds30d > 0 ? "err" : "neutral"} />
+          <div style={{ height: 1, background: "var(--line-2)", margin: "8px 0" }} />
+          <BreakdownRow label="Net"        value={netRevenue30d} bold />
+        </Card>
+
+        <Card p={0}>
+          <SectionHeader title="By plan" sub="Active subscriptions only" />
           {planMix.size === 0 ? (
-            <p className="text-sm text-muted-foreground">No active subscriptions yet.</p>
+            <div style={{ padding: "0 16px 16px", color: "var(--text-3)", fontSize: 13 }}>
+              No active subscriptions yet.
+            </div>
           ) : (
-            <ul className="space-y-3">
-              {[...planMix.entries()].sort((a, b) => b[1].count - a[1].count).map(([plan, info]) => {
+            <div style={{ paddingBottom: 8 }}>
+              {[...planMix.entries()].sort((a, b) => b[1].count - a[1].count).map(([plan, info], i, arr) => {
                 const share = activeSubs > 0 ? Math.round((info.count / activeSubs) * 100) : 0;
-                const planLabel = plan === "career_sprint" ? "Career Sprint" : plan === "pro" ? "Pro" : plan;
+                const label = plan === "career_sprint" ? "Career Sprint" : plan === "pro" ? "Pro" : plan;
                 return (
-                  <li key={plan}>
-                    <div className="mb-1.5 flex items-center justify-between text-xs">
-                      <div className="flex items-center gap-2">
-                        <span className={`h-2 w-2 rounded-full ${plan === "career_sprint" ? "bg-violet-500" : "bg-primary"}`} />
-                        <span className="font-medium">{planLabel}</span>
-                      </div>
-                      <span className="tabular-nums text-muted-foreground">
-                        <span className="font-semibold text-foreground">{info.count}</span> subs · {share}%
+                  <div key={plan} style={{
+                    padding: "12px 16px",
+                    borderBottom: i < arr.length - 1 ? "1px solid var(--line-2)" : "none",
+                  }}>
+                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 6 }}>
+                      <span style={{ fontSize: 13, fontWeight: 500 }}>{label}</span>
+                      <span className="pm-num" style={{ fontSize: 12, color: "var(--text-3)" }}>
+                        <span style={{ color: "var(--text)", fontWeight: 600 }}>{info.count}</span> subs · {share}%
                       </span>
                     </div>
-                    <div className="relative h-2 overflow-hidden rounded-full bg-border">
-                      <div
-                        className={`absolute inset-y-0 left-0 rounded-full ${plan === "career_sprint" ? "bg-violet-500" : "bg-primary"}`}
-                        style={{ width: `${share}%` }}
-                      />
+                    <div style={{
+                      position: "relative", height: 6, borderRadius: 999,
+                      background: "var(--surface-2)", overflow: "hidden",
+                    }}>
+                      <div style={{
+                        position: "absolute", inset: "0 auto 0 0",
+                        width: `${share}%`,
+                        background: "linear-gradient(90deg, var(--accent), var(--accent-strong))",
+                        borderRadius: 999,
+                      }}/>
                     </div>
-                  </li>
+                  </div>
                 );
               })}
-            </ul>
+            </div>
           )}
-        </div>
-      </section>
+        </Card>
+      </div>
 
-      {/* ── Recent paying users + At-risk ─────────────────────────────────── */}
-      <section className="grid gap-4 lg:grid-cols-2">
-        {/* Recent payers */}
-        <div className="rounded-2xl border border-border bg-card p-5 shadow-elev1">
-          <div className="mb-3 flex items-center justify-between">
-            <p className="text-sm font-semibold">New paying users (7d)</p>
-            <Badge tone="green">{recentSubs.length}</Badge>
-          </div>
+      {/* Recent payers + At risk */}
+      <div style={{
+        marginTop: 22,
+        display: "grid", gap: 16,
+        gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))",
+      }}>
+        <Card p={0}>
+          <SectionHeader
+            title="New paying users (7d)"
+            sub={`${recentSubs.length} signed in for a plan`}
+            action={<Badge tone="ok">{recentSubs.length}</Badge>}
+          />
           {recentSubs.length === 0 ? (
-            <p className="text-sm text-muted-foreground">No new subscriptions in the last 7 days.</p>
+            <div style={{ padding: "0 16px 16px", color: "var(--text-3)", fontSize: 13 }}>
+              Nobody upgraded this week.
+            </div>
           ) : (
-            <ul className="divide-y divide-border/50">
-              {recentSubs.map((s) => {
+            <div style={{ paddingBottom: 4 }}>
+              {recentSubs.map((s, i) => {
                 const email = emailMap.get(s.user_id) ?? s.user_id.slice(0, 12);
                 return (
-                  <li key={s.id} className="flex flex-wrap items-center justify-between gap-2 py-2.5 text-sm">
-                    <Link href={`/admin/users/${s.user_id}`} className="min-w-0 flex-1 truncate font-mono text-xs hover:text-primary">
-                      {email}
-                    </Link>
-                    <Badge tone={s.plan === "career_sprint" ? "violet" : "blue"}>{s.plan}</Badge>
-                    <span className="text-[11px] text-muted-foreground">{timeAgo(s.created_at)}</span>
-                  </li>
+                  <ListRow
+                    key={s.id}
+                    href={`/admin/users/${s.user_id}`}
+                    divider={i < recentSubs.length - 1}
+                    title={<span className="pm-mono">{email}</span>}
+                    subtitle={timeAgo(s.created_at)}
+                    trailing={<Badge tone={s.plan === "career_sprint" ? "accent" : "info"}>{s.plan}</Badge>}
+                  />
                 );
               })}
-            </ul>
-          )}
-        </div>
-
-        {/* At-risk */}
-        <div className="rounded-2xl border border-border bg-card p-5 shadow-elev1">
-          <div className="mb-3 flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <AlertCircle className="h-4 w-4 text-amber-500" />
-              <p className="text-sm font-semibold">At-risk subscribers</p>
             </div>
-            <Badge tone={atRisk.length > 0 ? "warn" : "ok"}>{atRisk.length}</Badge>
-          </div>
-          {atRisk.length === 0 ? (
-            <p className="text-sm text-muted-foreground">
-              Nothing past-due or on hold. Clean book ✨
-            </p>
-          ) : (
-            <ul className="divide-y divide-border/50">
-              {atRisk.map((s) => (
-                <li key={s.id} className="flex flex-wrap items-center justify-between gap-2 py-2.5 text-sm">
-                  <Link href={`/admin/users/${s.user_id}`} className="min-w-0 flex-1 truncate font-mono text-xs hover:text-primary">
-                    {emailMap.get(s.user_id) ?? s.user_id.slice(0, 12)}
-                  </Link>
-                  <Badge tone={s.status === "past_due" ? "danger" : "warn"}>{s.status}</Badge>
-                  <span className="text-[11px] text-muted-foreground">{timeAgo(s.created_at)}</span>
-                </li>
-              ))}
-            </ul>
           )}
-        </div>
-      </section>
+        </Card>
 
-      {/* ── Footer actions ───────────────────────────────────────────────── */}
-      <div className="mt-6 flex flex-wrap items-center justify-center gap-2">
-        <Link href="/admin/billing/coupons" className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-card px-4 py-2 text-xs font-medium hover:bg-secondary">
-          <Gift className="h-3.5 w-3.5" /> New coupon
-        </Link>
-        <Link href="/admin/billing/subscriptions" className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-card px-4 py-2 text-xs font-medium hover:bg-secondary">
-          <RefreshCw className="h-3.5 w-3.5" /> View all subs
-        </Link>
-        <Link href="/admin/billing/grants" className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-card px-4 py-2 text-xs font-medium hover:bg-secondary">
-          <Users className="h-3.5 w-3.5" /> Grant access
-        </Link>
+        <Card p={0}>
+          <SectionHeader
+            title="At-risk subscribers"
+            sub="past_due or on_hold"
+            action={
+              <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
+                <StatusDot tone={atRisk.length > 0 ? "warn" : "ok"} live={atRisk.length > 0} />
+                <Badge tone={atRisk.length > 0 ? "warn" : "ok"}>{atRisk.length}</Badge>
+              </span>
+            }
+          />
+          {atRisk.length === 0 ? (
+            <div style={{ padding: "0 16px 16px", display: "flex", alignItems: "center", gap: 8 }}>
+              <AlertCircle size={14} style={{ color: "var(--ok)" }} />
+              <span style={{ fontSize: 13, color: "var(--text-2)" }}>
+                Nothing past-due or on hold. Clean book.
+              </span>
+            </div>
+          ) : (
+            <div style={{ paddingBottom: 4 }}>
+              {atRisk.map((s, i) => (
+                <ListRow
+                  key={s.id}
+                  href={`/admin/users/${s.user_id}`}
+                  divider={i < atRisk.length - 1}
+                  title={<span className="pm-mono">{emailMap.get(s.user_id) ?? s.user_id.slice(0, 12)}</span>}
+                  subtitle={timeAgo(s.created_at)}
+                  trailing={<Badge tone={s.status === "past_due" ? "err" : "warn"}>{s.status}</Badge>}
+                />
+              ))}
+            </div>
+          )}
+        </Card>
+      </div>
+
+      {/* Footer actions */}
+      <SectionHeader title="Quick actions" />
+      <div style={{
+        display: "grid", gap: 12,
+        gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
+      }}>
+        <ActionTile href="/admin/billing/coupons"       icon={<Gift size={16} style={{ color: "var(--accent)" }} />}      title="Coupons"      desc="Create access codes & promos." />
+        <ActionTile href="/admin/billing/grants"        icon={<UsersIcon size={16} style={{ color: "var(--accent)" }} />} title="Grant access" desc="Give Pro / Sprint manually." />
+        <ActionTile href="/admin/billing/subscriptions" icon={<RefreshCw size={16} style={{ color: "var(--accent)" }} />} title="Subscriptions" desc="Live state + invoices." />
+        <ActionTile href="/admin/billing/reconcile"     icon={<Wallet size={16} style={{ color: "var(--accent)" }} />}    title="Reconcile"    desc="Force-sync from Dodo." />
       </div>
     </div>
   );
 }
 
-function KPI({
-  icon, label, value, sub, tone, accent,
-}: {
-  icon:   React.ReactNode;
-  label:  string;
-  value:  string;
-  sub:    string;
-  tone?:  "ok" | "warn";
-  accent?: boolean;
-}) {
-  return (
-    <div className={`rounded-2xl border p-4 shadow-elev1 ${
-      accent ? "border-primary/30 bg-primary/5" : "border-border bg-card"
-    }`}>
-      <div className="mb-2 flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <span className={`inline-flex h-7 w-7 items-center justify-center rounded-md ${accent ? "bg-primary/15 text-primary" : "bg-secondary text-muted-foreground"}`}>
-            {icon}
-          </span>
-          <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">{label}</p>
-        </div>
-        {tone === "warn"
-          ? <TrendingDown className="h-3.5 w-3.5 text-amber-500" />
-          : tone === "ok"
-            ? <TrendingUp className="h-3.5 w-3.5 text-emerald-500" />
-            : null}
-      </div>
-      <p className="font-display text-2xl font-bold tabular-nums sm:text-3xl">{value}</p>
-      <p className="mt-1 text-[11px] text-muted-foreground">{sub}</p>
-    </div>
-  );
-}
+// ─── server-only sub-components ──────────────────────────────────────────────
 
-function Row({ label, value, positive, negative, bold }: {
-  label:    string;
-  value:    string;
-  positive?: boolean;
-  negative?: boolean;
-  bold?:    boolean;
-}) {
+function BreakdownRow({
+  label, value, tone, bold,
+}: { label: string; value: number; tone?: "ok" | "err" | "neutral"; bold?: boolean }) {
+  const negative = value < 0;
+  const colour =
+    bold              ? "var(--text)" :
+    tone === "ok"     ? "var(--ok)"   :
+    tone === "err" || negative ? "var(--err)" :
+                        "var(--text)";
   return (
-    <div className="flex items-center justify-between">
-      <span className={`text-muted-foreground ${bold ? "font-semibold text-foreground" : ""}`}>{label}</span>
-      <span className={`tabular-nums ${
-        bold ? "font-bold text-foreground"
-          : negative ? "text-rose-600 dark:text-rose-400"
-          : positive ? "text-emerald-600 dark:text-emerald-400"
-          : "text-foreground"
-      }`}>
-        {value}
+    <div style={{
+      display: "flex", justifyContent: "space-between", alignItems: "center",
+      padding: "6px 0", fontSize: 13,
+      fontWeight: bold ? 600 : 400,
+    }}>
+      <span style={{ color: bold ? "var(--text)" : "var(--text-2)" }}>{label}</span>
+      <span className="pm-num" style={{ color: colour }}>
+        {value < 0 ? "−" : ""}₹{(Math.abs(value) / 100).toLocaleString("en-IN")}
       </span>
     </div>
   );
+}
+
+function ActionTile({
+  href, icon, title, desc,
+}: { href: string; icon: React.ReactNode; title: string; desc: string }) {
+  return (
+    <Link href={href} style={{ display: "block" }}>
+      <Card p={16}>
+        <div style={{
+          width: 32, height: 32, borderRadius: 8,
+          background: "var(--accent-soft)",
+          display: "flex", alignItems: "center", justifyContent: "center",
+          marginBottom: 10,
+        }}>
+          {icon}
+        </div>
+        <div style={{ fontSize: 14, fontWeight: 600 }}>{title}</div>
+        <div style={{ fontSize: 12, color: "var(--text-3)", marginTop: 4 }}>{desc}</div>
+        <div style={{
+          marginTop: 10, fontSize: 12, fontWeight: 500,
+          color: "var(--accent)", display: "inline-flex", alignItems: "center", gap: 4,
+        }}>
+          Open <ChevronRight size={12} />
+        </div>
+      </Card>
+    </Link>
+  );
+}
+
+// ─── helpers ─────────────────────────────────────────────────────────────────
+
+function buildDailyTotals(invoices: InvoiceRow[], days: number): number[] {
+  const buckets = new Array<number>(days).fill(0);
+  const now = Date.now();
+  for (const inv of invoices) {
+    const t = new Date(inv.created_at).getTime();
+    if (!Number.isFinite(t)) continue;
+    const ageDays = Math.floor((now - t) / 86_400_000);
+    if (ageDays < 0 || ageDays >= days) continue;
+    buckets[days - 1 - ageDays] += inv.amount ?? 0;
+  }
+  return buckets;
+}
+
+function timeAgo(value: string | null | undefined): string {
+  if (!value) return "—";
+  const diff = Date.now() - new Date(value).getTime();
+  if (!Number.isFinite(diff) || diff < 0) return "—";
+  const m = Math.floor(diff / 60_000);
+  if (m < 1) return "just now";
+  if (m < 60) return `${m}m ago`;
+  const h = Math.floor(m / 60);
+  if (h < 24) return `${h}h ago`;
+  return `${Math.floor(h / 24)}d ago`;
 }

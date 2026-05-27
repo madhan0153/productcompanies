@@ -1,19 +1,26 @@
 import type { Metadata } from "next";
+import Link from "next/link";
+import {
+  AlertTriangle, ArrowUpRight, FileText, ShieldAlert,
+  Sparkles, Briefcase, Activity as ActivityIcon, Users as UsersIcon,
+} from "lucide-react";
 import { describeLlmRuntime } from "@prodmatch/shared";
 import { scoreFleet, type CompanyRow, type CrawlRunRow } from "@/lib/admin/crawler-resilience";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
-import { AdminControlRoom, type AdminDashboardData } from "@/components/admin/admin-control-room";
-import type { State } from "@/components/admin/admin-ui";
+import {
+  Badge, Card, KPI, ListRow, SectionHeader, SevDot, Spark, StatusDot,
+  type SevTone,
+} from "@/components/admin/pm";
 
-export const metadata: Metadata = { title: "Admin | Command Center" };
+export const metadata: Metadata = { title: "Admin · Overview" };
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
 export default async function AdminPage() {
-  const admin  = createSupabaseAdminClient();
-  const now    = Date.now();
+  const admin    = createSupabaseAdminClient();
+  const now      = Date.now();
   const since24h = new Date(now - 24 * 3_600_000).toISOString();
-  const since7d  = new Date(now - 7 * 24 * 3_600_000).toISOString();
+  const since7d  = new Date(now - 7  * 24 * 3_600_000).toISOString();
   const since14d = new Date(now - 14 * 24 * 3_600_000).toISOString();
 
   const [
@@ -29,13 +36,13 @@ export default async function AdminPage() {
     tailoredResult,
   ] = await Promise.all([
     getProfileMetrics(admin, since24h, since7d),
-    admin.from("companies").select("id, name, slug").order("name") as any,
+    admin.from("companies").select("id, name, slug").order("name") as never,
     admin
       .from("crawl_runs")
       .select("company_id, status, finished_at, started_at, jobs_new, jobs_updated, jobs_marked_stale, error")
       .gte("started_at", since14d)
       .order("started_at", { ascending: false })
-      .limit(500) as any,
+      .limit(500) as never,
     admin.from("jobs").select("id", { count: "exact", head: true }).eq("is_active", true),
     admin
       .from("jobs")
@@ -43,26 +50,24 @@ export default async function AdminPage() {
       .eq("is_active", true)
       .not("quality_score", "is", null)
       .order("updated_at", { ascending: false })
-      .limit(20) as any,
+      .limit(20) as never,
     admin
       .from("background_jobs")
       .select("id, job_type, status, queued_at, error_code, error_message")
       .order("queued_at", { ascending: false })
-      .limit(50) as any,
+      .limit(50) as never,
     admin
       .from("resume_intel_events")
       .select("kind, ok, latency_ms, created_at")
       .gte("created_at", since7d)
-      .limit(200) as any,
-    admin
-      .from("llm_dead_keys")
-      .select("provider_id", { count: "exact", head: true }),
+      .limit(200) as never,
+    admin.from("llm_dead_keys").select("provider_id", { count: "exact", head: true }),
     admin.from("enhanced_resumes").select("id", { count: "exact", head: true }),
     admin.from("tailored_resumes").select("id",  { count: "exact", head: true }),
   ]);
 
-  const companies   = (companiesResult.data   ?? []) as CompanyRow[];
-  const crawlerRuns = (crawlerRunsResult.data ?? []) as CrawlRunRow[];
+  const companies   = ((companiesResult as { data: CompanyRow[] | null }).data   ?? []);
+  const crawlerRuns = ((crawlerRunsResult as { data: CrawlRunRow[] | null }).data ?? []);
 
   const runsByCompany = new Map<string, CrawlRunRow[]>();
   for (const r of crawlerRuns) {
@@ -71,155 +76,272 @@ export default async function AdminPage() {
   }
   const fleet = scoreFleet(companies, runsByCompany);
 
-  type BgJob = { id: string; job_type: string; status: string; queued_at: string; error_code: string | null; error_message: string | null };
+  type BgJob      = { id: string; job_type: string; status: string; queued_at: string; error_code: string | null; error_message: string | null };
   type IntelEvent = { kind: string; ok: boolean; latency_ms: number | null };
   type QualityRow = { quality_score: number };
 
-  const bgJobs        = (bgJobsResult.data    ?? []) as BgJob[];
-  const intelEvents   = (intelEventsResult.data ?? []) as IntelEvent[];
-  const qualityRows   = (jobQualityResult.data ?? []) as QualityRow[];
+  const bgJobs       = ((bgJobsResult as { data: BgJob[] | null }).data        ?? []);
+  const intelEvents  = ((intelEventsResult as { data: IntelEvent[] | null }).data  ?? []);
+  const qualityRows  = ((jobQualityResult as { data: QualityRow[] | null }).data  ?? []);
 
-  const activeQueue    = bgJobs.filter((j) => j.status === "queued" || j.status === "running").length;
-  const parseAttempts  = bgJobs.filter((j) => j.job_type === "resume_parse");
-  const parseOk        = parseAttempts.filter((j) => j.status === "succeeded").length;
-  const parseFailed    = parseAttempts.filter((j) => j.status === "failed").length;
-  const parseRate      = parseAttempts.length === 0 ? 100 : Math.round((parseOk / parseAttempts.length) * 100);
+  const activeQueue   = bgJobs.filter((j) => j.status === "queued" || j.status === "running").length;
+  const parseAttempts = bgJobs.filter((j) => j.job_type === "resume_parse");
+  const parseOk       = parseAttempts.filter((j) => j.status === "succeeded").length;
+  const parseFailed   = parseAttempts.filter((j) => j.status === "failed").length;
+  const parseRate     = parseAttempts.length === 0 ? 100 : Math.round((parseOk / parseAttempts.length) * 100);
 
-  const intelOk        = intelEvents.filter((e) => e.ok).length;
-  const intelRate      = intelEvents.length === 0 ? 100 : Math.round((intelOk / intelEvents.length) * 100);
-  const avgLatency     = average(intelEvents.map((e) => e.latency_ms).filter((v): v is number => typeof v === "number"));
+  const intelOk       = intelEvents.filter((e) => e.ok).length;
+  const intelRate     = intelEvents.length === 0 ? 100 : Math.round((intelOk / intelEvents.length) * 100);
+  const avgLatency    = average(intelEvents.map((e) => e.latency_ms).filter((v): v is number => typeof v === "number"));
 
-  const matchComputes  = bgJobs.filter((j) => j.job_type === "match_compute").length;
-  const failedBgJobs   = bgJobs.filter((j) => j.status === "failed").length;
-  const runtime        = describeLlmRuntime();
-  const aiArtifacts    = (enhancedResult.count ?? 0) + (tailoredResult.count ?? 0);
+  const matchComputes = bgJobs.filter((j) => j.job_type === "match_compute").length;
+  const failedBgJobs  = bgJobs.filter((j) => j.status === "failed").length;
+  const runtime       = describeLlmRuntime();
+  const aiArtifacts   = (enhancedResult.count ?? 0) + (tailoredResult.count ?? 0);
 
-  // Build attention items (serialisable — icons looked up client-side by id)
-  type AttentionItem = AdminDashboardData["attention"][number];
-  const attention: AttentionItem[] = [
+  // Attention items, ordered by severity
+  type Attention = { id: string; title: string; detail: string; sev: SevTone; href: string };
+  const attention: Attention[] = ([
     {
-      id:     "resume-failures",
+      id: "resume-failures",
       title:  parseFailed > 0 ? `${parseFailed} resume parse${parseFailed > 1 ? "s" : ""} failed` : "Resume parsing stable",
       detail: parseAttempts.length === 0
         ? "No recent parse attempts"
         : `${parseOk} succeeded · ${parseFailed} failed (${parseRate}% success)`,
-      tone:   (parseFailed > 0 ? "danger" : "ok") as State,
+      sev:    parseFailed > 0 ? "error" : "ok",
       href:   "/admin/resumes",
     },
     {
-      id:     "crawler-risk",
+      id: "crawler-risk",
       title:  fleet.overall.companiesAtRisk > 0
         ? `${fleet.overall.companiesAtRisk} crawler source${fleet.overall.companiesAtRisk > 1 ? "s" : ""} at risk`
         : "Crawler fleet is healthy",
       detail: `${crawlerRuns.length} runs · ${companies.length} companies`,
-      tone:   (fleet.overall.companiesAtRisk > 0 ? "danger" : "ok") as State,
+      sev:    fleet.overall.companiesAtRisk > 0 ? "error" : "ok",
       href:   "/admin/crawler-intel",
     },
     {
-      id:     "llm-dead-keys",
+      id: "llm-dead-keys",
       title:  (deadKeysResult.count ?? 0) > 0
         ? `${deadKeysResult.count} LLM key${(deadKeysResult.count ?? 0) > 1 ? "s" : ""} quarantined`
         : "No LLM dead keys",
       detail: `${runtime.providers.length} providers · ${runtime.operations.length} routed ops`,
-      tone:   ((deadKeysResult.count ?? 0) > 0 ? "warn" : "ok") as State,
+      sev:    (deadKeysResult.count ?? 0) > 0 ? "warn" : "ok",
       href:   "/admin/ai-ops",
     },
     {
-      id:     "security-jobs",
+      id: "security-jobs",
       title:  failedBgJobs > 0
         ? `${failedBgJobs} background job${failedBgJobs > 1 ? "s" : ""} failed`
         : "Background jobs clear",
       detail: `${activeQueue} queued/running · ${matchComputes} match computes`,
-      tone:   (failedBgJobs > 0 ? "danger" : activeQueue > 0 ? "warn" : "ok") as State,
+      sev:    failedBgJobs > 0 ? "error" : activeQueue > 0 ? "warn" : "ok",
       href:   "/admin/security",
     },
     {
-      id:     "ai-pipeline",
-      title:  intelRate < 90
-        ? `Resume intelligence at ${intelRate}% success`
-        : "AI pipeline healthy",
+      id: "ai-pipeline",
+      title:  intelRate < 90 ? `Resume intelligence at ${intelRate}% success` : "AI pipeline healthy",
       detail: `${intelEvents.length} events · ${avgLatency ? `${avgLatency}ms avg` : "no latency data"}`,
-      tone:   (intelRate < 90 ? "warn" : "ok") as State,
+      sev:    intelRate < 90 ? "warn" : "ok",
       href:   "/admin/resumes",
     },
-  ].sort((a, b) => severityRank(b.tone) - severityRank(a.tone));
+  ] satisfies Attention[]).sort((a, b) => sevRank(b.sev) - sevRank(a.sev));
 
-  const data: AdminDashboardData = {
-    generatedAt:    new Date().toISOString(),
-    fleetGrade:     fleet.overall.fleetGrade,
-    fleetScore:     fleet.overall.fleetScore,
-    activeQueue,
-    atRiskCompanies: fleet.overall.companiesAtRisk,
+  const greeting = greetingFor(new Date());
+  const today    = new Date().toLocaleDateString("en-IN", { weekday: "long", day: "numeric", month: "long" });
+  const liveJobs = activeJobsResult.count ?? 0;
 
-    metrics: [
-      {
-        id:     "users",
-        label:  "Users",
-        value:  String(profileMetrics.totalUsers),
-        detail: `${profileMetrics.resumesUploadedToday} resumes today`,
-        trend:  `${profileMetrics.resumesUploaded7d} uploads this week`,
-        tone:   "blue",
-      },
-      {
-        id:     "resumes",
-        label:  "Parse health",
-        value:  `${parseRate}%`,
-        detail: `${parseOk} ok · ${parseFailed} failed`,
-        tone:   parseRate >= 90 ? "green" : "amber",
-        trend:  `${profileMetrics.parseErrors} active errors`,
-      },
-      {
-        id:     "jobs",
-        label:  "Live jobs",
-        value:  String(activeJobsResult.count ?? 0),
-        detail: `${aiArtifacts} AI artifacts`,
-        tone:   "violet",
-        trend:  `${matchComputes} match runs`,
-      },
-      {
-        id:     "llm",
-        label:  "LLM routing",
-        value:  `${runtime.providers.length}/${runtime.presets.length}`,
-        detail: `${runtime.providers.reduce((s, p) => s + p.keyCount, 0)} keys`,
-        tone:   "green",
-        trend:  `${runtime.operations.filter((o) => o.externalFallback === "allowed").length} fallback-ready`,
-      },
-    ],
+  return (
+    <div style={{ maxWidth: 1280, margin: "0 auto", padding: "20px 16px 96px" }}>
+      {/* Greeting */}
+      <header style={{ marginBottom: 16 }}>
+        <p style={{ fontSize: 11, fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.14em", color: "var(--accent)" }}>
+          ProdMatch · Admin
+        </p>
+        <h1 style={{
+          marginTop: 6, fontSize: 26, fontWeight: 600,
+          letterSpacing: -0.8, color: "var(--text)",
+        }}>
+          {greeting} <span style={{ color: "var(--text-3)" }}>· {today}</span>
+        </h1>
+      </header>
 
-    health: [
-      {
-        label:  "Crawler fleet",
-        value:  `${fleet.overall.fleetGrade} / ${fleet.overall.fleetScore}`,
-        detail: `${fleet.overall.companiesAtRisk} at risk`,
-        state:  fleet.overall.companiesAtRisk === 0 ? "ok" : "warn",
-      },
-      {
-        label:  "AI pipeline",
-        value:  `${intelRate}% ok`,
-        detail: `${intelEvents.length} events · ${avgLatency ? `${avgLatency}ms avg` : "no data"}`,
-        state:  intelRate >= 90 ? "ok" : "warn",
-      },
-      {
-        label:  "Queue pressure",
-        value:  String(activeQueue),
-        detail: `${failedBgJobs} failed jobs`,
-        state:  failedBgJobs > 0 ? "warn" : "ok",
-      },
-    ],
+      {/* KPI strip — 2x2 on mobile, 4x1 on desktop */}
+      <div style={{
+        display: "grid", gap: 12,
+        gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))",
+      }}>
+        <KPI
+          label="Total users"
+          value={profileMetrics.totalUsers.toLocaleString("en-IN")}
+          hint={`${profileMetrics.resumesUploaded7d} resumes this week`}
+          accent
+        />
+        <KPI
+          label="Live jobs"
+          value={liveJobs.toLocaleString("en-IN")}
+          hint={`${matchComputes} match runs`}
+          live
+        />
+        <KPI
+          label="Parse health"
+          value={`${parseRate}%`}
+          delta={parseFailed === 0 ? "+0 failures" : `−${parseFailed} failed`}
+          hint={`${parseOk} ok`}
+        />
+        <KPI
+          label="LLM routing"
+          value={`${runtime.providers.length}/${runtime.presets.length}`}
+          hint={`${runtime.providers.reduce((s, p) => s + p.keyCount, 0)} keys live`}
+        />
+      </div>
 
-    attention,
+      <SectionHeader title="Pulse" sub={`Job quality across the last ${qualityRows.length || 20} jobs`} />
+      <Card p={18}>
+        <div style={{
+          display: "flex", alignItems: "baseline", justifyContent: "space-between", marginBottom: 4,
+        }}>
+          <div>
+            <div className="pm-num" style={{
+              fontSize: 30, fontWeight: 600, letterSpacing: -0.9, color: "var(--text)",
+            }}>
+              {liveJobs.toLocaleString("en-IN")}
+            </div>
+            <div style={{ fontSize: 12, color: "var(--text-3)", marginTop: 2 }}>
+              Live jobs across {companies.length} companies
+            </div>
+          </div>
+          <Badge tone={fleet.overall.companiesAtRisk === 0 ? "ok" : "warn"}>
+            Fleet {fleet.overall.fleetGrade} · {fleet.overall.fleetScore}
+          </Badge>
+        </div>
+        <Spark
+          data={qualityRows.length > 0
+            ? qualityRows.map((r) => Math.round(r.quality_score))
+            : [30, 44, 40, 55, 62, 58, 70, 72, 68, 76]}
+          h={56}
+          style={{ marginTop: 8 }}
+        />
+      </Card>
 
-    jobQualityPulse: qualityRows.map((r) => Math.round(r.quality_score)),
+      {/* Two-column: Needs attention + Quick stats */}
+      <div style={{
+        marginTop: 22,
+        display: "grid", gap: 16,
+        gridTemplateColumns: "minmax(0, 1.6fr) minmax(0, 1fr)",
+      }}>
+        <Card p={0}>
+          <SectionHeader title="Needs attention" sub="Sorted by severity" />
+          <div style={{ paddingBottom: 4 }}>
+            {attention.map((a, i) => (
+              <ListRow
+                key={a.id}
+                href={a.href}
+                divider={i < attention.length - 1}
+                leading={<SevDot sev={a.sev} />}
+                title={a.title}
+                subtitle={a.detail}
+                trailing={
+                  <Badge tone={sevBadgeTone(a.sev)}>
+                    {a.sev === "ok" ? "healthy" : a.sev === "warn" ? "watch" : "act"}
+                  </Badge>
+                }
+              />
+            ))}
+          </div>
+        </Card>
 
-    quickStats: {
-      totalUsers:   profileMetrics.totalUsers,
-      liveJobs:     activeJobsResult.count ?? 0,
-      aiArtifacts,
-      crawlerRuns:  crawlerRuns.length,
-    },
-  };
+        <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+          <Card>
+            <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
+              <Briefcase size={16} style={{ color: "var(--accent)" }} />
+              <span style={{ fontSize: 13, fontWeight: 600 }}>Crawler fleet</span>
+              <span style={{ marginLeft: "auto" }}>
+                <StatusDot live={fleet.overall.companiesAtRisk === 0} tone={fleet.overall.companiesAtRisk === 0 ? "ok" : "warn"} />
+              </span>
+            </div>
+            <div className="pm-num" style={{ fontSize: 22, fontWeight: 600, letterSpacing: -0.6 }}>
+              {fleet.overall.fleetGrade}
+              <span style={{ color: "var(--text-3)", fontWeight: 500, marginLeft: 8, fontSize: 14 }}>
+                · {fleet.overall.fleetScore}/100
+              </span>
+            </div>
+            <div style={{ fontSize: 12, color: "var(--text-3)", marginTop: 4 }}>
+              {fleet.overall.companiesAtRisk} at risk · {crawlerRuns.length} runs (14d)
+            </div>
+          </Card>
 
-  return <AdminControlRoom data={data} />;
+          <Card>
+            <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
+              <ActivityIcon size={16} style={{ color: "var(--accent)" }} />
+              <span style={{ fontSize: 13, fontWeight: 600 }}>AI pipeline</span>
+            </div>
+            <div className="pm-num" style={{ fontSize: 22, fontWeight: 600, letterSpacing: -0.6 }}>
+              {intelRate}<span style={{ fontSize: 14, color: "var(--text-3)", fontWeight: 500 }}>%</span>
+            </div>
+            <div style={{ fontSize: 12, color: "var(--text-3)", marginTop: 4 }}>
+              {intelEvents.length} events · {avgLatency ? `${avgLatency}ms avg` : "no latency data"}
+            </div>
+          </Card>
+
+          <Card>
+            <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
+              <Sparkles size={16} style={{ color: "var(--accent)" }} />
+              <span style={{ fontSize: 13, fontWeight: 600 }}>AI artifacts</span>
+            </div>
+            <div className="pm-num" style={{ fontSize: 22, fontWeight: 600, letterSpacing: -0.6 }}>
+              {aiArtifacts.toLocaleString("en-IN")}
+            </div>
+            <div style={{ fontSize: 12, color: "var(--text-3)", marginTop: 4 }}>
+              Enhanced + tailored resumes shipped
+            </div>
+          </Card>
+        </div>
+      </div>
+
+      {/* Quick actions */}
+      <SectionHeader title="Quick actions" />
+      <div style={{
+        display: "grid", gap: 12,
+        gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
+      }}>
+        <ActionTile href="/admin/users"          icon={<UsersIcon size={16} style={{ color: "var(--accent)" }} />}    title="Users"       desc="Search, suspend, inspect profiles." />
+        <ActionTile href="/admin/billing"        icon={<Sparkles size={16} style={{ color: "var(--accent)" }} />}     title="Billing"     desc="Grants, coupons, subscriptions." />
+        <ActionTile href="/admin/resumes"        icon={<FileText size={16} style={{ color: "var(--accent)" }} />}     title="Resumes"     desc="Parse health and reparse." />
+        <ActionTile href="/admin/security"       icon={<ShieldAlert size={16} style={{ color: "var(--accent)" }} />}  title="Security"    desc="Background jobs, failures." />
+        <ActionTile href="/admin/ops"            icon={<AlertTriangle size={16} style={{ color: "var(--accent)" }} />} title="Ops"        desc="Triggers, dead keys, cron." />
+      </div>
+    </div>
+  );
+}
+
+// ─── small server-only components ────────────────────────────────────────────
+
+function ActionTile({
+  href, icon, title, desc,
+}: { href: string; icon: React.ReactNode; title: string; desc: string }) {
+  return (
+    <Link href={href} style={{ display: "block" }}>
+      <Card p={16} style={{ transition: "transform .12s, box-shadow .12s" }}>
+        <div style={{
+          width: 32, height: 32, borderRadius: 8,
+          background: "var(--accent-soft)",
+          display: "flex", alignItems: "center", justifyContent: "center",
+          marginBottom: 10,
+        }}>
+          {icon}
+        </div>
+        <div style={{ fontSize: 14, fontWeight: 600, color: "var(--text)" }}>{title}</div>
+        <div style={{ fontSize: 12, color: "var(--text-3)", marginTop: 4 }}>{desc}</div>
+        <div style={{
+          marginTop: 10, fontSize: 12, fontWeight: 500,
+          color: "var(--accent)", display: "inline-flex", alignItems: "center", gap: 4,
+        }}>
+          Open <ArrowUpRight size={12} />
+        </div>
+      </Card>
+    </Link>
+  );
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -248,9 +370,25 @@ function average(values: number[]): number {
   return Math.round(values.reduce((s, v) => s + v, 0) / values.length);
 }
 
-function severityRank(tone: string): number {
-  if (tone === "danger") return 3;
-  if (tone === "warn")   return 2;
-  if (tone === "ok")     return 1;
+function sevRank(sev: SevTone): number {
+  if (sev === "error") return 3;
+  if (sev === "warn")  return 2;
+  if (sev === "ok")    return 1;
   return 0;
+}
+
+function sevBadgeTone(sev: SevTone): "ok" | "warn" | "err" | "info" {
+  if (sev === "error") return "err";
+  if (sev === "warn")  return "warn";
+  if (sev === "ok")    return "ok";
+  return "info";
+}
+
+function greetingFor(d: Date): string {
+  const h = d.getHours();
+  if (h < 5)  return "Up late";
+  if (h < 12) return "Good morning";
+  if (h < 17) return "Good afternoon";
+  if (h < 21) return "Good evening";
+  return "Good night";
 }

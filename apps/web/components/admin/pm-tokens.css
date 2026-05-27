@@ -1,0 +1,166 @@
+/* ProdMatch Admin — design tokens (ported verbatim from design_handoff_prodmatch_admin/src-design/tokens.css).
+ *
+ * Why scoped under .pm-shell instead of :root:
+ *   The token palette here (warm cream bg, oklch violet accent) is deliberately
+ *   different from the marketing/app shell. Scoping under .pm-shell keeps the
+ *   admin a self-contained surface — no risk of the cream bg leaking into the
+ *   public site if a stray <body class="pm-shell"> gets shipped.
+ *
+ * Dark mode: the app uses next-themes with `attribute="class"`, so dark is
+ * `.dark` on <html>. We respect that here with `.dark .pm-shell`. We also
+ * support an explicit `[data-theme="dark"]` so power users / Storybook can
+ * toggle the admin in isolation.
+ */
+
+.pm-shell {
+  /* light — warm-neutral, low-saturation */
+  --bg:        #FBFAF7;
+  --surface:   #FFFFFF;
+  --surface-2: #F4F2ED;
+  --surface-3: #ECEAE4;
+  --line:      #E6E3DC;
+  --line-2:    #EFEDE7;
+  --text:      #1A1A1A;
+  --text-2:    #5B5953;
+  --text-3:    #908D85;
+
+  --accent:        oklch(0.52 0.17 268);
+  --accent-soft:   oklch(0.94 0.04 268);
+  --accent-strong: oklch(0.42 0.20 268);
+  --accent-ink:    #FFFFFF;
+
+  --ok:        oklch(0.62 0.14 150);
+  --ok-soft:   oklch(0.94 0.05 150);
+  --warn:      oklch(0.72 0.15 80);
+  --warn-soft: oklch(0.95 0.06 80);
+  --err:       oklch(0.58 0.20 25);
+  --err-soft:  oklch(0.94 0.05 25);
+  --info-soft: oklch(0.94 0.04 240);
+
+  --shadow-1: 0 1px 0 rgba(20,18,14,.04), 0 1px 2px rgba(20,18,14,.06);
+  --shadow-2: 0 1px 2px rgba(20,18,14,.05), 0 8px 24px -8px rgba(20,18,14,.10);
+  --shadow-3: 0 2px 4px rgba(20,18,14,.06), 0 24px 48px -16px rgba(20,18,14,.18);
+
+  --radius-sm: 6px;
+  --radius:    10px;
+  --radius-lg: 14px;
+  --radius-xl: 20px;
+
+  --font-ui:   var(--font-geist, "Geist"), -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+  --font-mono: var(--font-geist-mono, "Geist Mono"), ui-monospace, "SF Mono", Menlo, monospace;
+
+  /* density (cozy default) */
+  --row-h: 56px;
+  --row-pad: 14px 16px;
+  --section-gap: 22px;
+
+  font-family: var(--font-ui);
+  color: var(--text);
+  background: var(--bg);
+  font-size: 15px;
+  line-height: 1.45;
+  letter-spacing: -0.005em;
+  -webkit-font-smoothing: antialiased;
+  font-feature-settings: "ss01", "ss02", "cv11";
+}
+
+.dark .pm-shell,
+[data-theme="dark"] .pm-shell,
+.pm-shell[data-theme="dark"] {
+  --bg:        #0E0D0C;
+  --surface:   #161513;
+  --surface-2: #1D1B18;
+  --surface-3: #25221E;
+  --line:      #2A2723;
+  --line-2:    #1F1D1A;
+  --text:      #F0EFEB;
+  --text-2:    #A19E97;
+  --text-3:    #6F6C66;
+
+  --accent:        oklch(0.72 0.16 268);
+  --accent-soft:   oklch(0.30 0.10 268);
+  --accent-strong: oklch(0.80 0.14 268);
+  --accent-ink:    #0E0D0C;
+
+  --ok:        oklch(0.74 0.16 150);
+  --ok-soft:   oklch(0.28 0.07 150);
+  --warn:      oklch(0.80 0.16 80);
+  --warn-soft: oklch(0.28 0.08 80);
+  --err:       oklch(0.70 0.20 25);
+  --err-soft:  oklch(0.28 0.08 25);
+  --info-soft: oklch(0.28 0.06 240);
+
+  --shadow-1: 0 1px 0 rgba(0,0,0,.4), 0 1px 2px rgba(0,0,0,.4);
+  --shadow-2: 0 1px 2px rgba(0,0,0,.4), 0 8px 24px -8px rgba(0,0,0,.5);
+  --shadow-3: 0 2px 4px rgba(0,0,0,.5), 0 24px 48px -16px rgba(0,0,0,.6);
+}
+
+[data-density="compact"].pm-shell {
+  --row-h: 44px;
+  --row-pad: 10px 14px;
+  --section-gap: 16px;
+}
+
+.pm-shell .pm-mono { font-family: var(--font-mono); font-feature-settings: "zero", "ss01"; }
+.pm-shell .pm-num  { font-variant-numeric: tabular-nums; font-feature-settings: "tnum", "ss01"; }
+
+/* in-shell resets so the tailwind globals don't fight us */
+.pm-shell h1, .pm-shell h2, .pm-shell h3, .pm-shell h4, .pm-shell p { margin: 0; }
+.pm-shell button { font: inherit; color: inherit; }
+.pm-shell a       { color: inherit; text-decoration: none; }
+
+.pm-shell .pm-scroll::-webkit-scrollbar { width: 0; height: 0; }
+.pm-shell .pm-scroll { scrollbar-width: none; }
+
+@keyframes pm-pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50%      { opacity: 0.5; transform: scale(0.85); }
+}
+.pm-shell .pm-live-dot {
+  display: inline-block; width: 7px; height: 7px; border-radius: 50%;
+  background: var(--ok);
+  animation: pm-pulse 1.6s ease-in-out infinite;
+  box-shadow: 0 0 0 3px color-mix(in oklab, var(--ok) 22%, transparent);
+}
+@media (prefers-reduced-motion: reduce) {
+  .pm-shell .pm-live-dot { animation: none; }
+}
+
+@keyframes pm-tick {
+  0%   { transform: translateY(0);    opacity: 1;   }
+  50%  { transform: translateY(-2px); opacity: 0.6; }
+  100% { transform: translateY(0);    opacity: 1;   }
+}
+.pm-shell .pm-tick { display: inline-block; animation: pm-tick 0.45s ease-out; }
+@media (prefers-reduced-motion: reduce) {
+  .pm-shell .pm-tick { animation: none; }
+}
+
+.pm-shell .pm-spark path        { fill: none; stroke: var(--accent); stroke-width: 1.6; }
+.pm-shell .pm-spark .area       { fill: color-mix(in oklab, var(--accent) 18%, transparent); stroke: none; }
+
+/* nav link hover (non-active links only) */
+.pm-shell .pm-nav-link[data-active="false"]:hover {
+  background: var(--surface-2);
+  color: var(--text);
+}
+.pm-shell .pm-nav-link[data-active="false"]:hover svg {
+  color: var(--text-2);
+}
+
+/* list row hover (when interactive) */
+.pm-shell .pm-listrow[data-clickable="true"]:hover {
+  background: var(--surface-2);
+}
+
+/* button hover */
+.pm-shell .pm-btn:hover:not(:disabled) {
+  filter: brightness(0.97);
+}
+.pm-shell .pm-btn[data-variant="ghost"]:hover:not(:disabled) {
+  background: var(--surface-2);
+  filter: none;
+}
+.pm-shell .pm-btn:active:not(:disabled) {
+  transform: translateY(0.5px);
+}
