@@ -2,6 +2,7 @@
 
 import { useRouter, useSearchParams } from "next/navigation";
 import { useState, useTransition } from "react";
+import { approveAllPending } from "./actions";
 
 type Current = {
   status?: string;
@@ -83,6 +84,56 @@ export function QueueFilters({ current }: { current: Current }) {
           Clear
         </button>
       </div>
+    </div>
+  );
+}
+
+export function ApproveAllButton({ pending }: { pending: number }) {
+  const router = useRouter();
+  const [isPending, startTransition] = useTransition();
+  const [msg, setMsg] = useState<string | null>(null);
+
+  function run() {
+    if (pending === 0) return;
+    const ok = window.confirm(
+      `Approve all ${pending} pending question${pending === 1 ? "" : "s"}? They will go live and become eligible for daily dispatch.`,
+    );
+    if (!ok) return;
+    setMsg(null);
+    startTransition(async () => {
+      const res = await approveAllPending();
+      if (res.ok) {
+        setMsg(`Approved ${res.approved} question${res.approved === 1 ? "" : "s"}.`);
+        router.refresh();
+      } else {
+        setMsg(`Error: ${res.error}`);
+      }
+    });
+  }
+
+  return (
+    <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+      <button
+        type="button"
+        onClick={run}
+        disabled={isPending || pending === 0}
+        style={{
+          minHeight: 38, padding: "0 16px", borderRadius: 9,
+          background: pending === 0 ? "var(--surface)" : "var(--accent)",
+          color: pending === 0 ? "var(--text-3)" : "var(--accent-fg, #fff)",
+          border: pending === 0 ? "1px solid var(--line)" : "none",
+          fontSize: 13, fontWeight: 600,
+          cursor: isPending || pending === 0 ? "default" : "pointer",
+          opacity: isPending ? 0.7 : 1,
+        }}
+      >
+        {isPending ? "Approving…" : `Approve all pending (${pending})`}
+      </button>
+      {msg && (
+        <span style={{ fontSize: 12, color: msg.startsWith("Error") ? "var(--err)" : "var(--ok, var(--accent))" }}>
+          {msg}
+        </span>
+      )}
     </div>
   );
 }

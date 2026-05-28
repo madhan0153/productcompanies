@@ -57,6 +57,55 @@ export async function approveQuestion(questionId: string): Promise<Result> {
   return { ok: true };
 }
 
+export async function approveAllPending(): Promise<
+  { ok: true; approved: number } | { ok: false; error: string }
+> {
+  const gate = await requireAdmin();
+  if (!gate.isAdmin || !gate.userId) return { ok: false, error: "Not authorised" };
+
+  const admin = createSupabaseAdminClient();
+
+  // Grab the ids first so we can write one audit row per approved question.
+  const { data, error: readError } = (await admin
+    .from("dsa_questions")
+    .select("id")
+    .eq("status", "pending_review")) as unknown as {
+      data: Array<{ id: string }> | null;
+      error: { message: string } | null;
+    };
+  if (readError) return { ok: false, error: readError.message };
+
+  const ids = (data ?? []).map((r) => r.id);
+  if (ids.length === 0) return { ok: true, approved: 0 };
+
+  const now = new Date().toISOString();
+  const { error: writeError } = await admin
+    .from("dsa_questions")
+    .update({
+      status: "live",
+      reviewed_by: gate.userId,
+      reviewed_at: now,
+      rejection_reason: null,
+      updated_at: now,
+    } as never)
+    .eq("status", "pending_review");
+  if (writeError) return { ok: false, error: writeError.message };
+
+  // Append-only audit: one row per question, mirroring single approvals.
+  await admin.from("dsa_question_review_events").insert(
+    ids.map((id) => ({
+      question_id: id,
+      reviewer_id: gate.userId,
+      action: "approve" as const,
+      reason: "bulk approve",
+      diff: { status: "live" },
+    })) as never,
+  );
+
+  revalidatePath("/admin/content/dsa/queue");
+  return { ok: true, approved: ids.length };
+}
+
 export async function rejectQuestion(questionId: string, reason: string): Promise<Result> {
   const gate = await requireAdmin();
   if (!gate.isAdmin || !gate.userId) return { ok: false, error: "Not authorised" };

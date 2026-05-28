@@ -3,7 +3,7 @@ import Link from "next/link";
 import { DSA_V2_PATTERNS_DISPLAY } from "@prodmatch/shared";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { Badge, Card, KPI, SectionHeader } from "@/components/admin/pm";
-import { QueueFilters } from "./queue-client";
+import { QueueFilters, ApproveAllButton } from "./queue-client";
 
 export const metadata: Metadata = { title: "Admin · DSA Review Queue" };
 export const dynamic = "force-dynamic";
@@ -99,10 +99,11 @@ export default async function DsaQueuePage({
         <p style={{ marginTop: 6, fontSize: 13, color: "var(--text-2)" }}>
           Every authored question lands here as pending_review. Approve to make it live; reject or defer with a written reason. Live questions are the only ones eligible for daily dispatch.
         </p>
-        <div style={{ marginTop: 10, fontSize: 12, color: "var(--text-3)" }}>
-          <Link href="/api/admin/dsa-v2-seed" style={{ color: "var(--accent)", textDecoration: "none" }}>
+        <div style={{ marginTop: 12, display: "flex", alignItems: "center", gap: 16, flexWrap: "wrap" }}>
+          <Link href="/api/admin/dsa-v2-seed" style={{ fontSize: 12, color: "var(--accent)", textDecoration: "none" }}>
             ↻ Seed repo bank → DB (idempotent)
           </Link>
+          <ApproveAllButton pending={counts.pending} />
         </div>
       </header>
 
