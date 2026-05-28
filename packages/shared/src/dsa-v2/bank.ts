@@ -10,12 +10,14 @@ import { BATCH_001 } from "./questions/batch-001";
 import { BATCH_002 } from "./questions/batch-002";
 import { BATCH_003 } from "./questions/batch-003";
 import { BATCH_004 } from "./questions/batch-004";
+import { BATCH_005 } from "./questions/batch-005";
 
 export const DSA_V2_BANK: readonly DsaV2Question[] = [
   ...BATCH_001,
   ...BATCH_002,
   ...BATCH_003,
   ...BATCH_004,
+  ...BATCH_005,
 ] as const;
 
 export const DSA_V2_BANK_BY_SLUG: Record<string, DsaV2Question> =
