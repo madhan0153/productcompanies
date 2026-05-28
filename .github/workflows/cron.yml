@@ -1,0 +1,120 @@
+name: Scheduled Crons
+
+# Replaces Vercel Cron Jobs (which the Hobby plan caps at 2 daily-only
+# schedules). Each job below pings a cron endpoint with the same Bearer auth
+# the in-app routes expect (requireCronAuth → CRON_SECRET). All schedules are
+# in UTC; the IST intent is noted next to each.
+#
+# Endpoints + original Vercel schedules preserved 1:1:
+#   /api/cron/digest                30 2 * * 1    (weekly digest, Mon 02:30)
+#   /api/cron/recompute-matches     30 22 * * *   (nightly, 22:30)
+#   /api/cron/drain-background-jobs */15 * * * *  (every 15 min)
+
+on:
+  schedule:
+    - cron: "30 2 * * 1"     # digest
+    - cron: "30 22 * * *"    # recompute-matches
+    - cron: "*/15 * * * *"   # drain-background-jobs
+  workflow_dispatch:
+    inputs:
+      endpoint:
+        description: "Which endpoint to hit manually"
+        required: true
+        default: "drain-background-jobs"
+        type: choice
+        options:
+          - digest
+          - recompute-matches
+          - drain-background-jobs
+
+permissions:
+  contents: read
+
+concurrency:
+  group: scheduled-crons-${{ github.event.schedule || github.event.inputs.endpoint }}
+  cancel-in-progress: false
+
+jobs:
+  digest:
+    name: "Weekly digest"
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    if: >-
+      ${{ github.event.schedule == '30 2 * * 1'
+          || (github.event_name == 'workflow_dispatch' && github.event.inputs.endpoint == 'digest') }}
+    steps:
+      - name: POST /api/cron/digest
+        env:
+          APP_URL: ${{ secrets.APP_URL }}
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+        run: |
+          if [ -z "$APP_URL" ] || [ -z "$CRON_SECRET" ]; then
+            echo "::warning::APP_URL or CRON_SECRET missing — skipping digest"
+            exit 0
+          fi
+          http_code=$(curl -sS -o /tmp/resp.json -w "%{http_code}" \
+            -X POST "${APP_URL}/api/cron/digest" \
+            -H "Authorization: Bearer ${CRON_SECRET}" \
+            -H "Content-Type: application/json" \
+            --max-time 280)
+          cat /tmp/resp.json; echo
+          if [ "$http_code" != "200" ]; then
+            echo "::warning::digest returned HTTP $http_code"
+            exit 1
+          fi
+
+  recompute_matches:
+    name: "Recompute matches"
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    if: >-
+      ${{ github.event.schedule == '30 22 * * *'
+          || (github.event_name == 'workflow_dispatch' && github.event.inputs.endpoint == 'recompute-matches') }}
+    steps:
+      - name: POST /api/cron/recompute-matches
+        env:
+          APP_URL: ${{ secrets.APP_URL }}
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+        run: |
+          if [ -z "$APP_URL" ] || [ -z "$CRON_SECRET" ]; then
+            echo "::warning::APP_URL or CRON_SECRET missing — skipping recompute"
+            exit 0
+          fi
+          http_code=$(curl -sS -o /tmp/resp.json -w "%{http_code}" \
+            -X POST "${APP_URL}/api/cron/recompute-matches" \
+            -H "Authorization: Bearer ${CRON_SECRET}" \
+            -H "Content-Type: application/json" \
+            --max-time 280)
+          cat /tmp/resp.json; echo
+          if [ "$http_code" != "200" ]; then
+            echo "::warning::recompute-matches returned HTTP $http_code"
+            exit 1
+          fi
+
+  drain_background_jobs:
+    name: "Drain background jobs"
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    if: >-
+      ${{ github.event.schedule == '*/15 * * * *'
+          || (github.event_name == 'workflow_dispatch' && github.event.inputs.endpoint == 'drain-background-jobs') }}
+    steps:
+      - name: POST /api/cron/drain-background-jobs
+        env:
+          APP_URL: ${{ secrets.APP_URL }}
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+        run: |
+          if [ -z "$APP_URL" ] || [ -z "$CRON_SECRET" ]; then
+            echo "::warning::APP_URL or CRON_SECRET missing — skipping drain"
+            exit 0
+          fi
+          http_code=$(curl -sS -o /tmp/resp.json -w "%{http_code}" \
+            -X POST "${APP_URL}/api/cron/drain-background-jobs" \
+            -H "Authorization: Bearer ${CRON_SECRET}" \
+            -H "Content-Type: application/json" \
+            --max-time 280)
+          cat /tmp/resp.json; echo
+          if [ "$http_code" != "200" ]; then
+            echo "::warning::drain-background-jobs returned HTTP $http_code"
+            exit 1
+          fi
