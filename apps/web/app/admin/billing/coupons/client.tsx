@@ -2,8 +2,7 @@
 
 import { useActionState, useMemo, useState, useTransition } from "react";
 import {
-  Search, Plus, ChevronDown, Copy, CheckCircle2, AlertCircle,
-  X, Loader2, Pause, Play, Trash2,
+  AlertCircle, CheckCircle2, ChevronDown, Copy, Loader2, Pause, Plus, Search, X,
 } from "lucide-react";
 import {
   createPromoCode, deactivatePromoCode, type PromoFormState,
@@ -12,7 +11,6 @@ import type { CouponRow } from "./page";
 
 type Filter = "all" | "active" | "expiring" | "paused" | "expired";
 
-const INPUT = "h-10 w-full rounded-lg border border-border bg-background px-3 text-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20 disabled:opacity-60";
 const initialState: PromoFormState = { ok: false, message: "" };
 
 function statusOf(c: CouponRow): "active" | "expiring" | "paused" | "expired" | "exhausted" {
@@ -48,41 +46,50 @@ export function CouponsClient({ coupons }: { coupons: CouponRow[] }) {
   }, [coupons, query, filter]);
 
   return (
-    <div className="space-y-4">
-      {/* Search + filter pills */}
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-        <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
+    <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+      {/* Search + create CTA */}
+      <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
+        <div style={{
+          flex: 1, minWidth: 200,
+          display: "flex", alignItems: "center", gap: 8, padding: "0 12px",
+          height: 38, background: "var(--surface-2)", borderRadius: 10,
+          border: "1px solid transparent",
+        }}>
+          <Search size={14} style={{ color: "var(--text-3)" }} />
           <input
             type="text"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder="Search by label or grant type…"
-            className={`${INPUT} pl-9`}
+            style={{
+              flex: 1, border: "none", background: "transparent", outline: "none",
+              fontFamily: "inherit", fontSize: 14, color: "var(--text)", minWidth: 0,
+            }}
           />
         </div>
-        <button
-          type="button"
-          onClick={() => setCreating((v) => !v)}
-          className="inline-flex h-10 items-center justify-center gap-1.5 rounded-lg bg-primary px-4 text-sm font-semibold text-primary-foreground hover:bg-primary/90"
-        >
-          {creating ? <X className="h-3.5 w-3.5" /> : <Plus className="h-3.5 w-3.5" />}
+        <button type="button" onClick={() => setCreating((v) => !v)} className="pm-cta">
+          {creating ? <X size={14} /> : <Plus size={14} />}
           {creating ? "Close" : "New coupon"}
         </button>
       </div>
 
-      <div className="-mx-1 flex gap-1.5 overflow-x-auto px-1 pb-1">
+      {/* Filter pills */}
+      <div style={{ display: "flex", gap: 6, overflowX: "auto", paddingBottom: 2 }} className="pm-scroll">
         {(["all", "active", "expiring", "paused", "expired"] as Filter[]).map((f) => {
           const isActive = filter === f;
           return (
             <button
               key={f}
+              type="button"
               onClick={() => setFilter(f)}
-              className={`shrink-0 rounded-full border px-3 py-1 text-xs font-medium capitalize transition ${
-                isActive
-                  ? "border-primary bg-primary/10 text-primary"
-                  : "border-border bg-background text-muted-foreground hover:bg-secondary"
-              }`}
+              style={{
+                padding: "6px 12px", borderRadius: 999,
+                border: isActive ? "1px solid var(--accent)" : "1px solid var(--line)",
+                background: isActive ? "var(--accent-soft)" : "var(--surface)",
+                color: isActive ? "var(--accent-strong)" : "var(--text-2)",
+                fontSize: 13, fontWeight: 500, whiteSpace: "nowrap", textTransform: "capitalize",
+                cursor: "pointer", flexShrink: 0,
+              }}
             >
               {f}
             </button>
@@ -90,25 +97,28 @@ export function CouponsClient({ coupons }: { coupons: CouponRow[] }) {
         })}
       </div>
 
-      {/* New coupon inline sheet */}
       {creating && <NewCouponSheet onDone={() => setCreating(false)} />}
 
-      {/* Coupon list */}
-      <div className="overflow-hidden rounded-xl border border-border bg-card">
+      <div style={{
+        borderRadius: 14, border: "1px solid var(--line)",
+        background: "var(--surface)", overflow: "hidden",
+        boxShadow: "var(--shadow-1)",
+      }}>
         {filtered.length === 0 ? (
-          <p className="px-5 py-8 text-center text-sm text-muted-foreground">
+          <p style={{ padding: 24, textAlign: "center", color: "var(--text-3)", fontSize: 13 }}>
             {query || filter !== "all"
               ? "No coupons match the current filter."
               : "No coupons yet. Tap “New coupon” to create one."}
           </p>
         ) : (
-          <ul className="divide-y divide-border/60">
-            {filtered.map((c) => (
+          <ul style={{ listStyle: "none", padding: 0, margin: 0 }}>
+            {filtered.map((c, i) => (
               <CouponRowItem
                 key={c.id}
                 coupon={c}
                 expanded={expanded === c.id}
                 onToggle={() => setExpanded((curr) => curr === c.id ? null : c.id)}
+                divider={i < filtered.length - 1}
               />
             ))}
           </ul>
@@ -117,8 +127,6 @@ export function CouponsClient({ coupons }: { coupons: CouponRow[] }) {
     </div>
   );
 }
-
-// ─── New-coupon sheet ─────────────────────────────────────────────────────────
 
 function NewCouponSheet({ onDone }: { onDone: () => void }) {
   const [state, action, pending] = useActionState(createPromoCode, initialState);
@@ -135,18 +143,22 @@ function NewCouponSheet({ onDone }: { onDone: () => void }) {
   }
 
   return (
-    <div className="rounded-xl border border-primary/30 bg-primary/5 p-5">
-      <p className="mb-3 text-sm font-semibold">Create a new coupon</p>
-      <form action={action} className="grid gap-3 sm:grid-cols-2">
+    <div style={{
+      padding: 18, borderRadius: 14,
+      background: "var(--accent-soft)",
+      border: "1px solid color-mix(in oklab, var(--accent) 30%, transparent)",
+    }}>
+      <p style={{ marginBottom: 12, fontSize: 13, fontWeight: 600 }}>Create a new coupon</p>
+      <form action={action} style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
         <Field label="Internal label">
-          <input type="text" name="label" required maxLength={64} placeholder="e.g. Founders Q1" className={INPUT} />
+          <input type="text" name="label" required maxLength={64} placeholder="e.g. Founders Q1" className="pm-input" />
         </Field>
         <Field label="Code prefix (optional)">
-          <input type="text" name="prefix" defaultValue="FRIEND" maxLength={8} className={INPUT} />
+          <input type="text" name="prefix" defaultValue="FRIEND" maxLength={8} className="pm-input" />
         </Field>
 
-        <Field label="Grant type" className="sm:col-span-2">
-          <select name="grantType" value={grantType} onChange={(e) => setGrantType(e.target.value)} className={INPUT}>
+        <Field label="Grant type" span={2}>
+          <select name="grantType" value={grantType} onChange={(e) => setGrantType(e.target.value)} className="pm-select">
             <option value="pro_12_months">Pro — 12 months</option>
             <option value="pro_lifetime">Pro — Lifetime</option>
             <option value="career_sprint_3_months">Career Sprint — 3 months</option>
@@ -157,84 +169,88 @@ function NewCouponSheet({ onDone }: { onDone: () => void }) {
         {grantType === "credits_fixed" && (
           <>
             <Field label="Credit kind">
-              <select name="creditKind" defaultValue="tailored_resume" className={INPUT}>
+              <select name="creditKind" defaultValue="tailored_resume" className="pm-select">
                 <option value="tailored_resume">Tailored resume</option>
                 <option value="resume_reparse">Resume re-parse</option>
                 <option value="priority_recompute">Priority recompute</option>
               </select>
             </Field>
             <Field label="Credit amount">
-              <input type="number" name="creditAmount" min={1} max={1000} defaultValue={10} className={`${INPUT} tabular-nums`} />
+              <input type="number" name="creditAmount" min={1} max={1000} defaultValue={10} className="pm-input pm-num" />
             </Field>
           </>
         )}
 
         <Field label="Custom duration (days)">
-          <input type="number" name="durationDays" min={1} max={3650} placeholder="auto" className={`${INPUT} tabular-nums`} />
+          <input type="number" name="durationDays" min={1} max={3650} placeholder="auto" className="pm-input pm-num" />
         </Field>
         <Field label="Max redemptions">
-          <input type="number" name="maxRedemptions" min={1} placeholder="unlimited" className={`${INPUT} tabular-nums`} />
+          <input type="number" name="maxRedemptions" min={1} placeholder="unlimited" className="pm-input pm-num" />
         </Field>
-        <Field label="Code expires (days from now)" className="sm:col-span-2">
-          <input type="number" name="expiresInDays" min={1} max={3650} placeholder="never" className={`${INPUT} tabular-nums`} />
+        <Field label="Code expires (days from now)" span={2}>
+          <input type="number" name="expiresInDays" min={1} max={3650} placeholder="never" className="pm-input pm-num" />
         </Field>
 
-        <div className="sm:col-span-2 flex flex-col gap-2 sm:flex-row sm:justify-end">
-          <button
-            type="button"
-            onClick={onDone}
-            className="inline-flex h-10 items-center justify-center rounded-lg border border-border bg-background px-4 text-sm font-medium hover:bg-secondary"
-          >
-            Cancel
-          </button>
-          <button
-            type="submit"
-            disabled={pending}
-            className="inline-flex h-10 items-center justify-center gap-1.5 rounded-lg bg-primary px-5 text-sm font-semibold text-primary-foreground hover:bg-primary/90 disabled:opacity-60"
-          >
-            {pending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Plus className="h-3.5 w-3.5" />}
+        <div style={{ gridColumn: "span 2", display: "flex", gap: 8, justifyContent: "flex-end", flexWrap: "wrap" }}>
+          <button type="button" onClick={onDone} className="pm-cta pm-cta-secondary">Cancel</button>
+          <button type="submit" disabled={pending} className="pm-cta">
+            {pending ? <Loader2 size={14} className="animate-spin" /> : <Plus size={14} />}
             {pending ? "Creating…" : "Create coupon"}
           </button>
         </div>
       </form>
 
       {state.message && !state.ok && (
-        <div className="mt-3 flex items-start gap-2 rounded-lg border border-rose-500/30 bg-rose-500/10 p-2 text-xs text-rose-700 dark:text-rose-300">
-          <AlertCircle className="mt-0.5 h-3.5 w-3.5 shrink-0" /> <span>{state.message}</span>
+        <div className="pm-alert" data-tone="err" style={{ marginTop: 12 }}>
+          <AlertCircle size={14} /> <span>{state.message}</span>
         </div>
       )}
 
       {state.ok && state.code && (
-        <div className="mt-4 rounded-xl border-2 border-dashed border-emerald-500/40 bg-emerald-500/5 p-4">
-          <p className="mb-2 text-[11px] font-semibold uppercase tracking-widest text-emerald-700 dark:text-emerald-400">
-            ⚠️ Copy now — this code is shown only once
+        <div style={{
+          marginTop: 14, padding: 14, borderRadius: 12,
+          background: "var(--ok-soft)",
+          border: "2px dashed color-mix(in oklab, var(--ok) 40%, transparent)",
+        }}>
+          <p style={{ marginBottom: 8, fontSize: 10, fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.12em", color: "var(--ok)" }}>
+            ⚠ Copy now — this code is shown only once
           </p>
-          <div className="flex items-center gap-2 rounded-lg bg-background p-3">
-            <code className="flex-1 break-all font-mono text-base font-bold tracking-widest">{state.code}</code>
+          <div style={{
+            display: "flex", alignItems: "center", gap: 8, padding: 10, borderRadius: 8,
+            background: "var(--surface)",
+          }}>
+            <code style={{
+              flex: 1, fontFamily: "var(--font-mono)", fontSize: 15, fontWeight: 700,
+              letterSpacing: "0.06em", color: "var(--text)", wordBreak: "break-all",
+            }}>{state.code}</code>
             <button
               type="button"
               onClick={copy}
-              className="inline-flex items-center gap-1 rounded-md bg-secondary px-3 py-1.5 text-xs font-medium hover:bg-secondary/70"
+              style={{
+                display: "inline-flex", alignItems: "center", gap: 4,
+                padding: "6px 10px", borderRadius: 6,
+                background: "var(--surface-2)", color: "var(--text)",
+                border: "none", cursor: "pointer", fontSize: 12, fontWeight: 500,
+              }}
             >
-              {copied ? <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500" /> : <Copy className="h-3.5 w-3.5" />}
+              {copied ? <CheckCircle2 size={14} style={{ color: "var(--ok)" }} /> : <Copy size={14} />}
               {copied ? "Copied" : "Copy"}
             </button>
           </div>
-          <p className="mt-2 text-[11px] text-muted-foreground">{state.message}</p>
+          <p style={{ marginTop: 8, fontSize: 11, color: "var(--text-3)" }}>{state.message}</p>
         </div>
       )}
     </div>
   );
 }
 
-// ─── Row item ────────────────────────────────────────────────────────────────
-
 function CouponRowItem({
-  coupon, expanded, onToggle,
+  coupon, expanded, onToggle, divider,
 }: {
-  coupon:   CouponRow;
+  coupon: CouponRow;
   expanded: boolean;
   onToggle: () => void;
+  divider: boolean;
 }) {
   const [pending, start] = useTransition();
   const status = statusOf(coupon);
@@ -242,65 +258,79 @@ function CouponRowItem({
     ? Math.min(100, Math.round((coupon.redeemed_count / coupon.max_redemptions) * 100))
     : 0;
 
-  const stateTone = {
-    active:    "border-emerald-500/30 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400",
-    expiring:  "border-amber-500/30 bg-amber-500/10 text-amber-700 dark:text-amber-400",
-    paused:    "border-border bg-secondary text-muted-foreground",
-    expired:   "border-border bg-secondary text-muted-foreground",
-    exhausted: "border-border bg-secondary text-muted-foreground",
-  }[status];
+  const stateBg = status === "active"   ? "var(--ok-soft)"
+                : status === "expiring" ? "var(--warn-soft)"
+                                        : "var(--surface-2)";
+  const stateFg = status === "active"   ? "var(--ok)"
+                : status === "expiring" ? "var(--warn)"
+                                        : "var(--text-3)";
 
   return (
-    <li className={`transition-colors ${expanded ? "bg-secondary/30" : "hover:bg-secondary/20"}`}>
+    <li style={{
+      background: expanded ? "var(--surface-2)" : "transparent",
+      borderBottom: divider ? "1px solid var(--line-2)" : "none",
+      transition: "background .12s",
+    }}>
       <button
         type="button"
         onClick={onToggle}
-        className="flex w-full items-center justify-between gap-3 px-4 py-3 text-left sm:px-5"
         aria-expanded={expanded}
+        style={{
+          width: "100%", display: "flex", alignItems: "center", gap: 10,
+          padding: "12px 16px", textAlign: "left",
+          background: "transparent", border: "none", cursor: "pointer", color: "inherit",
+        }}
       >
-        <div className="min-w-0 flex-1">
-          <p className="truncate text-sm font-semibold">{coupon.code_label ?? "Untitled"}</p>
-          <p className="mt-0.5 text-[11px] text-muted-foreground">
+        <div style={{ minWidth: 0, flex: 1 }}>
+          <p style={{ fontSize: 13, fontWeight: 600, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+            {coupon.code_label ?? "Untitled"}
+          </p>
+          <p style={{ fontSize: 11, color: "var(--text-3)", marginTop: 2 }}>
             {coupon.grant_type.replace(/_/g, " ")}
             {coupon.duration_days && ` · ${coupon.duration_days}d`}
             {" · "}
             {coupon.redeemed_count}/{coupon.max_redemptions ?? "∞"} used
           </p>
         </div>
-        <span className={`shrink-0 rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider ${stateTone}`}>
-          {status}
-        </span>
+        <span style={{
+          padding: "2px 8px", borderRadius: 999,
+          fontSize: 10, fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.08em",
+          background: stateBg, color: stateFg,
+        }}>{status}</span>
         <ChevronDown
-          className={`h-4 w-4 shrink-0 text-muted-foreground transition-transform ${expanded ? "rotate-180" : ""}`}
-          aria-hidden
+          size={16}
+          style={{ color: "var(--text-3)", transform: expanded ? "rotate(180deg)" : "rotate(0)", transition: "transform .15s" }}
         />
       </button>
 
       {expanded && (
-        <div className="border-t border-border/60 px-4 py-3 sm:px-5">
-          <dl className="grid grid-cols-2 gap-x-4 gap-y-2 text-xs">
-            <Detail label="Grant type"    value={coupon.grant_type} mono />
+        <div style={{ padding: "0 16px 14px" }}>
+          <dl style={{ display: "grid", gridTemplateColumns: "1fr 1fr", columnGap: 14, rowGap: 8, fontSize: 12 }}>
+            <Detail label="Grant type"      value={coupon.grant_type} mono />
             {coupon.credit_kind && <Detail label="Credit kind" value={`${coupon.credit_amount} × ${coupon.credit_kind}`} />}
-            <Detail label="Duration"      value={coupon.duration_days ? `${coupon.duration_days}d` : "default"} />
+            <Detail label="Duration"        value={coupon.duration_days ? `${coupon.duration_days}d` : "default"} />
             <Detail label="Max redemptions" value={coupon.max_redemptions === null ? "Unlimited" : String(coupon.max_redemptions)} />
-            <Detail label="Expires"       value={coupon.expires_at ? new Date(coupon.expires_at).toLocaleDateString("en-IN") : "Never"} />
-            <Detail label="Created"       value={new Date(coupon.created_at).toLocaleDateString("en-IN")} />
+            <Detail label="Expires"         value={coupon.expires_at ? new Date(coupon.expires_at).toLocaleDateString("en-IN") : "Never"} />
+            <Detail label="Created"         value={new Date(coupon.created_at).toLocaleDateString("en-IN")} />
           </dl>
 
           {coupon.max_redemptions !== null && (
-            <div className="mt-3">
-              <div className="mb-1 flex items-center justify-between text-[11px] text-muted-foreground">
+            <div style={{ marginTop: 12 }}>
+              <div style={{ display: "flex", justifyContent: "space-between", fontSize: 11, color: "var(--text-3)", marginBottom: 4 }}>
                 <span>Redemption progress</span>
-                <span className="tabular-nums">{pct}%</span>
+                <span className="pm-num">{pct}%</span>
               </div>
-              <div className="relative h-1.5 overflow-hidden rounded-full bg-border">
-                <div className="absolute inset-y-0 left-0 rounded-full bg-primary transition-all" style={{ width: `${pct}%` }} />
+              <div style={{ height: 6, borderRadius: 999, background: "var(--surface-3)", overflow: "hidden" }}>
+                <div style={{
+                  height: "100%", borderRadius: 999, width: `${pct}%`,
+                  background: "var(--accent)", transition: "width .3s",
+                }}/>
               </div>
             </div>
           )}
 
           {status !== "expired" && status !== "exhausted" && coupon.is_active && (
-            <div className="mt-4 flex flex-wrap gap-2">
+            <div style={{ marginTop: 14, display: "flex", flexWrap: "wrap", gap: 8 }}>
               <button
                 type="button"
                 disabled={pending}
@@ -308,9 +338,16 @@ function CouponRowItem({
                   if (!confirm(`Pause "${coupon.code_label ?? "this code"}"? Existing redemptions stay valid; new ones will be rejected.`)) return;
                   start(() => { deactivatePromoCode(coupon.id); });
                 }}
-                className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-background px-3 py-1.5 text-xs font-medium hover:border-rose-500/40 hover:text-rose-600 dark:hover:text-rose-400 disabled:opacity-50"
+                style={{
+                  display: "inline-flex", alignItems: "center", gap: 6,
+                  padding: "6px 12px", borderRadius: 8, fontSize: 12, fontWeight: 500,
+                  background: "var(--surface)", color: "var(--text-2)",
+                  border: "1px solid var(--line)",
+                  cursor: pending ? "not-allowed" : "pointer",
+                  opacity: pending ? 0.5 : 1,
+                }}
               >
-                {pending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Pause className="h-3.5 w-3.5" />}
+                {pending ? <Loader2 size={14} className="animate-spin" /> : <Pause size={14} />}
                 Pause coupon
               </button>
             </div>
@@ -321,12 +358,10 @@ function CouponRowItem({
   );
 }
 
-// ─── Atoms ───────────────────────────────────────────────────────────────────
-
-function Field({ label, children, className }: { label: string; children: React.ReactNode; className?: string }) {
+function Field({ label, children, span }: { label: string; children: React.ReactNode; span?: 2 }) {
   return (
-    <label className={`block ${className ?? ""}`}>
-      <span className="mb-1 block text-xs font-medium text-muted-foreground">{label}</span>
+    <label style={{ display: "block", gridColumn: span === 2 ? "span 2" : undefined }}>
+      <span className="pm-label">{label}</span>
       {children}
     </label>
   );
@@ -335,8 +370,11 @@ function Field({ label, children, className }: { label: string; children: React.
 function Detail({ label, value, mono }: { label: string; value: string; mono?: boolean }) {
   return (
     <div>
-      <dt className="text-[10px] uppercase tracking-wider text-muted-foreground">{label}</dt>
-      <dd className={`text-foreground ${mono ? "font-mono text-[11px]" : ""}`}>{value}</dd>
+      <dt style={{ fontSize: 10, color: "var(--text-3)", textTransform: "uppercase", letterSpacing: "0.08em" }}>{label}</dt>
+      <dd style={{
+        fontSize: mono ? 11 : 12, color: "var(--text)",
+        fontFamily: mono ? "var(--font-mono)" : "inherit",
+      }}>{value}</dd>
     </div>
   );
 }

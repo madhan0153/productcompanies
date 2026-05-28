@@ -1,8 +1,8 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { Users, Coins, ArrowLeft } from "lucide-react";
+import { ArrowLeft, Coins, Users } from "lucide-react";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
-import { PageHeader, Badge, timeAgo } from "@/components/admin/admin-ui";
+import { Badge, Card, ListRow, SectionHeader } from "@/components/admin/pm";
 import { GrantPlanForm, GrantCreditsForm, RevokeGrantButton } from "./client-forms";
 
 export const metadata: Metadata = { title: "Admin · Grants" };
@@ -32,7 +32,6 @@ export default async function AdminGrantsPage() {
     .order("created_at", { ascending: false })
     .limit(50) as { data: GrantRow[] | null };
 
-  // Fetch emails for grant users — single admin auth listUsers call
   const userIds = Array.from(new Set((grants ?? []).map((g) => g.user_id))).filter(Boolean);
   const emailMap = new Map<string, string>();
   if (userIds.length > 0) {
@@ -43,73 +42,105 @@ export default async function AdminGrantsPage() {
   }
 
   return (
-    <div className="mx-auto w-full max-w-[1200px] px-4 py-5 pb-28 sm:px-6 lg:px-8">
-      <Link href="/admin/billing" className="mb-3 inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground">
-        <ArrowLeft className="h-3 w-3" /> Back to Billing
+    <div style={{ maxWidth: 1200, margin: "0 auto", padding: "20px 16px 96px" }}>
+      <Link
+        href="/admin/billing"
+        style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 12, color: "var(--text-3)", marginBottom: 12 }}
+      >
+        <ArrowLeft size={12} /> Back to Billing
       </Link>
 
-      <PageHeader
-        eyebrow="Admin · Billing"
-        title="Grant access"
-        description="Give Pro / Career Sprint or Tailor Credits to any user. Grants are membership-only — they never confer admin access."
-      />
+      <header style={{ marginBottom: 18 }}>
+        <p style={{ fontSize: 11, fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.14em", color: "var(--accent)" }}>
+          Admin · Billing
+        </p>
+        <h1 style={{ marginTop: 6, fontSize: 26, fontWeight: 600, letterSpacing: -0.8 }}>
+          Grant access
+        </h1>
+        <p style={{ marginTop: 6, fontSize: 13, color: "var(--text-2)" }}>
+          Give Pro / Career Sprint or Tailor Credits to any user. Grants are membership-only — they never confer admin access.
+        </p>
+      </header>
 
-      {/* Action forms */}
-      <div className="mb-8 grid gap-4 lg:grid-cols-2">
-        <FormPanel icon={<Users className="h-4 w-4 text-primary" />} title="Grant a plan">
+      <div style={{ display: "grid", gap: 16, gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))" }}>
+        <Card>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 14 }}>
+            <span style={{
+              width: 28, height: 28, borderRadius: 8,
+              background: "var(--accent-soft)",
+              display: "inline-flex", alignItems: "center", justifyContent: "center",
+            }}>
+              <Users size={14} style={{ color: "var(--accent)" }} />
+            </span>
+            <p style={{ fontSize: 13, fontWeight: 600 }}>Grant a plan</p>
+          </div>
           <GrantPlanForm />
-        </FormPanel>
-        <FormPanel icon={<Coins className="h-4 w-4 text-amber-500" />} title="Grant Tailor Credits">
+        </Card>
+
+        <Card>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 14 }}>
+            <span style={{
+              width: 28, height: 28, borderRadius: 8,
+              background: "var(--warn-soft)",
+              display: "inline-flex", alignItems: "center", justifyContent: "center",
+            }}>
+              <Coins size={14} style={{ color: "var(--warn)" }} />
+            </span>
+            <p style={{ fontSize: 13, fontWeight: 600 }}>Grant Tailor Credits</p>
+          </div>
           <GrantCreditsForm />
-        </FormPanel>
+        </Card>
       </div>
 
-      {/* Recent grants */}
-      <div className="rounded-xl border border-border bg-card p-5 shadow-elev1">
-        <p className="mb-3 text-sm font-semibold">Recent grants (last 50)</p>
+      <SectionHeader title="Recent grants" sub="Last 50" />
+      <Card p={0}>
         {(!grants || grants.length === 0) ? (
-          <p className="text-sm text-muted-foreground">No grants yet.</p>
+          <div style={{ padding: 24, textAlign: "center", color: "var(--text-3)", fontSize: 13 }}>
+            No grants yet.
+          </div>
         ) : (
-          <ul className="divide-y divide-border/50">
-            {grants.map((g) => {
+          <div style={{ paddingBottom: 4 }}>
+            {grants.map((g, i) => {
               const email = emailMap.get(g.user_id) ?? g.user_id.slice(0, 12);
               const isRevoked = !!g.revoked_at;
               const isExpired = g.expires_at && new Date(g.expires_at) < new Date();
               const label = g.grant_type === "credits_fixed"
                 ? `${g.credit_amount} × ${g.credit_kind?.replace(/_/g, " ")}`
                 : `${g.plan ?? g.grant_type}`;
+              const tone: "ok" | "warn" | "accent" | "neutral" =
+                isRevoked ? "neutral" : isExpired ? "warn" : g.plan === "career_sprint" ? "accent" : "ok";
               return (
-                <li key={g.id} className="flex flex-wrap items-center justify-between gap-3 py-3 text-sm">
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate font-mono text-xs">{email}</p>
-                    <p className="text-[11px] text-muted-foreground">
-                      {g.source} · {g.reason ?? "no reason"} · {timeAgo(g.created_at)}
-                    </p>
-                  </div>
-                  <Badge tone={isRevoked ? "muted" : isExpired ? "warn" : g.plan === "career_sprint" ? "violet" : "green"}>
-                    {label}{isRevoked ? " (revoked)" : isExpired ? " (expired)" : ""}
-                  </Badge>
-                  {!isRevoked && (
-                    <RevokeGrantButton grantId={g.id} label={email} />
-                  )}
-                </li>
+                <ListRow
+                  key={g.id}
+                  divider={i < grants.length - 1}
+                  title={<span className="pm-mono">{email}</span>}
+                  subtitle={`${g.source} · ${g.reason ?? "no reason"} · ${timeAgo(g.created_at)}`}
+                  trailing={
+                    <span style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
+                      <Badge tone={tone}>
+                        {label}{isRevoked ? " (revoked)" : isExpired ? " (expired)" : ""}
+                      </Badge>
+                      {!isRevoked && <RevokeGrantButton grantId={g.id} label={email} />}
+                    </span>
+                  }
+                />
               );
             })}
-          </ul>
+          </div>
         )}
-      </div>
+      </Card>
     </div>
   );
 }
 
-function FormPanel({ icon, title, children }: { icon: React.ReactNode; title: string; children: React.ReactNode }) {
-  return (
-    <div className="rounded-xl border border-border bg-card p-5 shadow-elev1">
-      <div className="mb-4 flex items-center gap-2">
-        <span className="inline-flex h-7 w-7 items-center justify-center rounded-md bg-secondary">{icon}</span>
-        <p className="text-sm font-semibold">{title}</p>
-      </div>
-      {children}
-    </div>
-  );
+function timeAgo(value: string | null | undefined): string {
+  if (!value) return "—";
+  const diff = Date.now() - new Date(value).getTime();
+  if (!Number.isFinite(diff) || diff < 0) return "—";
+  const m = Math.floor(diff / 60_000);
+  if (m < 1)  return "now";
+  if (m < 60) return `${m}m`;
+  const h = Math.floor(m / 60);
+  if (h < 24) return `${h}h`;
+  return `${Math.floor(h / 24)}d`;
 }

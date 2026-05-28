@@ -1,57 +1,57 @@
 "use client";
 
 import { useActionState, useState } from "react";
-import { Loader2, CheckCircle2, AlertCircle, RefreshCw, Stethoscope } from "lucide-react";
+import { AlertCircle, CheckCircle2, Loader2, RefreshCw, Stethoscope } from "lucide-react";
 import { reconcileSubscription, type ReconcileFormState } from "@/lib/admin/actions/reconcile";
 
 const initialState: ReconcileFormState = { ok: false, message: "" };
-const INPUT = "h-10 w-full rounded-lg border border-border bg-background px-3 text-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20";
 
 export function ReconcileForm() {
   const [state, action, pending] = useActionState(reconcileSubscription, initialState);
 
   return (
-    <form action={action} className="space-y-3">
+    <form action={action} style={{ display: "flex", flexDirection: "column", gap: 12 }}>
       <Field label="Dodo subscription_id" hint="Looks like sub_… — copy from Dodo dashboard or the return URL.">
-        <input type="text" name="subscriptionId" required placeholder="sub_0Nfkzok…" className={`${INPUT} font-mono`} autoComplete="off" />
+        <input type="text" name="subscriptionId" required placeholder="sub_0Nfkzok…" className="pm-input pm-mono" autoComplete="off" />
       </Field>
 
       <Field label="User email or id" hint="The ProdMatch account that should receive the plan.">
-        <input type="text" name="emailOrId" required placeholder="user@example.com" className={INPUT} autoComplete="off" />
+        <input type="text" name="emailOrId" required placeholder="user@example.com" className="pm-input" autoComplete="off" />
       </Field>
 
       <Field label="Override plan (optional)" hint="Only set this if Dodo's product_id doesn't match any DODO_PRODUCT_*_ID env var.">
-        <select name="planOverride" defaultValue="" className={INPUT}>
+        <select name="planOverride" defaultValue="" className="pm-select">
           <option value="">Auto-detect from product_id</option>
           <option value="pro">Pro</option>
           <option value="career_sprint">Career Sprint</option>
         </select>
       </Field>
 
-      <button
-        type="submit"
-        disabled={pending}
-        className="inline-flex h-10 w-full items-center justify-center gap-1.5 rounded-lg bg-primary px-4 text-sm font-semibold text-primary-foreground transition hover:bg-primary/90 disabled:opacity-60"
-      >
-        {pending ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
+      <button type="submit" disabled={pending} className="pm-cta" style={{ width: "100%" }}>
+        {pending ? <Loader2 size={14} className="animate-spin" /> : <RefreshCw size={14} />}
         {pending ? "Reconciling…" : "Reconcile subscription"}
       </button>
 
       {state.message && (
-        <div className={`flex items-start gap-2 rounded-lg border px-3 py-2 text-xs ${
-          state.ok
-            ? "border-emerald-500/30 bg-emerald-500/8 text-emerald-700 dark:text-emerald-400"
-            : "border-rose-500/30 bg-rose-500/8 text-rose-700 dark:text-rose-400"
-        }`}>
-          {state.ok ? <CheckCircle2 className="mt-0.5 h-3.5 w-3.5 shrink-0" /> : <AlertCircle className="mt-0.5 h-3.5 w-3.5 shrink-0" />}
+        <div className="pm-alert" data-tone={state.ok ? "ok" : "err"}>
+          {state.ok ? <CheckCircle2 size={14} /> : <AlertCircle size={14} />}
           <span>{state.message}</span>
         </div>
       )}
 
       {state.details?.dodoResponse && (
-        <details className="rounded-lg border border-border bg-secondary/40 p-3 text-xs">
-          <summary className="cursor-pointer font-medium">Dodo response (for debugging)</summary>
-          <pre className="mt-2 max-h-60 overflow-auto whitespace-pre-wrap break-all rounded bg-background p-2 font-mono text-[10px]">
+        <details style={{
+          padding: 12, borderRadius: 10,
+          background: "var(--surface-2)", border: "1px solid var(--line)",
+          fontSize: 12,
+        }}>
+          <summary style={{ cursor: "pointer", fontWeight: 500 }}>Dodo response (debug)</summary>
+          <pre style={{
+            marginTop: 8, maxHeight: 240, overflow: "auto", padding: 10,
+            borderRadius: 8, background: "var(--surface)",
+            fontFamily: "var(--font-mono)", fontSize: 11,
+            whiteSpace: "pre-wrap", wordBreak: "break-all",
+          }}>
             {JSON.stringify(state.details.dodoResponse, null, 2)}
           </pre>
         </details>
@@ -80,17 +80,18 @@ export function DiagnoseButton() {
 
   return (
     <div>
-      <button
-        type="button"
-        disabled={pending}
-        onClick={run}
-        className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-border bg-background px-4 text-xs font-medium hover:bg-secondary disabled:opacity-60"
-      >
-        {pending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Stethoscope className="h-3.5 w-3.5" />}
+      <button type="button" disabled={pending} onClick={run} className="pm-cta pm-cta-secondary" style={{ height: 36 }}>
+        {pending ? <Loader2 size={14} className="animate-spin" /> : <Stethoscope size={14} />}
         {pending ? "Probing Dodo…" : "Run diagnostic"}
       </button>
       {result !== null && (
-        <pre className="mt-3 max-h-96 overflow-auto whitespace-pre-wrap break-all rounded-lg border border-border bg-background p-3 font-mono text-[10px]">
+        <pre style={{
+          marginTop: 12, maxHeight: 400, overflow: "auto", padding: 12,
+          borderRadius: 10,
+          background: "var(--surface-2)", border: "1px solid var(--line)",
+          fontFamily: "var(--font-mono)", fontSize: 11,
+          whiteSpace: "pre-wrap", wordBreak: "break-all",
+        }}>
           {JSON.stringify(result, null, 2)}
         </pre>
       )}
@@ -100,9 +101,9 @@ export function DiagnoseButton() {
 
 function Field({ label, hint, children }: { label: string; hint?: string; children: React.ReactNode }) {
   return (
-    <label className="block">
-      <span className="mb-0.5 block text-xs font-medium">{label}</span>
-      {hint && <span className="mb-1 block text-[10px] text-muted-foreground">{hint}</span>}
+    <label style={{ display: "block" }}>
+      <span className="pm-label">{label}</span>
+      {hint && <span style={{ display: "block", fontSize: 10, color: "var(--text-3)", marginBottom: 4 }}>{hint}</span>}
       {children}
     </label>
   );

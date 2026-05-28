@@ -5,7 +5,7 @@
  * focus management). Re-exported from pm.tsx so callers see a single module.
  */
 
-import { useState, type CSSProperties, type ReactNode } from "react";
+import { type CSSProperties, type ReactNode } from "react";
 import { Ico } from "./pm";
 
 // ─── Button ───────────────────────────────────────────────────────────────────

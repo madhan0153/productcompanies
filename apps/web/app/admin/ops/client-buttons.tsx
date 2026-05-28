@@ -1,20 +1,19 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { Play, Loader2, Trash2, CheckCircle2, AlertCircle, X } from "lucide-react";
-import { triggerCron, resetLlmDeadKey, clearFailedBackgroundJobs, type CronKey } from "@/lib/admin/actions/ops";
+import { AlertCircle, CheckCircle2, Loader2, Play, Trash2, X } from "lucide-react";
+import {
+  triggerCron, resetLlmDeadKey, clearFailedBackgroundJobs, type CronKey,
+} from "@/lib/admin/actions/ops";
 
-interface ToastState {
-  ok:  boolean;
-  msg: string;
-}
+interface ToastState { ok: boolean; msg: string }
 
 export function CronButton({ cronKey, label }: { cronKey: CronKey; label: string }) {
   const [pending, start] = useTransition();
   const [toast, setToast] = useState<ToastState | null>(null);
 
   return (
-    <div className="space-y-2">
+    <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
       <button
         type="button"
         disabled={pending}
@@ -25,15 +24,19 @@ export function CronButton({ cronKey, label }: { cronKey: CronKey; label: string
             setTimeout(() => setToast(null), 5000);
           });
         }}
-        className="inline-flex h-9 w-full items-center justify-center gap-1.5 rounded-lg bg-primary px-3 text-sm font-semibold text-primary-foreground transition hover:bg-primary/90 disabled:opacity-60"
+        className="pm-cta"
+        style={{ width: "100%" }}
       >
-        {pending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Play className="h-3.5 w-3.5" />}
+        {pending ? <Loader2 size={14} className="animate-spin" /> : <Play size={14} />}
         {pending ? "Running…" : label}
       </button>
       {toast && (
-        <p className={`flex items-start gap-1 text-[11px] ${toast.ok ? "text-emerald-600 dark:text-emerald-400" : "text-rose-600 dark:text-rose-400"}`}>
-          {toast.ok ? <CheckCircle2 className="mt-0.5 h-3 w-3 shrink-0" /> : <AlertCircle className="mt-0.5 h-3 w-3 shrink-0" />}
-          <span className="break-words">{toast.msg}</span>
+        <p style={{
+          display: "flex", alignItems: "flex-start", gap: 4,
+          fontSize: 11, color: toast.ok ? "var(--ok)" : "var(--err)",
+        }}>
+          {toast.ok ? <CheckCircle2 size={12} style={{ marginTop: 2, flexShrink: 0 }} /> : <AlertCircle size={12} style={{ marginTop: 2, flexShrink: 0 }} />}
+          <span style={{ wordBreak: "break-word" }}>{toast.msg}</span>
         </p>
       )}
     </div>
@@ -50,9 +53,16 @@ export function ResetDeadKeyButton({ id, label }: { id: string; label: string })
         if (!confirm(`Reset dead key ${label}? It will be eligible for use immediately.`)) return;
         start(() => { resetLlmDeadKey(id); });
       }}
-      className="inline-flex items-center gap-1 rounded-md border border-border bg-background px-2 py-1 text-[11px] font-medium text-muted-foreground hover:border-emerald-500/40 hover:text-emerald-600 dark:hover:text-emerald-400 disabled:opacity-50"
+      style={{
+        display: "inline-flex", alignItems: "center", gap: 4,
+        padding: "4px 10px", borderRadius: 6, fontSize: 11, fontWeight: 500,
+        background: "var(--surface)", color: "var(--text-3)",
+        border: "1px solid var(--line)",
+        cursor: pending ? "not-allowed" : "pointer",
+        opacity: pending ? 0.5 : 1,
+      }}
     >
-      {pending ? <Loader2 className="h-3 w-3 animate-spin" /> : <X className="h-3 w-3" />}
+      {pending ? <Loader2 size={12} className="animate-spin" /> : <X size={12} />}
       Reset
     </button>
   );
@@ -69,9 +79,16 @@ export function ClearFailedJobsButton({ failedCount }: { failedCount: number }) 
         if (!confirm(`Delete ${failedCount} failed background job${failedCount === 1 ? "" : "s"}? This cannot be undone.`)) return;
         start(() => { clearFailedBackgroundJobs(); });
       }}
-      className="inline-flex items-center gap-1 rounded-md border border-rose-500/30 bg-rose-500/8 px-2 py-1 text-[11px] font-medium text-rose-600 dark:text-rose-400 hover:bg-rose-500/15 disabled:opacity-50"
+      style={{
+        display: "inline-flex", alignItems: "center", gap: 4,
+        padding: "4px 10px", borderRadius: 6, fontSize: 11, fontWeight: 500,
+        background: "var(--err-soft)", color: "var(--err)",
+        border: "1px solid color-mix(in oklab, var(--err) 30%, transparent)",
+        cursor: pending ? "not-allowed" : "pointer",
+        opacity: pending ? 0.5 : 1,
+      }}
     >
-      {pending ? <Loader2 className="h-3 w-3 animate-spin" /> : <Trash2 className="h-3 w-3" />}
+      {pending ? <Loader2 size={12} className="animate-spin" /> : <Trash2 size={12} />}
       Clear all
     </button>
   );

@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
-import { Badge, Card, KPI, SectionHeader } from "@/components/admin/pm";
+import { Card, KPI, SectionHeader } from "@/components/admin/pm";
 
 export const metadata: Metadata = { title: "Admin · Analytics" };
 export const dynamic = "force-dynamic";

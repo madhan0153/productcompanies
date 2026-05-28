@@ -164,3 +164,87 @@
 .pm-shell .pm-btn:active:not(:disabled) {
   transform: translateY(0.5px);
 }
+
+/* form input / select primitives — used by client forms that don't
+ * import pm-client.tsx (server-rendered form shells, admin grants/promos/etc).
+ * Match the visual rhythm of SearchField in pm-client.tsx. */
+.pm-shell .pm-input,
+.pm-shell .pm-select {
+  height: 38px;
+  width: 100%;
+  padding: 0 12px;
+  border-radius: 10px;
+  background: var(--surface-2);
+  border: 1px solid transparent;
+  color: var(--text);
+  font-family: inherit;
+  font-size: 14px;
+  outline: none;
+  transition: border-color .12s, background .12s, box-shadow .12s;
+}
+.pm-shell .pm-input::placeholder { color: var(--text-3); }
+.pm-shell .pm-input:focus,
+.pm-shell .pm-select:focus {
+  border-color: var(--accent);
+  background: var(--surface);
+  box-shadow: 0 0 0 3px color-mix(in oklab, var(--accent) 18%, transparent);
+}
+.pm-shell .pm-input:disabled,
+.pm-shell .pm-select:disabled { opacity: .55; cursor: not-allowed; }
+
+.pm-shell .pm-label {
+  display: block;
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--text-2);
+  margin-bottom: 4px;
+}
+
+/* primitive submit button (form CTAs that aren't using Btn) */
+.pm-shell .pm-cta {
+  height: 40px;
+  padding: 0 16px;
+  border-radius: 10px;
+  background: var(--accent);
+  color: var(--accent-ink);
+  font-weight: 500;
+  font-size: 14px;
+  border: 1px solid transparent;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  transition: filter .12s, transform .06s;
+}
+.pm-shell .pm-cta:hover:not(:disabled) { filter: brightness(.97); }
+.pm-shell .pm-cta:active:not(:disabled) { transform: translateY(.5px); }
+.pm-shell .pm-cta:disabled { opacity: .55; cursor: not-allowed; }
+
+.pm-shell .pm-cta-secondary {
+  background: var(--surface);
+  color: var(--text);
+  border: 1px solid var(--line);
+  box-shadow: var(--shadow-1);
+}
+
+/* form alert (used after server-action submit) */
+.pm-shell .pm-alert {
+  margin-top: 10px;
+  padding: 8px 12px;
+  border-radius: 10px;
+  font-size: 12px;
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+}
+.pm-shell .pm-alert[data-tone="ok"] {
+  background: var(--ok-soft);
+  color: var(--ok);
+  border: 1px solid color-mix(in oklab, var(--ok) 30%, transparent);
+}
+.pm-shell .pm-alert[data-tone="err"] {
+  background: var(--err-soft);
+  color: var(--err);
+  border: 1px solid color-mix(in oklab, var(--err) 30%, transparent);
+}

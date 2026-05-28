@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import {
-  AlertCircle, ArrowLeft, ChevronRight, Gift, RefreshCw, TrendingUp,
+  AlertCircle, ArrowLeft, ChevronRight, Gift, RefreshCw,
   Users as UsersIcon, Wallet,
 } from "lucide-react";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";

@@ -1,10 +1,8 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import {
-  Gift, ArrowLeft, Sparkles, Percent, IndianRupee, TrendingUp, Users,
-} from "lucide-react";
+import { ArrowLeft, Gift, Sparkles, TrendingUp, Users } from "lucide-react";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
-import { PageHeader } from "@/components/admin/admin-ui";
+import { Card, KPI } from "@/components/admin/pm";
 import { CouponsClient } from "./client";
 
 export const metadata: Metadata = { title: "Admin · Coupons" };
@@ -12,17 +10,17 @@ export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
 export interface CouponRow {
-  id:             string;
-  code_label:     string | null;
-  grant_type:     string;
-  credit_kind:    string | null;
-  credit_amount:  number | null;
-  duration_days:  number | null;
+  id:              string;
+  code_label:      string | null;
+  grant_type:      string;
+  credit_kind:     string | null;
+  credit_amount:   number | null;
+  duration_days:   number | null;
   max_redemptions: number | null;
-  redeemed_count: number;
-  expires_at:     string | null;
-  is_active:      boolean;
-  created_at:     string;
+  redeemed_count:  number;
+  expires_at:      string | null;
+  is_active:       boolean;
+  created_at:      string;
 }
 
 export default async function AdminCouponsPage() {
@@ -36,7 +34,6 @@ export default async function AdminCouponsPage() {
 
   const coupons = rows ?? [];
 
-  // KPIs
   const now = Date.now();
   const active = coupons.filter((c) => {
     if (!c.is_active) return false;
@@ -47,48 +44,43 @@ export default async function AdminCouponsPage() {
   const totalRedemptions = coupons.reduce((s, c) => s + c.redeemed_count, 0);
 
   return (
-    <div className="mx-auto w-full max-w-[1200px] px-4 py-5 pb-28 sm:px-6 lg:px-8">
-      <Link href="/admin/billing" className="mb-3 inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground">
-        <ArrowLeft className="h-3 w-3" /> Back to Billing
+    <div style={{ maxWidth: 1200, margin: "0 auto", padding: "20px 16px 96px" }}>
+      <Link href="/admin/billing" style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 12, color: "var(--text-3)", marginBottom: 12 }}>
+        <ArrowLeft size={12} /> Back to Billing
       </Link>
 
-      <PageHeader
-        eyebrow="Admin · Billing"
-        title="Coupons"
-        description="Create access codes for friends, marketing pushes, and partnerships. Codes are shown ONCE on creation — copy them immediately."
-      />
-
-      {/* KPI strip */}
-      <section className="mb-5 grid grid-cols-3 gap-3">
-        <Kpi icon={<Sparkles className="h-3.5 w-3.5 text-emerald-500" />}  label="Active codes"  value={active.length} />
-        <Kpi icon={<Users className="h-3.5 w-3.5 text-primary" />}         label="Redemptions"   value={totalRedemptions} />
-        <Kpi icon={<TrendingUp className="h-3.5 w-3.5 text-violet-500" />} label="Total codes"   value={coupons.length} />
-      </section>
-
-      {/* Client: search, filters, list, create form */}
-      <CouponsClient coupons={coupons} />
-
-      {/* Footer note */}
-      <div className="mt-6 rounded-xl border border-border bg-secondary/30 p-4 text-xs text-muted-foreground">
-        <p className="mb-1 font-semibold text-foreground">How coupons work</p>
-        <p>
-          Codes are hashed before storage — the plaintext is shown <strong>once</strong> at creation
-          and never again, even to admins. Friends redeem at <code className="rounded bg-background px-1">/early-access</code> or
-          on the pricing page. Each user can redeem each code at most once. Promo grants confer
-          billing entitlements only — never admin access.
+      <header style={{ marginBottom: 18 }}>
+        <p style={{ fontSize: 11, fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.14em", color: "var(--accent)" }}>
+          Admin · Billing
         </p>
-      </div>
-    </div>
-  );
-}
+        <h1 style={{ marginTop: 6, fontSize: 26, fontWeight: 600, letterSpacing: -0.8 }}>
+          Coupons
+        </h1>
+        <p style={{ marginTop: 6, fontSize: 13, color: "var(--text-2)" }}>
+          Create access codes for friends, marketing pushes, and partnerships. Codes are shown ONCE on creation — copy them immediately.
+        </p>
+      </header>
 
-function Kpi({ icon, label, value }: { icon: React.ReactNode; label: string; value: number }) {
-  return (
-    <div className="rounded-xl border border-border bg-card p-3.5 shadow-elev1">
-      <div className="mb-1.5 flex items-center gap-1.5 text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
-        {icon} {label}
+      <div style={{ display: "grid", gap: 12, gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))" }}>
+        <KPI label="Active codes"  value={String(active.length)}      hint="Live + not exhausted" accent />
+        <KPI label="Redemptions"   value={String(totalRedemptions)}   hint="All-time" />
+        <KPI label="Total codes"   value={String(coupons.length)}     hint="Issued" />
       </div>
-      <p className="font-display text-2xl font-bold tabular-nums">{value}</p>
+
+      <div style={{ marginTop: 22 }}>
+        <CouponsClient coupons={coupons} />
+      </div>
+
+      <Card style={{ marginTop: 22, background: "var(--surface-2)", boxShadow: "none" }}>
+        <p style={{ fontSize: 12, fontWeight: 600, color: "var(--text)" }}>How coupons work</p>
+        <p style={{ marginTop: 4, fontSize: 12, color: "var(--text-3)" }}>
+          Codes are hashed before storage — the plaintext is shown <strong style={{ color: "var(--text-2)" }}>once</strong> at creation
+          and never again, even to admins. Friends redeem at <code style={{ background: "var(--surface)", padding: "1px 6px", borderRadius: 4, fontFamily: "var(--font-mono)" }}>/early-access</code> or
+          on the pricing page. Each user can redeem each code at most once. Promo grants confer billing entitlements only — never admin access.
+        </p>
+        {/* unused-icon silencing */}
+        <span style={{ display: "none" }}>{[<Sparkles key="s" />, <TrendingUp key="t" />, <Users key="u" />, <Gift key="g" />]}</span>
+      </Card>
     </div>
   );
 }

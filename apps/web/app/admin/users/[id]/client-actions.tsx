@@ -1,7 +1,7 @@
 "use client";
 
 import { useActionState, useState, useTransition } from "react";
-import { Trash2, Loader2, CheckCircle2, AlertCircle, RefreshCw, ShieldOff } from "lucide-react";
+import { AlertCircle, CheckCircle2, Loader2, RefreshCw, ShieldOff, Trash2 } from "lucide-react";
 import {
   suspendUser,
   unsuspendUser,
@@ -11,27 +11,33 @@ import {
 } from "@/lib/admin/actions/users";
 
 const initialState: UserActionState = { ok: false, message: "" };
-const INPUT = "h-9 w-full rounded-md border border-border bg-background px-2.5 text-xs focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20";
 
 export function SuspendForm({ userId }: { userId: string }) {
   const [state, action, pending] = useActionState(suspendUser, initialState);
   return (
-    <form action={action} className="space-y-2">
+    <form action={action} style={{ display: "flex", flexDirection: "column", gap: 8 }}>
       <input type="hidden" name="userId" value={userId} />
-      <label className="block">
-        <span className="mb-1 block text-xs font-medium text-muted-foreground">Reason for suspension</span>
-        <input type="text" name="reason" required placeholder="e.g. spam reports, ToS violation" className={INPUT} />
+      <label style={{ display: "block" }}>
+        <span className="pm-label">Reason for suspension</span>
+        <input type="text" name="reason" required placeholder="e.g. spam reports, ToS violation" className="pm-input" />
       </label>
       <button
         type="submit"
         disabled={pending}
-        className="inline-flex h-9 w-full items-center justify-center gap-1.5 rounded-md border border-amber-500/40 bg-amber-500/10 px-3 text-xs font-semibold text-amber-700 dark:text-amber-400 hover:bg-amber-500/15 disabled:opacity-60"
+        style={{
+          width: "100%", height: 38, padding: "0 14px", borderRadius: 9,
+          display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 6,
+          background: "var(--warn-soft)", color: "var(--warn)",
+          border: "1px solid color-mix(in oklab, var(--warn) 40%, transparent)",
+          fontWeight: 600, fontSize: 13, cursor: pending ? "not-allowed" : "pointer",
+          opacity: pending ? 0.6 : 1,
+        }}
       >
-        {pending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <ShieldOff className="h-3.5 w-3.5" />}
+        {pending ? <Loader2 size={14} className="animate-spin" /> : <ShieldOff size={14} />}
         {pending ? "Suspending…" : "Suspend user"}
       </button>
       {state.message && (
-        <p className={`text-[11px] ${state.ok ? "text-emerald-600 dark:text-emerald-400" : "text-rose-600 dark:text-rose-400"}`}>{state.message}</p>
+        <p style={{ fontSize: 11, color: state.ok ? "var(--ok)" : "var(--err)" }}>{state.message}</p>
       )}
     </form>
   );
@@ -44,9 +50,15 @@ export function UnsuspendButton({ userId }: { userId: string }) {
       type="button"
       disabled={pending}
       onClick={() => start(() => unsuspendUser(userId))}
-      className="inline-flex items-center gap-1 rounded-md border border-emerald-500/40 bg-emerald-500/10 px-3 py-1.5 text-xs font-semibold text-emerald-700 dark:text-emerald-400 hover:bg-emerald-500/15 disabled:opacity-50"
+      style={{
+        display: "inline-flex", alignItems: "center", gap: 4,
+        padding: "6px 10px", borderRadius: 8, fontSize: 12, fontWeight: 600,
+        background: "var(--ok-soft)", color: "var(--ok)",
+        border: "1px solid color-mix(in oklab, var(--ok) 40%, transparent)",
+        cursor: pending ? "not-allowed" : "pointer", opacity: pending ? 0.5 : 1,
+      }}
     >
-      {pending ? <Loader2 className="h-3 w-3 animate-spin" /> : <CheckCircle2 className="h-3 w-3" />}
+      {pending ? <Loader2 size={12} className="animate-spin" /> : <CheckCircle2 size={12} />}
       Unsuspend
     </button>
   );
@@ -56,7 +68,7 @@ export function ReparseButton({ userId }: { userId: string }) {
   const [pending, start] = useTransition();
   const [done, setDone] = useState(false);
   return (
-    <div className="space-y-1">
+    <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
       <button
         type="button"
         disabled={pending}
@@ -67,12 +79,17 @@ export function ReparseButton({ userId }: { userId: string }) {
             setTimeout(() => setDone(false), 4000);
           });
         }}
-        className="inline-flex h-9 w-full items-center justify-center gap-1.5 rounded-md bg-primary px-3 text-xs font-semibold text-primary-foreground transition hover:bg-primary/90 disabled:opacity-60"
+        className="pm-cta"
+        style={{ width: "100%" }}
       >
-        {pending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5" />}
+        {pending ? <Loader2 size={14} className="animate-spin" /> : <RefreshCw size={14} />}
         {pending ? "Queueing…" : "Clear error & re-parse resume"}
       </button>
-      {done && <p className="text-[11px] text-emerald-600 dark:text-emerald-400">Re-parse queued. Parser will pick it up on next drain.</p>}
+      {done && (
+        <p style={{ fontSize: 11, color: "var(--ok)" }}>
+          Re-parse queued. Parser will pick it up on next drain.
+        </p>
+      )}
     </div>
   );
 }
@@ -86,42 +103,67 @@ export function DeleteUserDialog({ userId, email }: { userId: string; email: str
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="inline-flex h-9 w-full items-center justify-center gap-1.5 rounded-md border border-rose-500/40 bg-rose-500/10 px-3 text-xs font-semibold text-rose-700 dark:text-rose-400 hover:bg-rose-500/15"
+        style={{
+          width: "100%", height: 38, padding: "0 14px", borderRadius: 9,
+          display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 6,
+          background: "var(--err-soft)", color: "var(--err)",
+          border: "1px solid color-mix(in oklab, var(--err) 40%, transparent)",
+          fontWeight: 600, fontSize: 13, cursor: "pointer",
+        }}
       >
-        <Trash2 className="h-3.5 w-3.5" />
-        Delete user
+        <Trash2 size={14} /> Delete user
       </button>
     );
   }
 
   return (
-    <form action={action} className="space-y-2 rounded-md border border-rose-500/30 bg-rose-500/5 p-3">
+    <form action={action} style={{
+      display: "flex", flexDirection: "column", gap: 8,
+      padding: 12, borderRadius: 10,
+      background: "var(--err-soft)",
+      border: "1px solid color-mix(in oklab, var(--err) 30%, transparent)",
+    }}>
       <input type="hidden" name="userId" value={userId} />
-      <p className="text-xs">
-        Type <code className="rounded bg-background px-1.5 py-0.5 font-mono">DELETE</code> to permanently erase{" "}
-        <strong className="break-all">{email}</strong> and all owned data.
+      <p style={{ fontSize: 12, color: "var(--text)" }}>
+        Type <code style={{ background: "var(--surface)", padding: "1px 6px", borderRadius: 4, fontFamily: "var(--font-mono)" }}>DELETE</code> to permanently erase{" "}
+        <strong style={{ wordBreak: "break-all" }}>{email}</strong> and all owned data.
       </p>
-      <input type="text" name="confirm" autoComplete="off" required placeholder="DELETE" className={INPUT} />
-      <div className="flex gap-2">
+      <input type="text" name="confirm" autoComplete="off" required placeholder="DELETE" className="pm-input" />
+      <div style={{ display: "flex", gap: 8 }}>
         <button
           type="submit"
           disabled={pending}
-          className="inline-flex h-8 flex-1 items-center justify-center gap-1.5 rounded-md bg-rose-600 px-3 text-xs font-semibold text-white hover:bg-rose-700 disabled:opacity-60"
+          style={{
+            flex: 1, height: 34, borderRadius: 8,
+            display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 6,
+            background: "var(--err)", color: "#fff",
+            border: "1px solid transparent",
+            fontSize: 12, fontWeight: 600, cursor: pending ? "not-allowed" : "pointer",
+            opacity: pending ? 0.6 : 1,
+          }}
         >
-          {pending ? <Loader2 className="h-3 w-3 animate-spin" /> : <Trash2 className="h-3 w-3" />}
+          {pending ? <Loader2 size={12} className="animate-spin" /> : <Trash2 size={12} />}
           Confirm delete
         </button>
         <button
           type="button"
           onClick={() => setOpen(false)}
-          className="inline-flex h-8 items-center justify-center rounded-md border border-border bg-background px-3 text-xs font-medium hover:bg-secondary"
+          style={{
+            height: 34, padding: "0 14px", borderRadius: 8,
+            background: "var(--surface)", color: "var(--text)",
+            border: "1px solid var(--line)",
+            fontSize: 12, fontWeight: 500, cursor: "pointer",
+          }}
         >
           Cancel
         </button>
       </div>
       {state.message && (
-        <p className={`flex items-start gap-1 text-[11px] ${state.ok ? "text-emerald-600 dark:text-emerald-400" : "text-rose-600 dark:text-rose-400"}`}>
-          {state.ok ? <CheckCircle2 className="mt-0.5 h-3 w-3 shrink-0" /> : <AlertCircle className="mt-0.5 h-3 w-3 shrink-0" />}
+        <p style={{
+          display: "flex", alignItems: "flex-start", gap: 4,
+          fontSize: 11, color: state.ok ? "var(--ok)" : "var(--err)",
+        }}>
+          {state.ok ? <CheckCircle2 size={12} style={{ marginTop: 2, flexShrink: 0 }} /> : <AlertCircle size={12} style={{ marginTop: 2, flexShrink: 0 }} />}
           <span>{state.message}</span>
         </p>
       )}

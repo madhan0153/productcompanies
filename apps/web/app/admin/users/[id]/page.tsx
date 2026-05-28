@@ -1,11 +1,11 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ArrowLeft, Mail, Calendar, ShieldAlert, Coins, CreditCard, FileText, RefreshCw, Trash2 } from "lucide-react";
-import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import {
-  PageHeader, Badge, timeAgo, dateShort,
-} from "@/components/admin/admin-ui";
+  ArrowLeft, Calendar, Coins, CreditCard, FileText, Mail, RefreshCw, ShieldAlert,
+} from "lucide-react";
+import { createSupabaseAdminClient } from "@/lib/supabase/admin";
+import { Avatar, Badge, Card, KPI, ListRow, SectionHeader } from "@/components/admin/pm";
 import { SuspendForm, DeleteUserDialog, ReparseButton, UnsuspendButton } from "./client-actions";
 
 export const metadata: Metadata = { title: "Admin · User detail" };
@@ -60,214 +60,254 @@ export default async function AdminUserDetailPage({ params }: PageProps) {
       .limit(5),
     admin.from("credit_ledger")
       .select("kind, amount")
-      .eq("user_id", id) as any,
+      .eq("user_id", id) as never,
   ]);
 
   const user = authResp?.user;
   if (!user) notFound();
 
-  // Sum credits per kind
   const creditsByKind = new Map<string, number>();
-  for (const row of (creditsResult.data ?? []) as Array<{ kind: string; amount: number }>) {
+  for (const row of (((creditsResult as { data: Array<{ kind: string; amount: number }> | null }).data) ?? [])) {
     creditsByKind.set(row.kind, (creditsByKind.get(row.kind) ?? 0) + row.amount);
   }
 
   const isSuspended = !!profile?.suspended_at;
+  const tone = hashHue(user.id);
 
   return (
-    <div className="mx-auto w-full max-w-[1200px] px-4 py-5 pb-28 sm:px-6 lg:px-8">
-      <Link href="/admin/users" className="mb-3 inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground">
-        <ArrowLeft className="h-3 w-3" /> Back to Users
+    <div style={{ maxWidth: 1200, margin: "0 auto", padding: "20px 16px 96px" }}>
+      <Link
+        href="/admin/users"
+        style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 12, color: "var(--text-3)", marginBottom: 12 }}
+      >
+        <ArrowLeft size={12} /> Back to Users
       </Link>
 
-      <PageHeader
-        eyebrow={user.email ?? id}
-        title={profile?.display_name ?? user.email ?? "User"}
-        description={`Joined ${dateShort(user.created_at)}${profile?.role_function ? ` · ${profile.role_function}` : ""}${isSuspended ? " · SUSPENDED" : ""}`}
-      />
-      <div className="mb-4 flex flex-wrap gap-2">
-        <Badge tone="muted"><Mail className="mr-1 inline h-3 w-3" />{user.email}</Badge>
-        <Badge tone="muted"><Calendar className="mr-1 inline h-3 w-3" />{dateShort(user.created_at)}</Badge>
-        {profile?.role_function && <Badge tone="blue">{profile.role_function}</Badge>}
-        {isSuspended && <Badge tone="danger">Suspended</Badge>}
-      </div>
+      {/* Hero */}
+      <Card>
+        <div style={{ display: "flex", gap: 14, alignItems: "center" }}>
+          <Avatar name={profile?.display_name ?? user.email ?? "?"} tone={tone} size={56} />
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <p style={{ fontSize: 11, fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.14em", color: "var(--accent)" }}>
+              {user.email ?? id}
+            </p>
+            <h1 style={{ marginTop: 4, fontSize: 22, fontWeight: 600, letterSpacing: -0.6 }}>
+              {profile?.display_name ?? user.email ?? "User"}
+            </h1>
+            <p style={{ marginTop: 4, fontSize: 12, color: "var(--text-3)" }}>
+              Joined {dateShort(user.created_at)}
+              {profile?.role_function ? ` · ${profile.role_function}` : ""}
+            </p>
+          </div>
+        </div>
+        <div style={{ marginTop: 14, display: "flex", flexWrap: "wrap", gap: 6 }}>
+          <Badge tone="neutral"><Mail size={11} style={{ marginRight: 4 }} />{user.email}</Badge>
+          <Badge tone="neutral"><Calendar size={11} style={{ marginRight: 4 }} />{dateShort(user.created_at)}</Badge>
+          {profile?.role_function && <Badge tone="info">{profile.role_function}</Badge>}
+          {isSuspended && <Badge tone="err">Suspended</Badge>}
+        </div>
+      </Card>
 
-      {/* Suspension banner */}
       {isSuspended && (
-        <div className="mb-4 flex items-start gap-3 rounded-xl border border-rose-500/30 bg-rose-500/8 p-4">
-          <ShieldAlert className="mt-0.5 h-5 w-5 shrink-0 text-rose-500" />
-          <div className="flex-1">
-            <p className="text-sm font-semibold text-rose-600 dark:text-rose-400">Suspended {timeAgo(profile!.suspended_at!)}</p>
-            <p className="text-xs text-muted-foreground">Reason: {profile?.suspension_reason ?? "—"}</p>
+        <div style={{
+          marginTop: 14, padding: 14, borderRadius: 12,
+          background: "var(--err-soft)",
+          border: "1px solid color-mix(in oklab, var(--err) 30%, transparent)",
+          display: "flex", alignItems: "flex-start", gap: 12,
+        }}>
+          <ShieldAlert size={18} style={{ color: "var(--err)", flexShrink: 0, marginTop: 2 }} />
+          <div style={{ flex: 1 }}>
+            <p style={{ fontSize: 13, fontWeight: 600, color: "var(--err)" }}>
+              Suspended {timeAgo(profile!.suspended_at!)}
+            </p>
+            <p style={{ fontSize: 12, color: "var(--text-3)" }}>
+              Reason: {profile?.suspension_reason ?? "—"}
+            </p>
           </div>
           <UnsuspendButton userId={user.id} />
         </div>
       )}
 
-      {/* Entitlement summary */}
-      <div className="mb-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        <Tile label="Plan"            value={entitlement?.plan ?? "free"}     tone={entitlement?.plan === "career_sprint" ? "violet" : entitlement?.plan === "pro" ? "blue" : undefined} />
-        <Tile label="Tailor credits"  value={String(creditsByKind.get("tailored_resume") ?? 0)} />
-        <Tile label="Reparse credits" value={String(creditsByKind.get("resume_reparse") ?? 0)} />
-        <Tile label="Active until"    value={entitlement?.active_until ? dateShort(entitlement.active_until) : "—"} />
+      <SectionHeader title="Entitlement" />
+      <div style={{ display: "grid", gap: 12, gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))" }}>
+        <KPI label="Plan"            value={entitlement?.plan ?? "free"} accent={entitlement?.plan != null && entitlement.plan !== "free"} />
+        <KPI label="Tailor credits"  value={String(creditsByKind.get("tailored_resume") ?? 0)} />
+        <KPI label="Reparse credits" value={String(creditsByKind.get("resume_reparse") ?? 0)} />
+        <KPI label="Active until"    value={entitlement?.active_until ? dateShort(entitlement.active_until) : "—"} />
       </div>
 
-      {/* Action panel — quick row */}
-      <div className="mb-6 grid gap-3 lg:grid-cols-[1.5fr_1fr]">
-        <div className="rounded-xl border border-border bg-card p-5 shadow-elev1">
-          <div className="mb-3 flex items-center gap-2">
-            <FileText className="h-4 w-4 text-primary" />
-            <p className="text-sm font-semibold">Resume management</p>
+      <SectionHeader title="Actions" />
+      <div style={{ display: "grid", gap: 16, gridTemplateColumns: "minmax(0, 1.5fr) minmax(0, 1fr)" }}>
+        <Card>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12 }}>
+            <FileText size={16} style={{ color: "var(--accent)" }} />
+            <p style={{ fontSize: 13, fontWeight: 600 }}>Resume management</p>
           </div>
-          <dl className="mb-4 grid grid-cols-2 gap-3 text-xs">
-            <div>
-              <dt className="text-muted-foreground">Storage path</dt>
-              <dd className="font-mono">{profile?.resume_storage_path ?? "—"}</dd>
-            </div>
-            <div>
-              <dt className="text-muted-foreground">Parse error</dt>
-              <dd className={profile?.resume_parse_error ? "text-rose-500" : ""}>{profile?.resume_parse_error?.slice(0, 60) ?? "none"}</dd>
-            </div>
-            <div>
-              <dt className="text-muted-foreground">Resume score</dt>
-              <dd className="font-semibold">{profile?.resume_score ?? profile?.product_dna_score ?? "—"}</dd>
-            </div>
-            <div>
-              <dt className="text-muted-foreground">Last match</dt>
-              <dd>{profile?.last_match_compute_at ? timeAgo(profile.last_match_compute_at) : "never"}</dd>
-            </div>
+          <dl style={{
+            display: "grid", gridTemplateColumns: "1fr 1fr",
+            columnGap: 12, rowGap: 10, marginBottom: 14, fontSize: 12,
+          }}>
+            <Detail label="Storage path" value={profile?.resume_storage_path ?? "—"} mono />
+            <Detail label="Parse error"  value={profile?.resume_parse_error?.slice(0, 60) ?? "none"} tone={profile?.resume_parse_error ? "err" : undefined} />
+            <Detail label="Resume score" value={String(profile?.resume_score ?? profile?.product_dna_score ?? "—")} />
+            <Detail label="Last match"   value={profile?.last_match_compute_at ? timeAgo(profile.last_match_compute_at) : "never"} />
           </dl>
           <ReparseButton userId={user.id} />
-        </div>
+        </Card>
 
-        <div className="rounded-xl border border-border bg-card p-5 shadow-elev1">
-          <div className="mb-3 flex items-center gap-2">
-            <ShieldAlert className="h-4 w-4 text-rose-500" />
-            <p className="text-sm font-semibold">Account actions</p>
+        <Card>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12 }}>
+            <ShieldAlert size={16} style={{ color: "var(--err)" }} />
+            <p style={{ fontSize: 13, fontWeight: 600 }}>Account actions</p>
           </div>
           {!isSuspended ? (
             <SuspendForm userId={user.id} />
           ) : (
-            <p className="text-xs text-muted-foreground">User is already suspended. Use the banner above to unsuspend.</p>
+            <p style={{ fontSize: 12, color: "var(--text-3)" }}>User is already suspended. Use the banner above to unsuspend.</p>
           )}
-          <div className="my-3 border-t border-border" />
+          <div style={{ margin: "12px 0", borderTop: "1px solid var(--line-2)" }} />
           <DeleteUserDialog userId={user.id} email={user.email ?? "user"} />
-          <p className="mt-2 text-[11px] text-muted-foreground">
+          <p style={{ marginTop: 8, fontSize: 11, color: "var(--text-3)" }}>
             Delete is permanent — runs DPDP-compliant erasure of all owned data, then removes the auth user.
           </p>
-        </div>
+        </Card>
       </div>
 
-      {/* Grants */}
-      <Section title="Entitlement grants" icon={<Coins className="h-4 w-4 text-amber-500" />}>
+      <SectionHeader title="Entitlement grants" sub={(grants?.length ?? 0).toString() + " on file"} />
+      <Card p={0}>
         {(!grants || grants.length === 0) ? (
-          <p className="text-sm text-muted-foreground">No grants on this user.</p>
+          <div style={{ padding: 18, fontSize: 13, color: "var(--text-3)" }}>No grants on this user.</div>
         ) : (
-          <ul className="divide-y divide-border/50">
-            {grants.map((g) => {
+          <div style={{ paddingBottom: 4 }}>
+            {grants.map((g, i) => {
               const isRevoked = !!g.revoked_at;
               const isExpired = g.expires_at && new Date(g.expires_at) < new Date();
               return (
-                <li key={g.id} className="flex flex-wrap items-center justify-between gap-2 py-2 text-xs">
-                  <div className="min-w-0 flex-1">
-                    <p className="font-medium">{g.plan ?? g.grant_type}</p>
-                    <p className="text-[11px] text-muted-foreground">
-                      {g.source} · {g.reason ?? "no reason"} · {timeAgo(g.created_at)}
-                      {g.expires_at && ` · expires ${dateShort(g.expires_at)}`}
-                    </p>
-                  </div>
-                  <Badge tone={isRevoked ? "muted" : isExpired ? "warn" : "green"}>
-                    {isRevoked ? "revoked" : isExpired ? "expired" : "active"}
-                  </Badge>
-                </li>
+                <ListRow
+                  key={g.id}
+                  divider={i < grants.length - 1}
+                  leading={<Coins size={14} style={{ color: "var(--warn)" }} />}
+                  title={g.plan ?? g.grant_type}
+                  subtitle={`${g.source} · ${g.reason ?? "no reason"} · ${timeAgo(g.created_at)}${g.expires_at ? ` · expires ${dateShort(g.expires_at)}` : ""}`}
+                  trailing={
+                    <Badge tone={isRevoked ? "neutral" : isExpired ? "warn" : "ok"}>
+                      {isRevoked ? "revoked" : isExpired ? "expired" : "active"}
+                    </Badge>
+                  }
+                />
               );
             })}
-          </ul>
+          </div>
         )}
-      </Section>
+      </Card>
 
-      {/* Subscriptions */}
-      <Section title="Subscriptions" icon={<CreditCard className="h-4 w-4 text-emerald-500" />}>
+      <SectionHeader title="Subscriptions" sub={(subscriptions?.length ?? 0).toString() + " on file"} />
+      <Card p={0}>
         {(!subscriptions || subscriptions.length === 0) ? (
-          <p className="text-sm text-muted-foreground">No subscriptions on this user.</p>
+          <div style={{ padding: 18, fontSize: 13, color: "var(--text-3)" }}>No subscriptions on this user.</div>
         ) : (
-          <ul className="divide-y divide-border/50">
-            {subscriptions.map((s) => (
-              <li key={s.id} className="flex flex-wrap items-center justify-between gap-2 py-2 text-xs">
-                <div className="min-w-0 flex-1">
-                  <p className="font-medium">{s.plan} ({s.provider})</p>
-                  <p className="text-[11px] text-muted-foreground">
-                    Renews {s.current_period_end ? dateShort(s.current_period_end) : "—"} · created {timeAgo(s.created_at)}
-                  </p>
-                </div>
-                <Badge tone={s.status === "active" ? "green" : s.status === "cancelled" ? "muted" : "warn"}>{s.status}</Badge>
-              </li>
+          <div style={{ paddingBottom: 4 }}>
+            {subscriptions.map((s, i) => (
+              <ListRow
+                key={s.id}
+                divider={i < subscriptions.length - 1}
+                leading={<CreditCard size={14} style={{ color: "var(--ok)" }} />}
+                title={`${s.plan} (${s.provider})`}
+                subtitle={`Renews ${s.current_period_end ? dateShort(s.current_period_end) : "—"} · created ${timeAgo(s.created_at)}`}
+                trailing={<Badge tone={s.status === "active" ? "ok" : s.status === "cancelled" ? "neutral" : "warn"}>{s.status}</Badge>}
+              />
             ))}
-          </ul>
+          </div>
         )}
-      </Section>
+      </Card>
 
-      {/* Invoices */}
-      <Section title="Recent invoices" icon={<CreditCard className="h-4 w-4 text-violet-500" />}>
+      <SectionHeader title="Recent invoices" />
+      <Card p={0}>
         {(!invoices || invoices.length === 0) ? (
-          <p className="text-sm text-muted-foreground">No invoices on this user.</p>
+          <div style={{ padding: 18, fontSize: 13, color: "var(--text-3)" }}>No invoices on this user.</div>
         ) : (
-          <ul className="divide-y divide-border/50">
-            {invoices.map((inv) => (
-              <li key={inv.id} className="flex flex-wrap items-center justify-between gap-2 py-2 text-xs">
-                <div className="min-w-0 flex-1">
-                  <p className="font-medium">₹{(inv.amount / 100).toLocaleString("en-IN")} {inv.currency}</p>
-                  <p className="text-[11px] text-muted-foreground">{timeAgo(inv.created_at)}</p>
-                </div>
-                <span className="flex items-center gap-2">
-                  <Badge tone={inv.status === "paid" ? "green" : "danger"}>{inv.status}</Badge>
-                  {inv.hosted_invoice_url && (
-                    <a href={inv.hosted_invoice_url} target="_blank" rel="noreferrer" className="text-primary hover:underline">Open</a>
-                  )}
-                </span>
-              </li>
+          <div style={{ paddingBottom: 4 }}>
+            {invoices.map((inv, i) => (
+              <ListRow
+                key={inv.id}
+                divider={i < invoices.length - 1}
+                leading={<CreditCard size={14} style={{ color: "var(--accent)" }} />}
+                title={
+                  <span className="pm-num" style={{ fontWeight: 600 }}>
+                    ₹{(inv.amount / 100).toLocaleString("en-IN")} {inv.currency}
+                  </span>
+                }
+                subtitle={timeAgo(inv.created_at)}
+                trailing={
+                  <span style={{ display: "inline-flex", alignItems: "center", gap: 10 }}>
+                    <Badge tone={inv.status === "paid" ? "ok" : "err"}>{inv.status}</Badge>
+                    {inv.hosted_invoice_url && (
+                      <a href={inv.hosted_invoice_url} target="_blank" rel="noreferrer" style={{ fontSize: 11, color: "var(--accent)", fontWeight: 500 }}>Open</a>
+                    )}
+                  </span>
+                }
+              />
             ))}
-          </ul>
+          </div>
         )}
-      </Section>
+      </Card>
 
-      {/* Recent matches */}
-      <Section title="Recent matches" icon={<RefreshCw className="h-4 w-4 text-primary" />}>
+      <SectionHeader title="Recent matches" />
+      <Card p={0}>
         {(!matches || matches.length === 0) ? (
-          <p className="text-sm text-muted-foreground">No matches yet.</p>
+          <div style={{ padding: 18, fontSize: 13, color: "var(--text-3)" }}>No matches yet.</div>
         ) : (
-          <ul className="divide-y divide-border/50">
-            {matches.map((m) => (
-              <li key={m.id} className="flex items-center justify-between py-2 text-xs">
-                <span className="font-medium">Score {Math.round(m.score)}</span>
-                <Badge tone={m.verdict === "strong_fit" ? "green" : m.verdict === "stretch" ? "blue" : "muted"}>{m.verdict ?? "—"}</Badge>
-                <span className="text-muted-foreground">{timeAgo(m.computed_at)}</span>
-              </li>
+          <div style={{ paddingBottom: 4 }}>
+            {matches.map((m, i) => (
+              <ListRow
+                key={m.id}
+                divider={i < matches.length - 1}
+                leading={<RefreshCw size={14} style={{ color: "var(--accent)" }} />}
+                title={<span className="pm-num">Score {Math.round(m.score)}</span>}
+                subtitle={timeAgo(m.computed_at)}
+                trailing={<Badge tone={m.verdict === "strong_fit" ? "ok" : m.verdict === "stretch" ? "info" : "neutral"}>{m.verdict ?? "—"}</Badge>}
+              />
             ))}
-          </ul>
+          </div>
         )}
-      </Section>
+      </Card>
     </div>
   );
 }
 
-function Tile({ label, value, tone }: { label: string; value: string; tone?: "blue" | "violet" }) {
+function Detail({ label, value, mono, tone }: { label: string; value: string; mono?: boolean; tone?: "err" }) {
   return (
-    <div className={`rounded-xl border p-4 ${tone === "blue" ? "border-primary/30 bg-primary/5" : tone === "violet" ? "border-violet-500/30 bg-violet-500/5" : "border-border bg-card"}`}>
-      <p className="text-xs text-muted-foreground">{label}</p>
-      <p className="mt-1 font-display text-lg font-bold tabular-nums">{value}</p>
+    <div>
+      <dt style={{ fontSize: 10, color: "var(--text-3)", textTransform: "uppercase", letterSpacing: "0.08em" }}>{label}</dt>
+      <dd style={{
+        fontSize: mono ? 11 : 12,
+        color: tone === "err" ? "var(--err)" : "var(--text)",
+        fontFamily: mono ? "var(--font-mono)" : "inherit",
+        overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+      }}>{value}</dd>
     </div>
   );
 }
 
-function Section({ title, icon, children }: { title: string; icon: React.ReactNode; children: React.ReactNode }) {
-  return (
-    <section className="mb-4 rounded-xl border border-border bg-card p-5 shadow-elev1">
-      <div className="mb-3 flex items-center gap-2">
-        {icon}
-        <p className="text-sm font-semibold">{title}</p>
-      </div>
-      {children}
-    </section>
-  );
+function hashHue(id: string): number {
+  let h = 0;
+  for (let i = 0; i < id.length; i++) h = (h * 31 + id.charCodeAt(i)) & 0xffff;
+  return h % 360;
+}
+
+function dateShort(value: string | null | undefined): string {
+  if (!value) return "—";
+  return new Date(value).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" });
+}
+
+function timeAgo(value: string | null | undefined): string {
+  if (!value) return "—";
+  const diff = Date.now() - new Date(value).getTime();
+  if (!Number.isFinite(diff) || diff < 0) return "—";
+  const m = Math.floor(diff / 60_000);
+  if (m < 1)  return "now";
+  if (m < 60) return `${m}m`;
+  const h = Math.floor(m / 60);
+  if (h < 24) return `${h}h`;
+  return `${Math.floor(h / 24)}d`;
 }

@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
-import Link from "next/link";
-import { AlertCircle, ArrowRight, FileText, UserCheck } from "lucide-react";
+import { AlertCircle, FileText, UserCheck } from "lucide-react";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { Avatar, Badge, Card, KPI, ListRow, SectionHeader } from "@/components/admin/pm";
 

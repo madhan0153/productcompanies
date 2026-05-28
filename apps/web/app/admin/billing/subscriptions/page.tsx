@@ -1,8 +1,8 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { Wallet, ArrowLeft } from "lucide-react";
+import { ArrowLeft } from "lucide-react";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
-import { PageHeader, Badge, DataGrid, MobileRecord, timeAgo } from "@/components/admin/admin-ui";
+import { Badge, Card, ListRow, SectionHeader } from "@/components/admin/pm";
 
 export const metadata: Metadata = { title: "Admin · Subscriptions" };
 export const dynamic = "force-dynamic";
@@ -34,28 +34,22 @@ interface InvoiceRow {
 export default async function AdminSubscriptionsPage() {
   const admin = createSupabaseAdminClient();
 
-  const [subsResult, invoicesResult, refundsResult] = await Promise.all([
+  const [subsResult, invoicesResult] = await Promise.all([
     admin
       .from("subscriptions")
       .select("id, user_id, provider, plan, status, current_period_end, cancel_at_period_end, created_at")
       .order("created_at", { ascending: false })
-      .limit(100) as any,
+      .limit(100) as never,
     admin
       .from("invoices")
       .select("id, user_id, provider, amount, currency, status, receipt_url, hosted_invoice_url, created_at")
       .order("created_at", { ascending: false })
-      .limit(100) as any,
-    admin
-      .from("refunds")
-      .select("id, user_id, amount, status, reason, requested_at")
-      .order("requested_at", { ascending: false })
-      .limit(20) as any,
+      .limit(100) as never,
   ]);
 
-  const subs     = (subsResult.data ?? []) as SubRow[];
-  const invoices = (invoicesResult.data ?? []) as InvoiceRow[];
+  const subs     = ((subsResult     as { data: SubRow[]     | null }).data ?? []);
+  const invoices = ((invoicesResult as { data: InvoiceRow[] | null }).data ?? []);
 
-  // Fetch emails
   const userIds = Array.from(new Set([...subs.map((s) => s.user_id), ...invoices.map((i) => i.user_id)])).filter(Boolean);
   const emailMap = new Map<string, string>();
   if (userIds.length > 0) {
@@ -66,76 +60,105 @@ export default async function AdminSubscriptionsPage() {
   }
 
   return (
-    <div className="mx-auto w-full max-w-[1440px] px-4 py-5 pb-28 sm:px-6 lg:px-8">
-      <Link href="/admin/billing" className="mb-3 inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground">
-        <ArrowLeft className="h-3 w-3" /> Back to Billing
+    <div style={{ maxWidth: 1280, margin: "0 auto", padding: "20px 16px 96px" }}>
+      <Link href="/admin/billing" style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 12, color: "var(--text-3)", marginBottom: 12 }}>
+        <ArrowLeft size={12} /> Back to Billing
       </Link>
 
-      <PageHeader
-        eyebrow="Admin · Billing"
-        title="Subscriptions & Invoices"
-        description="Live subscription state and recent invoices. To refund, open the receipt in your Dodo dashboard (one-click admin refund coming soon)."
-      />
+      <header style={{ marginBottom: 18 }}>
+        <p style={{ fontSize: 11, fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.14em", color: "var(--accent)" }}>
+          Admin · Billing
+        </p>
+        <h1 style={{ marginTop: 6, fontSize: 26, fontWeight: 600, letterSpacing: -0.8 }}>
+          Subscriptions & Invoices
+        </h1>
+        <p style={{ marginTop: 6, fontSize: 13, color: "var(--text-2)" }}>
+          Live subscription state and recent invoices. To refund, open the receipt in your Dodo dashboard.
+        </p>
+      </header>
 
-      {/* Subscriptions */}
-      <div className="mb-6 rounded-xl border border-border bg-card p-5 shadow-elev1">
-        <p className="mb-3 text-sm font-semibold">Subscriptions ({subs.length})</p>
-        <DataGrid
-          columns={["User", "Plan", "Status", "Renews", "Provider", "Created"]}
-          rows={subs}
-          getKey={(r) => r.id}
-          empty="No subscriptions yet."
-          renderMobile={(r) => (
-            <MobileRecord
-              title={emailMap.get(r.user_id) ?? r.user_id.slice(0, 12)}
-              eyebrow={r.plan}
-              status={<Badge tone={r.status === "active" ? "green" : "warn"}>{r.status}</Badge>}
-              meta={[
-                ["Renews", r.current_period_end ? new Date(r.current_period_end).toLocaleDateString("en-IN") : "—"],
-                ["Provider", r.provider],
-              ]}
-            />
-          )}
-          renderCells={(r) => [
-            <Link key="user" href={`/admin/users/${r.user_id}`} className="font-mono text-xs hover:text-primary">{emailMap.get(r.user_id) ?? r.user_id.slice(0, 12)}</Link>,
-            <Badge key="plan" tone={r.plan === "career_sprint" ? "violet" : "blue"}>{r.plan}</Badge>,
-            <Badge key="status" tone={r.status === "active" ? "green" : r.status === "cancelled" ? "muted" : "warn"}>{r.status}</Badge>,
-            <span key="renews" className="text-xs text-muted-foreground">{r.current_period_end ? new Date(r.current_period_end).toLocaleDateString("en-IN") : "—"}{r.cancel_at_period_end ? " (cancel pending)" : ""}</span>,
-            <span key="prov" className="text-xs">{r.provider}</span>,
-            <span key="cr" className="text-xs text-muted-foreground">{timeAgo(r.created_at)}</span>,
-          ]}
-        />
-      </div>
+      <SectionHeader title={`Subscriptions (${subs.length})`} />
+      <Card p={0}>
+        {subs.length === 0 ? (
+          <div style={{ padding: 24, textAlign: "center", color: "var(--text-3)", fontSize: 13 }}>
+            No subscriptions yet.
+          </div>
+        ) : (
+          <div style={{ paddingBottom: 4 }}>
+            {subs.map((s, i) => (
+              <ListRow
+                key={s.id}
+                divider={i < subs.length - 1}
+                href={`/admin/users/${s.user_id}`}
+                title={<span className="pm-mono">{emailMap.get(s.user_id) ?? s.user_id.slice(0, 12)}</span>}
+                subtitle={`${s.provider} · renews ${s.current_period_end ? new Date(s.current_period_end).toLocaleDateString("en-IN") : "—"}${s.cancel_at_period_end ? " (cancel pending)" : ""}`}
+                trailing={
+                  <span style={{ display: "inline-flex", alignItems: "center", gap: 10 }}>
+                    <Badge tone={s.plan === "career_sprint" ? "accent" : "info"}>{s.plan}</Badge>
+                    <Badge tone={s.status === "active" ? "ok" : s.status === "cancelled" ? "neutral" : "warn"}>
+                      {s.status}
+                    </Badge>
+                    <span style={{ fontSize: 11, color: "var(--text-3)", minWidth: 56, textAlign: "right" }}>
+                      {timeAgo(s.created_at)}
+                    </span>
+                  </span>
+                }
+              />
+            ))}
+          </div>
+        )}
+      </Card>
 
-      {/* Invoices */}
-      <div className="rounded-xl border border-border bg-card p-5 shadow-elev1">
-        <p className="mb-3 text-sm font-semibold">Recent invoices ({invoices.length})</p>
-        <DataGrid
-          columns={["User", "Amount", "Status", "When", "Receipt"]}
-          rows={invoices}
-          getKey={(r) => r.id}
-          empty="No invoices yet."
-          renderMobile={(r) => (
-            <MobileRecord
-              title={emailMap.get(r.user_id) ?? r.user_id.slice(0, 12)}
-              eyebrow={`₹${(r.amount / 100).toLocaleString("en-IN")}`}
-              status={<Badge tone={r.status === "paid" ? "green" : "danger"}>{r.status}</Badge>}
-              meta={[["When", timeAgo(r.created_at)]]}
-            />
-          )}
-          renderCells={(r) => [
-            <Link key="u" href={`/admin/users/${r.user_id}`} className="font-mono text-xs hover:text-primary">{emailMap.get(r.user_id) ?? r.user_id.slice(0, 12)}</Link>,
-            <span key="amt" className="font-semibold tabular-nums">₹{(r.amount / 100).toLocaleString("en-IN")}</span>,
-            <Badge key="st" tone={r.status === "paid" ? "green" : "danger"}>{r.status}</Badge>,
-            <span key="when" className="text-xs text-muted-foreground">{timeAgo(r.created_at)}</span>,
-            r.hosted_invoice_url || r.receipt_url ? (
-              <a key="link" href={(r.hosted_invoice_url ?? r.receipt_url)!} target="_blank" rel="noreferrer" className="text-xs text-primary hover:underline">Open</a>
-            ) : (
-              <span key="link" className="text-xs text-muted-foreground">—</span>
-            ),
-          ]}
-        />
-      </div>
+      <SectionHeader title={`Recent invoices (${invoices.length})`} />
+      <Card p={0}>
+        {invoices.length === 0 ? (
+          <div style={{ padding: 24, textAlign: "center", color: "var(--text-3)", fontSize: 13 }}>
+            No invoices yet.
+          </div>
+        ) : (
+          <div style={{ paddingBottom: 4 }}>
+            {invoices.map((r, i) => (
+              <ListRow
+                key={r.id}
+                divider={i < invoices.length - 1}
+                href={`/admin/users/${r.user_id}`}
+                title={<span className="pm-mono">{emailMap.get(r.user_id) ?? r.user_id.slice(0, 12)}</span>}
+                subtitle={`${r.provider} · ${timeAgo(r.created_at)}`}
+                trailing={
+                  <span style={{ display: "inline-flex", alignItems: "center", gap: 10 }}>
+                    <span className="pm-num" style={{ fontSize: 13, fontWeight: 600 }}>
+                      ₹{(r.amount / 100).toLocaleString("en-IN")}
+                    </span>
+                    <Badge tone={r.status === "paid" ? "ok" : "err"}>{r.status}</Badge>
+                    {(r.hosted_invoice_url || r.receipt_url) && (
+                      <a
+                        href={(r.hosted_invoice_url ?? r.receipt_url)!}
+                        target="_blank"
+                        rel="noreferrer"
+                        style={{ fontSize: 11, color: "var(--accent)", fontWeight: 500 }}
+                      >
+                        Open
+                      </a>
+                    )}
+                  </span>
+                }
+              />
+            ))}
+          </div>
+        )}
+      </Card>
     </div>
   );
+}
+
+function timeAgo(value: string | null | undefined): string {
+  if (!value) return "—";
+  const diff = Date.now() - new Date(value).getTime();
+  if (!Number.isFinite(diff) || diff < 0) return "—";
+  const m = Math.floor(diff / 60_000);
+  if (m < 1)  return "now";
+  if (m < 60) return `${m}m`;
+  const h = Math.floor(m / 60);
+  if (h < 24) return `${h}h`;
+  return `${Math.floor(h / 24)}d`;
 }
