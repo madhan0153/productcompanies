@@ -1,10 +1,8 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { Gift, KeyRound, Wallet, Users, ArrowRight, TrendingUp, Stethoscope } from "lucide-react";
+import { ArrowRight, Gift, Stethoscope, TrendingUp, Users, Wallet } from "lucide-react";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
-import {
-  MetricStrip, MiniMetric, PageHeader,
-} from "@/components/admin/admin-ui";
+import { Badge, Card, KPI, ListRow, SectionHeader } from "@/components/admin/pm";
 
 export const metadata: Metadata = { title: "Admin · Billing" };
 export const dynamic = "force-dynamic";
@@ -22,116 +20,152 @@ export default async function AdminBillingPage() {
     recentInvoicesResult,
   ] = await Promise.all([
     admin.from("subscriptions").select("id", { count: "exact", head: true }).eq("status", "active"),
-    admin.from("invoices").select("amount").gte("created_at", since30d).eq("status", "paid") as any,
+    admin.from("invoices").select("amount").gte("created_at", since30d).eq("status", "paid") as never,
     admin.from("entitlement_grants").select("id", { count: "exact", head: true }).is("revoked_at", null),
     admin.from("promo_codes").select("id", { count: "exact", head: true }).eq("is_active", true),
     admin
       .from("invoices")
       .select("amount, currency, status, created_at")
       .order("created_at", { ascending: false })
-      .limit(10) as any,
+      .limit(10) as never,
   ]);
 
-  const revenue30d = ((paidInvoicesResult.data ?? []) as Array<{ amount: number }>)
+  const revenue30d = ((paidInvoicesResult as { data: Array<{ amount: number }> | null }).data ?? [])
     .reduce((s, r) => s + (r.amount ?? 0), 0);
 
+  const recentInvoices = ((recentInvoicesResult as {
+    data: Array<{ amount: number; currency: string; status: string; created_at: string }> | null;
+  }).data) ?? [];
+
   return (
-    <div className="mx-auto w-full max-w-[1440px] px-4 py-5 pb-28 sm:px-6 lg:px-8">
-      <PageHeader
-        eyebrow="Admin · Billing"
-        title="Billing Control Center"
-        description="Grant access, create promo codes, manage subscriptions, and refund payments — all without leaving the admin."
-      />
+    <div style={{ maxWidth: 1280, margin: "0 auto", padding: "20px 16px 96px" }}>
+      <header style={{ marginBottom: 18 }}>
+        <p style={{ fontSize: 11, fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.14em", color: "var(--accent)" }}>
+          Admin · Billing
+        </p>
+        <h1 style={{ marginTop: 6, fontSize: 26, fontWeight: 600, letterSpacing: -0.8, color: "var(--text)" }}>
+          Billing Control Center
+        </h1>
+        <p style={{ marginTop: 6, fontSize: 13, color: "var(--text-2)" }}>
+          Grant access, push coupon codes, manage subscriptions, reconcile payments — without leaving the admin.
+        </p>
+      </header>
 
-      <MetricStrip>
-        <MiniMetric label="Active subs"        value={activeSubsResult.count ?? 0} />
-        <MiniMetric label="Active grants"      value={activeGrantsResult.count ?? 0} />
-        <MiniMetric label="Active promos"      value={activePromosResult.count ?? 0} />
-        <MiniMetric label="Revenue (30d)"      value={`₹${(revenue30d / 100).toLocaleString("en-IN", { maximumFractionDigits: 0 })}`} />
-      </MetricStrip>
+      <div style={{ display: "grid", gap: 12, gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))" }}>
+        <KPI label="Active subs"    value={String(activeSubsResult.count   ?? 0)} accent />
+        <KPI label="Active grants"  value={String(activeGrantsResult.count ?? 0)} />
+        <KPI label="Active promos"  value={String(activePromosResult.count ?? 0)} />
+        <KPI
+          label="Revenue (30d)"
+          value={`₹${(revenue30d / 100).toLocaleString("en-IN", { maximumFractionDigits: 0 })}`}
+          hint="Paid invoices"
+        />
+      </div>
 
-      {/* Action cards */}
-      <div className="mb-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        <ActionCard
+      <SectionHeader title="Quick actions" />
+      <div style={{ display: "grid", gap: 12, gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))" }}>
+        <ActionTile
           href="/admin/billing/revenue"
-          icon={<TrendingUp className="h-5 w-5 text-emerald-500" />}
+          icon={<TrendingUp size={16} style={{ color: "var(--accent)" }} />}
           title="Revenue & retention"
-          description="MRR, churn, at-risk list, plan mix — the whole money picture in one screen."
+          desc="MRR, churn, at-risk list, plan mix."
         />
-        <ActionCard
+        <ActionTile
           href="/admin/billing/grants"
-          icon={<Users className="h-5 w-5 text-primary" />}
+          icon={<Users size={16} style={{ color: "var(--accent)" }} />}
           title="Grant access"
-          description="Give Pro / Career Sprint to any user by email. Lifetime, 12-month, or custom duration."
+          desc="Give Pro / Career Sprint by email."
         />
-        <ActionCard
+        <ActionTile
           href="/admin/billing/coupons"
-          icon={<Gift className="h-5 w-5 text-violet-500" />}
+          icon={<Gift size={16} style={{ color: "var(--accent)" }} />}
           title="Coupons"
-          description="Create promo codes / coupons with custom discounts, expiry, and redemption caps."
+          desc="Create promo codes with discount + cap."
         />
-        <ActionCard
+        <ActionTile
           href="/admin/billing/subscriptions"
-          icon={<Wallet className="h-5 w-5 text-amber-500" />}
+          icon={<Wallet size={16} style={{ color: "var(--accent)" }} />}
           title="Subscriptions"
-          description="View active subs, cancel, or trigger refunds via Dodo Payments."
+          desc="Live state, cancel, refund."
         />
-        <ActionCard
+        <ActionTile
           href="/admin/billing/reconcile"
-          icon={<Stethoscope className="h-5 w-5 text-rose-500" />}
+          icon={<Stethoscope size={16} style={{ color: "var(--accent)" }} />}
           title="Reconcile payment"
-          description="User paid but plan didn't activate? Paste their subscription_id and force-sync from Dodo."
+          desc="Force-sync a sub_… from Dodo."
         />
       </div>
 
-      {/* Recent invoices peek */}
-      <div className="rounded-xl border border-border bg-card p-5 shadow-elev1">
-        <div className="mb-3 flex items-center justify-between">
-          <p className="text-sm font-semibold">Recent invoices</p>
-          <Link href="/admin/billing/subscriptions" className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground">
-            View all <ArrowRight className="h-3 w-3" />
+      <SectionHeader
+        title="Recent invoices"
+        action={
+          <Link
+            href="/admin/billing/subscriptions"
+            style={{ display: "inline-flex", alignItems: "center", gap: 4, fontSize: 12, color: "var(--text-3)" }}
+          >
+            View all <ArrowRight size={12} />
           </Link>
-        </div>
-        {((recentInvoicesResult.data ?? []) as Array<{ amount: number; currency: string; status: string; created_at: string }>).length === 0 ? (
-          <p className="text-sm text-muted-foreground">No invoices yet.</p>
+        }
+      />
+      <Card p={0}>
+        {recentInvoices.length === 0 ? (
+          <div style={{ padding: 16, fontSize: 13, color: "var(--text-3)" }}>
+            No invoices yet.
+          </div>
         ) : (
-          <ul className="divide-y divide-border/50">
-            {((recentInvoicesResult.data ?? []) as Array<{ amount: number; currency: string; status: string; created_at: string }>).map((inv, i) => (
-              <li key={i} className="flex items-center justify-between py-2 text-sm">
-                <span className="text-muted-foreground">{new Date(inv.created_at).toLocaleDateString("en-IN")}</span>
-                <span className="flex items-center gap-3">
-                  <span className={`text-xs rounded-full px-2 py-0.5 ${inv.status === "paid" ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400" : "bg-rose-500/10 text-rose-600 dark:text-rose-400"}`}>
-                    {inv.status}
+          <div style={{ paddingBottom: 4 }}>
+            {recentInvoices.map((inv, i) => (
+              <ListRow
+                key={i}
+                divider={i < recentInvoices.length - 1}
+                title={
+                  <span style={{ color: "var(--text-2)", fontSize: 13 }}>
+                    {new Date(inv.created_at).toLocaleDateString("en-IN", {
+                      day: "numeric", month: "short", year: "numeric",
+                    })}
                   </span>
-                  <span className="font-semibold tabular-nums">
-                    {(inv.currency ?? "INR") === "INR" ? "₹" : inv.currency} {(inv.amount / 100).toLocaleString("en-IN")}
+                }
+                trailing={
+                  <span style={{ display: "inline-flex", alignItems: "center", gap: 10 }}>
+                    <Badge tone={inv.status === "paid" ? "ok" : "err"}>{inv.status}</Badge>
+                    <span className="pm-num" style={{ fontWeight: 600 }}>
+                      {(inv.currency ?? "INR") === "INR" ? "₹" : inv.currency}
+                      {(inv.amount / 100).toLocaleString("en-IN")}
+                    </span>
                   </span>
-                </span>
-              </li>
+                }
+              />
             ))}
-          </ul>
+          </div>
         )}
-      </div>
+      </Card>
     </div>
   );
 }
 
-function ActionCard({
-  href, icon, title, description,
-}: { href: string; icon: React.ReactNode; title: string; description: string }) {
+function ActionTile({
+  href, icon, title, desc,
+}: { href: string; icon: React.ReactNode; title: string; desc: string }) {
   return (
-    <Link
-      href={href}
-      className="group rounded-xl border border-border bg-card p-5 shadow-elev1 transition-all hover:border-primary/40 hover:shadow-pop"
-    >
-      <div className="mb-3 inline-flex h-10 w-10 items-center justify-center rounded-lg bg-secondary/60">
-        {icon}
-      </div>
-      <p className="mb-1 font-semibold">{title}</p>
-      <p className="text-xs text-muted-foreground">{description}</p>
-      <p className="mt-3 inline-flex items-center gap-1 text-xs font-semibold text-primary opacity-0 transition-opacity group-hover:opacity-100">
-        Open <ArrowRight className="h-3 w-3" />
-      </p>
+    <Link href={href} style={{ display: "block" }}>
+      <Card p={16}>
+        <div style={{
+          width: 32, height: 32, borderRadius: 8,
+          background: "var(--accent-soft)",
+          display: "flex", alignItems: "center", justifyContent: "center",
+          marginBottom: 10,
+        }}>
+          {icon}
+        </div>
+        <div style={{ fontSize: 14, fontWeight: 600 }}>{title}</div>
+        <div style={{ fontSize: 12, color: "var(--text-3)", marginTop: 4 }}>{desc}</div>
+        <div style={{
+          marginTop: 10, fontSize: 12, fontWeight: 500,
+          color: "var(--accent)", display: "inline-flex", alignItems: "center", gap: 4,
+        }}>
+          Open <ArrowRight size={12} />
+        </div>
+      </Card>
     </Link>
   );
 }

@@ -1,11 +1,6 @@
 import type { Metadata } from "next";
-import { Briefcase, Search, GitMerge } from "lucide-react";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
-import {
-  Badge, CsvButton, DataGrid, IdentityCell,
-  MetricStrip, MiniMetric, MobileRecord, PageHeader, Panel,
-  Progress, SectionDivider, timeAgo,
-} from "@/components/admin/admin-ui";
+import { Badge, Card, KPI, ListRow, SectionHeader } from "@/components/admin/pm";
 
 export const metadata: Metadata = { title: "Admin · Jobs & Matches" };
 export const dynamic = "force-dynamic";
@@ -43,19 +38,20 @@ export default async function AdminJobsPage({
 }: {
   searchParams?: Promise<SearchParams>;
 }) {
-  const params      = (await searchParams) ?? {};
-  const jobQuery    = (params.job     ?? "").trim();
+  const params        = (await searchParams) ?? {};
+  const jobQuery      = (params.job     ?? "").trim();
   const companyFilter = (params.company ?? "").trim();
 
   const admin = createSupabaseAdminClient();
 
+  type JobsBuilder = ReturnType<typeof admin.from>;
   let jobsQ = admin
     .from("jobs")
     .select("id, title, location, is_active, quality_score, jd_parsed_at, is_likely_ghost, apply_click_count, role_function_jd, last_seen_at, companies(name, slug)")
     .order("last_seen_at", { ascending: false, nullsFirst: false })
-    .limit(60) as any;
-  if (jobQuery)     jobsQ = jobsQ.ilike("title", `%${jobQuery}%`);
-  if (companyFilter) jobsQ = jobsQ.ilike("companies.name", `%${companyFilter}%`);
+    .limit(60) as unknown as JobsBuilder;
+  if (jobQuery)      jobsQ = (jobsQ as never as { ilike: (a: string, b: string) => JobsBuilder }).ilike("title", `%${jobQuery}%`);
+  if (companyFilter) jobsQ = (jobsQ as never as { ilike: (a: string, b: string) => JobsBuilder }).ilike("companies.name", `%${companyFilter}%`);
 
   const [
     jobsResult,
@@ -73,13 +69,13 @@ export default async function AdminJobsPage({
       .from("matches")
       .select("user_id, job_id, score, confidence, verdict, computed_at, user_hidden, jobs(title, companies(name))")
       .order("computed_at", { ascending: false })
-      .limit(20) as any,
-    admin.from("companies").select("name").order("name") as any,
+      .limit(20) as never,
+    admin.from("companies").select("name").order("name") as never,
   ]);
 
-  const jobs     = (jobsResult.data     ?? []) as JobRow[];
-  const matches  = (matchesResult.data  ?? []) as MatchRow[];
-  const companies = ((companiesResult.data ?? []) as Array<{ name: string }>).map((c) => c.name);
+  const jobs      = ((jobsResult       as unknown as { data: JobRow[]   | null }).data ?? []);
+  const matches   = ((matchesResult    as { data: MatchRow[] | null }).data ?? []);
+  const companies = (((companiesResult as { data: Array<{ name: string }> | null }).data ?? [])).map((c) => c.name);
 
   const verdictCounts = new Map<string, number>();
   for (const m of matches) {
@@ -87,156 +83,191 @@ export default async function AdminJobsPage({
     verdictCounts.set(v, (verdictCounts.get(v) ?? 0) + 1);
   }
 
-  const csv = toCsv([
-    ["Company", "Title", "Location", "Active", "Quality", "Parsed", "Ghost", "Apply clicks"],
-    ...jobs.map((j) => [
-      j.companies?.name ?? "",
-      j.title,
-      j.location ?? "",
-      String(j.is_active),
-      String(Math.round(j.quality_score ?? 0)),
-      j.jd_parsed_at ? "yes" : "no",
-      j.is_likely_ghost ? "yes" : "no",
-      String(j.apply_click_count ?? 0),
-    ]),
-  ]);
-
   return (
-    <div className="mx-auto w-full max-w-[1440px] px-4 py-5 pb-28 sm:px-6 lg:px-8">
-      <PageHeader
-        eyebrow="Admin · Jobs"
-        title="Job & Match Management"
-        description="Monitor job quality, enrichment status, and computed matches."
-        action={<CsvButton filename="prodmatch-jobs.csv" csv={csv} />}
-      />
+    <div style={{ maxWidth: 1280, margin: "0 auto", padding: "20px 16px 96px" }}>
+      <header style={{ marginBottom: 18 }}>
+        <p style={{ fontSize: 11, fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.14em", color: "var(--accent)" }}>
+          Admin · Jobs
+        </p>
+        <h1 style={{ marginTop: 6, fontSize: 26, fontWeight: 600, letterSpacing: -0.8 }}>
+          Job & Match Management
+        </h1>
+        <p style={{ marginTop: 6, fontSize: 13, color: "var(--text-2)" }}>
+          Monitor job quality, enrichment status, and computed matches.
+        </p>
+      </header>
 
-      <MetricStrip>
-        <MiniMetric label="Active jobs"  value={activeCountResult.count ?? 0} />
-        <MiniMetric label="JD parsed"    value={parsedCountResult.count ?? 0} />
-        <MiniMetric label="Ghost flags"  value={ghostCountResult.count ?? 0}  tone={(ghostCountResult.count ?? 0) > 0 ? "warn" : undefined} />
-        <MiniMetric label="Matches shown" value={matches.length} />
-      </MetricStrip>
+      <div style={{ display: "grid", gap: 12, gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))" }}>
+        <KPI label="Active jobs"    value={String(activeCountResult.count ?? 0)} accent />
+        <KPI label="JD parsed"      value={String(parsedCountResult.count ?? 0)} />
+        <KPI label="Ghost flags"    value={String(ghostCountResult.count  ?? 0)} hint={(ghostCountResult.count ?? 0) > 0 ? "review" : "none"} />
+        <KPI label="Matches shown"  value={String(matches.length)} />
+      </div>
 
       {/* Filters */}
-      <form action="/admin/jobs" className="mb-4 flex flex-wrap gap-2">
-        <label className="relative flex-1 min-w-[200px]">
-          <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+      <form action="/admin/jobs" style={{ marginTop: 22, marginBottom: 14, display: "flex", flexWrap: "wrap", gap: 8 }}>
+        <div style={{
+          flex: 1, minWidth: 200,
+          display: "flex", alignItems: "center", gap: 8, padding: "0 12px",
+          height: 38, background: "var(--surface-2)", borderRadius: 10,
+          border: "1px solid transparent",
+        }}>
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none" style={{ color: "var(--text-3)" }}>
+            <circle cx="7" cy="7" r="4.5" stroke="currentColor" strokeWidth="1.5" />
+            <path d="M11 11l3 3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+          </svg>
           <input
             name="job"
             defaultValue={jobQuery}
             placeholder="Filter by job title…"
-            className="h-10 w-full rounded-lg border border-border bg-card pl-9 pr-3 text-sm outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20"
+            style={{
+              flex: 1, border: "none", background: "transparent", outline: "none",
+              fontFamily: "inherit", fontSize: 14, color: "var(--text)", minWidth: 0,
+            }}
           />
-        </label>
+        </div>
         <select
           name="company"
           defaultValue={companyFilter}
-          className="h-10 rounded-lg border border-border bg-card px-3 text-sm text-foreground outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
+          style={{
+            height: 38, padding: "0 12px", borderRadius: 10,
+            background: "var(--surface)", border: "1px solid var(--line)",
+            color: "var(--text)", fontFamily: "inherit", fontSize: 14, outline: "none",
+          }}
         >
           <option value="">All companies</option>
           {companies.map((c) => <option key={c} value={c}>{c}</option>)}
         </select>
         <button
           type="submit"
-          className="press h-10 rounded-lg bg-primary px-4 text-sm font-medium text-primary-foreground focus-ring"
+          className="pm-btn"
+          data-variant="primary"
+          style={{
+            height: 38, padding: "0 16px", borderRadius: 9,
+            background: "var(--accent)", color: "var(--accent-ink)",
+            border: "1px solid transparent", cursor: "pointer",
+            fontSize: 13, fontWeight: 500,
+          }}
         >
           Apply
         </button>
       </form>
 
-      {/* Jobs table */}
-      <Panel icon={Briefcase} title="Jobs" description={`${jobs.length} rows${jobQuery ? ` · filtered by "${jobQuery}"` : ""}`}>
-        <DataGrid
-          columns={["Role", "Quality", "Enrichment", "Apply clicks", "Last seen"]}
-          rows={jobs}
-          getKey={(r) => r.id}
-          empty="No jobs match the current filter."
-          renderMobile={(r) => (
-            <MobileRecord
-              title={r.title}
-              eyebrow={`${r.companies?.name ?? "?"} · ${r.location ?? "Remote"}`}
-              status={
-                <Badge tone={r.is_likely_ghost ? "danger" : r.jd_parsed_at ? "ok" : "warn"}>
-                  {r.is_likely_ghost ? "Ghost" : r.jd_parsed_at ? "Parsed" : "Pending"}
-                </Badge>
-              }
-              meta={[
-                ["Quality", String(Math.round(r.quality_score ?? 0))],
-                ["Clicks",  String(r.apply_click_count ?? 0)],
-                ["Seen",    timeAgo(r.last_seen_at)],
-                ["Role",    r.role_function_jd ?? "—"],
-              ]}
-            />
-          )}
-          renderCells={(r) => [
-            <IdentityCell key="role"
-              title={r.title}
-              subtitle={`${r.companies?.name ?? "?"} · ${r.location ?? "Remote"}`}
-            />,
-            <Progress key="quality" value={Math.round(r.quality_score ?? 0)} />,
-            <div key="enrich" className="flex flex-wrap gap-1">
-              <Badge tone={r.jd_parsed_at ? "ok" : "warn"}>{r.jd_parsed_at ? "Parsed" : "Pending"}</Badge>
-              {r.is_likely_ghost && <Badge tone="danger">Ghost</Badge>}
-            </div>,
-            <span key="clicks" className="font-semibold tabular-nums">{r.apply_click_count ?? 0}</span>,
-            <span key="seen" className="text-xs text-muted-foreground">{timeAgo(r.last_seen_at)}</span>,
-          ]}
-        />
-      </Panel>
-
-      <SectionDivider title="Recent matches" />
-
-      {/* Verdict breakdown */}
-      <div className="mb-4 flex flex-wrap gap-2">
-        {[...verdictCounts.entries()].map(([verdict, count]) => (
-          <div key={verdict} className="rounded-lg border border-border bg-card px-3 py-2 text-sm">
-            <span className="font-semibold tabular-nums">{count}</span>{" "}
-            <span className="text-muted-foreground">{verdict}</span>
+      {/* Jobs */}
+      <SectionHeader title="Jobs" sub={`${jobs.length} rows${jobQuery ? ` · filtered by "${jobQuery}"` : ""}`} />
+      <Card p={0}>
+        {jobs.length === 0 ? (
+          <div style={{ padding: 24, textAlign: "center", color: "var(--text-3)", fontSize: 13 }}>
+            No jobs match the current filter.
           </div>
-        ))}
-      </div>
+        ) : (
+          <div style={{ paddingBottom: 4 }}>
+            {jobs.map((r, i) => (
+              <ListRow
+                key={r.id}
+                divider={i < jobs.length - 1}
+                title={r.title}
+                subtitle={`${r.companies?.name ?? "?"} · ${r.location ?? "Remote"}${r.role_function_jd ? ` · ${r.role_function_jd}` : ""}`}
+                trailing={
+                  <span style={{ display: "inline-flex", alignItems: "center", gap: 10 }}>
+                    <QualityChip score={Math.round(r.quality_score ?? 0)} />
+                    <Badge tone={r.is_likely_ghost ? "err" : r.jd_parsed_at ? "ok" : "warn"}>
+                      {r.is_likely_ghost ? "ghost" : r.jd_parsed_at ? "parsed" : "pending"}
+                    </Badge>
+                    <span className="pm-num" style={{ fontSize: 11, color: "var(--text-3)", minWidth: 56, textAlign: "right" }}>
+                      {timeAgo(r.last_seen_at)}
+                    </span>
+                  </span>
+                }
+              />
+            ))}
+          </div>
+        )}
+      </Card>
 
-      <Panel icon={GitMerge} title="Matches" description="Last 20 computed matches">
-        <DataGrid
-          columns={["Role", "Score", "Verdict", "Computed", "Visibility"]}
-          rows={matches}
-          getKey={(r) => `${r.user_id}-${r.job_id}`}
-          empty="No matches computed yet."
-          renderMobile={(r) => (
-            <MobileRecord
-              title={r.jobs?.title ?? r.job_id.slice(0, 8)}
-              eyebrow={r.jobs?.companies?.name ?? "Unknown"}
-              status={<Badge tone={r.verdict === "strong_fit" ? "ok" : "muted"}>{r.verdict ?? "scored"}</Badge>}
-              meta={[
-                ["Score",    `${Math.round(r.score)}${r.confidence != null ? ` / ${Math.round(r.confidence)}` : ""}`],
-                ["Computed", timeAgo(r.computed_at)],
-                ["State",    r.user_hidden ? "Hidden" : "Visible"],
-              ]}
-            />
-          )}
-          renderCells={(r) => [
-            <IdentityCell key="role"
-              title={r.jobs?.title ?? r.job_id.slice(0, 8)}
-              subtitle={r.jobs?.companies?.name ?? "Unknown"}
-            />,
-            <span key="score" className="tabular-nums">
-              {Math.round(r.score)}
-              {r.confidence != null && <span className="text-muted-foreground"> / {Math.round(r.confidence)}</span>}
-            </span>,
-            <Badge key="verdict" tone={r.verdict === "strong_fit" ? "ok" : "muted"}>
-              {r.verdict ?? "scored"}
-            </Badge>,
-            <span key="when" className="text-xs text-muted-foreground">{timeAgo(r.computed_at)}</span>,
-            <Badge key="vis" tone={r.user_hidden ? "warn" : "ok"}>
-              {r.user_hidden ? "Hidden" : "Visible"}
-            </Badge>,
-          ]}
-        />
-      </Panel>
+      <SectionHeader title="Recent matches" sub={`${matches.length} computed in window`} />
+
+      {/* Verdict chips */}
+      {verdictCounts.size > 0 && (
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 12 }}>
+          {[...verdictCounts.entries()].map(([verdict, count]) => (
+            <div
+              key={verdict}
+              style={{
+                padding: "6px 12px", borderRadius: 999,
+                background: "var(--surface)", border: "1px solid var(--line)",
+                fontSize: 13,
+              }}
+            >
+              <span className="pm-num" style={{ fontWeight: 600 }}>{count}</span>{" "}
+              <span style={{ color: "var(--text-3)" }}>{verdict}</span>
+            </div>
+          ))}
+        </div>
+      )}
+
+      <Card p={0}>
+        {matches.length === 0 ? (
+          <div style={{ padding: 24, textAlign: "center", color: "var(--text-3)", fontSize: 13 }}>
+            No matches computed yet.
+          </div>
+        ) : (
+          <div style={{ paddingBottom: 4 }}>
+            {matches.map((r, i) => (
+              <ListRow
+                key={`${r.user_id}-${r.job_id}`}
+                divider={i < matches.length - 1}
+                title={r.jobs?.title ?? r.job_id.slice(0, 8)}
+                subtitle={r.jobs?.companies?.name ?? "Unknown"}
+                trailing={
+                  <span style={{ display: "inline-flex", alignItems: "center", gap: 10 }}>
+                    <span className="pm-num" style={{ fontSize: 13, fontWeight: 600 }}>
+                      {Math.round(r.score)}
+                      {r.confidence != null && (
+                        <span style={{ color: "var(--text-3)", fontWeight: 500 }}> / {Math.round(r.confidence)}</span>
+                      )}
+                    </span>
+                    <Badge tone={r.verdict === "strong_fit" ? "ok" : "neutral"}>{r.verdict ?? "scored"}</Badge>
+                    <Badge tone={r.user_hidden ? "warn" : "info"}>
+                      {r.user_hidden ? "hidden" : "visible"}
+                    </Badge>
+                  </span>
+                }
+              />
+            ))}
+          </div>
+        )}
+      </Card>
     </div>
   );
 }
 
-function toCsv(rows: string[][]): string {
-  return rows.map((r) => r.map((c) => `"${c.replaceAll('"', '""')}"`).join(",")).join("\n");
+function QualityChip({ score }: { score: number }) {
+  const tone: "ok" | "warn" | "err" =
+    score >= 70 ? "ok" : score >= 40 ? "warn" : "err";
+  const bg = tone === "ok" ? "var(--ok-soft)" : tone === "warn" ? "var(--warn-soft)" : "var(--err-soft)";
+  const fg = tone === "ok" ? "var(--ok)"      : tone === "warn" ? "var(--warn)"      : "var(--err)";
+  return (
+    <span
+      className="pm-num"
+      style={{
+        padding: "2px 8px", borderRadius: 999, fontSize: 11, fontWeight: 600,
+        background: bg, color: fg,
+      }}
+    >
+      Q{score}
+    </span>
+  );
+}
+
+function timeAgo(value: string | null | undefined): string {
+  if (!value) return "—";
+  const diff = Date.now() - new Date(value).getTime();
+  if (!Number.isFinite(diff) || diff < 0) return "—";
+  const m = Math.floor(diff / 60_000);
+  if (m < 1)  return "now";
+  if (m < 60) return `${m}m`;
+  const h = Math.floor(m / 60);
+  if (h < 24) return `${h}h`;
+  return `${Math.floor(h / 24)}d`;
 }

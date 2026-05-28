@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
-import { Settings, CheckCircle2, XCircle, AlertTriangle, ShieldCheck } from "lucide-react";
+import { AlertTriangle, CheckCircle2, ShieldCheck, XCircle } from "lucide-react";
 import { describeLlmRuntime } from "@prodmatch/shared";
-import { PageHeader } from "@/components/admin/admin-ui";
+import { Card, KPI, SectionHeader } from "@/components/admin/pm";
 
 export const metadata: Metadata = { title: "Admin · Settings" };
 export const dynamic = "force-dynamic";
@@ -21,201 +21,143 @@ export default async function AdminSettingsPage() {
   const geminiKeys = (process.env.GEMINI_API_KEY ?? "").split(",").filter(Boolean).length;
 
   const checks: EnvCheck[] = [
-    // Auth & database
-    {
-      key:      "NEXT_PUBLIC_SUPABASE_URL",
-      label:    "Supabase URL",
-      set:      Boolean(process.env.NEXT_PUBLIC_SUPABASE_URL),
-      detail:   "Supabase project URL for all DB + auth operations.",
-      critical: true,
-    },
-    {
-      key:      "SUPABASE_SERVICE_ROLE_KEY",
-      label:    "Service role key",
-      set:      Boolean(process.env.SUPABASE_SERVICE_ROLE_KEY),
-      detail:   "Admin-level DB access. Server-only. Never expose to browser.",
-      critical: true,
-    },
-    // Admin access
-    {
-      key:      "ADMIN_EMAILS",
-      label:    "Admin email allowlist",
-      set:      Boolean(process.env.ADMIN_EMAILS),
-      detail:   process.env.ADMIN_EMAILS
+    { key: "NEXT_PUBLIC_SUPABASE_URL", label: "Supabase URL",       set: Boolean(process.env.NEXT_PUBLIC_SUPABASE_URL), detail: "Supabase project URL for all DB + auth operations.", critical: true },
+    { key: "SUPABASE_SERVICE_ROLE_KEY", label: "Service role key",  set: Boolean(process.env.SUPABASE_SERVICE_ROLE_KEY), detail: "Admin-level DB access. Server-only.", critical: true },
+    { key: "ADMIN_EMAILS", label: "Admin email allowlist",
+      set: Boolean(process.env.ADMIN_EMAILS),
+      detail: process.env.ADMIN_EMAILS
         ? `${process.env.ADMIN_EMAILS.split(",").filter(Boolean).length} admin(s) configured.`
         : "Unset — all /admin/* routes return 404.",
       critical: true,
     },
-    // LLM
-    {
-      key:      "GEMINI_API_KEY",
-      label:    "Gemini API keys",
-      set:      geminiKeys > 0,
-      detail:   geminiKeys > 0
-        ? `${geminiKeys} key${geminiKeys > 1 ? "s" : ""} loaded — primary multimodal + embedding route.`
-        : "Unset — fallback to free provider chain only.",
+    { key: "GEMINI_API_KEY", label: "Gemini API keys",
+      set: geminiKeys > 0,
+      detail: geminiKeys > 0 ? `${geminiKeys} key(s) loaded.` : "Unset — fallback chain only.",
     },
-    {
-      key:      "LLM_FORCE_BLOCK_FREE_PROVIDERS",
-      label:    "LLM kill switch",
-      set:      /^(1|true|yes|on)$/i.test(process.env.LLM_FORCE_BLOCK_FREE_PROVIDERS ?? ""),
-      detail:   "When ON, blocks all free providers. Set to 1 for emergency LLM stop.",
+    { key: "LLM_FORCE_BLOCK_FREE_PROVIDERS", label: "LLM kill switch",
+      set: /^(1|true|yes|on)$/i.test(process.env.LLM_FORCE_BLOCK_FREE_PROVIDERS ?? ""),
+      detail: "When ON, blocks all free providers. Emergency LLM stop.",
       inverted: true,
     },
-    {
-      key:      "LLM_ENABLE_DETERMINISTIC_FALLBACKS",
-      label:    "Deterministic fallbacks",
-      set:      !/^(0|false|no|off)$/i.test(process.env.LLM_ENABLE_DETERMINISTIC_FALLBACKS ?? "true"),
-      detail:   "Ensures crawler and matching degrade gracefully when LLM is exhausted.",
+    { key: "LLM_ENABLE_DETERMINISTIC_FALLBACKS", label: "Deterministic fallbacks",
+      set: !/^(0|false|no|off)$/i.test(process.env.LLM_ENABLE_DETERMINISTIC_FALLBACKS ?? "true"),
+      detail: "Ensures crawler & matching degrade gracefully when LLM is exhausted.",
     },
-    // Email
-    {
-      key:      "RESEND_API_KEY",
-      label:    "Resend API key",
-      set:      Boolean(process.env.RESEND_API_KEY),
-      detail:   "Required for digest emails and DPDP export delivery.",
-    },
-    {
-      key:      "RESEND_FROM_EMAIL",
-      label:    "From email",
-      set:      Boolean(process.env.RESEND_FROM_EMAIL),
-      detail:   process.env.RESEND_FROM_EMAIL ?? "Unset — email sending will fail.",
-    },
-    // Cron / crawler
-    {
-      key:      "CRON_SECRET",
-      label:    "Cron secret",
-      set:      Boolean(process.env.CRON_SECRET),
-      detail:   "Protects /api/cron/* endpoints from unauthenticated triggers.",
-    },
-    {
-      key:      "CRAWL_ALERT_WEBHOOK_URL",
-      label:    "Crawler alert webhook",
-      set:      Boolean(process.env.CRAWL_ALERT_WEBHOOK_URL),
-      detail:   "Slack/Discord webhook for crawler failure alerts. Optional.",
-    },
-    // DPDP
-    {
-      key:      "DPDP_POLICY_VERSION",
-      label:    "DPDP policy version",
-      set:      Boolean(process.env.DPDP_POLICY_VERSION),
-      detail:   `Current: ${process.env.DPDP_POLICY_VERSION ?? "1 (default)"}`,
-    },
-    // App
-    {
-      key:      "NEXT_PUBLIC_APP_URL",
-      label:    "App URL",
-      set:      Boolean(process.env.NEXT_PUBLIC_APP_URL),
-      detail:   process.env.NEXT_PUBLIC_APP_URL ?? "Unset — absolute links in emails will break.",
-    },
-    // Payments (Dodo)
-    {
-      key:      "DODO_PAYMENTS_API_KEY",
-      label:    "Dodo Payments API key",
-      set:      Boolean(process.env.DODO_PAYMENTS_API_KEY),
-      detail:   "Required for billing integration. Currently scaffolded only.",
-    },
-    {
-      key:      "DODO_PAYMENTS_ENVIRONMENT",
-      label:    "Dodo environment",
-      set:      true,
-      detail:   `Mode: ${process.env.DODO_PAYMENTS_ENVIRONMENT ?? "test_mode (default)"}`,
-    },
+    { key: "RESEND_API_KEY",  label: "Resend API key", set: Boolean(process.env.RESEND_API_KEY), detail: "Required for digest emails and DPDP export delivery." },
+    { key: "RESEND_FROM_EMAIL", label: "From email",   set: Boolean(process.env.RESEND_FROM_EMAIL), detail: process.env.RESEND_FROM_EMAIL ?? "Unset — email sending will fail." },
+    { key: "CRON_SECRET",     label: "Cron secret",    set: Boolean(process.env.CRON_SECRET), detail: "Protects /api/cron/* endpoints." },
+    { key: "CRAWL_ALERT_WEBHOOK_URL", label: "Crawler alert webhook", set: Boolean(process.env.CRAWL_ALERT_WEBHOOK_URL), detail: "Slack/Discord webhook for crawler failure alerts." },
+    { key: "DPDP_POLICY_VERSION", label: "DPDP policy version", set: Boolean(process.env.DPDP_POLICY_VERSION), detail: `Current: ${process.env.DPDP_POLICY_VERSION ?? "1 (default)"}` },
+    { key: "NEXT_PUBLIC_APP_URL", label: "App URL", set: Boolean(process.env.NEXT_PUBLIC_APP_URL), detail: process.env.NEXT_PUBLIC_APP_URL ?? "Unset — absolute links in emails will break." },
+    { key: "DODO_PAYMENTS_API_KEY", label: "Dodo Payments API key", set: Boolean(process.env.DODO_PAYMENTS_API_KEY), detail: "Required for billing integration." },
+    { key: "DODO_PAYMENTS_ENVIRONMENT", label: "Dodo environment", set: true, detail: `Mode: ${process.env.DODO_PAYMENTS_ENVIRONMENT ?? "test_mode (default)"}` },
   ];
 
-  const healthy   = checks.filter((c) => (c.inverted ? !c.set : c.set)).length;
-  const critical  = checks.filter((c) => c.critical && !(c.inverted ? !c.set : c.set)).length;
+  const healthy  = checks.filter((c) => (c.inverted ? !c.set : c.set)).length;
+  const critical = checks.filter((c) => c.critical && !(c.inverted ? !c.set : c.set)).length;
+
+  const bannerTone: "ok" | "warn" | "err" =
+    critical > 0 ? "err" : healthy === checks.length ? "ok" : "warn";
+  const bannerBg = bannerTone === "err" ? "var(--err-soft)" : bannerTone === "ok" ? "var(--ok-soft)" : "var(--warn-soft)";
+  const bannerFg = bannerTone === "err" ? "var(--err)"      : bannerTone === "ok" ? "var(--ok)"      : "var(--warn)";
 
   return (
-    <div className="mx-auto w-full max-w-[1440px] px-4 py-5 pb-28 sm:px-6 lg:px-8">
-      <PageHeader
-        eyebrow="Admin · Settings"
-        title="Settings & Configuration"
-        description="Environment variable health, feature flags, and platform configuration."
-      />
+    <div style={{ maxWidth: 1280, margin: "0 auto", padding: "20px 16px 96px" }}>
+      <header style={{ marginBottom: 18 }}>
+        <p style={{ fontSize: 11, fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.14em", color: "var(--accent)" }}>
+          Admin · Settings
+        </p>
+        <h1 style={{ marginTop: 6, fontSize: 26, fontWeight: 600, letterSpacing: -0.8 }}>
+          Settings & Configuration
+        </h1>
+        <p style={{ marginTop: 6, fontSize: 13, color: "var(--text-2)" }}>
+          Environment variable health, feature flags, and platform configuration.
+        </p>
+      </header>
 
-      {/* Summary banner */}
-      <div className={`mb-6 flex items-start gap-4 rounded-xl border p-4 ${
-        critical > 0
-          ? "border-rose-500/30 bg-rose-500/8"
-          : healthy === checks.length
-            ? "border-emerald-500/20 bg-emerald-500/5"
-            : "border-amber-500/20 bg-amber-500/5"
-      }`}>
+      <div style={{ display: "grid", gap: 12, gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))" }}>
+        <KPI label="Healthy"        value={`${healthy}/${checks.length}`} accent />
+        <KPI label="Critical fail"  value={String(critical)} />
+        <KPI label="Providers live" value={String(runtime.providers.length)} />
+        <KPI label="LLM ops routed" value={String(runtime.operations.length)} />
+      </div>
+
+      <div style={{
+        marginTop: 18, padding: 14, borderRadius: 12,
+        background: bannerBg,
+        border: `1px solid color-mix(in oklab, ${bannerFg} 30%, transparent)`,
+        display: "flex", alignItems: "flex-start", gap: 12,
+      }}>
         {critical > 0
-          ? <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-rose-500" />
+          ? <AlertTriangle size={18} style={{ color: bannerFg, flexShrink: 0, marginTop: 2 }} />
           : healthy === checks.length
-            ? <ShieldCheck className="mt-0.5 h-5 w-5 shrink-0 text-emerald-500" />
-            : <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-amber-500" />}
+            ? <ShieldCheck    size={18} style={{ color: bannerFg, flexShrink: 0, marginTop: 2 }} />
+            : <AlertTriangle  size={18} style={{ color: bannerFg, flexShrink: 0, marginTop: 2 }} />}
         <div>
-          <p className="text-sm font-semibold">
+          <p style={{ fontSize: 13, fontWeight: 600, color: bannerFg }}>
             {critical > 0
               ? `${critical} critical env var${critical > 1 ? "s" : ""} missing`
               : healthy === checks.length
                 ? "All environment checks pass"
                 : `${checks.length - healthy} optional var${checks.length - healthy > 1 ? "s" : ""} unset`}
           </p>
-          <p className="text-xs text-muted-foreground">
+          <p style={{ fontSize: 12, color: "var(--text-3)", marginTop: 2 }}>
             {healthy}/{checks.length} checks pass · {checks.filter((c) => c.critical).length} are critical
           </p>
         </div>
       </div>
 
-      {/* Critical checks */}
-      <Section title="Critical configuration" description="Missing any of these will break core functionality.">
+      <Section title="Critical configuration" desc="Missing any of these will break core functionality.">
         <CheckGrid checks={checks.filter((c) => c.critical)} />
       </Section>
 
-      {/* LLM routing */}
-      <Section title="LLM & AI routing" description="Provider chain and fallback configuration.">
+      <Section title="LLM & AI routing" desc="Provider chain and fallback configuration.">
         <CheckGrid checks={checks.filter((c) => ["GEMINI_API_KEY","LLM_FORCE_BLOCK_FREE_PROVIDERS","LLM_ENABLE_DETERMINISTIC_FALLBACKS"].includes(c.key))} />
 
-        {/* Active provider table */}
         {runtime.providers.length > 0 && (
-          <div className="mt-4 overflow-hidden rounded-lg border border-border bg-background/40">
-            <table className="min-w-full text-left text-sm">
-              <thead className="border-b border-border bg-secondary/40 text-[11px] uppercase tracking-wider text-muted-foreground">
+          <Card p={0} style={{ marginTop: 12, overflow: "hidden" }}>
+            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
+              <thead style={{ background: "var(--surface-2)", borderBottom: "1px solid var(--line)" }}>
                 <tr>
                   {["Provider", "Keys", "Text models", "Embedding"].map((h) => (
-                    <th key={h} className="px-4 py-2.5 font-semibold">{h}</th>
+                    <th key={h} style={{
+                      padding: "10px 16px", textAlign: "left",
+                      fontSize: 11, fontWeight: 600,
+                      color: "var(--text-3)", textTransform: "uppercase", letterSpacing: "0.08em",
+                    }}>{h}</th>
                   ))}
                 </tr>
               </thead>
-              <tbody className="divide-y divide-border/50">
-                {runtime.providers.map((p) => (
-                  <tr key={p.id} className="hover:bg-secondary/20">
-                    <td className="px-4 py-3 font-medium">{p.label}</td>
-                    <td className="px-4 py-3 tabular-nums">{p.keyCount}</td>
-                    <td className="px-4 py-3 text-xs text-muted-foreground">{p.textModels.slice(0,2).join(", ")}</td>
-                    <td className="px-4 py-3 text-xs">{p.embeddingModel ?? "—"}</td>
+              <tbody>
+                {runtime.providers.map((p, i) => (
+                  <tr key={p.id} style={{ borderBottom: i < runtime.providers.length - 1 ? "1px solid var(--line-2)" : "none" }}>
+                    <td style={{ padding: "12px 16px", fontWeight: 500 }}>{p.label}</td>
+                    <td style={{ padding: "12px 16px" }} className="pm-num">{p.keyCount}</td>
+                    <td style={{ padding: "12px 16px", fontSize: 12, color: "var(--text-3)" }}>{p.textModels.slice(0, 2).join(", ")}</td>
+                    <td style={{ padding: "12px 16px", fontSize: 12 }}>{p.embeddingModel ?? "—"}</td>
                   </tr>
                 ))}
               </tbody>
             </table>
-          </div>
+          </Card>
         )}
       </Section>
 
-      {/* Email & Cron */}
-      <Section title="Email & scheduling" description="Resend and cron endpoint protection.">
+      <Section title="Email & scheduling" desc="Resend and cron endpoint protection.">
         <CheckGrid checks={checks.filter((c) => ["RESEND_API_KEY","RESEND_FROM_EMAIL","CRON_SECRET","CRAWL_ALERT_WEBHOOK_URL"].includes(c.key))} />
       </Section>
 
-      {/* Other */}
-      <Section title="Platform & compliance" description="App URL, DPDP policy version, and Dodo Payments.">
+      <Section title="Platform & compliance" desc="App URL, DPDP policy, and Dodo Payments.">
         <CheckGrid checks={checks.filter((c) => ["DPDP_POLICY_VERSION","NEXT_PUBLIC_APP_URL","DODO_PAYMENTS_API_KEY","DODO_PAYMENTS_ENVIRONMENT"].includes(c.key))} />
       </Section>
     </div>
   );
 }
 
-function Section({ title, description, children }: { title: string; description: string; children: React.ReactNode }) {
+function Section({ title, desc, children }: { title: string; desc: string; children: React.ReactNode }) {
   return (
-    <section className="mb-6">
-      <div className="mb-3">
-        <p className="text-sm font-semibold">{title}</p>
-        <p className="text-xs text-muted-foreground">{description}</p>
-      </div>
+    <section style={{ marginTop: 22 }}>
+      <SectionHeader title={title} sub={desc} />
       {children}
     </section>
   );
@@ -223,30 +165,43 @@ function Section({ title, description, children }: { title: string; description:
 
 function CheckGrid({ checks }: { checks: EnvCheck[] }) {
   return (
-    <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+    <div style={{
+      display: "grid", gap: 12,
+      gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))",
+    }}>
       {checks.map((check) => {
-        const pass = check.inverted ? !check.set : check.set;
+        const pass    = check.inverted ? !check.set : check.set;
+        const failTone = check.critical ? "err" : "warn";
+        const bg = pass ? "var(--surface)"
+                : failTone === "err" ? "var(--err-soft)"
+                                     : "var(--warn-soft)";
+        const border = pass ? "var(--line)"
+                : failTone === "err" ? "color-mix(in oklab, var(--err) 30%, transparent)"
+                                     : "color-mix(in oklab, var(--warn) 30%, transparent)";
+        const iconColor = pass ? "var(--ok)" : failTone === "err" ? "var(--err)" : "var(--warn)";
         return (
-          <div
-            key={check.key}
-            className={`rounded-xl border p-4 ${
-              pass
-                ? "border-border bg-card"
-                : check.critical
-                  ? "border-rose-500/30 bg-rose-500/5"
-                  : "border-amber-500/20 bg-amber-500/5"
-            }`}
-          >
-            <div className="flex items-start justify-between gap-3">
-              <code className="break-all text-xs font-medium">{check.key}</code>
+          <div key={check.key} style={{
+            padding: 14, borderRadius: 12,
+            background: bg, border: `1px solid ${border}`,
+          }}>
+            <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 10 }}>
+              <code style={{
+                fontSize: 11, fontFamily: "var(--font-mono)", fontWeight: 500,
+                color: "var(--text)", wordBreak: "break-all",
+              }}>{check.key}</code>
               {pass
-                ? <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-emerald-500" />
-                : <XCircle     className={`mt-0.5 h-4 w-4 shrink-0 ${check.critical ? "text-rose-500" : "text-amber-500"}`} />}
+                ? <CheckCircle2 size={16} style={{ color: iconColor, flexShrink: 0, marginTop: 1 }} />
+                : <XCircle       size={16} style={{ color: iconColor, flexShrink: 0, marginTop: 1 }} />}
             </div>
-            <p className="mt-1 text-[11px] font-semibold text-foreground">{check.label}</p>
-            <p className="mt-1.5 text-[11px] text-muted-foreground">{check.detail}</p>
+            <p style={{ marginTop: 6, fontSize: 11, fontWeight: 600 }}>{check.label}</p>
+            <p style={{ marginTop: 4, fontSize: 11, color: "var(--text-3)" }}>{check.detail}</p>
             {check.critical && !pass && (
-              <p className="mt-2 text-[10px] font-semibold uppercase tracking-wide text-rose-500">Critical — set this now</p>
+              <p style={{
+                marginTop: 8, fontSize: 10, fontWeight: 600,
+                color: "var(--err)", textTransform: "uppercase", letterSpacing: "0.08em",
+              }}>
+                Critical — set this now
+              </p>
             )}
           </div>
         );

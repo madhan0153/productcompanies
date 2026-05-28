@@ -1,11 +1,7 @@
 import type { Metadata } from "next";
-import { LibraryBig, BookOpen, Zap, Calendar } from "lucide-react";
 import { getDsaRoleStats } from "@prodmatch/shared";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
-import {
-  Badge, DataGrid, IdentityCell, MetricStrip, MiniMetric,
-  MobileRecord, PageHeader, Panel, SectionDivider,
-} from "@/components/admin/admin-ui";
+import { Badge, Card, KPI, ListRow, SectionHeader } from "@/components/admin/pm";
 
 export const metadata: Metadata = { title: "Admin · Content" };
 export const dynamic = "force-dynamic";
@@ -26,12 +22,13 @@ export default async function AdminContentPage() {
       .from("interview_daily_dispatch")
       .select("problem_slug, role_tag, sent_at, difficulty")
       .order("sent_at", { ascending: false, nullsFirst: false })
-      .limit(20) as any,
+      .limit(20) as never,
     admin.from("interview_study_plan").select("id", { count: "exact", head: true }),
     admin.from("interview_readiness").select("id", { count: "exact", head: true }),
   ]);
 
-  const dispatches  = (dispatchResult.data  ?? []) as DispatchRow[];
+  const dispatches  = ((dispatchResult as { data: DispatchRow[] | null; count: number | null }).data ?? []);
+  const dispatchCnt = ((dispatchResult as { count: number | null }).count) ?? dispatches.length;
   const dsaStats    = getDsaRoleStats();
   const totalDsa    = dsaStats.reduce((s, t) => s + t.problemCount, 0);
   const totalHard   = dsaStats.reduce((s, t) => s + t.hard, 0);
@@ -39,128 +36,132 @@ export default async function AdminContentPage() {
   const totalEasy   = dsaStats.reduce((s, t) => s + t.easy, 0);
 
   return (
-    <div className="mx-auto w-full max-w-[1440px] px-4 py-5 pb-28 sm:px-6 lg:px-8">
-      <PageHeader
-        eyebrow="Admin · Content"
-        title="Content Management"
-        description="DSA problem tracks, daily dispatches, and interview readiness content."
-      />
+    <div style={{ maxWidth: 1280, margin: "0 auto", padding: "20px 16px 96px" }}>
+      <header style={{ marginBottom: 18 }}>
+        <p style={{ fontSize: 11, fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.14em", color: "var(--accent)" }}>
+          Admin · Content
+        </p>
+        <h1 style={{ marginTop: 6, fontSize: 26, fontWeight: 600, letterSpacing: -0.8 }}>
+          Content Management
+        </h1>
+        <p style={{ marginTop: 6, fontSize: 13, color: "var(--text-2)" }}>
+          DSA problem tracks, daily dispatches, and interview readiness content.
+        </p>
+      </header>
 
-      <MetricStrip>
-        <MiniMetric label="DSA problems"    value={totalDsa} />
-        <MiniMetric label="Role tracks"     value={dsaStats.length} />
-        <MiniMetric label="Dispatched"      value={dispatchResult.count ?? dispatches.length} />
-        <MiniMetric label="Study plans"     value={studyPlanResult.count ?? 0} />
-      </MetricStrip>
-
-      {/* Difficulty summary */}
-      <div className="mb-4 grid gap-3 sm:grid-cols-3">
-        <DiffCard label="Easy"   value={totalEasy}   color="text-emerald-600 dark:text-emerald-400" bg="bg-emerald-500/10 border-emerald-500/20" />
-        <DiffCard label="Medium" value={totalMedium} color="text-amber-600 dark:text-amber-400"   bg="bg-amber-500/10 border-amber-500/20" />
-        <DiffCard label="Hard"   value={totalHard}   color="text-rose-600 dark:text-rose-400"     bg="bg-rose-500/10 border-rose-500/20" />
+      <div style={{ display: "grid", gap: 12, gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))" }}>
+        <KPI label="DSA problems" value={totalDsa.toLocaleString("en-IN")} accent />
+        <KPI label="Role tracks"  value={String(dsaStats.length)} />
+        <KPI label="Dispatched"   value={String(dispatchCnt)} />
+        <KPI label="Study plans"  value={String(studyPlanResult.count ?? 0)} />
       </div>
 
-      {/* DSA tracks */}
-      <Panel icon={BookOpen} title="DSA role tracks" description={`${dsaStats.length} role-specific tracks`}>
-        <DataGrid
-          columns={["Track", "Problems", "Easy", "Medium", "Hard", "Top concepts"]}
-          rows={dsaStats}
-          getKey={(r) => r.role}
-          empty="No DSA tracks configured."
-          renderMobile={(r) => (
-            <MobileRecord
-              title={r.label}
-              eyebrow={`${r.problemCount} problems`}
-              status={<Badge tone="violet">{r.hard} hard</Badge>}
-              meta={[
-                ["Difficulty", `${r.easy}E / ${r.medium}M / ${r.hard}H`],
-                ["Concepts",   r.concepts.slice(0, 3).join(", ")],
-              ]}
-            />
-          )}
-          renderCells={(r) => [
-            <IdentityCell key="track"    title={r.label}  subtitle={r.role} />,
-            <span key="total"            className="font-semibold tabular-nums">{r.problemCount}</span>,
-            <span key="easy"             className="tabular-nums text-emerald-600 dark:text-emerald-400">{r.easy}</span>,
-            <span key="medium"           className="tabular-nums text-amber-600 dark:text-amber-400">{r.medium}</span>,
-            <span key="hard"             className="tabular-nums text-rose-600 dark:text-rose-400">{r.hard}</span>,
-            <span key="concepts" className="max-w-[16rem] truncate text-xs text-muted-foreground">
-              {r.concepts.slice(0, 4).join(", ")}
-            </span>,
-          ]}
-        />
-      </Panel>
+      <SectionHeader title="Difficulty mix" />
+      <div style={{ display: "grid", gap: 12, gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))" }}>
+        <DiffTile label="Easy"   value={totalEasy}   tone="ok"   />
+        <DiffTile label="Medium" value={totalMedium} tone="warn" />
+        <DiffTile label="Hard"   value={totalHard}   tone="err"  />
+      </div>
 
-      <SectionDivider title="Daily dispatch history" />
-
-      {/* Dispatches */}
-      <Panel icon={Calendar} title="Daily dispatch log" description="Recent problem dispatches sent to users">
-        <DataGrid
-          columns={["Problem slug", "Role tag", "Difficulty", "Sent at"]}
-          rows={dispatches}
-          getKey={(r) => `${r.problem_slug}-${r.sent_at}`}
-          empty="No dispatches recorded yet."
-          renderMobile={(r) => (
-            <MobileRecord
-              title={r.problem_slug}
-              eyebrow={r.role_tag ?? "all roles"}
-              status={
-                r.difficulty
-                  ? <Badge tone={
-                      r.difficulty === "hard"   ? "rose" :
-                      r.difficulty === "medium" ? "amber" : "green"
-                    }>{r.difficulty}</Badge>
-                  : undefined
-              }
-              meta={[
-                ["Role", r.role_tag ?? "all"],
-                ["Sent", r.sent_at ? new Date(r.sent_at).toLocaleDateString("en-IN") : "—"],
-              ]}
-            />
-          )}
-          renderCells={(r) => [
-            <code key="slug" className="rounded bg-secondary px-1.5 py-0.5 text-xs">{r.problem_slug}</code>,
-            <span key="role" className="text-sm">{r.role_tag ?? "all roles"}</span>,
-            r.difficulty
-              ? <Badge key="diff" tone={r.difficulty === "hard" ? "rose" : r.difficulty === "medium" ? "amber" : "green"}>
-                  {r.difficulty}
-                </Badge>
-              : <span key="diff" className="text-muted-foreground">—</span>,
-            <span key="sent" className="text-xs text-muted-foreground">
-              {r.sent_at ? new Date(r.sent_at).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" }) : "—"}
-            </span>,
-          ]}
-        />
-      </Panel>
-
-      {/* Readiness */}
-      <div className="mt-4 grid gap-3 sm:grid-cols-2">
-        <div className="rounded-xl border border-border bg-card p-5 shadow-elev1">
-          <div className="mb-2 inline-flex h-9 w-9 items-center justify-center rounded-lg bg-primary-soft text-primary-soft-foreground">
-            <Zap className="h-4 w-4" />
+      <SectionHeader title="DSA role tracks" sub={`${dsaStats.length} role-specific tracks`} />
+      <Card p={0}>
+        {dsaStats.length === 0 ? (
+          <div style={{ padding: 24, textAlign: "center", color: "var(--text-3)", fontSize: 13 }}>
+            No DSA tracks configured.
           </div>
-          <p className="text-2xl font-bold tabular-nums">{studyPlanResult.count ?? 0}</p>
-          <p className="text-sm font-medium">Active study plans</p>
-          <p className="text-xs text-muted-foreground">Users with a personalized interview study plan</p>
-        </div>
-        <div className="rounded-xl border border-border bg-card p-5 shadow-elev1">
-          <div className="mb-2 inline-flex h-9 w-9 items-center justify-center rounded-lg bg-primary-soft text-primary-soft-foreground">
-            <LibraryBig className="h-4 w-4" />
+        ) : (
+          <div style={{ paddingBottom: 4 }}>
+            {dsaStats.map((r, i) => (
+              <ListRow
+                key={r.role}
+                divider={i < dsaStats.length - 1}
+                title={r.label}
+                subtitle={`${r.role} · ${r.concepts.slice(0, 4).join(", ")}`}
+                trailing={
+                  <span style={{ display: "inline-flex", alignItems: "center", gap: 10 }}>
+                    <span className="pm-num" style={{ fontSize: 13, fontWeight: 600 }}>{r.problemCount}</span>
+                    <span style={{ display: "inline-flex", gap: 4, fontSize: 11 }}>
+                      <span style={{ color: "var(--ok)" }} className="pm-num">{r.easy}E</span>
+                      <span style={{ color: "var(--warn)" }} className="pm-num">{r.medium}M</span>
+                      <span style={{ color: "var(--err)" }} className="pm-num">{r.hard}H</span>
+                    </span>
+                  </span>
+                }
+              />
+            ))}
           </div>
-          <p className="text-2xl font-bold tabular-nums">{readinessResult.count ?? 0}</p>
-          <p className="text-sm font-medium">Readiness assessments</p>
-          <p className="text-xs text-muted-foreground">Completed interview readiness checks</p>
-        </div>
+        )}
+      </Card>
+
+      <SectionHeader title="Daily dispatch history" sub="Recent problem dispatches sent to users" />
+      <Card p={0}>
+        {dispatches.length === 0 ? (
+          <div style={{ padding: 24, textAlign: "center", color: "var(--text-3)", fontSize: 13 }}>
+            No dispatches recorded yet.
+          </div>
+        ) : (
+          <div style={{ paddingBottom: 4 }}>
+            {dispatches.map((r, i) => (
+              <ListRow
+                key={`${r.problem_slug}-${r.sent_at}`}
+                divider={i < dispatches.length - 1}
+                title={<span className="pm-mono">{r.problem_slug}</span>}
+                subtitle={r.role_tag ?? "all roles"}
+                trailing={
+                  <span style={{ display: "inline-flex", alignItems: "center", gap: 10 }}>
+                    {r.difficulty && (
+                      <Badge tone={r.difficulty === "hard" ? "err" : r.difficulty === "medium" ? "warn" : "ok"}>
+                        {r.difficulty}
+                      </Badge>
+                    )}
+                    <span style={{ fontSize: 11, color: "var(--text-3)", minWidth: 80, textAlign: "right" }}>
+                      {r.sent_at ? new Date(r.sent_at).toLocaleDateString("en-IN", { day: "2-digit", month: "short" }) : "—"}
+                    </span>
+                  </span>
+                }
+              />
+            ))}
+          </div>
+        )}
+      </Card>
+
+      <SectionHeader title="Readiness" />
+      <div style={{ display: "grid", gap: 12, gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))" }}>
+        <Card p={16}>
+          <div className="pm-num" style={{ fontSize: 26, fontWeight: 600, letterSpacing: -0.6 }}>
+            {(studyPlanResult.count ?? 0).toLocaleString("en-IN")}
+          </div>
+          <div style={{ fontSize: 13, fontWeight: 500, marginTop: 2 }}>Active study plans</div>
+          <div style={{ fontSize: 12, color: "var(--text-3)", marginTop: 2 }}>
+            Users with a personalized interview study plan
+          </div>
+        </Card>
+        <Card p={16}>
+          <div className="pm-num" style={{ fontSize: 26, fontWeight: 600, letterSpacing: -0.6 }}>
+            {(readinessResult.count ?? 0).toLocaleString("en-IN")}
+          </div>
+          <div style={{ fontSize: 13, fontWeight: 500, marginTop: 2 }}>Readiness assessments</div>
+          <div style={{ fontSize: 12, color: "var(--text-3)", marginTop: 2 }}>
+            Completed interview readiness checks
+          </div>
+        </Card>
       </div>
     </div>
   );
 }
 
-function DiffCard({ label, value, color, bg }: { label: string; value: number; color: string; bg: string }) {
+function DiffTile({ label, value, tone }: { label: string; value: number; tone: "ok" | "warn" | "err" }) {
+  const bg = tone === "ok" ? "var(--ok-soft)" : tone === "warn" ? "var(--warn-soft)" : "var(--err-soft)";
+  const fg = tone === "ok" ? "var(--ok)"      : tone === "warn" ? "var(--warn)"      : "var(--err)";
   return (
-    <div className={`rounded-xl border p-4 ${bg}`}>
-      <p className={`text-3xl font-bold tabular-nums ${color}`}>{value}</p>
-      <p className="text-sm font-medium">{label} problems</p>
+    <div style={{
+      padding: 18, borderRadius: 14,
+      background: bg, border: `1px solid ${fg}33`,
+    }}>
+      <div className="pm-num" style={{ fontSize: 28, fontWeight: 600, letterSpacing: -0.8, color: fg }}>
+        {value.toLocaleString("en-IN")}
+      </div>
+      <div style={{ fontSize: 13, fontWeight: 500, marginTop: 2, color: "var(--text)" }}>{label} problems</div>
     </div>
   );
 }

@@ -1,10 +1,7 @@
 import type { Metadata } from "next";
-import { ShieldAlert, RefreshCw, LockKeyhole, AlertCircle, CheckCircle2 } from "lucide-react";
+import { AlertCircle, CheckCircle2 } from "lucide-react";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
-import {
-  Badge, DataGrid, IdentityCell, MetricStrip, MiniMetric,
-  MobileRecord, PageHeader, Panel, SectionDivider, timeAgo,
-} from "@/components/admin/admin-ui";
+import { Badge, Card, KPI, ListRow, SectionHeader } from "@/components/admin/pm";
 
 export const metadata: Metadata = { title: "Admin · Security" };
 export const dynamic = "force-dynamic";
@@ -54,170 +51,201 @@ export default async function AdminSecurityPage() {
       .from("background_jobs")
       .select("id, user_id, job_type, status, error_code, error_message, queued_at, finished_at")
       .order("queued_at", { ascending: false })
-      .limit(50) as any,
+      .limit(50) as never,
     admin
       .from("dpdp_events")
       .select("event, user_id, created_at, metadata")
       .order("created_at", { ascending: false })
-      .limit(30) as any,
+      .limit(30) as never,
     admin
       .from("llm_dead_keys")
       .select("provider_id, model, capability, failure_kind, dead_until, detected_at")
       .order("detected_at", { ascending: false })
-      .limit(20) as any,
+      .limit(20) as never,
     admin.from("background_jobs").select("id", { count: "exact", head: true }).eq("status", "failed").gte("queued_at", since24h),
     admin.from("background_jobs").select("id", { count: "exact", head: true }).in("status", ["queued", "running"]),
     admin.from("dpdp_events").select("id", { count: "exact", head: true }).gte("created_at", since7d),
   ]);
 
-  const bgJobs   = (bgJobsResult.data   ?? []) as BgJob[];
-  const dpdp     = (dpdpResult.data     ?? []) as DpdpEvent[];
-  const deadKeys = (deadKeysResult.data ?? []) as DeadKey[];
+  const bgJobs   = ((bgJobsResult   as { data: BgJob[]     | null }).data ?? []);
+  const dpdp     = ((dpdpResult     as { data: DpdpEvent[] | null }).data ?? []);
+  const deadKeys = ((deadKeysResult as { data: DeadKey[]   | null }).data ?? []);
 
   const failedJobs = bgJobs.filter((j) => j.status === "failed");
-  const activeJobs = bgJobs.filter((j) => j.status === "queued" || j.status === "running");
-
-  function bgJobTone(status: string) {
-    if (status === "failed")    return "danger" as const;
-    if (status === "succeeded") return "ok"     as const;
-    if (status === "running")   return "blue"   as const;
-    return "warn" as const;
-  }
 
   return (
-    <div className="mx-auto w-full max-w-[1440px] px-4 py-5 pb-28 sm:px-6 lg:px-8">
-      <PageHeader
-        eyebrow="Admin · Security"
-        title="Activity Logs & Security"
-        description="Background jobs, DPDP audit trail, and LLM dead-key quarantine."
-      />
+    <div style={{ maxWidth: 1280, margin: "0 auto", padding: "20px 16px 96px" }}>
+      <header style={{ marginBottom: 18 }}>
+        <p style={{ fontSize: 11, fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.14em", color: "var(--accent)" }}>
+          Admin · Security
+        </p>
+        <h1 style={{ marginTop: 6, fontSize: 26, fontWeight: 600, letterSpacing: -0.8 }}>
+          Activity Logs & Security
+        </h1>
+        <p style={{ marginTop: 6, fontSize: 13, color: "var(--text-2)" }}>
+          Background jobs, DPDP audit trail, and LLM dead-key quarantine.
+        </p>
+      </header>
 
-      <MetricStrip>
-        <MiniMetric label="Failed jobs (24h)"  value={failedJobsCount.count ?? 0} tone={(failedJobsCount.count ?? 0) > 0 ? "danger" : undefined} />
-        <MiniMetric label="Active queue"        value={activeJobsCount.count ?? 0} tone={(activeJobsCount.count ?? 0) > 0 ? "warn" : undefined} />
-        <MiniMetric label="DPDP events (7d)"   value={dpdpCount.count ?? 0} />
-        <MiniMetric label="Dead LLM keys"       value={deadKeys.length} tone={deadKeys.length > 0 ? "warn" : undefined} />
-      </MetricStrip>
+      <div style={{ display: "grid", gap: 12, gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))" }}>
+        <KPI label="Failed jobs (24h)" value={String(failedJobsCount.count ?? 0)} accent />
+        <KPI label="Active queue"      value={String(activeJobsCount.count ?? 0)} />
+        <KPI label="DPDP events (7d)"  value={String(dpdpCount.count ?? 0)} />
+        <KPI label="Dead LLM keys"     value={String(deadKeys.length)} hint={deadKeys.length > 0 ? "review" : "clean"} />
+      </div>
 
-      {/* Alert banner for failures */}
       {failedJobs.length > 0 && (
-        <div className="mb-4 flex items-start gap-3 rounded-xl border border-rose-500/30 bg-rose-500/8 p-4">
-          <AlertCircle className="mt-0.5 h-5 w-5 shrink-0 text-rose-500" />
+        <div style={{
+          marginTop: 18, padding: 14, borderRadius: 12,
+          background: "var(--err-soft)",
+          border: "1px solid color-mix(in oklab, var(--err) 30%, transparent)",
+          display: "flex", alignItems: "flex-start", gap: 12,
+        }}>
+          <AlertCircle size={18} style={{ color: "var(--err)", flexShrink: 0, marginTop: 2 }} />
           <div>
-            <p className="text-sm font-semibold text-rose-600 dark:text-rose-400">
+            <p style={{ fontSize: 13, fontWeight: 600, color: "var(--err)" }}>
               {failedJobs.length} background job{failedJobs.length > 1 ? "s" : ""} failed in last 24h
             </p>
-            <p className="text-xs text-muted-foreground">
+            <p style={{ fontSize: 12, color: "var(--text-3)", marginTop: 2 }}>
               {failedJobs.map((j) => j.job_type).join(", ")}
             </p>
           </div>
         </div>
       )}
 
-      {/* Background jobs */}
-      <Panel icon={RefreshCw} title="Background jobs" description="Last 50 queued jobs">
-        <DataGrid
-          columns={["Type", "Status", "User", "Queued", "Duration", "Error"]}
-          rows={bgJobs}
-          getKey={(r) => r.id}
-          empty="No background jobs found."
-          renderMobile={(r) => (
-            <MobileRecord
-              title={r.job_type}
-              eyebrow={r.user_id.slice(0, 10)}
-              status={<Badge tone={bgJobTone(r.status)}>{r.status}</Badge>}
-              meta={[
-                ["Queued",    timeAgo(r.queued_at)],
-                ["Error",     r.error_code ?? r.error_message?.slice(0, 30) ?? "—"],
-              ]}
-            />
-          )}
-          renderCells={(r) => {
-            const duration = r.finished_at && r.queued_at
-              ? `${Math.round((new Date(r.finished_at).getTime() - new Date(r.queued_at).getTime()) / 1000)}s`
-              : "—";
-            return [
-              <span key="type" className="font-mono text-xs">{r.job_type}</span>,
-              <Badge key="status" tone={bgJobTone(r.status)}>{r.status}</Badge>,
-              <code key="user" className="text-xs">{r.user_id.slice(0, 10)}</code>,
-              <span key="queued" className="text-xs text-muted-foreground">{timeAgo(r.queued_at)}</span>,
-              <span key="dur"   className="text-xs tabular-nums">{duration}</span>,
-              <span key="error" className="block max-w-[16rem] truncate text-xs text-muted-foreground">
-                {r.error_code ?? r.error_message?.slice(0, 60) ?? "—"}
-              </span>,
-            ];
-          }}
-        />
-      </Panel>
-
-      <SectionDivider title="DPDP audit trail" />
-
-      {/* DPDP events */}
-      <Panel icon={LockKeyhole} title="DPDP events" description="Consent, export, and erasure events (last 30)">
-        <DataGrid
-          columns={["Event", "User", "When", "Metadata"]}
-          rows={dpdp}
-          getKey={(r) => `${r.event}-${r.created_at}`}
-          empty="No DPDP events recorded."
-          renderMobile={(r) => (
-            <MobileRecord
-              title={r.event}
-              eyebrow={r.user_id?.slice(0, 10) ?? "system"}
-              status={<Badge tone="muted">Audit</Badge>}
-              meta={[
-                ["When",     timeAgo(r.created_at)],
-                ["Metadata", JSON.stringify(r.metadata ?? {}).slice(0, 50)],
-              ]}
-            />
-          )}
-          renderCells={(r) => [
-            <Badge key="event" tone="muted">{r.event}</Badge>,
-            <code key="user" className="text-xs">{r.user_id?.slice(0, 10) ?? "—"}</code>,
-            <span key="when" className="text-xs text-muted-foreground">{timeAgo(r.created_at)}</span>,
-            <span key="meta" className="block max-w-[20rem] truncate text-xs text-muted-foreground">
-              {JSON.stringify(r.metadata ?? {}).slice(0, 120)}
-            </span>,
-          ]}
-        />
-      </Panel>
-
-      <SectionDivider title="LLM dead-key quarantine" />
-
-      {/* Dead keys */}
-      <Panel icon={ShieldAlert} title="Quarantined LLM keys" description="Keys that failed and are temporarily blocked">
-        {deadKeys.length === 0 ? (
-          <div className="flex items-center gap-3 rounded-lg border border-emerald-500/20 bg-emerald-500/5 p-4">
-            <CheckCircle2 className="h-5 w-5 shrink-0 text-emerald-500" />
-            <p className="text-sm text-emerald-600 dark:text-emerald-400">No dead keys — all LLM routes healthy.</p>
+      <SectionHeader title="Background jobs" sub="Last 50 queued jobs" />
+      <Card p={0}>
+        {bgJobs.length === 0 ? (
+          <div style={{ padding: 24, textAlign: "center", color: "var(--text-3)", fontSize: 13 }}>
+            No background jobs found.
           </div>
         ) : (
-          <DataGrid
-            columns={["Provider", "Model", "Capability", "Failure", "Dead until", "Detected"]}
-            rows={deadKeys}
-            getKey={(r) => `${r.provider_id}-${r.model}-${r.detected_at}`}
-            empty="No dead keys."
-            renderMobile={(r) => (
-              <MobileRecord
-                title={r.provider_id}
-                eyebrow={r.model}
-                status={<Badge tone="danger">{r.failure_kind}</Badge>}
-                meta={[
-                  ["Capability", r.capability],
-                  ["Dead until", timeAgo(r.dead_until)],
-                ]}
-              />
-            )}
-            renderCells={(r) => [
-              <IdentityCell key="prov"  title={r.provider_id} subtitle={r.model} />,
-              <code key="model" className="text-xs">{r.model.slice(0, 28)}</code>,
-              <Badge key="cap"      tone="muted">{r.capability}</Badge>,
-              <Badge key="failure"  tone="danger">{r.failure_kind}</Badge>,
-              <span key="until" className="text-xs text-muted-foreground">{timeAgo(r.dead_until)}</span>,
-              <span key="det"   className="text-xs text-muted-foreground">{timeAgo(r.detected_at)}</span>,
-            ]}
-          />
+          <div style={{ paddingBottom: 4 }}>
+            {bgJobs.map((r, i) => {
+              const duration = r.finished_at && r.queued_at
+                ? `${Math.round((new Date(r.finished_at).getTime() - new Date(r.queued_at).getTime()) / 1000)}s`
+                : "—";
+              return (
+                <ListRow
+                  key={r.id}
+                  divider={i < bgJobs.length - 1}
+                  leading={<JobStatusDot status={r.status} />}
+                  title={<span className="pm-mono">{r.job_type}</span>}
+                  subtitle={`${r.user_id.slice(0, 10)} · ${duration} · ${r.error_code ?? r.error_message?.slice(0, 60) ?? "—"}`}
+                  trailing={
+                    <span style={{ display: "inline-flex", alignItems: "center", gap: 10 }}>
+                      <Badge tone={bgJobTone(r.status)}>{r.status}</Badge>
+                      <span style={{ fontSize: 11, color: "var(--text-3)", minWidth: 56, textAlign: "right" }}>
+                        {timeAgo(r.queued_at)}
+                      </span>
+                    </span>
+                  }
+                />
+              );
+            })}
+          </div>
         )}
-      </Panel>
+      </Card>
+
+      <SectionHeader title="DPDP audit trail" sub="Consent, export, and erasure events (last 30)" />
+      <Card p={0}>
+        {dpdp.length === 0 ? (
+          <div style={{ padding: 24, textAlign: "center", color: "var(--text-3)", fontSize: 13 }}>
+            No DPDP events recorded.
+          </div>
+        ) : (
+          <div style={{ paddingBottom: 4 }}>
+            {dpdp.map((r, i) => (
+              <ListRow
+                key={`${r.event}-${r.created_at}`}
+                divider={i < dpdp.length - 1}
+                title={
+                  <span style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
+                    <Badge tone="neutral">{r.event}</Badge>
+                    <span className="pm-mono" style={{ fontSize: 12, color: "var(--text-3)" }}>
+                      {r.user_id?.slice(0, 10) ?? "—"}
+                    </span>
+                  </span>
+                }
+                subtitle={JSON.stringify(r.metadata ?? {}).slice(0, 120)}
+                trailing={
+                  <span style={{ fontSize: 11, color: "var(--text-3)" }}>
+                    {timeAgo(r.created_at)}
+                  </span>
+                }
+              />
+            ))}
+          </div>
+        )}
+      </Card>
+
+      <SectionHeader title="LLM dead-key quarantine" sub="Keys that failed and are temporarily blocked" />
+      {deadKeys.length === 0 ? (
+        <div style={{
+          padding: 14, borderRadius: 12,
+          background: "var(--ok-soft)",
+          border: "1px solid color-mix(in oklab, var(--ok) 30%, transparent)",
+          display: "flex", alignItems: "center", gap: 10,
+        }}>
+          <CheckCircle2 size={18} style={{ color: "var(--ok)" }} />
+          <p style={{ fontSize: 13, color: "var(--ok)", fontWeight: 500 }}>
+            No dead keys — all LLM routes healthy.
+          </p>
+        </div>
+      ) : (
+        <Card p={0}>
+          <div style={{ paddingBottom: 4 }}>
+            {deadKeys.map((r, i) => (
+              <ListRow
+                key={`${r.provider_id}-${r.model}-${r.detected_at}`}
+                divider={i < deadKeys.length - 1}
+                title={`${r.provider_id} · ${r.model.slice(0, 28)}`}
+                subtitle={`${r.capability} · dead until ${timeAgo(r.dead_until)}`}
+                trailing={
+                  <span style={{ display: "inline-flex", alignItems: "center", gap: 10 }}>
+                    <Badge tone="err">{r.failure_kind}</Badge>
+                    <span style={{ fontSize: 11, color: "var(--text-3)" }}>{timeAgo(r.detected_at)}</span>
+                  </span>
+                }
+              />
+            ))}
+          </div>
+        </Card>
+      )}
     </div>
   );
+}
+
+function JobStatusDot({ status }: { status: string }) {
+  const tone =
+    status === "failed"    ? "var(--err)" :
+    status === "succeeded" ? "var(--ok)"  :
+    status === "running"   ? "var(--accent)" :
+                             "var(--warn)";
+  return (
+    <span style={{
+      width: 8, height: 8, borderRadius: "50%",
+      background: tone, flexShrink: 0,
+      boxShadow: `0 0 0 3px color-mix(in oklab, ${tone} 18%, transparent)`,
+    }}/>
+  );
+}
+
+function bgJobTone(status: string): "ok" | "warn" | "err" | "info" | "neutral" {
+  if (status === "failed")    return "err";
+  if (status === "succeeded") return "ok";
+  if (status === "running")   return "info";
+  return "warn";
+}
+
+function timeAgo(value: string | null | undefined): string {
+  if (!value) return "—";
+  const diff = Date.now() - new Date(value).getTime();
+  if (!Number.isFinite(diff)) return "—";
+  const m = Math.floor(diff / 60_000);
+  if (Math.abs(m) < 1) return "now";
+  if (Math.abs(m) < 60) return diff > 0 ? `${m}m` : `in ${-m}m`;
+  const h = Math.floor(Math.abs(m) / 60);
+  if (h < 24) return diff > 0 ? `${h}h` : `in ${h}h`;
+  return diff > 0 ? `${Math.floor(h / 24)}d` : `in ${Math.floor(h / 24)}d`;
 }

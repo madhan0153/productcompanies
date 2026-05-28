@@ -1,9 +1,6 @@
 import type { Metadata } from "next";
-import { BarChart3, TrendingUp, Users, Target } from "lucide-react";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
-import {
-  MetricStrip, MiniMetric, PageHeader, Panel, RankList,
-} from "@/components/admin/admin-ui";
+import { Badge, Card, KPI, SectionHeader } from "@/components/admin/pm";
 
 export const metadata: Metadata = { title: "Admin · Analytics" };
 export const dynamic = "force-dynamic";
@@ -42,12 +39,12 @@ export default async function AdminAnalyticsPage() {
     admin
       .from("profiles")
       .select("id, role_function, resume_parsed, resume_score, product_dna_score, last_match_compute_at, created_at")
-      .limit(1000) as any,
+      .limit(1000) as never,
     admin
       .from("matches")
       .select("verdict, score, computed_at")
       .gte("computed_at", since30d)
-      .limit(2000) as any,
+      .limit(2000) as never,
     admin.from("enhanced_resumes").select("id", { count: "exact", head: true }),
     admin.from("tailored_resumes").select("id", { count: "exact", head: true }),
     admin.from("resume_versions").select("id", { count: "exact", head: true }),
@@ -55,10 +52,9 @@ export default async function AdminAnalyticsPage() {
     admin.from("profiles").select("id", { count: "exact", head: true }).gte("last_match_compute_at", since7d),
   ]);
 
-  const profiles = (profilesResult.data ?? []) as ProfileRow[];
-  const matches  = (matchesResult.data  ?? []) as MatchRow[];
+  const profiles = ((profilesResult as { data: ProfileRow[] | null }).data ?? []);
+  const matches  = ((matchesResult  as { data: MatchRow[]   | null }).data ?? []);
 
-  // Top skills
   const skillCounts = new Map<string, number>();
   for (const p of profiles) {
     const arr = extractStringArray(p.resume_parsed, "tech_stack");
@@ -69,7 +65,6 @@ export default async function AdminAnalyticsPage() {
   }
   const topSkills = topValues(skillCounts, 12);
 
-  // Role mix
   const roleCounts = new Map<string, number>();
   for (const p of profiles) {
     const r = p.role_function?.trim();
@@ -77,7 +72,6 @@ export default async function AdminAnalyticsPage() {
   }
   const roleMix = topValues(roleCounts, 10);
 
-  // Match verdicts
   const verdictCounts = new Map<string, number>();
   for (const m of matches) {
     const v = m.verdict ?? "scored";
@@ -85,8 +79,7 @@ export default async function AdminAnalyticsPage() {
   }
   const verdicts = topValues(verdictCounts, 6);
 
-  // Score distribution buckets
-  const buckets = [0, 0, 0, 0, 0]; // <40, 40-59, 60-74, 75-89, 90+
+  const buckets = [0, 0, 0, 0, 0];
   for (const m of matches) {
     if (m.score < 40)       buckets[0]++;
     else if (m.score < 60)  buckets[1]++;
@@ -95,7 +88,6 @@ export default async function AdminAnalyticsPage() {
     else                    buckets[4]++;
   }
 
-  // Resume score distribution
   const scores = profiles.map((p) => p.resume_score ?? p.product_dna_score).filter((s): s is number => s != null);
   const avgScore = scores.length > 0 ? Math.round(scores.reduce((s, v) => s + v, 0) / scores.length) : 0;
 
@@ -103,117 +95,150 @@ export default async function AdminAnalyticsPage() {
   const strongFitRate = matches.length > 0 ? Math.round((strongFit / matches.length) * 100) : 0;
 
   return (
-    <div className="mx-auto w-full max-w-[1440px] px-4 py-5 pb-28 sm:px-6 lg:px-8">
-      <PageHeader
-        eyebrow="Admin · Analytics"
-        title="Analytics & Insights"
-        description="User engagement, match quality, top skills, and role mix across the platform."
-      />
+    <div style={{ maxWidth: 1280, margin: "0 auto", padding: "20px 16px 96px" }}>
+      <header style={{ marginBottom: 18 }}>
+        <p style={{ fontSize: 11, fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.14em", color: "var(--accent)" }}>
+          Admin · Analytics
+        </p>
+        <h1 style={{ marginTop: 6, fontSize: 26, fontWeight: 600, letterSpacing: -0.8 }}>
+          Analytics & Insights
+        </h1>
+        <p style={{ marginTop: 6, fontSize: 13, color: "var(--text-2)" }}>
+          User engagement, match quality, top skills, and role mix across the platform.
+        </p>
+      </header>
 
-      <MetricStrip>
-        <MiniMetric label="New users (7d)"    value={newUsersResult.count ?? 0} />
-        <MiniMetric label="Active users (7d)" value={activeUsersResult.count ?? 0} />
-        <MiniMetric label="Avg resume score"  value={avgScore} />
-        <MiniMetric label="Strong fit rate"   value={`${strongFitRate}%`} />
-      </MetricStrip>
-
-      {/* AI artifacts */}
-      <div className="mb-4 grid gap-3 sm:grid-cols-3">
-        <KpiCard
-          icon={<TrendingUp className="h-5 w-5 text-primary" />}
-          label="Enhanced resumes"
-          value={String(enhancedResult.count ?? 0)}
-          sub="AI-reviewed & rewritten"
-        />
-        <KpiCard
-          icon={<Target className="h-5 w-5 text-violet-500" />}
-          label="Tailored resumes"
-          value={String(tailoredResult.count ?? 0)}
-          sub="JD-matched outputs"
-        />
-        <KpiCard
-          icon={<Users className="h-5 w-5 text-emerald-500" />}
-          label="Resume snapshots"
-          value={String(snapshotsResult.count ?? 0)}
-          sub="Version history entries"
-        />
+      <div style={{ display: "grid", gap: 12, gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))" }}>
+        <KPI label="New users (7d)"    value={String(newUsersResult.count    ?? 0)} accent />
+        <KPI label="Active users (7d)" value={String(activeUsersResult.count ?? 0)} />
+        <KPI label="Avg resume score"  value={String(avgScore)} />
+        <KPI label="Strong-fit rate"   value={`${strongFitRate}%`} delta={strongFitRate >= 25 ? "+ healthy" : "− low"} />
       </div>
 
-      {/* Charts row */}
-      <div className="grid gap-4 lg:grid-cols-2">
-        <RankList title="Top skills (from parsed resumes)" items={topSkills} />
-        <RankList title="Role mix" items={roleMix} />
+      <SectionHeader title="AI artifacts" sub="What users actually generated" />
+      <div style={{ display: "grid", gap: 12, gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))" }}>
+        <ArtifactTile label="Enhanced resumes" value={enhancedResult.count  ?? 0} sub="AI-reviewed & rewritten" />
+        <ArtifactTile label="Tailored resumes" value={tailoredResult.count  ?? 0} sub="JD-matched outputs" />
+        <ArtifactTile label="Resume snapshots" value={snapshotsResult.count ?? 0} sub="Version history entries" />
       </div>
 
-      <div className="mt-4 grid gap-4 lg:grid-cols-2">
-        <Panel icon={BarChart3} title="Match verdict breakdown (30d)" description={`${matches.length} total matches`}>
+      <div style={{
+        marginTop: 22,
+        display: "grid", gap: 16,
+        gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))",
+      }}>
+        <RankCard title="Top skills" items={topSkills} />
+        <RankCard title="Role mix"   items={roleMix}   />
+      </div>
+
+      <div style={{
+        marginTop: 22,
+        display: "grid", gap: 16,
+        gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))",
+      }}>
+        <Card>
+          <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 10 }}>Verdict breakdown · 30d</div>
           {verdicts.length === 0 ? (
-            <p className="text-sm text-muted-foreground">No match data in last 30 days.</p>
+            <div style={{ fontSize: 13, color: "var(--text-3)" }}>No match data in last 30 days.</div>
           ) : (
-            <div className="space-y-3">
+            <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
               {verdicts.map(({ label, count }) => {
-                const pct = Math.round((count / matches.length) * 100);
+                const p = Math.round((count / matches.length) * 100);
                 return (
                   <div key={label}>
-                    <div className="mb-1 flex items-center justify-between text-xs">
-                      <span className="font-medium">{label}</span>
-                      <span className="text-muted-foreground">{count} · {pct}%</span>
+                    <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, marginBottom: 4 }}>
+                      <span style={{ fontWeight: 500 }}>{label}</span>
+                      <span className="pm-num" style={{ color: "var(--text-3)" }}>{count} · {p}%</span>
                     </div>
-                    <div className="h-2 overflow-hidden rounded-full bg-secondary">
-                      <div
-                        className={`h-full rounded-full transition-all duration-500 ${label === "strong_fit" ? "bg-emerald-500" : label === "good_fit" ? "bg-primary" : "bg-muted-foreground/40"}`}
-                        style={{ width: `${Math.max(3, pct)}%` }}
-                      />
-                    </div>
+                    <Bar pct={p} tone={label === "strong_fit" ? "ok" : label === "good_fit" ? "accent" : "neutral"} />
                   </div>
                 );
               })}
             </div>
           )}
-        </Panel>
+        </Card>
 
-        <Panel icon={BarChart3} title="Match score distribution (30d)">
+        <Card>
+          <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 10 }}>Match score distribution · 30d</div>
           {matches.length === 0 ? (
-            <p className="text-sm text-muted-foreground">No match data yet.</p>
+            <div style={{ fontSize: 13, color: "var(--text-3)" }}>No match data yet.</div>
           ) : (
-            <div className="space-y-3">
+            <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
               {[
-                { label: "< 40  (poor)",      value: buckets[0] },
-                { label: "40–59 (low)",        value: buckets[1] },
-                { label: "60–74 (moderate)",   value: buckets[2] },
-                { label: "75–89 (good fit)",   value: buckets[3] },
-                { label: "90+   (strong fit)", value: buckets[4] },
+                { label: "< 40 (poor)",     value: buckets[0] },
+                { label: "40–59 (low)",      value: buckets[1] },
+                { label: "60–74 (moderate)", value: buckets[2] },
+                { label: "75–89 (good)",     value: buckets[3] },
+                { label: "90+ (strong)",     value: buckets[4] },
               ].map(({ label, value }) => {
-                const pct = Math.round((value / matches.length) * 100);
+                const p = Math.round((value / matches.length) * 100);
                 return (
                   <div key={label}>
-                    <div className="mb-1 flex items-center justify-between text-xs">
-                      <span className="font-mono text-muted-foreground">{label}</span>
-                      <span>{value} · {pct}%</span>
+                    <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, marginBottom: 4 }}>
+                      <span className="pm-mono" style={{ color: "var(--text-3)" }}>{label}</span>
+                      <span className="pm-num">{value} · {p}%</span>
                     </div>
-                    <div className="h-2 overflow-hidden rounded-full bg-secondary">
-                      <div className="h-full rounded-full bg-primary/60 transition-all duration-500" style={{ width: `${Math.max(3, pct)}%` }} />
-                    </div>
+                    <Bar pct={p} tone="accent" />
                   </div>
                 );
               })}
             </div>
           )}
-        </Panel>
+        </Card>
       </div>
     </div>
   );
 }
 
-function KpiCard({ icon, label, value, sub }: { icon: React.ReactNode; label: string; value: string; sub: string }) {
+function ArtifactTile({ label, value, sub }: { label: string; value: number; sub: string }) {
   return (
-    <div className="rounded-xl border border-border bg-card p-4 shadow-elev1">
-      <div className="mb-2 inline-flex h-9 w-9 items-center justify-center rounded-lg bg-secondary">
-        {icon}
+    <Card p={16}>
+      <div className="pm-num" style={{ fontSize: 26, fontWeight: 600, letterSpacing: -0.6 }}>
+        {value.toLocaleString("en-IN")}
       </div>
-      <p className="text-2xl font-bold tabular-nums">{value}</p>
-      <p className="text-sm font-medium">{label}</p>
-      <p className="text-xs text-muted-foreground">{sub}</p>
+      <div style={{ fontSize: 13, fontWeight: 500, marginTop: 2 }}>{label}</div>
+      <div style={{ fontSize: 12, color: "var(--text-3)", marginTop: 2 }}>{sub}</div>
+    </Card>
+  );
+}
+
+function RankCard({ title, items }: { title: string; items: Array<{ label: string; count: number }> }) {
+  const max = Math.max(1, ...items.map((i) => i.count));
+  return (
+    <Card>
+      <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 12 }}>{title}</div>
+      {items.length === 0 ? (
+        <div style={{ fontSize: 13, color: "var(--text-3)" }}>No data yet.</div>
+      ) : (
+        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+          {items.map((i) => (
+            <div key={i.label}>
+              <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, marginBottom: 4 }}>
+                <span style={{ fontWeight: 500, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{i.label}</span>
+                <span className="pm-num" style={{ color: "var(--text-3)" }}>{i.count}</span>
+              </div>
+              <Bar pct={Math.max(4, (i.count / max) * 100)} tone="accent" />
+            </div>
+          ))}
+        </div>
+      )}
+    </Card>
+  );
+}
+
+function Bar({ pct, tone }: { pct: number; tone: "ok" | "accent" | "neutral" }) {
+  const fill =
+    tone === "ok"      ? "var(--ok)" :
+    tone === "neutral" ? "var(--text-3)" :
+                         "var(--accent)";
+  return (
+    <div style={{ height: 6, borderRadius: 999, background: "var(--surface-2)", overflow: "hidden" }}>
+      <div style={{
+        height: "100%", borderRadius: 999,
+        width: `${pct}%`,
+        background: fill,
+        transition: "width .5s ease",
+      }}/>
     </div>
   );
 }

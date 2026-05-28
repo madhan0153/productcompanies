@@ -1,11 +1,7 @@
 import type { Metadata } from "next";
-import {
-  Mail, Workflow, Trophy, RefreshCw, KeyRound, AlertCircle, Trash2, Sparkles,
-} from "lucide-react";
+import { AlertCircle, KeyRound, Mail, RefreshCw, Sparkles, Trophy, Workflow } from "lucide-react";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
-import {
-  PageHeader, MetricStrip, MiniMetric, Badge, timeAgo,
-} from "@/components/admin/admin-ui";
+import { Badge, Card, KPI, ListRow, SectionHeader } from "@/components/admin/pm";
 import { CronButton, ResetDeadKeyButton, ClearFailedJobsButton } from "./client-buttons";
 
 export const metadata: Metadata = { title: "Admin · Ops Console" };
@@ -42,139 +38,155 @@ export default async function AdminOpsPage() {
       .from("llm_dead_keys")
       .select("id, provider_id, model, capability, failure_kind, dead_until, detected_at")
       .order("detected_at", { ascending: false })
-      .limit(20) as any,
+      .limit(20) as never,
     admin
       .from("admin_actions")
       .select("id, actor_email, action_type, target_ref, status, metadata, created_at")
       .order("created_at", { ascending: false })
-      .limit(20) as any,
+      .limit(20) as never,
   ]);
 
-  const deadKeys      = (deadKeysResult.data ?? []) as DeadKey[];
-  const recentActions = (recentActionsResult.data ?? []) as ActionLog[];
+  const deadKeys      = ((deadKeysResult      as { data: DeadKey[]   | null }).data ?? []);
+  const recentActions = ((recentActionsResult as { data: ActionLog[] | null }).data ?? []);
   const failedCount   = failedJobsResult.count ?? 0;
 
   return (
-    <div className="mx-auto w-full max-w-[1440px] px-4 py-5 pb-28 sm:px-6 lg:px-8">
-      <PageHeader
-        eyebrow="Admin · Operations"
-        title="Ops Console"
-        description="One-tap triggers for crons, queues, dead-key resets, and emergency controls. Every action is logged."
-      />
+    <div style={{ maxWidth: 1280, margin: "0 auto", padding: "20px 16px 96px" }}>
+      <header style={{ marginBottom: 18 }}>
+        <p style={{ fontSize: 11, fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.14em", color: "var(--accent)" }}>
+          Admin · Operations
+        </p>
+        <h1 style={{ marginTop: 6, fontSize: 26, fontWeight: 600, letterSpacing: -0.8 }}>
+          Ops Console
+        </h1>
+        <p style={{ marginTop: 6, fontSize: 13, color: "var(--text-2)" }}>
+          One-tap triggers for crons, queues, dead-key resets, and emergency controls. Every action is logged.
+        </p>
+      </header>
 
-      <MetricStrip>
-        <MiniMetric label="Queue depth"      value={queuedJobsResult.count ?? 0} tone={(queuedJobsResult.count ?? 0) > 5 ? "warn" : undefined} />
-        <MiniMetric label="Failed jobs"      value={failedCount}                 tone={failedCount > 0 ? "danger" : undefined} />
-        <MiniMetric label="Dead LLM keys"    value={deadKeys.length}             tone={deadKeys.length > 0 ? "warn" : undefined} />
-        <MiniMetric label="Actions today"    value={recentActions.length} />
-      </MetricStrip>
+      <div style={{ display: "grid", gap: 12, gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))" }}>
+        <KPI label="Queue depth"   value={String(queuedJobsResult.count ?? 0)} accent />
+        <KPI label="Failed jobs"   value={String(failedCount)} hint={failedCount > 0 ? "investigate" : "clean"} />
+        <KPI label="Dead LLM keys" value={String(deadKeys.length)} hint={deadKeys.length > 0 ? "review" : "healthy"} />
+        <KPI label="Recent actions" value={String(recentActions.length)} hint="last 20" />
+      </div>
 
-      {/* Cron triggers */}
-      <section className="mb-6">
-        <h2 className="mb-3 text-sm font-semibold">Cron triggers</h2>
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-          <OpsCard icon={<Mail className="h-5 w-5 text-primary" />} title="Send weekly digest" description="Triggers the digest email for users on the weekly digest schedule.">
-            <CronButton cronKey="digest" label="Send digest" />
-          </OpsCard>
-          <OpsCard icon={<Workflow className="h-5 w-5 text-violet-500" />} title="Drain background jobs" description="Process queued resume parses, JD parses, and match computes immediately.">
-            <CronButton cronKey="drain_jobs" label="Drain queue" />
-          </OpsCard>
-          <OpsCard icon={<Trophy className="h-5 w-5 text-emerald-500" />} title="Recompute matches" description="Refresh all user-job match scores against the current job pool.">
-            <CronButton cronKey="recompute_matches" label="Recompute" />
-          </OpsCard>
-          <OpsCard icon={<Sparkles className="h-5 w-5 text-amber-500" />} title="IndexNow ping" description="Notify search engines of recently updated URLs via the IndexNow protocol.">
-            <CronButton cronKey="indexnow" label="Ping IndexNow" />
-          </OpsCard>
-        </div>
-      </section>
+      <SectionHeader title="Cron triggers" sub="One-tap, audit-logged" />
+      <div style={{ display: "grid", gap: 12, gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))" }}>
+        <OpsTile icon={<Mail size={16} style={{ color: "var(--accent)" }} />}     title="Send weekly digest" desc="Triggers the digest email for users on the weekly schedule." action={<CronButton cronKey="digest"           label="Send digest" />} />
+        <OpsTile icon={<Workflow size={16} style={{ color: "var(--accent)" }} />} title="Drain background jobs" desc="Process queued parses, JD parses, match computes immediately." action={<CronButton cronKey="drain_jobs"       label="Drain queue" />} />
+        <OpsTile icon={<Trophy size={16} style={{ color: "var(--accent)" }} />}   title="Recompute matches" desc="Refresh all user-job match scores against the current pool." action={<CronButton cronKey="recompute_matches" label="Recompute" />} />
+        <OpsTile icon={<Sparkles size={16} style={{ color: "var(--accent)" }} />} title="IndexNow ping" desc="Notify search engines of recently updated URLs." action={<CronButton cronKey="indexnow"         label="Ping IndexNow" />} />
+      </div>
 
-      {/* Queue / dead keys */}
-      <section className="mb-6 grid gap-4 lg:grid-cols-2">
-        <div className="rounded-xl border border-border bg-card p-5 shadow-elev1">
-          <div className="mb-3 flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <span className="inline-flex h-7 w-7 items-center justify-center rounded-md bg-secondary">
-                <RefreshCw className="h-4 w-4 text-rose-500" />
-              </span>
-              <p className="text-sm font-semibold">Failed jobs</p>
+      <div style={{
+        marginTop: 22,
+        display: "grid", gap: 16,
+        gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))",
+      }}>
+        <Card>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              <RefreshCw size={16} style={{ color: "var(--err)" }} />
+              <p style={{ fontSize: 13, fontWeight: 600 }}>Failed jobs</p>
             </div>
             <ClearFailedJobsButton failedCount={failedCount} />
           </div>
-          <p className="text-sm text-muted-foreground">
+          <p style={{ fontSize: 13, color: "var(--text-2)" }}>
             {failedCount > 0
-              ? `${failedCount} background job${failedCount === 1 ? "" : "s"} in failed state. Inspect on the Security page, or clear once you have triaged.`
+              ? `${failedCount} background job${failedCount === 1 ? "" : "s"} in failed state. Inspect on the Security page, or clear once triaged.`
               : "No failed background jobs. Queue is clean."}
           </p>
-        </div>
+        </Card>
 
-        <div className="rounded-xl border border-border bg-card p-5 shadow-elev1">
-          <div className="mb-3 flex items-center gap-2">
-            <span className="inline-flex h-7 w-7 items-center justify-center rounded-md bg-secondary">
-              <KeyRound className="h-4 w-4 text-amber-500" />
-            </span>
-            <p className="text-sm font-semibold">Quarantined LLM keys</p>
+        <Card>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
+            <KeyRound size={16} style={{ color: "var(--warn)" }} />
+            <p style={{ fontSize: 13, fontWeight: 600 }}>Quarantined LLM keys</p>
           </div>
           {deadKeys.length === 0 ? (
-            <p className="text-sm text-muted-foreground">No dead keys — all LLM routes healthy.</p>
+            <p style={{ fontSize: 13, color: "var(--text-3)" }}>No dead keys — all LLM routes healthy.</p>
           ) : (
-            <ul className="divide-y divide-border/50">
+            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
               {deadKeys.map((k) => (
-                <li key={k.id} className="flex flex-wrap items-center justify-between gap-2 py-2 text-xs">
-                  <div className="min-w-0">
-                    <p className="truncate font-medium">{k.provider_id} · {k.model}</p>
-                    <p className="text-[11px] text-muted-foreground">
+                <div
+                  key={k.id}
+                  style={{
+                    display: "flex", alignItems: "center", justifyContent: "space-between",
+                    gap: 10, paddingBottom: 8, borderBottom: "1px solid var(--line-2)",
+                  }}
+                >
+                  <div style={{ minWidth: 0 }}>
+                    <p style={{ fontSize: 12, fontWeight: 500, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                      {k.provider_id} · {k.model}
+                    </p>
+                    <p style={{ fontSize: 11, color: "var(--text-3)" }}>
                       {k.capability} · {k.failure_kind} · until {timeAgo(k.dead_until)}
                     </p>
                   </div>
                   <ResetDeadKeyButton id={k.id} label={`${k.provider_id}/${k.model}`} />
-                </li>
+                </div>
               ))}
-            </ul>
+            </div>
           )}
-        </div>
-      </section>
+        </Card>
+      </div>
 
-      {/* Audit log */}
-      <section>
-        <div className="mb-3 flex items-center gap-2">
-          <span className="inline-flex h-7 w-7 items-center justify-center rounded-md bg-secondary">
-            <AlertCircle className="h-4 w-4 text-muted-foreground" />
-          </span>
-          <h2 className="text-sm font-semibold">Recent admin actions</h2>
-        </div>
-        <div className="rounded-xl border border-border bg-card p-5 shadow-elev1">
-          {recentActions.length === 0 ? (
-            <p className="text-sm text-muted-foreground">No admin actions logged yet.</p>
-          ) : (
-            <ul className="divide-y divide-border/50">
-              {recentActions.map((a) => (
-                <li key={a.id} className="flex flex-wrap items-center justify-between gap-3 py-2 text-xs">
-                  <div className="min-w-0 flex-1">
-                    <p className="font-medium">{a.action_type.replace(/_/g, " ")}</p>
-                    <p className="text-[11px] text-muted-foreground">
-                      {a.actor_email} · {a.target_ref ?? "—"} · {timeAgo(a.created_at)}
-                    </p>
-                  </div>
-                  <Badge tone={a.status === "success" ? "green" : "danger"}>{a.status}</Badge>
-                </li>
-              ))}
-            </ul>
-          )}
-        </div>
-      </section>
+      <SectionHeader
+        title="Recent admin actions"
+        action={<span style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 12, color: "var(--text-3)" }}><AlertCircle size={12} /> audit log</span>}
+      />
+      <Card p={0}>
+        {recentActions.length === 0 ? (
+          <div style={{ padding: 24, textAlign: "center", color: "var(--text-3)", fontSize: 13 }}>
+            No admin actions logged yet.
+          </div>
+        ) : (
+          <div style={{ paddingBottom: 4 }}>
+            {recentActions.map((a, i) => (
+              <ListRow
+                key={a.id}
+                divider={i < recentActions.length - 1}
+                title={a.action_type.replace(/_/g, " ")}
+                subtitle={`${a.actor_email} · ${a.target_ref ?? "—"} · ${timeAgo(a.created_at)}`}
+                trailing={<Badge tone={a.status === "success" ? "ok" : "err"}>{a.status}</Badge>}
+              />
+            ))}
+          </div>
+        )}
+      </Card>
     </div>
   );
 }
 
-function OpsCard({ icon, title, description, children }: { icon: React.ReactNode; title: string; description: string; children: React.ReactNode }) {
+function OpsTile({
+  icon, title, desc, action,
+}: { icon: React.ReactNode; title: string; desc: string; action: React.ReactNode }) {
   return (
-    <div className="rounded-xl border border-border bg-card p-5 shadow-elev1">
-      <div className="mb-3 inline-flex h-10 w-10 items-center justify-center rounded-lg bg-secondary/60">
+    <Card p={16}>
+      <div style={{
+        width: 32, height: 32, borderRadius: 8,
+        background: "var(--accent-soft)",
+        display: "flex", alignItems: "center", justifyContent: "center",
+        marginBottom: 10,
+      }}>
         {icon}
       </div>
-      <p className="mb-1 font-semibold">{title}</p>
-      <p className="mb-4 text-xs text-muted-foreground">{description}</p>
-      {children}
-    </div>
+      <div style={{ fontSize: 14, fontWeight: 600 }}>{title}</div>
+      <div style={{ fontSize: 12, color: "var(--text-3)", marginTop: 4, marginBottom: 12 }}>{desc}</div>
+      {action}
+    </Card>
   );
+}
+
+function timeAgo(value: string | null | undefined): string {
+  if (!value) return "—";
+  const diff = Date.now() - new Date(value).getTime();
+  if (!Number.isFinite(diff)) return "—";
+  const m = Math.floor(diff / 60_000);
+  if (Math.abs(m) < 1) return "now";
+  if (Math.abs(m) < 60) return diff > 0 ? `${m}m` : `in ${-m}m`;
+  const h = Math.floor(Math.abs(m) / 60);
+  if (h < 24) return diff > 0 ? `${h}h` : `in ${h}h`;
+  return diff > 0 ? `${Math.floor(h / 24)}d` : `in ${Math.floor(h / 24)}d`;
 }
