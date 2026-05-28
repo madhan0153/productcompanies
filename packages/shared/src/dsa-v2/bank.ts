@@ -7,9 +7,11 @@
 
 import type { DsaV2Question } from "./types";
 import { BATCH_001 } from "./questions/batch-001";
+import { BATCH_002 } from "./questions/batch-002";
 
 export const DSA_V2_BANK: readonly DsaV2Question[] = [
   ...BATCH_001,
+  ...BATCH_002,
 ] as const;
 
 export const DSA_V2_BANK_BY_SLUG: Record<string, DsaV2Question> =
