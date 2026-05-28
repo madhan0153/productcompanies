@@ -188,6 +188,15 @@ async function main() {
     let stale = 0;
     let coverageSkipped = false;
     let timedOut = false;
+    // Funnel telemetry — every stage between raw scrape and DB write.
+    // Persisted to crawl_runs so admin/health can answer "why 2500 → 800?".
+    let funnelRaw           = 0;  // scrape output (pre-normalize)
+    let funnelNormalized    = 0;  // after India + required-field filter
+    let funnelQualityGated  = 0;  // skipped LLM parse (low quality_score)
+    let funnelRejectedNonEng = 0; // HR / Sales / Finance / admin titles
+    let funnelParseOk       = 0;  // successful LLM parses this run
+    let funnelParseErr      = 0;  // failed LLM parses (any reason)
+    let funnelParseDeferred = 0;  // skipped due to budget / Gemini quota dead
 
     // Per-company browser instance. Launching fresh per company isolates
     // crashes (one company's hang/OOM doesn't pin the next 17). Cost is
@@ -218,6 +227,7 @@ async function main() {
         PER_COMPANY_TIMEOUT_MS,
         () => { timedOut = true; },
       );
+      funnelRaw = rawJobs.length;
       cLog(`Scraped ${rawJobs.length} raw jobs in ${Math.round((Date.now() - t0) / 1000)}s`, "info", {
         event: "scrape_done",
         data: { rawCount: rawJobs.length },
@@ -226,6 +236,7 @@ async function main() {
       const normalized = rawJobs
         .map((j) => normalizeJob(j, companyId))
         .filter((j) => j.hubs.length > 0 && j.title.length > 0 && j.external_id.length > 0);
+      funnelNormalized = normalized.length;
 
       cLog(`${normalized.length} India jobs after normalization`, "info", {
         event: "normalize_done",
@@ -238,6 +249,11 @@ async function main() {
         // Inline parse + embed BEFORE upsert.
         const { jobs: enriched, parseOk, parseErr, skippedBudget, skippedQuota, rejectedNonEng, qualityGated } =
           await enrichWithParse(supabase, companyId, companyName, normalized, cLog);
+        funnelParseOk        = parseOk;
+        funnelParseErr       = parseErr;
+        funnelParseDeferred  = skippedBudget + skippedQuota;
+        funnelRejectedNonEng = rejectedNonEng;
+        funnelQualityGated   = qualityGated;
         const result = await upsertJobs(supabase, companyId, enriched);
         inserted = result.inserted;
         updated = result.updated;
@@ -285,7 +301,13 @@ async function main() {
         company_id: companyId,
         started_at: runStarted.toISOString(),
         finished_at: new Date().toISOString(),
-        jobs_seen: 0,
+        jobs_seen:              funnelRaw,
+        jobs_after_normalize:   funnelNormalized,
+        jobs_quality_gated:     funnelQualityGated,
+        jobs_rejected_non_eng:  funnelRejectedNonEng,
+        jobs_parse_ok:          funnelParseOk,
+        jobs_parse_err:         funnelParseErr,
+        jobs_parse_deferred:    funnelParseDeferred,
         jobs_new: inserted,
         jobs_updated: updated,
         jobs_marked_stale: stale,

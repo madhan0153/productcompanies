@@ -20,6 +20,14 @@ type CrawlRunRow = {
   jobs_new: number | null;
   jobs_updated: number | null;
   jobs_marked_stale: number | null;
+  /** Funnel telemetry (launch-readiness columns). Null on pre-migration rows. */
+  jobs_seen:              number | null;
+  jobs_after_normalize:   number | null;
+  jobs_quality_gated:     number | null;
+  jobs_rejected_non_eng:  number | null;
+  jobs_parse_ok:          number | null;
+  jobs_parse_err:         number | null;
+  jobs_parse_deferred:    number | null;
   error: string | null;
 };
 
@@ -61,7 +69,11 @@ export default async function AdminHealthPage() {
     admin.from("companies").select("id, name, slug").order("name") as never,
     admin
       .from("crawl_runs")
-      .select("company_id, status, finished_at, started_at, jobs_new, jobs_updated, jobs_marked_stale, error")
+      .select(
+        "company_id, status, finished_at, started_at, jobs_new, jobs_updated, jobs_marked_stale, " +
+        "jobs_seen, jobs_after_normalize, jobs_quality_gated, jobs_rejected_non_eng, " +
+        "jobs_parse_ok, jobs_parse_err, jobs_parse_deferred, error",
+      )
       .gte("started_at", since7d)
       .order("started_at", { ascending: false }) as never,
     admin.from("jobs").select("id", { count: "exact", head: true }).eq("is_active", true),
@@ -240,43 +252,160 @@ function CompanyHealthRow({
 }) {
   const meta = STATUS_META[h.latestStatus];
   const when = h.latestAt ? new Date(h.latestAt).toLocaleString("en-IN") : "—";
+  // Latest run drives the funnel readout — older runs are already shown
+  // in the sparkline below for trend context.
+  const latest = h.runs[0];
   return (
     <li style={{
-      padding: "12px 16px",
+      padding: "14px 16px",
       borderBottom: divider ? "1px solid var(--line-2)" : "none",
-      display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12,
     }}>
-      <div style={{ minWidth: 0, flex: 1 }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-          <span style={{ fontSize: 14, fontWeight: 500 }}>{h.company.name}</span>
-          <span style={{ fontSize: 11, color: "var(--text-3)" }}>{h.company.slug}</span>
-          {h.twoInARow && <Badge tone="err" size="sm">DRIFT</Badge>}
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12 }}>
+        <div style={{ minWidth: 0, flex: 1 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <span style={{ fontSize: 14, fontWeight: 500 }}>{h.company.name}</span>
+            <span style={{ fontSize: 11, color: "var(--text-3)" }}>{h.company.slug}</span>
+            {h.twoInARow && <Badge tone="err" size="sm">DRIFT</Badge>}
+          </div>
+          <p style={{ fontSize: 11, color: "var(--text-3)", marginTop: 2 }}>
+            {h.runsCount} run{h.runsCount === 1 ? "" : "s"} in 7d · latest {when}
+          </p>
+          <div style={{ marginTop: 6, display: "flex", gap: 2 }}>
+            {[...h.runs].reverse().map((r, i) => (
+              <span
+                key={i}
+                title={`${r.status} · ${new Date(r.started_at).toLocaleString()}${r.error ? ` · ${r.error}` : ""}`}
+                style={{
+                  display: "block", height: 8, width: 18, borderRadius: 2,
+                  background:
+                    r.status === "success" ? "var(--ok)" :
+                    r.status === "partial" ? "var(--warn)" :
+                    r.status === "failed"  ? "var(--err)" :
+                                             "var(--accent)",
+                  opacity: 0.85,
+                }}
+              />
+            ))}
+          </div>
         </div>
-        <p style={{ fontSize: 11, color: "var(--text-3)", marginTop: 2 }}>
-          {h.runsCount} run{h.runsCount === 1 ? "" : "s"} in 7d · latest {when}
-        </p>
-        <div style={{ marginTop: 6, display: "flex", gap: 2 }}>
-          {[...h.runs].reverse().map((r, i) => (
+        <Badge tone={meta.tone}>
+          <span style={{ display: "inline-flex", alignItems: "center", gap: 4 }}>{meta.icon} {meta.label}</span>
+        </Badge>
+      </div>
+      {latest && (latest.jobs_seen !== null || latest.jobs_new !== null) && (
+        <CompanyFunnel run={latest} />
+      )}
+    </li>
+  );
+}
+
+/**
+ * Renders the per-company scrape → DB funnel for the latest crawl run.
+ * Hidden on legacy rows (pre-funnel-migration jobs_seen=null).
+ */
+function CompanyFunnel({ run }: { run: CrawlRunRow }) {
+  // Treat any null as zero for display — the column was added recently
+  // and old rows ran before the telemetry existed.
+  const raw         = run.jobs_seen             ?? 0;
+  const normalized  = run.jobs_after_normalize  ?? 0;
+  const gated       = run.jobs_quality_gated    ?? 0;
+  const rejected    = run.jobs_rejected_non_eng ?? 0;
+  const parseOk     = run.jobs_parse_ok         ?? 0;
+  const parseErr    = run.jobs_parse_err        ?? 0;
+  const deferred    = run.jobs_parse_deferred   ?? 0;
+  const inserted    = run.jobs_new              ?? 0;
+  const updated     = run.jobs_updated          ?? 0;
+  const stale       = run.jobs_marked_stale     ?? 0;
+
+  // Nothing useful happened — don't render the strip.
+  if (raw === 0 && normalized === 0 && inserted === 0 && updated === 0) return null;
+
+  const denom = Math.max(1, raw);
+  // Hides the strip when EVERY metric is zero.
+  const hasAny = raw + normalized + gated + rejected + parseOk + parseErr + deferred + inserted + updated + stale > 0;
+  if (!hasAny) return null;
+
+  const steps: Array<[string, number, string]> = [
+    ["raw",        raw,        "var(--accent)"],
+    ["india",      normalized, "var(--accent-strong)"],
+    ["parsed",     parseOk,    "var(--ok)"],
+    ["new",        inserted,   "var(--ok)"],
+    ["updated",    updated,    "var(--accent)"],
+  ];
+  const dropouts: Array<[string, number, string]> = [
+    ["non-eng",  rejected,  "var(--text-3)"],
+    ["quality",  gated,     "var(--warn)"],
+    ["parse-err", parseErr, "var(--err)"],
+    ["deferred",  deferred, "var(--warn)"],
+    ["stale",     stale,    "var(--text-3)"],
+  ];
+
+  return (
+    <div style={{
+      marginTop: 10, padding: "10px 12px", borderRadius: 10,
+      background: "var(--surface-2)",
+      display: "flex", flexDirection: "column", gap: 8,
+    }}>
+      {/* Funnel bar: each stage stacks horizontally with width ∝ count/raw */}
+      <div style={{ display: "flex", height: 8, borderRadius: 4, overflow: "hidden", background: "var(--surface-3)" }}>
+        {steps.filter(([, count]) => count > 0).map(([label, count, color]) => (
+          <div
+            key={label}
+            title={`${label}: ${count.toLocaleString("en-IN")}`}
+            style={{
+              width: `${(count / denom) * 100}%`,
+              minWidth: 2,
+              background: color,
+              borderRight: "1px solid var(--surface-2)",
+            }}
+          />
+        ))}
+      </div>
+
+      {/* Inline numbers, mobile-friendly: kept stages on the first row,
+          drop-outs on the second so the eye reads the "good" path first. */}
+      <div style={{
+        display: "flex", flexWrap: "wrap", gap: "4px 10px",
+        fontSize: 11, color: "var(--text-2)",
+      }}>
+        <FunnelChip label="raw"     value={raw}        tone="ink"  />
+        <FunnelChip label="india"   value={normalized} tone="accent" />
+        <FunnelChip label="parsed"  value={parseOk}    tone="ok"   />
+        <FunnelChip label="new"     value={inserted}   tone="ok"   />
+        <FunnelChip label="updated" value={updated}    tone="accent" />
+      </div>
+
+      {dropouts.some(([, n]) => n > 0) && (
+        <div style={{
+          display: "flex", flexWrap: "wrap", gap: "4px 10px",
+          fontSize: 11, color: "var(--text-3)",
+        }}>
+          {dropouts.filter(([, n]) => n > 0).map(([label, n, color]) => (
             <span
-              key={i}
-              title={`${r.status} · ${new Date(r.started_at).toLocaleString()}${r.error ? ` · ${r.error}` : ""}`}
-              style={{
-                display: "block", height: 8, width: 18, borderRadius: 2,
-                background:
-                  r.status === "success" ? "var(--ok)" :
-                  r.status === "partial" ? "var(--warn)" :
-                  r.status === "failed"  ? "var(--err)" :
-                                           "var(--accent)",
-                opacity: 0.85,
-              }}
-            />
+              key={label}
+              style={{ display: "inline-flex", alignItems: "center", gap: 4 }}
+            >
+              <span style={{ width: 6, height: 6, borderRadius: "50%", background: color }} />
+              <span className="pm-num">{n.toLocaleString("en-IN")}</span>
+              <span>{label}</span>
+            </span>
           ))}
         </div>
-      </div>
-      <Badge tone={meta.tone}>
-        <span style={{ display: "inline-flex", alignItems: "center", gap: 4 }}>{meta.icon} {meta.label}</span>
-      </Badge>
-    </li>
+      )}
+    </div>
+  );
+}
+
+function FunnelChip({ label, value, tone }: { label: string; value: number; tone: "ink" | "accent" | "ok" }) {
+  const color =
+    tone === "ok"     ? "var(--ok)"     :
+    tone === "accent" ? "var(--accent)" :
+                        "var(--text)";
+  return (
+    <span style={{ display: "inline-flex", alignItems: "baseline", gap: 4 }}>
+      <span className="pm-num" style={{ color, fontWeight: 600 }}>{value.toLocaleString("en-IN")}</span>
+      <span>{label}</span>
+    </span>
   );
 }
 

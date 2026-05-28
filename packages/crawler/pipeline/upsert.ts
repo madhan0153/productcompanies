@@ -551,7 +551,20 @@ export interface CrawlRunPayload {
   company_id: string;
   started_at: string;
   finished_at: string;
+  /** Raw count returned by the company's scrape function — pre-normalize. */
   jobs_seen: number;
+  /** Count after India-location filter / required-field filter at normalize. */
+  jobs_after_normalize: number;
+  /** Rows the quality gate refused to LLM-parse (still upserted with low score). */
+  jobs_quality_gated: number;
+  /** Titles rejected as non-engineering (HR / Sales / Finance / Admin / …). */
+  jobs_rejected_non_eng: number;
+  /** Successful LLM parse + embed calls this run. */
+  jobs_parse_ok: number;
+  /** Failed LLM parse calls (network / 500 / JSON parse / etc.). */
+  jobs_parse_err: number;
+  /** Parses deferred to next crawl (budget exhausted or Gemini quota dead). */
+  jobs_parse_deferred: number;
   jobs_new: number;
   jobs_updated: number;
   jobs_marked_stale: number;
@@ -564,7 +577,46 @@ export async function recordCrawlRun(
   payload: CrawlRunPayload,
 ): Promise<void> {
   const { error } = await supabase.from("crawl_runs").insert(payload);
-  if (error) log(`Failed to record crawl_run: ${error.message}`, "warn");
+  if (!error) return;
+
+  // Gracefully degrade if the operator hasn't run the funnel-columns
+  // migration yet. We re-try with the legacy column set so the run is
+  // still recorded (status, counts, error) — admins lose only the funnel
+  // breakdown, not the run itself. This makes the deploy safe regardless
+  // of migration ordering.
+  const isMissingColumn = /column .* does not exist|schema cache/i.test(error.message ?? "");
+  if (!isMissingColumn) {
+    log(`Failed to record crawl_run: ${error.message}`, "warn", {
+      event: "record_crawl_run_error",
+      data: { error: error.message },
+    });
+    return;
+  }
+
+  log(
+    `crawl_runs is missing the funnel-telemetry columns — falling back to legacy schema. ` +
+    `Re-run supabase/schema.sql to enable per-company funnel visibility on admin/health.`,
+    "warn",
+    { event: "crawl_run_legacy_fallback" },
+  );
+  const legacy = {
+    company_id:        payload.company_id,
+    started_at:        payload.started_at,
+    finished_at:       payload.finished_at,
+    jobs_seen:         payload.jobs_seen,
+    jobs_new:          payload.jobs_new,
+    jobs_updated:      payload.jobs_updated,
+    jobs_marked_stale: payload.jobs_marked_stale,
+    status:            payload.status,
+    error:             payload.error,
+  };
+  const { error: retryError } = await supabase.from("crawl_runs").insert(legacy);
+  if (retryError) {
+    log(`Legacy crawl_runs insert also failed: ${retryError.message}`, "warn", {
+      event: "record_crawl_run_legacy_error",
+      data: { error: retryError.message },
+    });
+  }
 }
 
 // Re-export the NormalizedJob type so callers don't need to import from

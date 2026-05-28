@@ -978,6 +978,16 @@ create table if not exists public.crawl_runs (
 
 create index if not exists idx_crawl_runs_company on public.crawl_runs(company_id, started_at desc);
 
+-- Launch-readiness telemetry (idempotent additions).
+-- Lets the admin/health page answer "why did 2500 raw jobs become 800
+-- in the catalog?" by recording every stage of the per-company funnel.
+alter table public.crawl_runs add column if not exists jobs_after_normalize    integer not null default 0;
+alter table public.crawl_runs add column if not exists jobs_quality_gated      integer not null default 0;
+alter table public.crawl_runs add column if not exists jobs_rejected_non_eng   integer not null default 0;
+alter table public.crawl_runs add column if not exists jobs_parse_ok           integer not null default 0;
+alter table public.crawl_runs add column if not exists jobs_parse_err          integer not null default 0;
+alter table public.crawl_runs add column if not exists jobs_parse_deferred     integer not null default 0;
+
 
 -- DPDP EVENTS (append-only audit)
 create table if not exists public.dpdp_events (
