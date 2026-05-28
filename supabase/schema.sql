@@ -1473,6 +1473,118 @@ do $$ begin
 end $$;
 
 
+-- ============================================================================
+-- DSA v2 — hand-authored question bank with admin review gate
+-- Replaces the v1 templated catalog. v1 has been removed from the codebase.
+-- All authored content lives in packages/shared/src/dsa-v2 and is mirrored
+-- into public.dsa_questions via an admin seed action. Only rows with
+-- status='live' are eligible for daily dispatch.
+-- ============================================================================
+do $$ begin
+  create type public.dsa_question_status as enum (
+    'pending_review', 'live', 'rejected', 'deferred', 'archived'
+  );
+exception when duplicate_object then null; end $$;
+
+create table if not exists public.dsa_questions (
+  id                uuid primary key default gen_random_uuid(),
+  slug              text not null unique,
+  version           integer not null default 1,
+  status            public.dsa_question_status not null default 'pending_review',
+  pattern           text not null,
+  difficulty        text not null check (difficulty in ('easy','medium','hard')),
+  primary_role      text not null,
+  roles             text[] not null default '{}',
+  bucket            text not null check (bucket in ('pure_dsa','ai_applied','indian_domain')),
+  batch_no          integer not null default 1,
+  title             text not null,
+  framing           text not null,
+  statement         text not null,
+  input_format      text not null,
+  output_format     text not null,
+  constraints       jsonb not null default '[]'::jsonb,
+  examples          jsonb not null default '[]'::jsonb,
+  approach          jsonb not null default '[]'::jsonb,
+  solution_steps    jsonb not null default '[]'::jsonb,
+  code_python       text not null,
+  code_java         text not null,
+  code_cpp          text not null,
+  complexity_time   text not null,
+  complexity_space  text not null,
+  pitfalls          jsonb not null default '[]'::jsonb,
+  edge_cases        jsonb not null default '[]'::jsonb,
+  why_it_matters    text not null,
+  estimated_minutes integer not null default 25,
+  authored_by       text not null default 'claude-opus-4-7',
+  reviewed_by       uuid references auth.users(id),
+  reviewed_at       timestamptz,
+  rejection_reason  text,
+  internal_notes    text,
+  created_at        timestamptz not null default now(),
+  updated_at        timestamptz not null default now()
+);
+
+create index if not exists idx_dsa_questions_status   on public.dsa_questions(status);
+create index if not exists idx_dsa_questions_role     on public.dsa_questions(primary_role, status);
+create index if not exists idx_dsa_questions_pattern  on public.dsa_questions(pattern, status);
+create index if not exists idx_dsa_questions_batch    on public.dsa_questions(batch_no);
+create index if not exists idx_dsa_questions_live     on public.dsa_questions(status, primary_role, difficulty)
+  where status = 'live';
+
+alter table public.dsa_questions enable row level security;
+-- Only the service role (admin actions, dispatch worker) touches this table.
+-- No authenticated user policy needed — content is delivered through
+-- server actions that proxy reads after auth.
+do $$ begin
+  if not exists (
+    select 1 from pg_policies
+    where schemaname='public' and tablename='dsa_questions' and policyname='dsa_questions_service_all'
+  ) then
+    create policy dsa_questions_service_all on public.dsa_questions
+      for all to service_role using (true) with check (true);
+  end if;
+end $$;
+
+-- Append-only audit log of review actions (approve / reject / defer / edit).
+create table if not exists public.dsa_question_review_events (
+  id          uuid primary key default gen_random_uuid(),
+  question_id uuid not null references public.dsa_questions(id) on delete cascade,
+  reviewer_id uuid references auth.users(id),
+  action      text not null check (action in ('approve','reject','defer','edit','reopen')),
+  reason      text,
+  diff        jsonb,
+  created_at  timestamptz not null default now()
+);
+create index if not exists idx_dsa_review_events_qid
+  on public.dsa_question_review_events(question_id, created_at desc);
+
+alter table public.dsa_question_review_events enable row level security;
+do $$ begin
+  if not exists (
+    select 1 from pg_policies
+    where schemaname='public' and tablename='dsa_question_review_events'
+      and policyname='dsa_review_events_service_all'
+  ) then
+    create policy dsa_review_events_service_all on public.dsa_question_review_events
+      for all to service_role using (true) with check (true);
+  end if;
+end $$;
+
+-- Extend dispatch for v2: 90-day no-repeat window + question version snapshot.
+alter table public.interview_daily_dispatch add column if not exists question_version integer;
+alter table public.interview_daily_dispatch add column if not exists no_repeat_days   integer not null default 90;
+alter table public.interview_daily_dispatch add column if not exists question_bucket  text;
+create index if not exists idx_daily_dispatch_norepeat
+  on public.interview_daily_dispatch(user_id, problem_slug, day desc);
+
+-- AI-track readiness signal for personalisation (0-100).
+do $$ begin
+  if exists (select 1 from information_schema.tables where table_schema='public' and table_name='interview_readiness') then
+    execute 'alter table public.interview_readiness add column if not exists ai_track_readiness integer check (ai_track_readiness between 0 and 100)';
+  end if;
+end $$;
+
+
 -- -----------------------------------------------------------------------------
 -- === SECTION: UPDATED_AT TRIGGERS ===
 -- 5. updated_at TRIGGERS  (drop-then-create for idempotency)

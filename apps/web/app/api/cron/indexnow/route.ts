@@ -15,7 +15,7 @@
 
 import { NextResponse, type NextRequest } from "next/server";
 import { requireCronAuth } from "@/lib/security/cron";
-import { CRAWLER_META, DSA_CATALOG } from "@prodmatch/shared";
+import { CRAWLER_META } from "@prodmatch/shared";
 import { absoluteUrl, INDIA_HUBS, hubToSlug } from "@/lib/seo/site";
 import { COMPETITORS } from "@/lib/seo/comparisons";
 import { PILLAR_GUIDES } from "@/lib/seo/guides";
@@ -50,7 +50,6 @@ export async function POST(req: NextRequest) {
     absoluteUrl("/cities"),
     absoluteUrl("/roles"),
     absoluteUrl("/dsa"),
-    absoluteUrl("/dsa/patterns"),
     absoluteUrl("/guides"),
     absoluteUrl("/compare"),
     absoluteUrl("/salaries"),
@@ -87,9 +86,8 @@ export async function POST(req: NextRequest) {
   for (const r of PUBLIC_ROLES) {
     urlList.push(absoluteUrl(`/roles/${r.slug}`));
   }
-  for (const p of DSA_CATALOG) {
-    urlList.push(absoluteUrl(`/dsa/${p.slug}`));
-  }
+  // DSA v2 — per-question URLs omitted while the hand-authored bank is in
+  // review. Re-add once live bank is non-empty.
   // Include recent active jobs (capped at 1000 to stay under IndexNow's
   // per-ping limit comfortably).
   try {

@@ -6,7 +6,7 @@
 // on the server every time the sitemap is requested.
 
 import type { MetadataRoute } from "next";
-import { CRAWLER_META, DSA_CATALOG, DSA_PATTERN_ROADMAP } from "@prodmatch/shared";
+import { CRAWLER_META } from "@prodmatch/shared";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { INDIA_HUBS, hubToSlug, absoluteUrl } from "@/lib/seo/site";
 import { PUBLIC_ROLES } from "@/lib/seo/roles";
@@ -31,7 +31,6 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     { url: absoluteUrl("/privacy"),   lastModified: now, changeFrequency: "monthly", priority: 0.3 },
     { url: absoluteUrl("/terms"),     lastModified: now, changeFrequency: "monthly", priority: 0.3 },
     { url: absoluteUrl("/dsa"),       lastModified: now, changeFrequency: "weekly",  priority: 0.7 },
-    { url: absoluteUrl("/dsa/patterns"), lastModified: now, changeFrequency: "weekly", priority: 0.7 },
     { url: absoluteUrl("/guides"),    lastModified: now, changeFrequency: "weekly",  priority: 0.8 },
     { url: absoluteUrl("/compare"),   lastModified: now, changeFrequency: "monthly", priority: 0.7 },
     { url: absoluteUrl("/salaries"),  lastModified: now, changeFrequency: "daily",   priority: 0.85 },
@@ -123,19 +122,9 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     priority: 0.7,
   }));
 
-  const dsaPatternEntries: SitemapEntry[] = DSA_PATTERN_ROADMAP.map((p) => ({
-    url: absoluteUrl(`/dsa/patterns#${p.pattern}`),
-    lastModified: now,
-    changeFrequency: "monthly",
-    priority: 0.5,
-  }));
-
-  const dsaProblemEntries: SitemapEntry[] = DSA_CATALOG.map((p) => ({
-    url: absoluteUrl(`/dsa/${p.slug}`),
-    lastModified: now,
-    changeFrequency: "monthly",
-    priority: 0.5,
-  }));
+  // DSA v2 — per-question + pattern URLs intentionally omitted while the
+  // hand-authored bank is in review. They will be re-added once the live
+  // bank is non-empty (Phase 2).
 
   // ── Dynamic — live job listings ────────────────────────────────────────
   // Pulled from Supabase via the anon client (RLS allows anonymous SELECT
@@ -156,8 +145,6 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     ...cityEntries,
     ...cityRoleEntries,
     ...roleEntries,
-    ...dsaPatternEntries,
-    ...dsaProblemEntries,
     ...jobEntries,
   ];
 }
