@@ -14,6 +14,7 @@
 // of truth — client-side checks are advisory only.
 
 import { useMemo, useRef, useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
 import {
   Save, Upload, Download, Eye, Plus, Trash2, ChevronDown,
   Loader2, CheckCircle2, AlertTriangle, FileText,
@@ -53,6 +54,7 @@ const SECTION_LABEL: Record<Section, string> = {
 };
 
 export function ResumeEditor({ initial, derivedFrom }: ResumeEditorProps) {
+  const router = useRouter();
   const [doc, setDoc] = useState<JsonResume>(initial);
   const [open, setOpen] = useState<Record<Section, boolean>>({
     basics: true, work: true, education: false, skills: false,
@@ -106,10 +108,13 @@ export function ResumeEditor({ initial, derivedFrom }: ResumeEditorProps) {
         setFlash({ kind: "err", text: body.error ?? "Import failed." });
         return;
       }
-      // Reload to pick up the new version. Avoid stuffing the parsed JSON
-      // into client state directly so server-side mapping is always the
-      // source of truth.
-      window.location.reload();
+      // The import only reaches 201 after server-side zod validation, so the
+      // parsed document is schema-valid. Reflect it in the editor immediately
+      // (no full-page reload) and refresh server data (derivedFrom badge etc.).
+      setDoc(parsed as JsonResume);
+      setFlash({ kind: "ok", text: "Resume imported." });
+      setTimeout(() => setFlash(null), 3000);
+      router.refresh();
     } catch {
       setFlash({ kind: "err", text: "File is not valid JSON." });
     } finally {
