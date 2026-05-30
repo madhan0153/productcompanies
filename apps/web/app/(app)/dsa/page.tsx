@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { Brain, Sparkles, ShieldCheck, Clock3, Flame, Trophy, Snowflake, CornerUpRight, Building2, CalendarClock, Plus, ArrowRight } from "lucide-react";
-import { DSA_V2_PATTERN_ROADMAP } from "@prodmatch/shared";
+import { Brain, Sparkles, ShieldCheck, Clock3, Flame, Trophy, Snowflake, CornerUpRight, Building2, Plus, ArrowRight } from "lucide-react";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { getEntitlements } from "@/lib/billing/entitlements";
@@ -11,11 +10,11 @@ import { getDsaPersonalization } from "@/lib/dsa/personalization";
 import { dsaDailySeed, dsaPickIndex } from "@/lib/dsa/today";
 import { StatCard } from "@/components/section-card";
 import { absoluteUrl } from "@/lib/seo/site";
-import { DailyHeroCard, type HeroQuestion } from "./_components/hero-card";
+import { DailyPanel, type HeroQuestion } from "./_components/daily-panel";
 import { StreakRibbon, StreakChip, type DayDot } from "./_components/streak";
-import { DailyUtilities } from "./_components/daily-utilities";
 import { LockedTeaser } from "./_components/locked-teaser";
-import { BUCKET_LABEL, DIFF_CLASS, patternLabel, type Difficulty, type Bucket } from "./_components/pills";
+import { InterviewCountdown } from "./_components/interview-countdown";
+import type { Difficulty, Bucket } from "./_components/pills";
 
 export const metadata: Metadata = {
   title: "DSA Lab — Your Daily Interview Question | ProdMatch.ai",
@@ -42,10 +41,6 @@ type LiveRow = {
   estimated_minutes: number;
 };
 
-const PATTERN_ORDER: Record<string, number> = Object.fromEntries(
-  DSA_V2_PATTERN_ROADMAP.map((p) => [p.pattern, p.order]),
-);
-
 function greeting(): string {
   const h = new Date().getHours();
   if (h < 12) return "Good morning";
@@ -55,6 +50,7 @@ function greeting(): string {
 
 function buildLast7(state: DsaDailyState): DayDot[] {
   const fmt = (d: Date) => d.toLocaleDateString("en-IN", { weekday: "short" });
+  const action = state.today.action;
   const solvedToday = state.today.status === "solved";
   const solvedBack = solvedToday ? Math.max(0, state.streak.current - 1) : state.streak.current;
   const dots: DayDot[] = [];
@@ -62,7 +58,10 @@ function buildLast7(state: DsaDailyState): DayDot[] {
     const d = new Date();
     d.setDate(d.getDate() - i);
     if (i === 0) {
-      dots.push({ label: "Today", state: solvedToday ? "solved" : "today" });
+      dots.push({
+        label: "Today",
+        state: solvedToday ? "solved" : action === "frozen" ? "frozen" : action === "skipped" ? "skipped" : "today",
+      });
     } else if (i <= solvedBack) {
       dots.push({ label: fmt(d), state: "solved" });
     } else {
@@ -78,8 +77,7 @@ export default async function DsaPage() {
     .from("dsa_questions")
     .select("slug, title, framing, pattern, difficulty, bucket, estimated_minutes")
     .eq("status", "live")
-    .order("pattern", { ascending: true })
-    .order("difficulty", { ascending: true }) as never) as { data: LiveRow[] | null };
+    .order("slug", { ascending: true }) as never) as { data: LiveRow[] | null };
 
   const live = data ?? [];
   if (live.length === 0) return <TransitionPlaceholder />;
@@ -92,7 +90,9 @@ export default async function DsaPage() {
 
   // Deterministic per-user (or global) daily pick.
   const ordered = [...live].sort((a, b) => a.slug.localeCompare(b.slug));
-  const featured = ordered[dsaPickIndex(dsaDailySeed(user?.id ?? null), ordered.length)];
+  const pickIdx = dsaPickIndex(dsaDailySeed(user?.id ?? null), ordered.length);
+  const featured = ordered[pickIdx];
+  const bonus = ordered[(pickIdx + 1) % ordered.length];
 
   let dailyState: DsaDailyState | null = null;
   let displayName: string | null = null;
@@ -120,60 +120,48 @@ export default async function DsaPage() {
     minutes: featured.estimated_minutes,
   };
 
-  // A second, distinct question for the bonus surface.
-  const bonus = ordered[(dsaPickIndex(dsaDailySeed(user?.id ?? null), ordered.length) + 1) % ordered.length];
-
   const companyChips = personalization.matchedCompanies.slice(0, 4).map((c) => c.name);
 
   return (
-    <div className="space-y-6 py-2">
+    <div className="mx-auto max-w-2xl space-y-5 py-2">
       {/* Header */}
       <header className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <p className="text-xs font-semibold uppercase tracking-wide text-primary">DSA Lab</p>
-          <h1 className="mt-1 font-display text-2xl font-semibold tracking-tight sm:text-3xl">
+          <h1 className="mt-1 font-display text-2xl font-semibold tracking-tight">
             {signedIn ? `${greeting()}${displayName ? `, ${displayName}` : ""}.` : "Your daily DSA question."}
           </h1>
         </div>
         {dailyState && <StreakChip current={dailyState.streak.current} milestone={isMilestone(dailyState.streak.current)} />}
       </header>
 
-      {/* Streak ribbon (signed in) or sign-in nudge */}
-      {dailyState ? (
+      {/* Streak ribbon (signed in) */}
+      {dailyState && (
         <StreakRibbon
           days={buildLast7(dailyState)}
           current={dailyState.streak.current}
           freeze={dailyState.freeze.available}
           nextAccrual={dailyState.freeze.nextAccrualInDays}
         />
-      ) : (
-        <div className="surface-inset flex flex-wrap items-center justify-between gap-3 px-4 py-3">
-          <p className="text-xs text-muted-foreground">
-            <Link href="/auth/login?next=/dsa" className="font-semibold text-primary hover:underline">Sign in</Link>{" "}
-            to start a daily streak and get questions matched to your resume.
-          </p>
-        </div>
       )}
 
-      {/* Today's hero */}
-      <DailyHeroCard q={hero} status={dailyState?.today.status ?? "not_started"} rationale={personalization.rationale} signedIn={signedIn} />
-
-      {/* Daily utilities (signed in) */}
-      {dailyState && (
-        <DailyUtilities
-          slug={featured.slug}
-          skips={dailyState.skips}
-          freeze={{ available: dailyState.freeze.available }}
-          recallCadence={quota.recallCadence}
-          todayStatus={dailyState.today.status}
-        />
-      )}
+      {/* Today's hero + utilities (reactive) */}
+      <DailyPanel
+        q={hero}
+        signedIn={signedIn}
+        initialStatus={dailyState?.today.status ?? "not_started"}
+        initialAction={dailyState?.today.action ?? "assigned"}
+        skips={dailyState?.skips ?? { used: 0, allowance: quota.skipsAllowance, period: quota.skipsPeriod }}
+        freeze={{ available: dailyState?.freeze.available ?? 0 }}
+        recallCadence={quota.recallCadence}
+        rationale={personalization.rationale}
+      />
 
       {/* Progress stats (signed in) */}
       {dailyState && (
         <section>
-          <h2 className="mb-3 text-sm font-semibold tracking-tight">Your progress</h2>
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+          <h2 className="mb-2.5 text-sm font-semibold tracking-tight">Your progress</h2>
+          <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-4">
             <StatCard icon={<Flame className="h-4 w-4" />} label="Current streak" value={dailyState.streak.current} tone="warning" />
             <StatCard icon={<Trophy className="h-4 w-4" />} label="Longest streak" value={dailyState.streak.longest} tone="primary" />
             <StatCard icon={<Snowflake className="h-4 w-4" />} label="Freeze tokens" value={dailyState.freeze.available} tone="success" />
@@ -189,7 +177,7 @@ export default async function DsaPage() {
       )}
 
       {/* Tiered surfaces */}
-      <section className="space-y-3">
+      <section className="space-y-2.5">
         {/* Bonus practice */}
         {quota.bonusPerDay === 0 ? (
           <LockedTeaser
@@ -202,7 +190,7 @@ export default async function DsaPage() {
         ) : (
           <Link
             href={`/dsa/${bonus.slug}`}
-            className="lift flex items-center justify-between gap-3 rounded-xl border border-border bg-card p-4"
+            className="press flex items-center justify-between gap-3 rounded-xl border border-border bg-card p-4 transition hover:border-primary/40 focus-ring"
           >
             <div className="min-w-0">
               <p className="flex items-center gap-1.5 text-sm font-semibold"><Plus className="h-4 w-4 text-primary" /> Bonus practice</p>
@@ -242,15 +230,12 @@ export default async function DsaPage() {
           </div>
         )}
 
-        {/* Interview Countdown — Sprint */}
+        {/* Interview Countdown — Sprint working feature */}
         {quota.interviewCountdown ? (
-          <div className="rounded-xl border border-border bg-card p-4">
-            <p className="flex items-center gap-1.5 text-sm font-semibold"><CalendarClock className="h-4 w-4 text-primary" /> Interview Countdown</p>
-            <p className="mt-1 text-xs text-muted-foreground">Add your interview date to get a daily plan that counts down to it.</p>
-          </div>
+          <InterviewCountdown />
         ) : (
           <LockedTeaser
-            icon={<CalendarClock className="h-4 w-4" />}
+            icon={<Sparkles className="h-4 w-4" />}
             title="Interview Countdown"
             body="Got an interview date? Career Sprint builds a daily plan that counts down to it."
             ctaLabel="Career Sprint"
@@ -258,65 +243,12 @@ export default async function DsaPage() {
           />
         )}
       </section>
-
-      {/* Browse the full bank (SEO + power users) */}
-      <BrowseAll live={live} />
     </div>
   );
 }
 
 function isMilestone(n: number): boolean {
   return [3, 5, 7, 14, 30, 50, 100].includes(n);
-}
-
-function BrowseAll({ live }: { live: LiveRow[] }) {
-  const byPattern = new Map<string, LiveRow[]>();
-  for (const q of live) {
-    if (!byPattern.has(q.pattern)) byPattern.set(q.pattern, []);
-    byPattern.get(q.pattern)!.push(q);
-  }
-  const groups = [...byPattern.entries()].sort(
-    (a, b) => (PATTERN_ORDER[a[0]] ?? 99) - (PATTERN_ORDER[b[0]] ?? 99),
-  );
-
-  return (
-    <section className="space-y-5 border-t border-border pt-6">
-      <div className="flex items-baseline justify-between gap-3">
-        <h2 className="text-sm font-semibold tracking-tight">Explore the full bank</h2>
-        <span className="text-xs text-muted-foreground tabular-nums">{live.length} live</span>
-      </div>
-      {groups.map(([pattern, items]) => (
-        <div key={pattern} className="space-y-3">
-          <div className="flex items-baseline justify-between gap-3">
-            <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{patternLabel(pattern)}</h3>
-            <span className="text-xs text-muted-foreground">{items.length}</span>
-          </div>
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-            {items.map((q) => (
-              <Link
-                key={q.slug}
-                href={`/dsa/${q.slug}`}
-                className="lift group flex flex-col rounded-xl border border-border bg-card p-4"
-              >
-                <div className="flex items-start justify-between gap-2">
-                  <span className="text-sm font-semibold leading-snug">{q.title}</span>
-                  <span className={`shrink-0 rounded-md px-1.5 py-0.5 text-[10px] font-semibold uppercase ${DIFF_CLASS[q.difficulty]}`}>
-                    {q.difficulty}
-                  </span>
-                </div>
-                <p className="mt-1.5 line-clamp-2 text-xs leading-relaxed text-muted-foreground">{q.framing}</p>
-                <div className="mt-3 flex items-center gap-2 text-[11px] text-muted-foreground">
-                  <span>{BUCKET_LABEL[q.bucket]}</span>
-                  <span aria-hidden>·</span>
-                  <span>~{q.estimated_minutes} min</span>
-                </div>
-              </Link>
-            ))}
-          </div>
-        </div>
-      ))}
-    </section>
-  );
 }
 
 // Shown only while zero questions have been approved to live.

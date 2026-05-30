@@ -132,6 +132,7 @@ export function UpgradeModal({ open, onClose, trigger, returnTo }: UpgradeModalP
   const reduce  = useReducedMotion();
   const copy    = TRIGGER_COPY[trigger];
   const [loading, setLoading] = useState<string | null>(null);
+  const [error, setError]     = useState<string | null>(null);
 
   // ESC closes
   useEffect(() => {
@@ -146,38 +147,35 @@ export function UpgradeModal({ open, onClose, trigger, returnTo }: UpgradeModalP
   }, [open, onClose]);
 
   async function startCheckout(product: string) {
+    setError(null);
     setLoading(product);
-    // Pre-open a tab synchronously with the click — preserves mobile context
-    // and survives strict popup blockers (counts as direct user gesture).
-    const popup = typeof window !== "undefined" ? window.open("about:blank", "_blank") : null;
     try {
       const res = await fetch("/api/billing/checkout", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ product, returnTo: returnTo ?? window.location.pathname }),
       });
-      const data = await res.json();
+      const data = await res.json().catch(() => ({}));
       if (!res.ok) {
-        if (popup) popup.close();
         if (res.status === 401) {
           router.push(`/auth/login?next=${encodeURIComponent(window.location.pathname)}`);
           return;
         }
         setLoading(null);
-        alert(data.error ?? "Checkout failed. Please try again.");
+        setError(data.error ?? "We couldn't start checkout. Please try again.");
         return;
       }
-      if (popup && !popup.closed) {
-        popup.location.href = data.checkoutUrl;
-      } else {
-        window.location.href = data.checkoutUrl;
+      if (!data.checkoutUrl) {
+        setLoading(null);
+        setError("This plan is temporarily unavailable. Please try again shortly or pick another plan.");
+        return;
       }
-      setLoading(null);
-      onClose();
+      // Same-tab redirect — reliable on mobile (no popup blockers); the user
+      // returns to /billing/success?return_to=… after payment, then back here.
+      window.location.assign(data.checkoutUrl);
     } catch {
-      if (popup) popup.close();
       setLoading(null);
-      alert("Network error. Please try again.");
+      setError("Network error. Please check your connection and try again.");
     }
   }
 
@@ -232,6 +230,11 @@ export function UpgradeModal({ open, onClose, trigger, returnTo }: UpgradeModalP
 
             {/* Pro card — primary recommendation */}
             <div className="space-y-3 px-5 pb-5 pt-3">
+              {error && (
+                <p role="alert" className="rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-xs font-medium text-destructive">
+                  {error}
+                </p>
+              )}
               <button
                 type="button"
                 onClick={() => startCheckout("pro_monthly")}

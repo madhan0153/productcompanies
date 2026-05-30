@@ -122,9 +122,10 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     priority: 0.7,
   }));
 
-  // DSA v2 — per-question + pattern URLs intentionally omitted while the
-  // hand-authored bank is in review. They will be re-added once the live
-  // bank is non-empty (Phase 2).
+  // DSA v2 — live, manually-reviewed question pages. The in-app browse grid
+  // was removed in favour of a single daily-question experience, so the
+  // sitemap is now the canonical discovery path for these pages.
+  const dsaEntries: SitemapEntry[] = await loadLiveDsaEntries();
 
   // ── Dynamic — live job listings ────────────────────────────────────────
   // Pulled from Supabase via the anon client (RLS allows anonymous SELECT
@@ -145,8 +146,32 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     ...cityEntries,
     ...cityRoleEntries,
     ...roleEntries,
+    ...dsaEntries,
     ...jobEntries,
   ];
+}
+
+async function loadLiveDsaEntries(): Promise<SitemapEntry[]> {
+  try {
+    // dsa_questions is service-role-only (no anon RLS), so use the admin client.
+    const { createSupabaseAdminClient } = await import("@/lib/supabase/admin");
+    const admin = createSupabaseAdminClient();
+    const { data } = await (admin
+      .from("dsa_questions")
+      .select("slug, updated_at")
+      .eq("status", "live")
+      .limit(10_000) as unknown as Promise<{
+        data: Array<{ slug: string; updated_at: string | null }> | null;
+      }>);
+    return (data ?? []).map((q) => ({
+      url: absoluteUrl(`/dsa/${q.slug}`),
+      lastModified: new Date(q.updated_at ?? Date.now()),
+      changeFrequency: "monthly" as const,
+      priority: 0.6,
+    }));
+  } catch {
+    return [];
+  }
 }
 
 async function loadActiveJobEntries(): Promise<SitemapEntry[]> {

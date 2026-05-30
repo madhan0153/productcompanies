@@ -482,7 +482,7 @@ function Panel({
   children: React.ReactNode;
 }) {
   return (
-    <section className="rounded-xl border border-border bg-card p-4 sm:p-5">
+    <section className="animate-fade-up rounded-xl border border-border bg-card p-4 sm:p-5">
       <div className="mb-3 flex items-center gap-2">
         {icon && <span className="text-primary">{icon}</span>}
         <h2 className="text-sm font-semibold tracking-tight">{title}</h2>
