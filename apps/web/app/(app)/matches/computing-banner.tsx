@@ -35,7 +35,7 @@ export function ComputingBanner() {
         {!reduce && (
           <motion.div
             className="pointer-events-none absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-primary/10 to-transparent"
-            animate={{ translateX: ["−100%", "200%"] }}
+            animate={{ translateX: ["-100%", "200%"] }}
             transition={{ duration: 2.2, repeat: Infinity, ease: "easeInOut", repeatDelay: 1.5 }}
           />
         )}
@@ -79,7 +79,6 @@ export function ComputingBanner() {
               <div className="flex items-center gap-1">
                 {[0, 0.15, 0.3].map((delay, i) => (
                   <motion.span
-                    // eslint-disable-next-line react/no-array-index-key
                     key={i}
                     className="block h-1.5 w-1.5 rounded-full bg-primary"
                     animate={{ y: [0, -5, 0], opacity: [0.5, 1, 0.5] }}
