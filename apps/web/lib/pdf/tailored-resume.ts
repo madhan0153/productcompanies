@@ -64,7 +64,7 @@ function render(doc: PDFKit.PDFDocument, content: TailoredResumeContent) {
     // Centre manually: render as a single line using continued:true segments
     const fullLine = parts.join(separator);
     const lineWidth = doc.widthOfString(fullLine);
-    const startX = PAGE.margin + (width - lineWidth) / 2;
+    const startX = PAGE.margin + Math.max(0, (width - lineWidth) / 2);
     const y = doc.y;
     let curX = startX;
     for (let i = 0; i < parts.length; i++) {
