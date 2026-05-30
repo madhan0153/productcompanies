@@ -1,6 +1,8 @@
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import type { BillingPlan, Json } from "@/lib/supabase/types";
 import { betterPlan, getPlanLimits } from "./catalog";
+import { serverEnv } from "@/lib/env";
+import { isAdminEmail } from "@/lib/admin/auth";
 
 export interface EntitlementState {
   plan: BillingPlan;
@@ -100,6 +102,11 @@ export async function refreshEntitlements(userId: string): Promise<EntitlementSt
 }
 
 export async function getEntitlements(userId: string): Promise<EntitlementState> {
+  const base = await readEntitlements(userId);
+  return applyAdminOverride(userId, base);
+}
+
+async function readEntitlements(userId: string): Promise<EntitlementState> {
   const admin = createSupabaseAdminClient();
   const { data } = await admin
     .from("user_entitlements")
@@ -120,4 +127,34 @@ export async function getEntitlements(userId: string): Promise<EntitlementState>
     priorityLevel: data.priority_level,
     featureFlags: data.feature_flags,
   };
+}
+
+/**
+ * Staff superuser override. Allow-listed admin emails (ADMIN_EMAILS) get full
+ * Career Sprint entitlements across the entire app — no paywalls anywhere — in
+ * addition to the /admin route gate. Applied at read time so it takes effect
+ * immediately regardless of any cached free-tier row. Skipped entirely when no
+ * admin allowlist is configured (zero overhead for that case).
+ */
+async function applyAdminOverride(userId: string, base: EntitlementState): Promise<EntitlementState> {
+  if (!serverEnv.ADMIN_EMAILS) return base;
+  if (base.source === "admin") return base;
+  try {
+    const admin = createSupabaseAdminClient();
+    const { data } = await admin.auth.admin.getUserById(userId);
+    if (!isAdminEmail(data?.user?.email ?? null)) return base;
+
+    const limits = getPlanLimits("career_sprint");
+    return {
+      plan: "career_sprint",
+      source: "admin",
+      activeUntil: null,
+      tailoredResumeLimit: limits.tailoredResumeLimit,
+      priorityLevel: limits.priorityLevel,
+      featureFlags: limits.featureFlags as unknown as Json,
+    };
+  } catch {
+    // Auth lookup failed — fall back to the resolved entitlement.
+    return base;
+  }
 }
