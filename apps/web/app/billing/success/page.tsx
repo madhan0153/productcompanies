@@ -5,7 +5,7 @@ import { Suspense, useEffect, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { CheckCircle2, Loader2, ArrowRight, AlertTriangle, Copy } from "lucide-react";
 import {
-  CHECKOUT_PRODUCTS, PLAN_LIMITS, planLabel, type CheckoutProductId,
+  CHECKOUT_PRODUCTS, PLAN_LIMITS, type CheckoutProductId,
 } from "@/lib/billing/catalog";
 import { CelebrationOverlay } from "./celebration";
 
@@ -34,7 +34,9 @@ function BillingSuccessContent() {
   const session  = params.get("session") ?? "";
   const subId    = params.get("subscription_id") ?? "";
   const email    = params.get("email")    ?? "";
-  const returnTo = params.get("return_to") ?? "";
+  // Guard against open redirect: only accept same-origin relative paths
+  const rawReturnTo = params.get("return_to") ?? "";
+  const returnTo = rawReturnTo.startsWith("/") && !rawReturnTo.startsWith("//") ? rawReturnTo : "/dashboard";
 
   const [phase, setPhase] = useState<"polling" | "activated" | "timeout">("polling");
   const [plan, setPlan]   = useState<string | null>(null);
@@ -129,7 +131,7 @@ function BillingSuccessContent() {
       cancelled = true;
       if (pollRef.current) clearInterval(pollRef.current);
     };
-  }, [onWrongHost, subId, product]);
+  }, [onWrongHost, subId, product, email]);
 
   // Auto-redirect to return_to once activated (with brief celebration window)
   useEffect(() => {

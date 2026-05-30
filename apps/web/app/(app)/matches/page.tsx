@@ -1,7 +1,7 @@
 ﻿import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { after } from "next/server";
-import { Eye, Activity, AlertCircle, ArrowUpRight } from "lucide-react";
+import { Eye, Activity, ArrowUpRight } from "lucide-react";
 import Link from "next/link";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";

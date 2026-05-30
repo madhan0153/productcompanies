@@ -91,9 +91,9 @@ export default function LoginPage({
 
           <p className="mt-5 text-center text-xs text-muted-foreground">
             By signing in you agree to our{" "}
-            <a href="#" className="underline underline-offset-2 hover:text-foreground">Terms</a>{" "}
+            <Link href="/terms" className="underline underline-offset-2 hover:text-foreground">Terms</Link>{" "}
             and{" "}
-            <a href="#" className="underline underline-offset-2 hover:text-foreground">Privacy Policy</a>.{" "}
+            <Link href="/privacy" className="underline underline-offset-2 hover:text-foreground">Privacy Policy</Link>.{" "}
             Handled per the <span className="text-primary/80 font-medium">DPDP Act 2023</span>.
           </p>
         </div>

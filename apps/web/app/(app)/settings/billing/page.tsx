@@ -2,13 +2,13 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import {
-  CreditCard, Calendar, Gauge, Receipt, Sparkles, Zap, Star,
+  Receipt, Sparkles, Zap, Star,
   ArrowUpRight, ShieldCheck, Gift,
 } from "lucide-react";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { getUserUsage, resetsInWords } from "@/lib/billing/usage";
-import { PRICING_COPY, planLabel } from "@/lib/billing/catalog";
+import { planLabel } from "@/lib/billing/catalog";
 import { BillingActions } from "./client";
 
 export const metadata: Metadata = { title: "Billing & Usage" };
@@ -40,7 +40,6 @@ export default async function BillingSettingsPage() {
 
   const sub      = subResult.data;
   const invoices = invoicesResult.data ?? [];
-  const isPaid   = usage.plan !== "free";
   const isCancelPending = sub?.cancel_at_period_end === true;
 
   return (
