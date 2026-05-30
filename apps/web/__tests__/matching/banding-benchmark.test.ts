@@ -317,13 +317,13 @@ test("backend resume — direct strong job is Priority", () => {
 test("backend resume — unparsed-JD direct match is NOT Filtered (must be visible)", () => {
   const r = RESUMES.find((x) => x.label === "senior_backend")!;
   const result = runFullPipeline(r, jobsForBackend().find((x) => x.label === "direct_unparsed_backend")!);
-  assert.notEqual(result.band, "filtered", `unparsed-but-clearly-matching backend job must be visible. ${result.notes}`);
+  assert.notEqual(result.band, null, `unparsed-but-clearly-matching backend job must be visible. ${result.notes}`);
 });
 
 test("backend resume — adjacent fullstack lands at Explore or Priority", () => {
   const r = RESUMES.find((x) => x.label === "senior_backend")!;
   const result = runFullPipeline(r, jobsForBackend().find((x) => x.label === "adjacent_fullstack")!);
-  assert.notEqual(result.band, "filtered", `adjacent match should be visible. ${result.notes}`);
+  assert.notEqual(result.band, null, `adjacent match should be visible. ${result.notes}`);
 });
 
 test("backend resume — pure frontend mismatch is NOT Priority", () => {
@@ -335,7 +335,7 @@ test("backend resume — pure frontend mismatch is NOT Priority", () => {
 test("backend resume — sales job is Filtered (hard mismatch)", () => {
   const r = RESUMES.find((x) => x.label === "senior_backend")!;
   const result = runFullPipeline(r, jobsForBackend().find((x) => x.label === "mismatch_sales")!);
-  assert.equal(result.band, "filtered", `sales role MUST be filtered for backend candidate. ${result.notes}`);
+  assert.equal(result.band, null, `sales role MUST be filtered for backend candidate. ${result.notes}`);
 });
 
 test("verdict reconciliation - strong_fit cannot be stored below strong score band", () => {
@@ -360,7 +360,7 @@ test("data_engineering resume - compliance/operator title is Filtered despite Py
     cosineWhenEmbedded: 0.4,
   });
   const result = runFullPipeline(r, j);
-  assert.equal(result.band, "filtered", `non-engineering ops title must be filtered. ${result.notes}`);
+  assert.equal(result.band, null, `non-engineering ops title must be filtered. ${result.notes}`);
 });
 
 test("qa_sdet resume — direct strong SDET role is Priority", () => {
@@ -372,7 +372,7 @@ test("qa_sdet resume — direct strong SDET role is Priority", () => {
 test("qa_sdet resume — unparsed QA role is visible (not Filtered)", () => {
   const r = RESUMES.find((x) => x.label === "mid_qa_sdet")!;
   const result = runFullPipeline(r, jobsForQa().find((x) => x.label === "direct_unparsed_qa")!);
-  assert.notEqual(result.band, "filtered", `unparsed QA job must be visible. ${result.notes}`);
+  assert.notEqual(result.band, null, `unparsed QA job must be visible. ${result.notes}`);
 });
 
 test("qa_sdet resume — backend role is NOT Priority", () => {
@@ -409,7 +409,7 @@ test("data_engineering resume - exact role and must-have coverage survives weak 
 test("data_engineering resume — unparsed DE role is visible (not Filtered)", () => {
   const r = RESUMES.find((x) => x.label === "senior_data_engineer")!;
   const result = runFullPipeline(r, jobsForDataEng().find((x) => x.label === "direct_unparsed_de")!);
-  assert.notEqual(result.band, "filtered", `unparsed DE job must be visible. ${result.notes}`);
+  assert.notEqual(result.band, null, `unparsed DE job must be visible. ${result.notes}`);
 });
 
 test("fleet rollup — ≥85% of direct-role-match pairs land in Priority or Explore", () => {
@@ -524,7 +524,7 @@ test("low quality_score job (empty/garbage) is Filtered regardless of role match
     cosineWhenEmbedded: 0.7,
   });
   const result = runFullPipeline(r, j);
-  assert.equal(result.band, "filtered", `low-quality JD must be filtered. ${result.notes}`);
+  assert.equal(result.band, null, `low-quality JD must be filtered. ${result.notes}`);
 });
 
 test("under-experienced candidate on staff-level role lands at Explore or Filtered", () => {
@@ -543,7 +543,7 @@ test("under-experienced candidate on staff-level role lands at Explore or Filter
   });
   const result = runFullPipeline(r, j);
   // 4 vs 8 → 4 yrs under → years_gap hard mismatch → filtered
-  assert.equal(result.band, "filtered", `8+ yrs role for 4-yr candidate must be filtered. ${result.notes}`);
+  assert.equal(result.band, null, `8+ yrs role for 4-yr candidate must be filtered. ${result.notes}`);
 });
 
 test("over-experienced candidate on junior role lands at Explore, not Filtered", () => {
@@ -562,7 +562,7 @@ test("over-experienced candidate on junior role lands at Explore, not Filtered",
   });
   const result = runFullPipeline(r, j);
   // Over-qualified should NOT filter (matches still get to see it; might be in Explore).
-  assert.notEqual(result.band, "filtered", `senior on junior role should not be hard-filtered. ${result.notes}`);
+  assert.notEqual(result.band, null, `senior on junior role should not be hard-filtered. ${result.notes}`);
 });
 
 test("fleet rollup — ≥60% of direct-role-match pairs with parsed JD land in Priority", () => {
