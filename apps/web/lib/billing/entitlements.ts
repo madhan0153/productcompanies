@@ -129,6 +129,27 @@ async function readEntitlements(userId: string): Promise<EntitlementState> {
   };
 }
 
+// Per-instance memo of admin status, so the override does not pay an auth
+// lookup on every entitlement read. Immediate on the first call (and after a
+// cold start); near-zero cost thereafter.
+const adminStatusCache = new Map<string, { isAdmin: boolean; at: number }>();
+const ADMIN_STATUS_TTL_MS = 10 * 60_000;
+
+async function isUserAdmin(userId: string): Promise<boolean> {
+  if (!serverEnv.ADMIN_EMAILS) return false;
+  const cached = adminStatusCache.get(userId);
+  if (cached && Date.now() - cached.at < ADMIN_STATUS_TTL_MS) return cached.isAdmin;
+  try {
+    const admin = createSupabaseAdminClient();
+    const { data } = await admin.auth.admin.getUserById(userId);
+    const result = isAdminEmail(data?.user?.email ?? null);
+    adminStatusCache.set(userId, { isAdmin: result, at: Date.now() });
+    return result;
+  } catch {
+    return cached?.isAdmin ?? false;
+  }
+}
+
 /**
  * Staff superuser override. Allow-listed admin emails (ADMIN_EMAILS) get full
  * Career Sprint entitlements across the entire app — no paywalls anywhere — in
@@ -138,23 +159,15 @@ async function readEntitlements(userId: string): Promise<EntitlementState> {
  */
 async function applyAdminOverride(userId: string, base: EntitlementState): Promise<EntitlementState> {
   if (!serverEnv.ADMIN_EMAILS) return base;
-  if (base.source === "admin") return base;
-  try {
-    const admin = createSupabaseAdminClient();
-    const { data } = await admin.auth.admin.getUserById(userId);
-    if (!isAdminEmail(data?.user?.email ?? null)) return base;
+  if (!(await isUserAdmin(userId))) return base;
 
-    const limits = getPlanLimits("career_sprint");
-    return {
-      plan: "career_sprint",
-      source: "admin",
-      activeUntil: null,
-      tailoredResumeLimit: limits.tailoredResumeLimit,
-      priorityLevel: limits.priorityLevel,
-      featureFlags: limits.featureFlags as unknown as Json,
-    };
-  } catch {
-    // Auth lookup failed — fall back to the resolved entitlement.
-    return base;
-  }
+  const limits = getPlanLimits("career_sprint");
+  return {
+    plan: "career_sprint",
+    source: "admin",
+    activeUntil: null,
+    tailoredResumeLimit: limits.tailoredResumeLimit,
+    priorityLevel: limits.priorityLevel,
+    featureFlags: limits.featureFlags as unknown as Json,
+  };
 }
