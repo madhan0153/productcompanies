@@ -24,6 +24,16 @@ function parseAllowlist(): string[] {
     .filter(Boolean);
 }
 
+/**
+ * Synchronous allowlist check for an already-known email. Used by the app
+ * shell to decide whether to render the Admin nav link without a second
+ * round-trip to Supabase (the session is already resolved in the layout).
+ */
+export function isAdminEmail(email: string | null | undefined): boolean {
+  if (!email) return false;
+  return parseAllowlist().includes(email.toLowerCase());
+}
+
 export async function requireAdmin(): Promise<AdminCheck> {
   const allow = parseAllowlist();
   if (allow.length === 0) {

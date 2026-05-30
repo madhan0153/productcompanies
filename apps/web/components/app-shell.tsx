@@ -5,7 +5,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { LayoutGroup, motion, useReducedMotion } from "framer-motion";
 import {
   LayoutDashboard, Briefcase, ShieldCheck, LogOut, Menu, X, User,
-  BarChart3, Brain, ClipboardList, Search,
+  BarChart3, Brain, ClipboardList, Search, Shield,
 } from "lucide-react";
 import { LogoMark } from "@/components/logo-mark";
 import { UsageChip } from "@/components/billing/usage-chip";
@@ -29,7 +29,7 @@ const NAV = [
 ];
 
 type Props = {
-  user: { email: string; displayName: string | null; dnascore: number | null };
+  user: { email: string; displayName: string | null; dnascore: number | null; isAdmin?: boolean };
   /** Sprint 6 — Mobile bottom-nav badges. Counts of items needing attention. */
   navBadges?: { matches?: number; applications?: number };
   /** Billing entitlement snapshot for the always-visible usage chip. */
@@ -48,6 +48,11 @@ export function AppShell({ user, navBadges, usage, banner, children }: Props) {
   const menuButtonRef = useRef<HTMLButtonElement>(null);
 
   useEscapeKey(() => { if (open) setOpen(false); });
+
+  // Admin entry point — only rendered for allow-listed admin emails.
+  const navItems = user.isAdmin
+    ? [...NAV, { href: "/admin", label: "Admin", icon: Shield }]
+    : NAV;
 
   // ⌘K / Ctrl+K global shortcut
   useEffect(() => {
@@ -147,7 +152,7 @@ export function AppShell({ user, navBadges, usage, banner, children }: Props) {
         <nav className="flex-1 overflow-y-auto px-3 py-3" aria-label="App sections">
           <LayoutGroup id="sidebar-nav">
             <ul className="space-y-0.5">
-              {NAV.map(({ href, label, icon: Icon }) => {
+              {navItems.map(({ href, label, icon: Icon }) => {
                 const active = pathname === href || (href !== "/dashboard" && pathname.startsWith(href));
                 return (
                   <li key={href}>

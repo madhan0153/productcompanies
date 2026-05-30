@@ -7,6 +7,7 @@ import { FreshnessBanner } from "@/components/freshness-banner";
 import { PublicNav } from "@/components/public-nav";
 import { PublicFooter } from "@/components/public-footer";
 import { getUserUsage } from "@/lib/billing/usage";
+import { isAdminEmail } from "@/lib/admin/auth";
 
 // SEO: DSA practice URLs sit inside the (app) route group for code colocation
 // but should be readable without authentication so search engines + AI tools
@@ -87,7 +88,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
 
   return (
     <AppShell
-      user={{ email: user.email ?? "", displayName: profile?.display_name ?? null, dnascore: profile?.product_dna_score ?? null }}
+      user={{ email: user.email ?? "", displayName: profile?.display_name ?? null, dnascore: profile?.product_dna_score ?? null, isAdmin: isAdminEmail(user.email) }}
       navBadges={navBadges}
       usage={usageProp}
       banner={

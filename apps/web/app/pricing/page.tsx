@@ -7,7 +7,7 @@ import {
   Check, Zap, Rocket, Star, CreditCard, ShieldCheck, ArrowRight, ArrowLeft,
   Clock, Sparkles, X as XIcon, LayoutDashboard,
 } from "lucide-react";
-import { PRICING_COPY, PRICING } from "@/lib/billing/catalog";
+import { PRICING_COPY } from "@/lib/billing/catalog";
 import { createSupabaseBrowserClient } from "@/lib/supabase/browser";
 
 type Interval = "monthly" | "yearly";
@@ -71,40 +71,30 @@ export default function PricingPage() {
 
   async function startCheckout(product: string) {
     setState({ loading: product, error: null });
-
-    // Pre-open a blank tab synchronously with the click so popup blockers
-    // don't intercept. We'll set its location once we have the checkout URL.
-    // This preserves the mobile context of the current tab — when the user
-    // returns, they're back on a properly-rendered mobile page.
-    const popup = typeof window !== "undefined" ? window.open("about:blank", "_blank") : null;
-
     try {
       const res = await fetch("/api/billing/checkout", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ product }),
+        body: JSON.stringify({ product, returnTo: "/dashboard" }),
       });
-      const data = await res.json();
+      const data = await res.json().catch(() => ({}));
       if (!res.ok) {
-        if (popup) popup.close();
         if (res.status === 401) {
           router.push(`/auth/login?next=/pricing`);
           return;
         }
-        setState({ loading: null, error: data.error ?? "Checkout failed. Please try again." });
+        setState({ loading: null, error: data.error ?? "We couldn't start checkout. Please try again." });
         return;
       }
-      if (popup && !popup.closed) {
-        popup.location.href = data.checkoutUrl;
-      } else {
-        // Popup blocked → fall back to same-tab navigation
-        window.location.href = data.checkoutUrl;
+      if (!data.checkoutUrl) {
+        setState({ loading: null, error: "This plan is temporarily unavailable. Please try again shortly or pick another plan." });
+        return;
       }
-      // Reset the loading state since we're staying on this page
-      setState({ loading: null, error: null });
+      // Same-tab redirect — reliable on mobile (no popup blockers); the user
+      // returns via /billing/success after payment.
+      window.location.assign(data.checkoutUrl);
     } catch {
-      if (popup) popup.close();
-      setState({ loading: null, error: "Network error. Please try again." });
+      setState({ loading: null, error: "Network error. Please check your connection and try again." });
     }
   }
 
