@@ -2,7 +2,7 @@ import type { BulletRewrite } from "@/lib/llm/prompts/bullet-rewrite";
 import type { ExtractedResumeContent } from "@/lib/llm/prompts/extract-resume-content";
 import type { ResumeDiagnosis } from "@/lib/llm/prompts/resume-diagnose";
 import type { ParsedResume } from "@/lib/llm/prompts/resume-parse";
-import type { TailoredResumeContent } from "@/lib/llm/prompts/tailor-resume";
+import { buildContactLine, type TailoredResumeContent } from "@/lib/llm/prompts/tailor-resume";
 
 export interface TailoredEnhancementDecision {
   /** "kept" | "skipped" | "edited" | "alt-<n>" (accepted alternative index) */
@@ -22,6 +22,15 @@ export interface BuildEvidenceBackedTailoredInput {
   jdTitle: string;
   jdMustHaves: string[];
   jdNiceToHaves: string[];
+  /** Verified contact details, assembled into the header in code. Email is
+   *  the account email; phone/LinkedIn/GitHub come from the user's profile.
+   *  Never sourced from or sent to the LLM. */
+  contact: {
+    email?: string | null;
+    phone?: string | null;
+    linkedin_url?: string | null;
+    github_url?: string | null;
+  };
 }
 
 export function buildEvidenceBackedTailoredContent(
@@ -38,6 +47,7 @@ export function buildEvidenceBackedTailoredContent(
     jdTitle,
     jdMustHaves,
     jdNiceToHaves,
+    contact,
   } = input;
 
   const weakByCompany = new Map<string, ResumeDiagnosis["weak_bullets"]>();
@@ -134,6 +144,17 @@ export function buildEvidenceBackedTailoredContent(
           year: e.year ?? null,
         }));
 
+  // Certifications are copied verbatim from the parsed resume — never invented.
+  const certifications: TailoredResumeContent["certifications"] =
+    (resume.certifications ?? [])
+      .map((c) => ({
+        name: cleanText(c.name),
+        issuer: cleanText(c.issuer),
+        year: typeof c.year === "number" && Number.isFinite(c.year) ? c.year : null,
+      }))
+      .filter((c) => c.name)
+      .slice(0, 8);
+
   const headerTitle = cleanText(resume.current_role || jdTitle, "Software Engineer");
   const candidateName = cleanText(displayName || resume.name, "Candidate");
   const primaryLocation = cleanText(preferredHubs[0], "India");
@@ -143,12 +164,14 @@ export function buildEvidenceBackedTailoredContent(
       name: candidateName,
       title: headerTitle,
       location: primaryLocation,
-      contact_line: "",
+      // Assembled in code from verified sources — the LLM never sees contact PII.
+      contact_line: buildContactLine(contact),
     },
     summary: summary || `${headerTitle} focused on product engineering roles.`,
     skills,
     experience,
     education,
+    certifications,
     projects,
     tailoring_notes: `Conservative JD tailoring for "${jdTitle}": preserved source resume structure and applied only reviewed edits grounded in the resume and JD.`,
   };

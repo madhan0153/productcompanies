@@ -66,30 +66,80 @@ jobs:
   recompute_matches:
     name: "Recompute matches"
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    # Allows up to MAX_ITER=30 iterations × ~4 min each = ~120 min worst case.
+    # Previously 15 min capped this at a single batch of 60 users and then stopped.
+    timeout-minutes: 90
     if: >-
       ${{ github.event.schedule == '30 22 * * *'
           || (github.event_name == 'workflow_dispatch' && github.event.inputs.endpoint == 'recompute-matches') }}
     steps:
-      - name: POST /api/cron/recompute-matches
+      - name: Install jq
+        run: sudo apt-get update && sudo apt-get install -y jq
+
+      - name: POST /api/cron/recompute-matches (loop until queue drained)
         env:
           APP_URL: ${{ secrets.APP_URL }}
           CRON_SECRET: ${{ secrets.CRON_SECRET }}
         run: |
           if [ -z "$APP_URL" ] || [ -z "$CRON_SECRET" ]; then
-            echo "::warning::APP_URL or CRON_SECRET missing — skipping recompute"
-            exit 0
-          fi
-          http_code=$(curl -sS -o /tmp/resp.json -w "%{http_code}" \
-            -X POST "${APP_URL}/api/cron/recompute-matches" \
-            -H "Authorization: Bearer ${CRON_SECRET}" \
-            -H "Content-Type: application/json" \
-            --max-time 280)
-          cat /tmp/resp.json; echo
-          if [ "$http_code" != "200" ]; then
-            echo "::warning::recompute-matches returned HTTP $http_code"
+            echo "::error::APP_URL or CRON_SECRET missing — cannot run recompute"
             exit 1
           fi
+          MAX_ITER=30
+          iter=0
+          conflict_streak=0
+          while [ $iter -lt $MAX_ITER ]; do
+            iter=$((iter + 1))
+            http_code=$(curl -sS -o /tmp/recompute-resp.json -w "%{http_code}" \
+              -X POST "${APP_URL}/api/cron/recompute-matches" \
+              -H "Authorization: Bearer ${CRON_SECRET}" \
+              -H "Content-Type: application/json" \
+              --max-time 295)
+            resp=$(cat /tmp/recompute-resp.json 2>/dev/null || echo "{}")
+            echo "iter=$iter http=$http_code $resp"
+
+            # curl timeout (http_code="" or "000") — route self-terminates at
+            # 240s so this shouldn't happen; retry once then bail.
+            if [ -z "$http_code" ] || [ "$http_code" = "000" ]; then
+              echo "::warning::curl timed out on iter=$iter — retrying after 15s"
+              sleep 15
+              continue
+            fi
+
+            # 409 = another recompute holds the lock. Back off and retry —
+            # but give up after 3 consecutive 409s (lock is stuck).
+            if [ "$http_code" = "409" ]; then
+              conflict_streak=$((conflict_streak + 1))
+              if [ $conflict_streak -ge 3 ]; then
+                echo "::warning::3 consecutive 409s — lock appears stuck; bailing"
+                break
+              fi
+              echo "  lock held, sleeping 60s before retry"
+              sleep 60
+              continue
+            fi
+            conflict_streak=0
+
+            if [ "$http_code" != "200" ]; then
+              echo "::error::Recompute returned $http_code — bailing"
+              exit 1
+            fi
+
+            bailed=$(echo "$resp" | jq -r '.bailed_on_budget // false')
+            processed=$(echo "$resp" | jq -r '.processed // 0')
+            remaining=$(echo "$resp" | jq -r '.remaining // 0')
+
+            if [ "$bailed" != "true" ] && [ "$remaining" = "0" ]; then
+              echo "Recompute fan-out complete after $iter iteration(s)."
+              break
+            fi
+            if [ "$processed" = "0" ] && [ "$bailed" = "true" ]; then
+              echo "::warning::No progress (bailed=true, processed=0) — stopping"
+              break
+            fi
+            # Brief pause so the next call hits a clean lock window.
+            sleep 5
+          done
 
   drain_background_jobs:
     name: "Drain background jobs"

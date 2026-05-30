@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { createDodoCheckoutSession } from "@/lib/billing/dodo";
 import { CHECKOUT_PRODUCTS, type CheckoutProductId } from "@/lib/billing/catalog";
+import { checkRateLimitShared, userActionKey } from "@/lib/security/rate-limit";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -11,6 +12,20 @@ export async function POST(req: NextRequest) {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) {
     return NextResponse.json({ error: "Unauthenticated" }, { status: 401 });
+  }
+
+  // 10 checkout session creations per hour per user — prevents quota exhaustion
+  // against the Dodo Payments API.
+  const limit = await checkRateLimitShared({
+    key: userActionKey(user.id, "billing-checkout"),
+    limit: 10,
+    windowMs: 60 * 60_000,
+  });
+  if (!limit.ok) {
+    return NextResponse.json(
+      { error: "Too many checkout attempts. Try again later." },
+      { status: 429, headers: { "Retry-After": String(limit.retryAfterSeconds) } },
+    );
   }
 
   let body: { product?: string; returnTo?: string };

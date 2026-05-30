@@ -152,7 +152,7 @@ async function preflight(jobId: string) {
 
   const { data: profileRow } = await (supabase
     .from("profiles")
-    .select("display_name, role_function, resume_parsed, resume_signature, resume_storage_path, tech_stack, preferred_hubs")
+    .select("display_name, role_function, resume_parsed, resume_signature, resume_storage_path, tech_stack, preferred_hubs, phone, linkedin_url, github_url")
     .eq("id", user.id)
     .maybeSingle() as any) as {
       data: {
@@ -163,6 +163,9 @@ async function preflight(jobId: string) {
         resume_storage_path: string | null;
         tech_stack: string[] | null;
         preferred_hubs: string[] | null;
+        phone: string | null;
+        linkedin_url: string | null;
+        github_url: string | null;
       } | null;
     };
 
@@ -173,9 +176,12 @@ async function preflight(jobId: string) {
   // The profiles table has no raw resume_text column â€” synthesise an
   // ATS-shaped text payload from the parsed JSON so the diagnosis prompt
   // can still quote verbatim. Same content the parser already extracted.
+  // `accountEmail` is the verified account email — the authoritative contact
+  // value, never sourced from the resume or the LLM.
   const profile = {
     ...profileRow,
     resume_text: synthesiseResumeText(profileRow.resume_parsed),
+    accountEmail: user.email ?? null,
   };
 
   const admin = createSupabaseAdminClient();
@@ -575,6 +581,12 @@ async function renderAndStoreTailoredArtifact(
       jdTitle: job.title,
       jdMustHaves: job.must_have_skills ?? [],
       jdNiceToHaves: job.nice_to_have_skills ?? [],
+      contact: {
+        email:        profile.accountEmail,
+        phone:        profile.phone,
+        linkedin_url: profile.linkedin_url,
+        github_url:   profile.github_url,
+      },
     });
 
     content.tailoring_notes =

@@ -25,8 +25,10 @@ export const runtime = "nodejs";
 export const maxDuration = 300;
 export const dynamic = "force-dynamic";
 
-// Wall-clock budget — leave 30s headroom under Vercel's 300s cap.
-const WALL_CLOCK_BUDGET_MS = 270_000;
+// Wall-clock budget — route self-terminates here, leaving 60s for Vercel to
+// flush the response before its 300s hard kill. The GH Actions curl uses
+// --max-time 295, so the 55s margin prevents spurious timeouts.
+const WALL_CLOCK_BUDGET_MS = 240_000;
 
 // Per-invocation user cap. The workflow loops until `remaining === 0`.
 const BATCH_SIZE = 60;
@@ -254,9 +256,11 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // `remaining` lets the GH Actions workflow loop until 0 — that's the
-    // "queue empty" signal across invocations.
-    const remaining = Math.max(0, eligibleCount - processed);
+    // `remaining` lets the GH Actions workflow loop until 0. Count both
+    // first-pass and DLQ successes so a user retried via DLQ doesn't inflate
+    // the counter and cause an extra unnecessary invocation.
+    const totalSucceeded = results.filter((r) => r.ok).length;
+    const remaining = Math.max(0, eligibleCount - totalSucceeded);
 
     return NextResponse.json({
       ok: true,

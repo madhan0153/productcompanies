@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { redeemPromoCode } from "@/lib/billing/promo";
+import { checkRateLimitShared, userActionKey } from "@/lib/security/rate-limit";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -10,6 +11,19 @@ export async function POST(req: NextRequest) {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) {
     return NextResponse.json({ error: "Sign in first to redeem a promo code." }, { status: 401 });
+  }
+
+  // 10 attempts per hour per user — prevents brute-forcing short promo codes.
+  const limit = await checkRateLimitShared({
+    key: userActionKey(user.id, "promo-redeem"),
+    limit: 10,
+    windowMs: 60 * 60_000,
+  });
+  if (!limit.ok) {
+    return NextResponse.json(
+      { error: "Too many attempts. Try again later." },
+      { status: 429, headers: { "Retry-After": String(limit.retryAfterSeconds) } },
+    );
   }
 
   let body: { code?: string };

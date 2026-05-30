@@ -182,6 +182,16 @@ export async function renderTailoredResumeDocx(content: TailoredResumeContent): 
     }
   }
 
+  if ((content.certifications ?? []).length > 0) {
+    sections.push(head("Certifications"));
+    for (const c of content.certifications ?? []) {
+      const parts: string[] = [clean(c.name)];
+      if (c.issuer) parts.push(clean(c.issuer));
+      if (c.year) parts.push(String(c.year));
+      sections.push(body(parts.join(" — ")));
+    }
+  }
+
   const doc = new Document({
     creator: "ProdMatch.ai",
     title: `${clean(header.name || "Candidate")} - tailored resume`,

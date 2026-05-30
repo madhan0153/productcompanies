@@ -127,10 +127,8 @@ export async function POST(req: NextRequest) {
 
   console.log("[billing/sync] start", {
     user_id:         user.id.slice(0, 8),
-    user_email:      user.email,
     subscription_id: subscriptionId,
     fallbackProduct,
-    emailHint,
   });
 
   const apiKey = serverEnv.DODO_PAYMENTS_API_KEY;
@@ -231,11 +229,10 @@ export async function POST(req: NextRequest) {
 
   if (!ownsByMeta && !ownsByEmail && !ownsByEmailHint && !ownsByExistingCustomer) {
     console.log("[billing/sync] 403 ownership mismatch", {
-      user_id:    user.id,
-      user_email: userEmail,
-      metaUserId,
-      customerEmail,
-      customerId,
+      user_id:      user.id.slice(0, 8),
+      has_meta_uid: !!metaUserId,
+      has_cust_email: !!customerEmail,
+      has_cust_id:  !!customerId,
     });
     return NextResponse.json(
       {
