@@ -91,6 +91,7 @@ test("builds a PDF-ready tailored resume from source bullets plus approved JD ed
     jdTitle: "Software Engineer, Backend",
     jdMustHaves: ["Node.js", "PostgreSQL", "Kafka"],
     jdNiceToHaves: ["Redis"],
+    contact: { email: "candidate@example.com", phone: "", linkedin_url: "", github_url: "" },
   });
 
   assert.equal(content.experience[0].bullets[0], "Built Node.js checkout APIs backed by PostgreSQL for reliable order placement.");
@@ -146,6 +147,7 @@ test("renders a direct tailored resume even when parsed identity fields are spar
     jdTitle: "Software Engineer, Backend",
     jdMustHaves: ["PostgreSQL"],
     jdNiceToHaves: ["Redis"],
+    contact: { email: "candidate@example.com", phone: "", linkedin_url: "", github_url: "" },
   });
 
   assert.equal(content.header.name, "Candidate");
@@ -199,6 +201,7 @@ test("builds a renderable deterministic tailored resume when LLM diagnosis is un
     jdTitle: "Software Engineer, Backend",
     jdMustHaves: ["Node.js", "PostgreSQL", "Kafka"],
     jdNiceToHaves: ["Redis"],
+    contact: { email: "candidate@example.com", phone: "", linkedin_url: "", github_url: "" },
   });
 
   assert.equal(content.header.name, "Fallback Candidate");

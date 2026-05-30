@@ -27,6 +27,21 @@ export interface ParsedResume {
   product_dna_score: number;
   estimated_current_lpa?: number;
   preferred_hubs?: string[];
+  /** Contact details copied VERBATIM off the resume. Never guessed — empty
+   *  strings when absent. Assembled into the resume header in code (never
+   *  re-sent to the LLM during tailoring). */
+  contact?: {
+    phone: string;
+    linkedin_url: string;
+    github_url: string;
+  };
+  /** Professional certifications copied verbatim. Cloud / DevOps certs
+   *  (AWS, GCP, Azure, CKA) carry real weight at product companies. */
+  certifications?: Array<{
+    name: string;
+    issuer: string;
+    year?: number;
+  }>;
 }
 
 const ROLE_FUNCTION_VALUES = [
@@ -75,6 +90,27 @@ const SCHEMA: Schema = {
     product_dna_score:     { type: SchemaType.NUMBER },
     estimated_current_lpa: { type: SchemaType.NUMBER },
     preferred_hubs:        { type: SchemaType.ARRAY, items: { type: SchemaType.STRING } },
+    contact: {
+      type: SchemaType.OBJECT,
+      properties: {
+        phone:        { type: SchemaType.STRING },
+        linkedin_url: { type: SchemaType.STRING },
+        github_url:   { type: SchemaType.STRING },
+      },
+      required: ["phone", "linkedin_url", "github_url"],
+    },
+    certifications: {
+      type: SchemaType.ARRAY,
+      items: {
+        type: SchemaType.OBJECT,
+        properties: {
+          name:   { type: SchemaType.STRING },
+          issuer: { type: SchemaType.STRING },
+          year:   { type: SchemaType.NUMBER },
+        },
+        required: ["name", "issuer"],
+      },
+    },
   },
   required: [
     "name", "current_role", "role_function", "target_role_functions",
@@ -117,7 +153,17 @@ For preferred_hubs, infer from work history cities. Use only: ${INDIA_HUBS.join(
 If current company is a product company (Google, Meta, Razorpay, Zerodha, CRED, Groww, etc.), set is_product_company=true.
 Estimate total_years_experience from work history dates.
 Do NOT include PII in summary — only professional summary.
-For estimated_current_lpa: estimate in LPA (lakhs per annum) based on role seniority, company tier, and years of experience in India market. Return null/omit if insufficient data.`;
+For estimated_current_lpa: estimate in LPA (lakhs per annum) based on role seniority, company tier, and years of experience in India market. Return null/omit if insufficient data.
+
+For contact: copy the candidate's phone, LinkedIn URL, and GitHub URL EXACTLY as
+written on the resume. Do NOT guess, normalise, or invent any value. If a field
+is not present on the resume, return an empty string "" for it. Never fabricate a
+LinkedIn or GitHub handle from the candidate's name. Do NOT extract the email here
+(the platform already holds the verified account email).
+
+For certifications: copy professional certifications verbatim (name + issuing body
++ year if shown). Examples: "AWS Certified Solutions Architect – Associate" issued
+by "Amazon Web Services". Do not invent certifications. Return an empty array if none.`;
 
 const PDF_PROMPT = `You are an expert resume parser for an India-focused engineering job platform.
 Extract structured information from the provided resume PDF.

@@ -17,6 +17,27 @@ function escape(s: string): string {
     .replace(/'/g, "&#39;");
 }
 
+/** Wrap a contact-line segment in an <a> if it looks like an email or URL. */
+function contactAnchor(part: string): string {
+  const p = part.trim();
+  if (/@/.test(p)) return `<a href="mailto:${escape(p)}" style="color:#1D4ED8;text-decoration:none">${escape(p)}</a>`;
+  if (/linkedin\.com/i.test(p)) {
+    const href = p.startsWith("http") ? p : `https://${p}`;
+    return `<a href="${escape(href)}" target="_blank" rel="noopener noreferrer" style="color:#1D4ED8;text-decoration:none">${escape(p)}</a>`;
+  }
+  if (/github\.com/i.test(p)) {
+    const href = p.startsWith("http") ? p : `https://${p}`;
+    return `<a href="${escape(href)}" target="_blank" rel="noopener noreferrer" style="color:#1D4ED8;text-decoration:none">${escape(p)}</a>`;
+  }
+  return escape(p);
+}
+
+function renderContactLine(contactLine: string): string {
+  if (!contactLine) return "";
+  const parts = contactLine.split(/\s+·\s+/).map((p) => p.trim()).filter(Boolean);
+  return parts.map(contactAnchor).join(' <span style="color:#9CA3AF">·</span> ');
+}
+
 const CSS = `
   /* ATS-friendly resume — single column, system fonts, no shapes. */
   *, *::before, *::after { box-sizing: border-box; }
@@ -132,6 +153,16 @@ export function renderResumeHtml(
     `).join("\n")}
   ` : "";
 
+  const certifications = (normalized.certifications ?? []).length > 0 ? `
+    <h2>Certifications</h2>
+    ${(normalized.certifications ?? []).map((c) => {
+      const parts = [escape(c.name)];
+      if (c.issuer) parts.push(escape(c.issuer));
+      if (c.year) parts.push(String(c.year));
+      return `<div class="edu-item">${parts.join(" — ")}</div>`;
+    }).join("\n")}
+  ` : "";
+
   return `<!doctype html>
 <html lang="en">
 <head>
@@ -144,7 +175,7 @@ export function renderResumeHtml(
   <h1>${escape(normalized.header.name)}</h1>
   <div class="header-meta">
     ${escape(normalized.header.title)}${normalized.header.location ? ` · ${escape(normalized.header.location)}` : ""}
-    ${normalized.header.contact_line ? `<br/>${escape(normalized.header.contact_line)}` : ""}
+    ${normalized.header.contact_line ? `<br/>${renderContactLine(normalized.header.contact_line)}` : ""}
   </div>
 
   ${normalized.summary ? `
@@ -166,6 +197,8 @@ export function renderResumeHtml(
   <h2>Education</h2>
   ${education}
   ` : ""}
+
+  ${certifications}
 
   ${projects}
 </body>

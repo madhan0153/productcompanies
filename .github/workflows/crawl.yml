@@ -252,8 +252,8 @@ jobs:
           CRON_SECRET: ${{ secrets.CRON_SECRET }}
         run: |
           if [ -z "$APP_URL" ] || [ -z "$CRON_SECRET" ]; then
-            echo "::warning::APP_URL or CRON_SECRET missing — skipping recompute"
-            exit 0
+            echo "::error::APP_URL or CRON_SECRET missing — cannot run recompute"
+            exit 1
           fi
           MAX_ITER=30
           iter=0
@@ -264,9 +264,18 @@ jobs:
               -X POST "${APP_URL}/api/cron/recompute-matches" \
               -H "Authorization: Bearer ${CRON_SECRET}" \
               -H "Content-Type: application/json" \
-              --max-time 280)
-            resp=$(cat /tmp/recompute-resp.json)
+              --max-time 295)
+            resp=$(cat /tmp/recompute-resp.json 2>/dev/null || echo "{}")
             echo "iter=$iter http=$http_code $resp"
+
+            # curl timeout (http_code="" or "000"): the route self-terminates at
+            # 240s so this should be rare. Retry once after a short pause before
+            # giving up — avoids silently skipping the rest of the user queue.
+            if [ -z "$http_code" ] || [ "$http_code" = "000" ]; then
+              echo "::warning::curl timed out on iter=$iter — retrying after 15s"
+              sleep 15
+              continue
+            fi
 
             # 409 = another recompute holds the lock. Back off and retry —
             # but give up after 3 consecutive 409s (lock is stuck).
@@ -274,7 +283,7 @@ jobs:
               conflict_streak=$((conflict_streak + 1))
               if [ $conflict_streak -ge 3 ]; then
                 echo "::warning::3 consecutive 409s — lock appears stuck; bailing"
-                exit 0
+                break
               fi
               echo "  lock held, sleeping 60s before retry"
               sleep 60
@@ -284,7 +293,7 @@ jobs:
 
             if [ "$http_code" != "200" ]; then
               echo "::warning::Recompute returned $http_code — bailing"
-              exit 0
+              break
             fi
 
             bailed=$(echo "$resp" | jq -r '.bailed_on_budget // false')
@@ -297,7 +306,7 @@ jobs:
             fi
             if [ "$processed" = "0" ] && [ "$bailed" = "true" ]; then
               echo "::warning::No progress (bailed=true, processed=0) — stopping"
-              exit 0
+              break
             fi
             # Brief pause between iterations so the next call hits a clean
             # lock window (the prior caller releases on response).

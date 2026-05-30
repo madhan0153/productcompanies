@@ -25,8 +25,10 @@ export const runtime = "nodejs";
 export const maxDuration = 300;
 export const dynamic = "force-dynamic";
 
-// Wall-clock budget — leave 30s headroom under Vercel's 300s cap.
-const WALL_CLOCK_BUDGET_MS = 270_000;
+// Wall-clock budget — route self-terminates here, leaving 60s for Vercel to
+// flush the response before its 300s hard kill. The GH Actions curl uses
+// --max-time 295, so the 55s margin prevents spurious timeouts.
+const WALL_CLOCK_BUDGET_MS = 240_000;
 
 // Per-invocation user cap. The workflow loops until `remaining === 0`.
 const BATCH_SIZE = 60;
@@ -254,9 +256,34 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // `remaining` lets the GH Actions workflow loop until 0 — that's the
-    // "queue empty" signal across invocations.
-    const remaining = Math.max(0, eligibleCount - processed);
+    // `remaining` lets the GH Actions workflow loop until 0.
+    //
+    // Use a staleness threshold (null or not computed in the last 6 h) rather
+    // than raw eligibleCount. Without this, freshly-processed users still
+    // appear eligible on the next call (their timestamp is only seconds old),
+    // so `remaining` never reaches 0 for > BATCH_SIZE users and the loop
+    // always runs to MAX_ITER (30 × ~4 min = 2 h of wasted Actions time).
+    //
+    // With this fix: once all users have been freshly computed this cycle,
+    // `staleCount` drops to 0 and the loop terminates immediately.
+    // `staleCount` uses the pre-compute eligibleAll snapshot (DB-fetched objects
+    // are plain values, not mutated by subsequent DB writes, so this always
+    // reflects the state at the start of this invocation).
+    // `remaining = staleCount - batch.length`:
+    //   staleCount  = eligible users who weren't freshly computed before this call
+    //   batch.length = how many we attempted this call (includes any failures;
+    //                  failed users keep their null timestamp → reappear next run)
+    // This formula reaches 0 as soon as no more stale users exist beyond this
+    // batch, giving correct loop termination for any user-count without running
+    // needlessly to MAX_ITER.
+    const SIX_HOURS_MS = 6 * 3_600_000;
+    const staleThreshold = startedAt - SIX_HOURS_MS;
+    const staleCount = eligibleAll.filter(
+      (p) => p.last_match_compute_at === null ||
+             new Date(p.last_match_compute_at).getTime() < staleThreshold
+    ).length;
+    const totalSucceeded = results.filter((r) => r.ok).length;
+    const remaining = Math.max(0, staleCount - batch.length);
 
     return NextResponse.json({
       ok: true,

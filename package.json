@@ -21,6 +21,7 @@
     "test:resilience": "node --import tsx --test apps/web/__tests__/admin/crawler-resilience.test.ts",
     "test:resume-mapper": "node --import tsx --test apps/web/__tests__/resume/json-mapper.test.ts",
     "test:matching-bench": "node --import tsx --test apps/web/__tests__/matching/banding-benchmark.test.ts",
+    "test:recompute-sim": "node --import tsx --test apps/web/__tests__/matching/recompute-simulation.test.ts",
     "test:pdf-text": "node --import tsx --test apps/web/__tests__/resume/pdf-text.test.ts",
     "audit:tailored-resume": "tsx --require ./apps/web/scripts/loadenv.cjs apps/web/scripts/audit-tailored-resume-sample.ts",
     "test:llm-runtime": "node --import tsx --test packages/shared/src/llm/*.test.ts",
@@ -33,5 +34,10 @@
   "devDependencies": {
     "tsx": "^4.19.2",
     "typescript": "^5.6.3"
+  },
+  "pnpm": {
+    "overrides": {
+      "ws": ">=8.21.0"
+    }
   }
 }

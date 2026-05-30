@@ -85,17 +85,17 @@ export default async function MatchesPage({
     if (staleCompute) {
       isComputing = true;
     } else {
-      // Check durable_jobs for an active match_compute job.
+      // Check background_jobs for an active match_compute job.
       try {
         const { count } = await (admin
-          .from("durable_jobs")
+          .from("background_jobs")
           .select("id", { count: "exact", head: true })
           .eq("user_id", user.id)
           .eq("job_type", "match_compute")
           .in("status", ["queued", "running"]) as any) as { count: number | null };
         if ((count ?? 0) > 0) isComputing = true;
       } catch {
-        // durable_jobs might not exist on fresh schemas — fail quietly.
+        // background_jobs might not exist on fresh schemas — fail quietly.
       }
     }
   }

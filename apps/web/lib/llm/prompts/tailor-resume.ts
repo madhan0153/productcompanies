@@ -23,12 +23,16 @@ import { runWithRetry, SchemaType, type Schema } from "@/lib/llm/gemini";
 import type { ParsedResume } from "./resume-parse";
 
 export interface TailoredResumeContent {
-  /** Headline at the top of the resume: name + role + city. */
+  /** Headline at the top of the resume: name + role + city.
+   *  `contact_line` is NOT produced by the LLM — it is assembled in code from
+   *  the verified account email + the user's profile contact fields. It is
+   *  always present on the type so renderers can read it, but the model never
+   *  sees or writes contact PII. */
   header: {
     name: string;
     title: string;          // current_role rewritten to align with JD's role family
     location: string;       // candidate's primary city (from preferred_hubs)
-    contact_line: string;   // "Email · LinkedIn · GitHub" — derived best-effort
+    contact_line: string;   // code-assembled: "email · phone · linkedin · github"
   };
   /** 2-3 sentence professional summary, rewritten for THIS JD's signal. */
   summary: string;
@@ -48,6 +52,13 @@ export interface TailoredResumeContent {
     degree: string;
     year: number | null;
   }>;
+  /** Professional certifications, JD-relevant ones surfaced first. Copied
+   *  verbatim from the parsed resume — never invented. */
+  certifications?: Array<{
+    name: string;
+    issuer: string;
+    year: number | null;
+  }>;
   /** Optional list of personal / open-source projects, when present. */
   projects?: Array<{
     name: string;
@@ -65,12 +76,11 @@ const SCHEMA: Schema = {
     header: {
       type: SchemaType.OBJECT,
       properties: {
-        name:         { type: SchemaType.STRING },
-        title:        { type: SchemaType.STRING },
-        location:     { type: SchemaType.STRING },
-        contact_line: { type: SchemaType.STRING },
+        name:     { type: SchemaType.STRING },
+        title:    { type: SchemaType.STRING },
+        location: { type: SchemaType.STRING },
       },
-      required: ["name", "title", "location", "contact_line"],
+      required: ["name", "title", "location"],
     },
     summary: { type: SchemaType.STRING },
     skills: {
@@ -109,6 +119,18 @@ const SCHEMA: Schema = {
         required: ["institution", "degree"],
       },
     },
+    certifications: {
+      type: SchemaType.ARRAY,
+      items: {
+        type: SchemaType.OBJECT,
+        properties: {
+          name:   { type: SchemaType.STRING },
+          issuer: { type: SchemaType.STRING },
+          year:   { type: SchemaType.NUMBER },
+        },
+        required: ["name", "issuer"],
+      },
+    },
     projects: {
       type: SchemaType.ARRAY,
       items: {
@@ -145,7 +167,6 @@ export interface TailorInput {
    *  effectively pre-approved. The tailoring prompt incorporates these
    *  literally (subject to dedup with existing resume bullets). */
   resume_tweaks?: Array<{ priority: number; suggestion: string; why: string }>;
-  candidate_email: string;
 }
 
 function buildPrompt(x: TailorInput): string {
@@ -154,6 +175,7 @@ function buildPrompt(x: TailorInput): string {
   const projects  = (r.products_built ?? []).map((p, i) => `${i + 1}. ${p}`).join("\n  ");
   const tweaks    = (x.resume_tweaks ?? []).map((t, i) => `${i + 1}. (priority ${t.priority}) ${t.suggestion}  // serves: ${t.why}`).join("\n  ");
   const education = (r.education ?? []).map((e) => `${e.degree} from ${e.institution}${e.year ? ` (${e.year})` : ""}`).join("\n  ");
+  const certs     = (r.certifications ?? []).map((c) => `${c.name}${c.issuer ? ` — ${c.issuer}` : ""}${c.year ? ` (${c.year})` : ""}`).join("\n  ");
 
   return `You are an elite resume consultant who has rewritten 5,000+ engineering
 resumes for placement at Indian product companies. Produce a JD-targeted
@@ -170,7 +192,6 @@ ROLE BEING TARGETED
 
 CANDIDATE (source-of-truth)
 - Name: ${r.name}
-- Email: ${x.candidate_email}
 - Current role: ${r.current_role}
 - Role function: ${r.role_function}
 - Years experience: ${r.total_years_experience}
@@ -181,7 +202,13 @@ CANDIDATE (source-of-truth)
   ${projects || "(none — only summary + role titles available)"}
 - Education:
   ${education || "(not extracted)"}
+- Certifications:
+  ${certs || "(none)"}
 - Original summary: ${r.summary ?? ""}
+
+NOTE: Contact details (email, phone, LinkedIn, GitHub) are deliberately NOT
+provided here and must NOT appear anywhere in your output. The platform adds
+the candidate's verified contact line in code after you respond.
 
 PRE-APPROVED TWEAKS (from the Fit Card — paste these verbatim if applicable)
   ${tweaks || "(none)"}
@@ -204,6 +231,10 @@ NON-NEGOTIABLE RULES
 5. Summary ≤ 3 sentences, ≤ 480 chars total. JD-relevant; not generic.
 6. Use Indian English conventions (no Oxford comma fetish, use "LPA" when
    referencing comp, etc.).
+7. Certifications: include ONLY those listed in the candidate source above,
+   copied faithfully. Order JD-relevant certs first (e.g. a cloud cert when
+   the JD is cloud-heavy). Never invent a certification. Omit the section
+   entirely if the candidate has none.
 
 OUTPUT SHAPE
 Match the schema exactly. The 'tailoring_notes' field at the end is a short
@@ -237,10 +268,12 @@ export async function generateTailoredResume(input: TailorInput): Promise<Tailor
   const trunc = (s: string | undefined, n: number) => (s ?? "").slice(0, n);
   return {
     header: {
-      name:         trunc(raw.header?.name, 80),
-      title:        trunc(raw.header?.title, 120),
-      location:     trunc(raw.header?.location, 80),
-      contact_line: trunc(raw.header?.contact_line, 200),
+      name:     trunc(raw.header?.name, 80),
+      title:    trunc(raw.header?.title, 120),
+      location: trunc(raw.header?.location, 80),
+      // Contact line is never produced by the LLM — it is assembled in code
+      // from verified sources downstream. Start empty.
+      contact_line: "",
     },
     summary: trunc(raw.summary, 480),
     skills: (raw.skills ?? []).slice(0, 8).map((g) => ({
@@ -258,6 +291,11 @@ export async function generateTailoredResume(input: TailorInput): Promise<Tailor
       degree:      trunc(e.degree, 80),
       year:        typeof e.year === "number" && Number.isFinite(e.year) ? e.year : null,
     })),
+    certifications: (raw.certifications ?? []).slice(0, 8).map((c) => ({
+      name:   trunc(c.name, 100),
+      issuer: trunc(c.issuer, 80),
+      year:   typeof c.year === "number" && Number.isFinite(c.year) ? c.year : null,
+    })),
     projects: (raw.projects ?? []).slice(0, 4).map((p) => ({
       name:    trunc(p.name, 60),
       tech:    (p.tech ?? []).slice(0, 8).map((t) => trunc(t, 30)),
@@ -265,4 +303,22 @@ export async function generateTailoredResume(input: TailorInput): Promise<Tailor
     })),
     tailoring_notes: trunc(raw.tailoring_notes, 500),
   };
+}
+
+/**
+ * Assemble the resume header contact line in code — NEVER via the LLM.
+ * Email comes from the verified account; phone/LinkedIn/GitHub from the
+ * user's profile. Empty fields are dropped. This is the single source of
+ * truth for contact rendering across the PDF / HTML / DOCX outputs.
+ */
+export function buildContactLine(contact: {
+  email?: string | null;
+  phone?: string | null;
+  linkedin_url?: string | null;
+  github_url?: string | null;
+}): string {
+  return [contact.email, contact.phone, contact.linkedin_url, contact.github_url]
+    .map((v) => (v ?? "").trim())
+    .filter(Boolean)
+    .join("  ·  ");
 }

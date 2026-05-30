@@ -16,7 +16,9 @@ type AppRow = {
 };
 
 function escapeText(s: string): string {
-  return s.replace(/\\/g, "\\\\").replace(/;/g, "\\;").replace(/,/g, "\\,").replace(/\n/g, "\\n");
+  // RFC 5545 §3.3.11: escape backslash, semicolon, comma, newline.
+  // Also strip CR (\r) to prevent CRLF-injection of new iCal property lines.
+  return s.replace(/\r/g, "").replace(/\\/g, "\\\\").replace(/;/g, "\\;").replace(/,/g, "\\,").replace(/\n/g, "\\n");
 }
 
 function fmtUtc(iso: string): string {
