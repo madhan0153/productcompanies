@@ -2,14 +2,20 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
-import { DSA_V2_PATTERNS_DISPLAY } from "@prodmatch/shared";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
+import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { getEntitlements } from "@/lib/billing/entitlements";
+import { getDsaDailyState } from "@/lib/dsa/daily";
+import { dsaQuota } from "@/lib/dsa/quotas";
 import { absoluteUrl } from "@/lib/seo/site";
 import { ProgressiveReveal } from "./reveal";
+import { DifficultyPill, Pill, BUCKET_LABEL, patternLabel, type Difficulty, type Bucket } from "../_components/pills";
 
 // Public per-question page. Only `live` (manually approved) questions are
-// reachable; anything pending/rejected/deferred 404s so unreviewed content
-// never leaks. Read via service-role (server-only, non-PII content).
+// reachable. The problem, examples, Python solution, pitfalls, edge cases and
+// "why it matters" are free + indexable; the full approach/walkthrough and the
+// Java/C++ solutions are tier-gated and withheld from the initial payload for
+// un-entitled users (revealed via server actions).
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -26,29 +32,15 @@ type QuestionRow = {
   approach: string[];
   solution_steps: string[];
   code_python: string;
-  code_java: string;
-  code_cpp: string;
   complexity_time: string;
   complexity_space: string;
   pitfalls: string[];
   edge_cases: string[];
   why_it_matters: string;
   pattern: string;
-  difficulty: "easy" | "medium" | "hard";
-  bucket: "pure_dsa" | "ai_applied" | "indian_domain";
+  difficulty: Difficulty;
+  bucket: Bucket;
   estimated_minutes: number;
-};
-
-const BUCKET_LABEL: Record<QuestionRow["bucket"], string> = {
-  pure_dsa: "Pure DSA",
-  ai_applied: "AI-applied",
-  indian_domain: "Indian domain",
-};
-
-const DIFF_CLASS: Record<QuestionRow["difficulty"], string> = {
-  easy: "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400",
-  medium: "bg-amber-500/10 text-amber-600 dark:text-amber-400",
-  hard: "bg-rose-500/10 text-rose-600 dark:text-rose-400",
 };
 
 async function fetchLive(slug: string): Promise<QuestionRow | null> {
@@ -56,7 +48,7 @@ async function fetchLive(slug: string): Promise<QuestionRow | null> {
   const { data } = (await admin
     .from("dsa_questions")
     .select(
-      "slug, title, framing, statement, input_format, output_format, constraints, examples, approach, solution_steps, code_python, code_java, code_cpp, complexity_time, complexity_space, pitfalls, edge_cases, why_it_matters, pattern, difficulty, bucket, estimated_minutes",
+      "slug, title, framing, statement, input_format, output_format, constraints, examples, approach, solution_steps, code_python, complexity_time, complexity_space, pitfalls, edge_cases, why_it_matters, pattern, difficulty, bucket, estimated_minutes",
     )
     .eq("slug", slug)
     .eq("status", "live")
@@ -86,25 +78,39 @@ export default async function DsaQuestionPage({
   const q = await fetchLive(slug);
   if (!q) notFound();
 
+  // Resolve viewer tier + today's status (anon → free).
+  const supabase = await createSupabaseServerClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  const plan = user ? (await getEntitlements(user.id)).plan : "free";
+  const quota = dsaQuota(plan);
+  const langsEntitled = quota.langs.includes("java");
+  const entitledApproach = plan !== "free";
+
+  const dailyState = user ? await getDsaDailyState(user.id, plan) : null;
+  const todayStatus = dailyState?.today.status ?? "not_started";
+  const fullApproachesRemaining =
+    dailyState?.fullApproaches.remaining ??
+    (quota.fullApproachesPerMonth === "unlimited" ? "unlimited" : quota.fullApproachesPerMonth);
+
+  const approachTeaser = q.approach.slice(0, 3);
+
   return (
     <article className="mx-auto max-w-3xl space-y-6 py-2">
       <Link
         href="/dsa"
         className="inline-flex items-center gap-1.5 text-sm font-medium text-muted-foreground transition hover:text-foreground motion-reduce:transition-none"
       >
-        <ArrowLeft className="h-4 w-4" /> All questions
+        <ArrowLeft className="h-4 w-4" /> DSA Lab
       </Link>
 
       <header className="space-y-3">
         <div className="flex flex-wrap items-center gap-2">
-          <span className={`rounded-md px-2 py-0.5 text-[11px] font-semibold uppercase ${DIFF_CLASS[q.difficulty]}`}>
-            {q.difficulty}
-          </span>
-          <Pill>{DSA_V2_PATTERNS_DISPLAY[q.pattern as keyof typeof DSA_V2_PATTERNS_DISPLAY] ?? q.pattern}</Pill>
+          <DifficultyPill d={q.difficulty} />
+          <Pill>{patternLabel(q.pattern)}</Pill>
           <Pill>{BUCKET_LABEL[q.bucket]}</Pill>
           <Pill>~{q.estimated_minutes} min</Pill>
         </div>
-        <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">{q.title}</h1>
+        <h1 className="font-display text-2xl font-semibold tracking-tight sm:text-3xl">{q.title}</h1>
         <p className="text-base leading-relaxed text-muted-foreground">{q.framing}</p>
       </header>
 
@@ -147,25 +153,24 @@ export default async function DsaQuestionPage({
       </section>
 
       <ProgressiveReveal
-        q={{
-          approach: q.approach,
-          solutionSteps: q.solution_steps,
-          code: { python: q.code_python, java: q.code_java, cpp: q.code_cpp },
-          complexity: { time: q.complexity_time, space: q.complexity_space },
-          pitfalls: q.pitfalls,
-          edgeCases: q.edge_cases,
-          whyItMatters: q.why_it_matters,
-        }}
+        slug={q.slug}
+        signedIn={!!user}
+        tier={plan}
+        todayStatus={todayStatus}
+        approachTeaser={approachTeaser}
+        fullApproach={entitledApproach ? q.approach : null}
+        fullSteps={entitledApproach ? q.solution_steps : null}
+        fullApproachesRemaining={fullApproachesRemaining}
+        codePython={q.code_python}
+        langsEntitled={langsEntitled}
+        annotations={quota.annotations}
+        complexity={{ time: q.complexity_time, space: q.complexity_space }}
+        pitfalls={q.pitfalls}
+        edgeCases={q.edge_cases}
+        whyItMatters={q.why_it_matters}
+        aiCoach={quota.aiCoach}
       />
     </article>
-  );
-}
-
-function Pill({ children }: { children: React.ReactNode }) {
-  return (
-    <span className="rounded-full bg-secondary px-2.5 py-1 text-xs font-medium text-secondary-foreground">
-      {children}
-    </span>
   );
 }
 

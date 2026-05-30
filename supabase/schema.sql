@@ -1577,6 +1577,83 @@ alter table public.interview_daily_dispatch add column if not exists question_bu
 create index if not exists idx_daily_dispatch_norepeat
   on public.interview_daily_dispatch(user_id, problem_slug, day desc);
 
+
+-- ============================================================================
+-- DSA v2 — daily habit loop (streak · freeze · skips · per-day log)
+-- Backs the redesigned /dsa daily reading experience. Period resets (weekly
+-- skips, monthly full-approach credits, daily bonus, freeze accrual) are
+-- computed in the app layer at read time; these tables only persist the
+-- raw counters plus the last reset key, so they stay safe to run repeatedly.
+-- ============================================================================
+create table if not exists public.dsa_streak (
+  user_id               uuid primary key references auth.users(id) on delete cascade,
+  current_streak        integer not null default 0,
+  longest_streak        integer not null default 0,
+  last_solved_on        date,
+  freeze_tokens         integer not null default 1,
+  freeze_accrued_on     date not null default current_date,
+  skips_used            integer not null default 0,
+  skips_period_start    date not null default current_date,
+  full_approaches_used  integer not null default 0,
+  full_approaches_month text not null default to_char(current_date, 'YYYY-MM'),
+  bonus_used            integer not null default 0,
+  bonus_on              date not null default current_date,
+  created_at            timestamptz not null default now(),
+  updated_at            timestamptz not null default now()
+);
+
+alter table public.dsa_streak enable row level security;
+do $$ begin
+  if not exists (
+    select 1 from pg_policies
+    where schemaname='public' and tablename='dsa_streak' and policyname='dsa_streak_select_own'
+  ) then
+    create policy dsa_streak_select_own on public.dsa_streak
+      for select to authenticated using (auth.uid() = user_id);
+  end if;
+end $$;
+do $$ begin
+  if not exists (
+    select 1 from pg_policies
+    where schemaname='public' and tablename='dsa_streak' and policyname='dsa_streak_service_all'
+  ) then
+    create policy dsa_streak_service_all on public.dsa_streak
+      for all to service_role using (true) with check (true);
+  end if;
+end $$;
+
+create table if not exists public.dsa_daily_log (
+  user_id    uuid not null references auth.users(id) on delete cascade,
+  day        date not null default current_date,
+  slug       text not null,
+  status     text not null default 'not_started' check (status in ('not_started','in_progress','solved')),
+  action     text not null default 'assigned'   check (action in ('assigned','started','solved','skipped','frozen')),
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  primary key (user_id, day)
+);
+create index if not exists idx_dsa_daily_log_user on public.dsa_daily_log(user_id, day desc);
+
+alter table public.dsa_daily_log enable row level security;
+do $$ begin
+  if not exists (
+    select 1 from pg_policies
+    where schemaname='public' and tablename='dsa_daily_log' and policyname='dsa_daily_log_select_own'
+  ) then
+    create policy dsa_daily_log_select_own on public.dsa_daily_log
+      for select to authenticated using (auth.uid() = user_id);
+  end if;
+end $$;
+do $$ begin
+  if not exists (
+    select 1 from pg_policies
+    where schemaname='public' and tablename='dsa_daily_log' and policyname='dsa_daily_log_service_all'
+  ) then
+    create policy dsa_daily_log_service_all on public.dsa_daily_log
+      for all to service_role using (true) with check (true);
+  end if;
+end $$;
+
 -- AI-track readiness signal for personalisation (0-100).
 do $$ begin
   if exists (select 1 from information_schema.tables where table_schema='public' and table_name='interview_readiness') then

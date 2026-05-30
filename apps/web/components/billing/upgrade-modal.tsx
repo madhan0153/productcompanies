@@ -21,6 +21,13 @@ export type UpgradeTrigger =
   | "interview_plan"
   | "reparse_locked"
   | "priority_recompute"
+  | "dsa_full_approach"
+  | "dsa_other_langs"
+  | "dsa_skip_exhausted"
+  | "dsa_streak_milestone"
+  | "dsa_company_track"
+  | "dsa_ai_coach"
+  | "dsa_bonus_practice"
   | "generic";
 
 interface TriggerCopy {
@@ -66,6 +73,42 @@ const TRIGGER_COPY: Record<UpgradeTrigger, TriggerCopy> = {
     eyebrow: "Priority compute",
     title:   "Recompute your matches now",
     body:    "Pro jumps you to the head of the match-compute queue.",
+  },
+  dsa_full_approach: {
+    eyebrow: "Halfway there",
+    title:   "Want the full step-by-step explanation?",
+    body:    "Pro is only ₹3.30/day — full approaches and solution steps, every day.",
+  },
+  dsa_other_langs: {
+    eyebrow: "One language down",
+    title:   "See it in Java and C++ instantly",
+    body:    "Pro unlocks every solution in all three languages, side by side.",
+  },
+  dsa_skip_exhausted: {
+    eyebrow: "Out of skips",
+    title:   "Pro gives you 3 skips a day",
+    body:    "Never break a streak you cared about — upgrade for ₹3/day.",
+  },
+  dsa_streak_milestone: {
+    eyebrow: "🔥 You're on a streak",
+    title:   "Keep it going",
+    body:    "Pro members keep streaks 2.3× longer on average.",
+  },
+  dsa_company_track: {
+    eyebrow: "🔥 Strong match",
+    title:   "Unlock the full company Deep Dive track",
+    body:    "Your resume matches multiple roles there. Career Sprint opens the curated 30-problem track.",
+    ctaSecondary: { label: "Compare all plans", href: "/pricing" },
+  },
+  dsa_ai_coach: {
+    eyebrow: "AI Coach",
+    title:   "Daily personalized feedback",
+    body:    "Career Sprint reflects on your solve patterns every single day.",
+  },
+  dsa_bonus_practice: {
+    eyebrow: "More reps",
+    title:   "5 bonus questions a day with Pro",
+    body:    "Go beyond today's pick. Pro adds 5 daily; Career Sprint is unlimited.",
   },
   generic: {
     eyebrow: "Upgrade",
