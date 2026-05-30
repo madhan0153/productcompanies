@@ -236,7 +236,6 @@ export async function uploadAndParseResume(formData: FormData): Promise<UploadRe
     const firstStackLine = err instanceof Error
       ? (err.stack ?? "").split("\n").slice(1, 4).join(" | ").slice(0, 500)
       : null;
-    // eslint-disable-next-line no-console
     console.error(`RUPLOAD_THROW [${name}] ${message.slice(0, 240)} || ${firstStackLine ?? ""}`);
     logEvent("error", "resume_upload_uncaught", {
       err_name:  name,
@@ -427,7 +426,6 @@ async function uploadAndParseResumeInner(formData: FormData): Promise<UploadResu
     const firstStackLine = err instanceof Error
       ? (err.stack ?? "").split("\n").slice(1, 3).join(" | ").slice(0, 400)
       : null;
-    // eslint-disable-next-line no-console
     console.error(`RUPLOAD_QUEUE_FAIL [${name}] ${message.slice(0, 240)} || ${firstStackLine ?? ""}`);
     logEvent("error", "resume_upload_queue_failed", {
       user_id:   userId.slice(0, 8),

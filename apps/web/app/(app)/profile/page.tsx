@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { redirect } from "next/navigation";
 import { CheckCircle2, FileText, User, UserCheck, BarChart3, Zap } from "lucide-react";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
@@ -302,12 +303,12 @@ function TailorPlanCard({
             <p className="font-display text-xl font-bold tabular-nums text-amber-600 dark:text-amber-400">{credits}</p>
           </div>
         )}
-        <a
+        <Link
           href="/settings/billing"
           className="inline-flex h-8 items-center rounded-md border border-border bg-background px-3 text-xs font-medium hover:bg-secondary"
         >
           Manage
-        </a>
+        </Link>
       </div>
     </div>
   );

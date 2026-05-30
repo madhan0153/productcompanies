@@ -3,10 +3,6 @@
 import Link from "next/link";
 import { useState } from "react";
 import { Gift, CheckCircle2, ArrowRight, ShieldCheck } from "lucide-react";
-import type { Metadata } from "next";
-
-// Note: metadata must be in a server component; this page is client-only.
-// Title set via document.title in useEffect if needed; for now rely on root template.
 
 type Phase = "idle" | "loading" | "success" | "error";
 
