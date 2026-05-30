@@ -45,22 +45,50 @@ function render(doc: PDFKit.PDFDocument, content: TailoredResumeContent) {
     doc.text(clean(value), { width, ...options });
   };
 
+  // Name
   doc.fillColor("#111827").font("Helvetica-Bold").fontSize(20);
   text(content.header?.name || "Candidate", { align: "center" });
   doc.moveDown(0.18);
 
-  const meta = [
-    content.header?.title,
-    content.header?.location,
-    content.header?.contact_line,
-  ].filter(Boolean).join(" | ");
-  doc.fillColor("#374151").font("Helvetica").fontSize(9.5);
-  text(meta, { align: "center" });
+  // Title + location on one line
+  const titleMeta = [content.header?.title, content.header?.location].filter(Boolean).join(" | ");
+  doc.fillColor("#374151").font("Helvetica").fontSize(10.5);
+  text(titleMeta, { align: "center" });
+
+  // Contact line — split by separator and render each part with clickable link
+  const contactLine = (content.header?.contact_line ?? "").trim();
+  if (contactLine) {
+    const parts = contactLine.split(/\s+·\s+/).map((p) => p.trim()).filter(Boolean);
+    const separator = "  ·  ";
+    doc.fillColor("#374151").font("Helvetica").fontSize(10);
+    // Centre manually: render as a single line using continued:true segments
+    const fullLine = parts.join(separator);
+    const lineWidth = doc.widthOfString(fullLine);
+    const startX = PAGE.margin + (width - lineWidth) / 2;
+    const y = doc.y;
+    let curX = startX;
+    for (let i = 0; i < parts.length; i++) {
+      const part = parts[i];
+      const link = resolveLink(part);
+      const color = link ? "#1D4ED8" : "#374151";
+      doc.fillColor(color).font("Helvetica").fontSize(10);
+      const opts: PDFKit.Mixins.TextOptions = { continued: i < parts.length - 1, width, lineBreak: false };
+      if (link) (opts as Record<string, unknown>).link = link;
+      doc.text(part, curX, y, opts);
+      curX += doc.widthOfString(part);
+      if (i < parts.length - 1) {
+        doc.fillColor("#9CA3AF").font("Helvetica").fontSize(10);
+        doc.text(separator, curX, y, { continued: true, width, lineBreak: false });
+        curX += doc.widthOfString(separator);
+      }
+    }
+    doc.text("", { lineBreak: true }); // flush
+  }
   doc.moveDown(0.55);
 
   if (content.summary) {
     section(doc, "Summary", ensureSpace, width);
-    doc.fillColor("#111827").font("Helvetica").fontSize(9.6);
+    doc.fillColor("#111827").font("Helvetica").fontSize(10.5);
     text(content.summary, { lineGap: 1.2 });
   }
 
@@ -68,7 +96,7 @@ function render(doc: PDFKit.PDFDocument, content: TailoredResumeContent) {
     section(doc, "Skills", ensureSpace, width);
     for (const group of content.skills ?? []) {
       ensureSpace(18);
-      doc.fillColor("#111827").font("Helvetica-Bold").fontSize(9.4).text(`${clean(group.group)}: `, {
+      doc.fillColor("#111827").font("Helvetica-Bold").fontSize(10.5).text(`${clean(group.group)}: `, {
         continued: true,
         width,
       });
@@ -82,15 +110,15 @@ function render(doc: PDFKit.PDFDocument, content: TailoredResumeContent) {
       ensureSpace(58);
       doc.moveDown(0.22);
       const startY = doc.y;
-      doc.fillColor("#111827").font("Helvetica-Bold").fontSize(9.8).text(clean(role.role), PAGE.margin, startY, {
+      doc.fillColor("#111827").font("Helvetica-Bold").fontSize(11).text(clean(role.role), PAGE.margin, startY, {
         width: width * 0.6,
         continued: false,
       });
-      doc.fillColor("#374151").font("Helvetica").fontSize(9.2).text(clean(role.company), PAGE.margin, doc.y, {
+      doc.fillColor("#374151").font("Helvetica").fontSize(10).text(clean(role.company), PAGE.margin, doc.y, {
         width: width * 0.6,
       });
       if (role.duration) {
-        doc.fillColor("#6B7280").font("Helvetica-Oblique").fontSize(8.8).text(clean(role.duration), PAGE.margin, startY, {
+        doc.fillColor("#6B7280").font("Helvetica-Oblique").fontSize(10).text(clean(role.duration), PAGE.margin, startY, {
           width,
           align: "right",
         });
@@ -106,11 +134,11 @@ function render(doc: PDFKit.PDFDocument, content: TailoredResumeContent) {
     section(doc, "Selected Projects", ensureSpace, width);
     for (const project of content.projects ?? []) {
       ensureSpace(42);
-      doc.fillColor("#111827").font("Helvetica-Bold").fontSize(9.5).text(clean(project.name), { width });
+      doc.fillColor("#111827").font("Helvetica-Bold").fontSize(10.5).text(clean(project.name), { width });
       if ((project.tech ?? []).length > 0) {
-        doc.fillColor("#4B5563").font("Helvetica-Oblique").fontSize(8.8).text(clean((project.tech ?? []).join(", ")), { width });
+        doc.fillColor("#4B5563").font("Helvetica-Oblique").fontSize(10).text(clean((project.tech ?? []).join(", ")), { width });
       }
-      doc.fillColor("#111827").font("Helvetica").fontSize(9.2).text(clean(project.summary), { width, lineGap: 1 });
+      doc.fillColor("#111827").font("Helvetica").fontSize(10).text(clean(project.summary), { width, lineGap: 1 });
       doc.moveDown(0.2);
     }
   }
@@ -120,11 +148,22 @@ function render(doc: PDFKit.PDFDocument, content: TailoredResumeContent) {
     for (const education of content.education ?? []) {
       ensureSpace(20);
       const suffix = education.year ? `, ${education.year}` : "";
-      doc.fillColor("#111827").font("Helvetica-Bold").fontSize(9.4).text(clean(education.degree), {
+      doc.fillColor("#111827").font("Helvetica-Bold").fontSize(10.5).text(clean(education.degree), {
         continued: true,
         width,
       });
       doc.font("Helvetica").text(clean(` - ${education.institution}${suffix}`), { width });
+    }
+  }
+
+  if ((content.certifications ?? []).length > 0) {
+    section(doc, "Certifications", ensureSpace, width);
+    for (const cert of content.certifications ?? []) {
+      ensureSpace(18);
+      const parts = [clean(cert.name)];
+      if (cert.issuer) parts.push(clean(cert.issuer));
+      if (cert.year) parts.push(String(cert.year));
+      doc.fillColor("#111827").font("Helvetica").fontSize(10.5).text(parts.join(" — "), { width });
     }
   }
 }
@@ -137,7 +176,7 @@ function section(
 ) {
   ensureSpace(34);
   doc.moveDown(0.72);
-  doc.fillColor("#1F2937").font("Helvetica-Bold").fontSize(10.2).text(label.toUpperCase(), { width });
+  doc.fillColor("#1F2937").font("Helvetica-Bold").fontSize(11).text(label.toUpperCase(), { width });
   const y = doc.y + 1;
   doc.moveTo(PAGE.margin, y).lineTo(PAGE.margin + width, y).strokeColor("#9CA3AF").lineWidth(0.5).stroke();
   doc.moveDown(0.42);
@@ -150,17 +189,26 @@ function bulletLine(
   width: number,
 ) {
   ensureSpace(28);
-  const x = PAGE.margin + 8;
+  const x = PAGE.margin + 10;
   const y = doc.y;
-  doc.fillColor("#111827").font("Helvetica").fontSize(9.3).text("-", PAGE.margin, y, { width: 8 });
-  doc.text(value, x, y, { width: width - 8, lineGap: 1 });
+  doc.fillColor("#374151").font("Helvetica").fontSize(10.5).text("•", PAGE.margin, y, { width: 10 });
+  doc.fillColor("#111827").font("Helvetica").fontSize(10.5).text(value, x, y, { width: width - 10, lineGap: 1 });
   doc.moveDown(0.12);
+}
+
+/** Resolve a clickable link href for a contact line segment, or null if plain text. */
+function resolveLink(part: string): string | null {
+  const p = part.trim();
+  if (/@/.test(p)) return `mailto:${p}`;
+  if (/linkedin\.com/i.test(p)) return p.startsWith("http") ? p : `https://${p}`;
+  if (/github\.com/i.test(p)) return p.startsWith("http") ? p : `https://${p}`;
+  return null;
 }
 
 function clean(value: unknown) {
   return String(value ?? "")
-    .replace(/[\u2022\u25cf\u25e6]/g, "-")
-    .replace(/[\u2013\u2014]/g, "-")
+    .replace(/[●◦]/g, "-")
+    .replace(/[–—]/g, "-")
     .replace(/\s+/g, " ")
     .trim();
 }

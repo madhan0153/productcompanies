@@ -426,6 +426,14 @@ alter table public.jobs add column if not exists team_context              text;
 alter table public.profiles add column if not exists dna_breakdown    jsonb;
 alter table public.profiles add column if not exists resume_signature text;
 
+-- Contact info extracted from the resume at parse time; also editable by the
+-- user so mis-extractions can be corrected. Assembled in code (never sent to
+-- the LLM) for the tailored-resume contact line. Fill-if-empty on re-upload:
+-- a user correction is never overwritten by a subsequent parse.
+alter table public.profiles add column if not exists phone        text;
+alter table public.profiles add column if not exists linkedin_url text;
+alter table public.profiles add column if not exists github_url   text;
+
 -- matches.score_breakdown:
 --   jsonb { semantic, tech, role, experience, seniority, hub, lpa } as integers.
 --   Powers the "Why this score?" surface on each match card — turns the

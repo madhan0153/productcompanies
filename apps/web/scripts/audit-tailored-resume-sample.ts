@@ -88,6 +88,12 @@ async function main() {
       jdTitle: job.title,
       jdMustHaves: mustHaves,
       jdNiceToHaves: niceToHaves,
+      contact: {
+        email: null,
+        phone: resume.contact?.phone ?? null,
+        linkedin_url: resume.contact?.linkedin_url ?? null,
+        github_url: resume.contact?.github_url ?? null,
+      },
     });
 
     const pdf = await renderTailoredResumePdf(content);

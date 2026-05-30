@@ -10,6 +10,7 @@ import { SectionCard } from "@/components/section-card";
 import { Tooltip } from "@/components/tooltip";
 import { listResumeVersions, type ResumeVersionLite } from "./actions";
 import { ResumeVersionsPanel } from "./resume-versions-panel";
+import { SaveContactInfoForm } from "./save-contact-info-form";
 import { ParseStatusBanner } from "./parse-status-banner";
 import { ProfileTabs } from "./profile-tabs";
 import { getUserUsage } from "@/lib/billing/usage";
@@ -51,11 +52,14 @@ export default async function ProfilePage() {
     target_role_functions: string[] | null;
     resume_parsing_at: string | null;
     resume_parse_error: string | null;
+    phone: string | null;
+    linkedin_url: string | null;
+    github_url: string | null;
   };
   const { data: profile } = await (supabase
     .from("profiles")
     .select(
-      "display_name, current_role, years_experience, current_lpa, target_lpa, tech_stack, preferred_hubs, seniority, resume_storage_path, product_dna_score, dna_breakdown, resume_parsed, resume_score, resume_score_breakdown, resume_tips, resume_score_at, role_function, target_role_functions, resume_parsing_at, resume_parse_error",
+      "display_name, current_role, years_experience, current_lpa, target_lpa, tech_stack, preferred_hubs, seniority, resume_storage_path, product_dna_score, dna_breakdown, resume_parsed, resume_score, resume_score_breakdown, resume_tips, resume_score_at, role_function, target_role_functions, resume_parsing_at, resume_parse_error, phone, linkedin_url, github_url",
     )
     .eq("id", user.id)
     .maybeSingle() as unknown as Promise<{ data: ProfileRow | null }>);
@@ -216,24 +220,40 @@ export default async function ProfilePage() {
               </>
             ),
             details: (
-              <SectionCard
-                title="Profile details"
-                subtitle="Pre-filled from your resume — edit to refine your matches"
-                icon={<User className="h-4 w-4" />}
-              >
-                <SaveProfileForm
-                  defaultValues={{
-                    display_name: profile?.display_name ?? "",
-                    current_role: profile?.current_role ?? "",
-                    years_experience: String(profile?.years_experience ?? ""),
-                    current_lpa: String(profile?.current_lpa ?? ""),
-                    target_lpa: String(profile?.target_lpa ?? ""),
-                    tech_stack: techStack.join(", "),
-                    preferred_hubs: preferredHubs,
-                    seniority: profile?.seniority ?? "",
-                  }}
-                />
-              </SectionCard>
+              <>
+                <SectionCard
+                  title="Profile details"
+                  subtitle="Pre-filled from your resume — edit to refine your matches"
+                  icon={<User className="h-4 w-4" />}
+                >
+                  <SaveProfileForm
+                    defaultValues={{
+                      display_name: profile?.display_name ?? "",
+                      current_role: profile?.current_role ?? "",
+                      years_experience: String(profile?.years_experience ?? ""),
+                      current_lpa: String(profile?.current_lpa ?? ""),
+                      target_lpa: String(profile?.target_lpa ?? ""),
+                      tech_stack: techStack.join(", "),
+                      preferred_hubs: preferredHubs,
+                      seniority: profile?.seniority ?? "",
+                    }}
+                  />
+                </SectionCard>
+                <SectionCard
+                  title="Contact info"
+                  subtitle="Appears on your tailored resume — auto-filled from your PDF, editable"
+                  icon={<UserCheck className="h-4 w-4" />}
+                >
+                  <SaveContactInfoForm
+                    email={user.email ?? ""}
+                    defaultValues={{
+                      phone:        profile?.phone        ?? "",
+                      linkedin_url: profile?.linkedin_url ?? "",
+                      github_url:   profile?.github_url   ?? "",
+                    }}
+                  />
+                </SectionCard>
+              </>
             ),
             history: (
               <ResumeVersionsPanel versions={versions} />

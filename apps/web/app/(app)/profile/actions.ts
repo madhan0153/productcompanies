@@ -162,6 +162,38 @@ export async function saveProfile(formData: FormData) {
   revalidatePath("/matches");
 }
 
+// ── Save editable contact info (phone / LinkedIn / GitHub) ───────────────────
+
+export async function saveContactInfo(
+  formData: FormData,
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  const supabase = await createSupabaseServerClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return { ok: false, error: "Not signed in" };
+
+  const phone       = ((formData.get("phone")        as string) ?? "").trim();
+  const linkedinUrl = ((formData.get("linkedin_url") as string) ?? "").trim();
+  const githubUrl   = ((formData.get("github_url")   as string) ?? "").trim();
+
+  if (linkedinUrl && !/^https?:\/\/(?:www\.)?linkedin\.com\//i.test(linkedinUrl)) {
+    return { ok: false, error: "LinkedIn URL must start with https://linkedin.com/..." };
+  }
+  if (githubUrl && !/^https?:\/\/(?:www\.)?github\.com\//i.test(githubUrl)) {
+    return { ok: false, error: "GitHub URL must start with https://github.com/..." };
+  }
+
+  const { error } = await (supabase.from("profiles") as any).upsert({
+    id:           user.id,
+    phone:        phone || null,
+    linkedin_url: linkedinUrl || null,
+    github_url:   githubUrl   || null,
+  });
+  if (error) return { ok: false, error: (error as { message: string }).message };
+
+  revalidatePath("/profile");
+  return { ok: true };
+}
+
 // ── Upload PDF and parse ──────────────────────────────────────────────────────
 //
 // Non-blocking model:
@@ -566,6 +598,21 @@ async function uploadAndParseResumeInner(formData: FormData): Promise<UploadResu
         });
       }
 
+      // Fill-if-empty: only write contact fields if the column is currently
+      // null — a user correction via saveContactInfo must never be clobbered
+      // by a re-upload. We read the current values first so the UPDATE only
+      // touches empty slots.
+      const { data: currentContact } = await (admin
+        .from("profiles")
+        .select("phone, linkedin_url, github_url")
+        .eq("id", userId)
+        .maybeSingle() as any) as { data: { phone: string | null; linkedin_url: string | null; github_url: string | null } | null };
+
+      const contactPatch: Record<string, string | null> = {};
+      if (!currentContact?.phone        && parsed.contact?.phone)        contactPatch.phone        = parsed.contact.phone;
+      if (!currentContact?.linkedin_url && parsed.contact?.linkedin_url) contactPatch.linkedin_url = parsed.contact.linkedin_url;
+      if (!currentContact?.github_url   && parsed.contact?.github_url)   contactPatch.github_url   = parsed.contact.github_url;
+
       const promotedAt = new Date().toISOString();
       const promoteQuery = (admin.from("profiles") as any).update({
         resume_storage_path: path,
@@ -589,6 +636,7 @@ async function uploadAndParseResumeInner(formData: FormData): Promise<UploadResu
         resume_embedding: resumeEmbedding,
         resume_embedding_at: promotedAt,
         resume_embedding_version_id: resumeVersionId,
+        ...contactPatch,
         ...resumeScorePatch,
       })
         .eq("id", userId)
