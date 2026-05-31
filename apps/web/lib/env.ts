@@ -19,8 +19,11 @@ const serverSchema = z.object({
   DODO_PRODUCT_CAREER_SPRINT_MONTHLY_ID: optStr,
   DODO_PRODUCT_CAREER_SPRINT_YEARLY_ID: optStr,
   DODO_PRODUCT_TAILOR_CREDITS_50_ID: optStr,
-  // Sprint 3 Item 12 — comma-separated allowlist of emails that can access
-  // /admin/*. Empty / unset = admin pages return 404 (no access for anyone).
+  // Comma-separated allowlist of staff emails. Listed addresses can access
+  // /admin/* AND act as superusers — they get full Career Sprint entitlements
+  // across the entire app (no paywalls anywhere), applied at read time via
+  // applyAdminOverride() in lib/billing/entitlements.ts.
+  // Empty / unset = admin pages return 404 and no override is applied.
   ADMIN_EMAILS: optStr,
 });
 

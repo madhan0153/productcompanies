@@ -16,8 +16,17 @@ export interface AdminCheck {
   userId: string | null;
 }
 
-function parseAllowlist(): string[] {
-  const raw = serverEnv.ADMIN_EMAILS ?? "";
+// Memoized at module load — ADMIN_EMAILS only changes on redeploy, so
+// re-parsing on every request is pure waste.
+const ADMIN_ALLOWLIST: readonly string[] = Object.freeze(parseAdminAllowlist(serverEnv.ADMIN_EMAILS));
+
+/**
+ * Pure parser for the ADMIN_EMAILS env var. Exposed so it can be unit-tested
+ * without standing up the whole env schema; consumers should use
+ * `isAdminEmail()` which already references the memoized allowlist.
+ */
+export function parseAdminAllowlist(raw: string | null | undefined): string[] {
+  if (!raw) return [];
   return raw
     .split(",")
     .map((e) => e.trim().toLowerCase())
@@ -31,12 +40,12 @@ function parseAllowlist(): string[] {
  */
 export function isAdminEmail(email: string | null | undefined): boolean {
   if (!email) return false;
-  return parseAllowlist().includes(email.toLowerCase());
+  if (ADMIN_ALLOWLIST.length === 0) return false;
+  return ADMIN_ALLOWLIST.includes(email.toLowerCase());
 }
 
 export async function requireAdmin(): Promise<AdminCheck> {
-  const allow = parseAllowlist();
-  if (allow.length === 0) {
+  if (ADMIN_ALLOWLIST.length === 0) {
     return { isAdmin: false, email: null, userId: null };
   }
 
@@ -46,7 +55,7 @@ export async function requireAdmin(): Promise<AdminCheck> {
 
   const email = (user.email ?? "").toLowerCase();
   return {
-    isAdmin: allow.includes(email),
+    isAdmin: ADMIN_ALLOWLIST.includes(email),
     email:   email || null,
     userId:  user.id,
   };

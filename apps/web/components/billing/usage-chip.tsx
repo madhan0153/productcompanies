@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { Zap, Sparkles, Star } from "lucide-react";
+import { Zap, Sparkles, Star, Shield } from "lucide-react";
 
 interface Props {
   plan:          "free" | "pro" | "career_sprint";
@@ -9,14 +9,30 @@ interface Props {
   tailorLimit:   number;
   /** Optional credit count to display when free quota is exhausted */
   tailorCredits?: number;
+  /** When true, this user is on the ADMIN_EMAILS allowlist and their
+   * "Sprint" tier is the superuser override, not a real subscription.
+   * Surface it visibly so staff don't confuse themselves about real billing state. */
+  isAdmin?:      boolean;
 }
 
 /**
  * Compact, always-visible "you're on Free · 3/5 tailors" indicator.
  * Tap → /settings/billing. Tries to convert free users at a glance.
  */
-export function UsageChip({ plan, tailorUsed, tailorLimit, tailorCredits = 0 }: Props) {
+export function UsageChip({ plan, tailorUsed, tailorLimit, tailorCredits = 0, isAdmin = false }: Props) {
   if (plan === "career_sprint") {
+    if (isAdmin) {
+      return (
+        <Link
+          href="/settings/billing"
+          className="inline-flex items-center gap-1.5 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2.5 py-1 text-[11px] font-semibold text-emerald-700 dark:text-emerald-300 hover:bg-emerald-500/15"
+          aria-label="Staff override — full Sprint entitlements"
+        >
+          <Shield className="h-3 w-3" />
+          Staff · Sprint
+        </Link>
+      );
+    }
     return (
       <Link
         href="/settings/billing"

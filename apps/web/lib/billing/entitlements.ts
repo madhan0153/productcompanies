@@ -132,21 +132,35 @@ async function readEntitlements(userId: string): Promise<EntitlementState> {
 // Per-instance memo of admin status, so the override does not pay an auth
 // lookup on every entitlement read. Immediate on the first call (and after a
 // cold start); near-zero cost thereafter.
-const adminStatusCache = new Map<string, { isAdmin: boolean; at: number }>();
+const adminStatusCache = new Map<string, { isAdmin: boolean; at: number; negative?: boolean }>();
 const ADMIN_STATUS_TTL_MS = 10 * 60_000;
+// Short TTL for the "lookup failed" case so a transient Supabase outage does
+// not pin a real admin to the wrong tier for the full 10 min positive TTL.
+const ADMIN_STATUS_NEGATIVE_TTL_MS = 30_000;
+let warnedOnceLookupFailed = false;
 
 async function isUserAdmin(userId: string): Promise<boolean> {
   if (!serverEnv.ADMIN_EMAILS) return false;
   const cached = adminStatusCache.get(userId);
-  if (cached && Date.now() - cached.at < ADMIN_STATUS_TTL_MS) return cached.isAdmin;
+  if (cached) {
+    const ttl = cached.negative ? ADMIN_STATUS_NEGATIVE_TTL_MS : ADMIN_STATUS_TTL_MS;
+    if (Date.now() - cached.at < ttl) return cached.isAdmin;
+  }
   try {
     const admin = createSupabaseAdminClient();
     const { data } = await admin.auth.admin.getUserById(userId);
     const result = isAdminEmail(data?.user?.email ?? null);
     adminStatusCache.set(userId, { isAdmin: result, at: Date.now() });
     return result;
-  } catch {
-    return cached?.isAdmin ?? false;
+  } catch (err) {
+    // Single warn so repeated outages don't flood logs.
+    if (!warnedOnceLookupFailed) {
+      warnedOnceLookupFailed = true;
+      console.warn("[entitlements] admin lookup failed; falling back to last-known or false", err instanceof Error ? err.message : err);
+    }
+    const fallback = cached?.isAdmin ?? false;
+    adminStatusCache.set(userId, { isAdmin: fallback, at: Date.now(), negative: true });
+    return fallback;
   }
 }
 

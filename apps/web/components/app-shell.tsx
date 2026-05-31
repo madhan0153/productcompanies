@@ -212,7 +212,18 @@ export function AppShell({ user, navBadges, usage, banner, children }: Props) {
                 {initials}
               </div>
               <div className="min-w-0 flex-1">
-                <p className="truncate text-sm font-medium leading-tight">{user.displayName ?? user.email.split("@")[0]}</p>
+                <div className="flex items-center gap-1.5">
+                  <p className="truncate text-sm font-medium leading-tight">{user.displayName ?? user.email.split("@")[0]}</p>
+                  {user.isAdmin && (
+                    <span
+                      className="inline-flex shrink-0 items-center gap-1 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-emerald-700 dark:text-emerald-300"
+                      title="ADMIN_EMAILS override — full Career Sprint entitlements"
+                    >
+                      <Shield className="h-2.5 w-2.5" />
+                      Staff
+                    </span>
+                  )}
+                </div>
                 <p className="truncate text-xs text-muted-foreground">{user.email}</p>
               </div>
               {dnaScore !== null && (
@@ -229,6 +240,7 @@ export function AppShell({ user, navBadges, usage, banner, children }: Props) {
                   tailorUsed={usage.tailorUsed}
                   tailorLimit={usage.tailorLimit}
                   tailorCredits={usage.tailorCredits}
+                  isAdmin={user.isAdmin}
                 />
               </div>
             )}
@@ -275,6 +287,7 @@ export function AppShell({ user, navBadges, usage, banner, children }: Props) {
                 tailorUsed={usage.tailorUsed}
                 tailorLimit={usage.tailorLimit}
                 tailorCredits={usage.tailorCredits}
+                isAdmin={user.isAdmin}
               />
             </div>
           )}
