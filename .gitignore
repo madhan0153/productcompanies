@@ -50,3 +50,14 @@ Supabase Snippet Fetch Jobs Records*.csv
 Donthula_sathwik_resume.pdf
 crawler_logs_today.txt
 .claude/
+
+# graphify knowledge graph (regeneratable via `graphify update .`)
+graphify-out/
+_qa/
+
+# QA workspace notes — local plan + orchestration drafts; not part of repo history
+plan.md
+orchestration.md
+
+# Stray tmp hash files some tools leave behind
+_tmp_*
