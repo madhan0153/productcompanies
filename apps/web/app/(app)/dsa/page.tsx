@@ -4,10 +4,10 @@ import { Brain, Sparkles, ShieldCheck, Clock3, Flame, Trophy, Snowflake, CornerU
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { getEntitlements } from "@/lib/billing/entitlements";
-import { getDsaDailyState, ensureTodayAssigned, type DsaDailyState } from "@/lib/dsa/daily";
+import { getDsaDailyState, ensureTodayAssigned, fetchLast7DaysHistory, type DsaDailyState, type DailyAction, type DailyStatus } from "@/lib/dsa/daily";
 import { dsaQuota } from "@/lib/dsa/quotas";
 import { getDsaPersonalization } from "@/lib/dsa/personalization";
-import { dsaDailySeed, dsaPickIndex } from "@/lib/dsa/today";
+import { dsaDailySeed, dsaPickIndex, dsaTodayKey } from "@/lib/dsa/today";
 import { StatCard } from "@/components/section-card";
 import { absoluteUrl } from "@/lib/seo/site";
 import { DailyPanel, type HeroQuestion } from "./_components/daily-panel";
@@ -48,24 +48,43 @@ function greeting(): string {
   return "Good evening";
 }
 
-function buildLast7(state: DsaDailyState): DayDot[] {
-  const fmt = (d: Date) => d.toLocaleDateString("en-IN", { weekday: "short" });
-  const action = state.today.action;
-  const solvedToday = state.today.status === "solved";
-  const solvedBack = solvedToday ? Math.max(0, state.streak.current - 1) : state.streak.current;
+function buildLast7(
+  state: DsaDailyState,
+  history: Map<string, { action: DailyAction; status: DailyStatus }>,
+): DayDot[] {
+  const fmt = (d: Date) => d.toLocaleDateString("en-IN", { weekday: "short", timeZone: "Asia/Kolkata" });
+  const todayKey = dsaTodayKey();
   const dots: DayDot[] = [];
   for (let i = 6; i >= 0; i--) {
     const d = new Date();
-    d.setDate(d.getDate() - i);
+    d.setUTCDate(d.getUTCDate() - i);
+    // Use the IST day key so the lookup matches what the log table stores
+    // (see lib/dsa/today.ts and how upsertTodayLog writes `day`).
+    const key = i === 0 ? todayKey : new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Kolkata" }).format(d);
+    const entry = history.get(key);
     if (i === 0) {
+      const action = state.today.action;
+      const solvedToday = state.today.status === "solved";
       dots.push({
         label: "Today",
-        state: solvedToday ? "solved" : action === "frozen" ? "frozen" : action === "skipped" ? "skipped" : "today",
+        state: solvedToday
+          ? "solved"
+          : action === "frozen"  ? "frozen"
+          : action === "skipped" ? "skipped"
+          : "today",
       });
-    } else if (i <= solvedBack) {
-      dots.push({ label: fmt(d), state: "solved" });
+    } else if (entry) {
+      const s: DayDot["state"] =
+        entry.status === "solved"  ? "solved"
+        : entry.action === "frozen"  ? "frozen"
+        : entry.action === "skipped" ? "skipped"
+        : "missed";
+      dots.push({ label: fmt(d), state: s });
     } else {
-      dots.push({ label: fmt(d), state: "future" });
+      // No log entry — for a past day that means the user wasn't active.
+      // Render as `missed` only if their streak says they were on the app;
+      // otherwise `future` (no streak yet → no shame).
+      dots.push({ label: fmt(d), state: state.streak.current > 0 ? "missed" : "future" });
     }
   }
   return dots;
@@ -96,9 +115,10 @@ export default async function DsaPage() {
 
   let dailyState: DsaDailyState | null = null;
   let displayName: string | null = null;
+  let history: Map<string, { action: DailyAction; status: DailyStatus }> = new Map();
   if (user) {
     await ensureTodayAssigned(user.id, featured.slug);
-    [dailyState, { displayName }] = await Promise.all([
+    [dailyState, { displayName }, history] = await Promise.all([
       getDsaDailyState(user.id, plan),
       supabase
         .from("profiles")
@@ -106,6 +126,7 @@ export default async function DsaPage() {
         .eq("id", user.id)
         .maybeSingle()
         .then((r) => ({ displayName: (r.data?.display_name as string | null) ?? null })),
+      fetchLast7DaysHistory(user.id),
     ]);
   }
   const personalization = await getDsaPersonalization(user?.id ?? null);
@@ -138,7 +159,7 @@ export default async function DsaPage() {
       {/* Streak ribbon (signed in) */}
       {dailyState && (
         <StreakRibbon
-          days={buildLast7(dailyState)}
+          days={buildLast7(dailyState, history)}
           current={dailyState.streak.current}
           freeze={dailyState.freeze.available}
           nextAccrual={dailyState.freeze.nextAccrualInDays}

@@ -172,6 +172,40 @@ async function persistRow(userId: string, row: StreakRow): Promise<void> {
   }
 }
 
+/**
+ * Last 7 IST days of activity for the streak ribbon. Returns a map keyed by
+ * YYYY-MM-DD (IST). Days with no log entry are absent — callers should default
+ * to "missed"/"future" depending on whether the day is in the past or today.
+ */
+export async function fetchLast7DaysHistory(
+  userId: string,
+): Promise<Map<string, { action: DailyAction; status: DailyStatus }>> {
+  try {
+    const db = createSupabaseAdminClient() as unknown as { from: (t: string) => any };
+    // Compute a 7-day IST window ending today. Postgres `day` is stored as
+    // an IST-aligned YYYY-MM-DD string (see dsaTodayKey).
+    const today = dsaTodayKey();
+    const sevenAgo = (() => {
+      const d = new Date(Date.parse(today));
+      d.setUTCDate(d.getUTCDate() - 6);
+      return d.toISOString().slice(0, 10);
+    })();
+    const { data } = await db
+      .from("dsa_daily_log")
+      .select("day, action, status")
+      .eq("user_id", userId)
+      .gte("day", sevenAgo)
+      .lte("day", today);
+    const out = new Map<string, { action: DailyAction; status: DailyStatus }>();
+    for (const r of (data ?? []) as { day: string; action: DailyAction; status: DailyStatus }[]) {
+      out.set(r.day, { action: r.action, status: r.status });
+    }
+    return out;
+  } catch {
+    return new Map();
+  }
+}
+
 async function upsertTodayLog(
   userId: string,
   slug: string,

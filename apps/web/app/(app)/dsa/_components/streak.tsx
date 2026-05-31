@@ -59,7 +59,11 @@ export function StreakRibbon({
         </p>
         <p className="inline-flex items-center gap-1 text-[11px] text-muted-foreground">
           <Snowflake className="h-3 w-3" /> {freeze} freeze
-          {freeze >= 0 && nextAccrual > 0 ? ` · refills in ${nextAccrual}d` : ""}
+          {nextAccrual > 0
+            ? ` · refills in ${nextAccrual}d`
+            : freeze > 0
+              ? ""
+              : " · ready"}
         </p>
       </div>
     </div>

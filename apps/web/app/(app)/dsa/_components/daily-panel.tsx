@@ -1,11 +1,11 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useEffect, useRef, useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter, usePathname } from "next/navigation";
 import {
   Sparkles, Target, ArrowRight, CheckCircle2, Clock3, CornerUpRight,
-  Snowflake, Brain, X, Loader2, Check,
+  Snowflake, X, Loader2, Check,
 } from "lucide-react";
 import { DifficultyPill, Pill, BUCKET_LABEL, patternLabel, type Difficulty, type Bucket } from "./pills";
 import { NextRefreshCountdown } from "./countdown";
@@ -24,7 +24,7 @@ export interface HeroQuestion {
 
 type Status = "not_started" | "in_progress" | "solved";
 type Action = "assigned" | "started" | "solved" | "skipped" | "frozen";
-type Sheet = null | "skip" | "freeze" | "recall";
+type Sheet = null | "skip" | "freeze";
 
 export function DailyPanel({
   q,
@@ -33,8 +33,9 @@ export function DailyPanel({
   initialAction,
   skips,
   freeze,
-  recallCadence,
   rationale,
+  // recallCadence: still in the prop type so callers don't change shape, but
+  // not consumed here until the recall feature ships (Phase R-recall).
 }: {
   q: HeroQuestion;
   signedIn: boolean;
@@ -85,7 +86,7 @@ export function DailyPanel({
 
   function doFreeze() {
     setSheet(null);
-    if (freezeLeft <= 0) { setUpgrade("dsa_skip_exhausted"); return; }
+    if (freezeLeft <= 0) { setUpgrade("dsa_freeze_exhausted"); return; }
     const prevAction = action, prevFreeze = freezeLeft;
     setAction("frozen");
     setFreezeLeft((n) => Math.max(0, n - 1));
@@ -96,7 +97,7 @@ export function DailyPanel({
         setAction(prevAction);
         setFreezeLeft(prevFreeze);
         setBanner(null);
-        setUpgrade("dsa_skip_exhausted");
+        setUpgrade("dsa_freeze_exhausted");
         return;
       }
       router.refresh();
@@ -198,14 +199,12 @@ export function DailyPanel({
             label="Freeze"
             sub={`${freezeLeft} token${freezeLeft === 1 ? "" : "s"}`}
             disabled={locked}
-            onClick={() => (freezeLeft > 0 ? setSheet("freeze") : setUpgrade("dsa_skip_exhausted"))}
+            onClick={() => (freezeLeft > 0 ? setSheet("freeze") : setUpgrade("dsa_freeze_exhausted"))}
           />
-          <UtilityButton
-            icon={<Brain className="h-4 w-4" />}
-            label="Recall"
-            sub={recallCadence[0].toUpperCase() + recallCadence.slice(1)}
-            onClick={() => setSheet("recall")}
-          />
+          {/* Recall is intentionally hidden until the recall flow ships
+              (Phase R-recall). The previous button opened a sheet that did
+              nothing on confirm — confusing UX. The plan-tier cadence is
+              still tracked via recallCadence for when it lands. */}
         </div>
       ) : (
         <Link
@@ -237,17 +236,6 @@ export function DailyPanel({
           onClose={() => setSheet(null)}
         />
       )}
-      {sheet === "recall" && (
-        <ConfirmSheet
-          title="Recall day"
-          body={`A short quiz on questions you've already solved, to lock them into long-term memory. Your plan includes ${recallCadence} recall.`}
-          confirmLabel="Got it"
-          pending={false}
-          onConfirm={() => setSheet(null)}
-          onClose={() => setSheet(null)}
-        />
-      )}
-
       <UpgradeModal
         open={upgrade !== null}
         onClose={() => setUpgrade(null)}
@@ -293,6 +281,23 @@ function ConfirmSheet({
   onConfirm: () => void;
   onClose: () => void;
 }) {
+  const confirmRef = useRef<HTMLButtonElement>(null);
+
+  // Escape closes; also lock body scroll while the sheet is open.
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
+    window.addEventListener("keydown", onKey);
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    // Focus the primary CTA on open so keyboard users land on the action,
+    // not the close button (which is the first focusable element in source order).
+    confirmRef.current?.focus();
+    return () => {
+      window.removeEventListener("keydown", onKey);
+      document.body.style.overflow = prevOverflow;
+    };
+  }, [onClose]);
+
   return (
     <div
       className="fixed inset-0 z-[60] flex items-end justify-center bg-black/55 backdrop-blur-sm sm:items-center"
@@ -320,6 +325,7 @@ function ConfirmSheet({
             Cancel
           </button>
           <button
+            ref={confirmRef}
             type="button"
             onClick={onConfirm}
             disabled={pending}

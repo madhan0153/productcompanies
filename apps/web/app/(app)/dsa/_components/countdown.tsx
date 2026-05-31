@@ -1,15 +1,11 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { msUntilNextIstMidnight } from "@/lib/dsa/today";
 
-// Next-question countdown to the next UTC midnight. Text-only, polite live
-// region — no motion. Renders nothing until mounted to avoid hydration drift.
-
-function nextMidnightMs(): number {
-  const now = new Date();
-  const next = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() + 1));
-  return next.getTime();
-}
+// Next-question countdown to the next IST midnight (India-first per
+// CLAUDE.md rule 7). Text-only, polite live region — no motion.
+// Renders nothing until mounted to avoid hydration drift.
 
 function format(ms: number): string {
   if (ms <= 0) return "now";
@@ -25,7 +21,7 @@ export function NextRefreshCountdown({ className = "" }: { className?: string })
   const [label, setLabel] = useState<string | null>(null);
 
   useEffect(() => {
-    const tick = () => setLabel(format(nextMidnightMs() - Date.now()));
+    const tick = () => setLabel(format(msUntilNextIstMidnight()));
     tick();
     const id = setInterval(tick, 1000);
     return () => clearInterval(id);

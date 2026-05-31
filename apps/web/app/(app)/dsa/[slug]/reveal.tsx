@@ -51,12 +51,18 @@ export function ProgressiveReveal(props: RevealProps) {
     pitfalls, edgeCases, whyItMatters, aiCoach,
   } = props;
 
+  const router = useRouter();
+
   // monotonic flow: read problem → open approach → open solution
   const [opened, setOpened] = useState<"none" | "approach" | "solution">("none");
 
   // approach unlock state (free)
   const entitledApproach = fullApproach !== null;
   const [localApproach, setLocalApproach] = useState<{ approach: string[]; steps: string[] } | null>(null);
+  // Track the post-spend remaining count locally so the paywall copy
+  // updates inline without waiting for a navigation. The server action
+  // already revalidates the route — this is just for the live sub-text.
+  const [localRemaining, setLocalRemaining] = useState<number | "unlimited" | null>(null);
   const [spending, startSpend] = useTransition();
   const [exhausted, setExhausted] = useState(false);
 
@@ -64,12 +70,17 @@ export function ProgressiveReveal(props: RevealProps) {
   const approachContent = entitledApproach
     ? { approach: fullApproach!, steps: fullSteps ?? [] }
     : localApproach;
+  const displayedRemaining = localRemaining ?? fullApproachesRemaining;
 
   function spendUnlock() {
     startSpend(async () => {
       const res = await revealApproachAction(slug);
       if (res.ok) {
         setLocalApproach({ approach: res.approach, steps: res.solutionSteps });
+        setLocalRemaining(res.remaining);
+        // The hub statcard and any other surface that reads
+        // fullApproachesRemaining server-side needs to see the spend.
+        router.refresh();
       } else if (res.reason === "exhausted") {
         setExhausted(true);
       }
@@ -137,15 +148,15 @@ export function ProgressiveReveal(props: RevealProps) {
                   <li>…then the exact step-by-step walkthrough to the solution.</li>
                 </ul>
               </div>
-              {signedIn && !exhausted && fullApproachesRemaining !== 0 ? (
+              {signedIn && !exhausted && displayedRemaining !== 0 ? (
                 <InlinePaywall
                   trigger="dsa_full_approach"
                   variant="spend"
                   headline="Want the full step-by-step explanation?"
                   sub={
-                    fullApproachesRemaining === "unlimited"
+                    displayedRemaining === "unlimited"
                       ? "Unlock the complete approach and walkthrough."
-                      : `${fullApproachesRemaining} of 3 free unlocks left this month.`
+                      : `${displayedRemaining} of 3 free unlocks left this month.`
                   }
                   spendLabel={spending ? "Unlocking…" : "Unlock now (free)"}
                   spending={spending}
@@ -206,10 +217,15 @@ export function ProgressiveReveal(props: RevealProps) {
           </Panel>
 
           <AiCoachPanel aiCoach={aiCoach} />
-
-          <CompletionFooter slug={slug} signedIn={signedIn} todayStatus={props.todayStatus} />
         </>
       )}
+
+      {/* Completion CTA — always reachable, even if the user reads the
+          problem and pitfalls without revealing the approach/solution.
+          The daily commitment is "I read today's question", not "I revealed
+          the answer". Anchoring this outside the reveal branches is the
+          single biggest streak-retention fix. */}
+      <CompletionFooter slug={slug} signedIn={signedIn} todayStatus={props.todayStatus} />
     </div>
   );
 }
@@ -265,7 +281,7 @@ function SolutionPanel({
                 type="button"
                 onClick={() => selectLang(l)}
                 aria-label={locked ? `Locked — upgrade to Pro to view ${LANG_LABEL[l]}` : LANG_LABEL[l]}
-                className={`press inline-flex items-center gap-1 rounded-lg px-3 py-1.5 text-xs font-semibold transition ${
+                className={`press tap-target-sm inline-flex items-center gap-1 rounded-lg px-3 py-2 text-xs font-semibold transition ${
                   active && !locked
                     ? "bg-primary text-primary-foreground"
                     : "bg-secondary text-secondary-foreground hover:bg-secondary/70"
@@ -282,7 +298,7 @@ function SolutionPanel({
             <button
               type="button"
               onClick={() => setAnnotate((a) => !a)}
-              className={`press rounded-lg px-2.5 py-1.5 text-xs font-semibold transition ${
+              className={`press tap-target-sm rounded-lg px-2.5 py-2 text-xs font-semibold transition ${
                 annotate ? "bg-primary text-primary-foreground" : "bg-secondary text-secondary-foreground"
               }`}
             >

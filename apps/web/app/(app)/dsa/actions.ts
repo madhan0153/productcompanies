@@ -65,9 +65,15 @@ export async function revealApproachAction(slug: string): Promise<
   if (!user) return { ok: false, reason: "auth" };
   const { plan } = await getEntitlements(user.id);
 
+  // Free users spend one of their monthly full-approach credits. Pro/Sprint
+  // are unlimited and skip the spend. `remaining` is the **actual** count
+  // after this spend so the client can update its counter inline without
+  // a round-trip.
+  let remaining: number | "unlimited" = "unlimited";
   if (plan === "free") {
     const spent = await spendFullApproach(user.id, plan);
     if (!spent.ok) return { ok: false, reason: "exhausted" };
+    remaining = spent.remaining;
   }
 
   const admin = createSupabaseAdminClient() as unknown as { from: (t: string) => any };
@@ -80,14 +86,17 @@ export async function revealApproachAction(slug: string): Promise<
 
   const approach = (data?.approach as string[] | undefined) ?? [];
   const solutionSteps = (data?.solution_steps as string[] | undefined) ?? [];
-  const remaining =
-    plan === "free" ? dsaQuota(plan).fullApproachesPerMonth : ("unlimited" as const);
-  // remaining is recomputed on next page read; return a hint only.
+
+  // Refresh both the hub statcard (full-approach credits remaining) and the
+  // detail page (so a back-nav doesn't show a stale "Reveal" CTA).
+  revalidatePath("/dsa");
+  revalidatePath(`/dsa/${slug}`);
+
   return {
     ok: true,
     approach,
     solutionSteps,
-    remaining: typeof remaining === "number" ? remaining : "unlimited",
+    remaining,
   };
 }
 
