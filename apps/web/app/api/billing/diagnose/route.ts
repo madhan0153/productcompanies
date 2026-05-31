@@ -3,9 +3,10 @@
 // without guessing whether NEXT_PUBLIC_APP_URL, product IDs, and the
 // Dodo base URL are wired correctly.
 
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { serverEnv, clientEnv } from "@/lib/env";
 import { requireAdmin } from "@/lib/admin/auth";
+import { rateLimitRoute } from "@/lib/security/route-rate-limit";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -23,9 +24,18 @@ function mask(v: string | undefined | null): string {
   return `${v.slice(0, 4)}…${v.slice(-4)} (${v.length} chars)`;
 }
 
-export async function GET() {
+export async function GET(req: NextRequest) {
+  const ipLimit = await rateLimitRoute(req, "billing_diagnose_ip", { limit: 30, windowMs: 10 * 60_000 });
+  if (ipLimit) return ipLimit;
+
   const gate = await requireAdmin();
   if (!gate.isAdmin) return NextResponse.json({ error: "not allowed" }, { status: 404 });
+  const adminLimit = await rateLimitRoute(req, "billing_diagnose", {
+    limit: 20,
+    windowMs: 10 * 60_000,
+    userId: gate.userId,
+  });
+  if (adminLimit) return adminLimit;
 
   const appUrl  = clientEnv.NEXT_PUBLIC_APP_URL;
   const returnUrl = new URL("/billing/success", appUrl).toString();
@@ -42,9 +52,9 @@ export async function GET() {
         cache: "no-store",
       });
       dodoAuthOk = res.ok;
-      if (!res.ok) dodoAuthError = `HTTP ${res.status} ${(await res.text()).slice(0, 200)}`;
+      if (!res.ok) dodoAuthError = `HTTP ${res.status}`;
     } catch (err) {
-      dodoAuthError = err instanceof Error ? err.message : "network error";
+      dodoAuthError = err instanceof Error ? err.name : "network error";
     }
   }
 

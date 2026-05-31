@@ -21,6 +21,7 @@ import { LlmRunError } from "@/lib/llm/gemini";
 import { embed, buildJobEmbedText } from "@/lib/llm/embed";
 import type { Json, SeniorityLevel } from "@/lib/supabase/types";
 import { requireCronAuth } from "@/lib/security/cron";
+import { rateLimitRoute } from "@/lib/security/route-rate-limit";
 import { logEvent } from "@/lib/observability/log";
 
 export const runtime = "nodejs";
@@ -42,6 +43,9 @@ type JobRow = {
 };
 
 export async function POST(req: NextRequest) {
+  const ipLimit = await rateLimitRoute(req, "admin_parse_jds_ip", { limit: 12, windowMs: 10 * 60_000 });
+  if (ipLimit) return ipLimit;
+
   const authFailure = requireCronAuth(req);
   if (authFailure) return authFailure;
 

@@ -39,20 +39,20 @@ export function ReconcileForm() {
         </div>
       )}
 
-      {state.details?.dodoResponse && (
+      {state.details?.dodoShape && (
         <details style={{
           padding: 12, borderRadius: 10,
           background: "var(--surface-2)", border: "1px solid var(--line)",
           fontSize: 12,
         }}>
-          <summary style={{ cursor: "pointer", fontWeight: 500 }}>Dodo response (debug)</summary>
+          <summary style={{ cursor: "pointer", fontWeight: 500 }}>Dodo response shape</summary>
           <pre style={{
             marginTop: 8, maxHeight: 240, overflow: "auto", padding: 10,
             borderRadius: 8, background: "var(--surface)",
             fontFamily: "var(--font-mono)", fontSize: 11,
             whiteSpace: "pre-wrap", wordBreak: "break-all",
           }}>
-            {JSON.stringify(state.details.dodoResponse, null, 2)}
+            {JSON.stringify(state.details, null, 2)}
           </pre>
         </details>
       )}

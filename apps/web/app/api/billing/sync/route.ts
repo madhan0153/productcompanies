@@ -14,7 +14,8 @@
 //   5. Upserts the local subscriptions + billing_customers rows
 //   6. Refreshes user_entitlements
 //
-// Idempotent. Logs every step so Vercel logs show exactly what Dodo returned.
+// Idempotent. Logs sanitized step metadata only; never log emails, full user
+// ids, payment/customer ids, or upstream response bodies.
 
 import { NextRequest, NextResponse } from "next/server";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
@@ -22,6 +23,8 @@ import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { serverEnv } from "@/lib/env";
 import { refreshEntitlements } from "@/lib/billing/entitlements";
 import { CHECKOUT_PRODUCTS, type BillingPlan, type CheckoutProductId } from "@/lib/billing/catalog";
+import { logEvent } from "@/lib/observability/log";
+import { rateLimitRoute } from "@/lib/security/route-rate-limit";
 import type { Json, SubscriptionStatus } from "@/lib/supabase/types";
 
 export const runtime = "nodejs";
@@ -106,13 +109,31 @@ function planFromProductId(productId: string | null): BillingPlan | null {
   return null;
 }
 
+function shortId(value: string | null | undefined): string | null {
+  if (!value) return null;
+  return value.length <= 10 ? `${value.slice(0, 4)}...` : `${value.slice(0, 8)}...${value.slice(-4)}`;
+}
+
+function errorKind(err: unknown): string {
+  return err instanceof Error ? err.name : "unknown";
+}
+
 export async function POST(req: NextRequest) {
+  const ipLimit = await rateLimitRoute(req, "billing_sync_ip", { limit: 30, windowMs: 10 * 60_000 });
+  if (ipLimit) return ipLimit;
+
   const supabase = await createSupabaseServerClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) {
-    console.log("[billing/sync] 401: no user");
+    logEvent("info", "billing_sync_unauthenticated");
     return NextResponse.json({ error: "Unauthenticated" }, { status: 401 });
   }
+  const userLimit = await rateLimitRoute(req, "billing_sync", {
+    limit: 10,
+    windowMs: 10 * 60_000,
+    userId: user.id,
+  });
+  if (userLimit) return userLimit;
 
   let body: { subscription_id?: string; product?: string; emailHint?: string };
   try { body = await req.json(); } catch { body = {}; }
@@ -121,21 +142,22 @@ export async function POST(req: NextRequest) {
   const fallbackProduct  = (body.product ?? "") as CheckoutProductId;
   const emailHint        = body.emailHint?.trim().toLowerCase() ?? null;
   if (!subscriptionId) {
-    console.log("[billing/sync] 400: no subscription_id");
+    logEvent("info", "billing_sync_missing_subscription_id", {
+      user_id_prefix: user.id.slice(0, 8),
+    });
     return NextResponse.json({ error: "subscription_id required" }, { status: 400 });
   }
 
-  console.log("[billing/sync] start", {
-    user_id:         user.id.slice(0, 8),
-    user_email:      user.email,
-    subscription_id: subscriptionId,
-    fallbackProduct,
-    emailHint,
+  logEvent("info", "billing_sync_start", {
+    user_id_prefix:         user.id.slice(0, 8),
+    subscription_id_prefix: shortId(subscriptionId),
+    fallback_product:       fallbackProduct || null,
+    has_email_hint:         Boolean(emailHint),
   });
 
   const apiKey = serverEnv.DODO_PAYMENTS_API_KEY;
   if (!apiKey) {
-    console.log("[billing/sync] 500: API key not configured");
+    logEvent("error", "billing_sync_api_key_missing");
     return NextResponse.json({ error: "Billing not configured (DODO_PAYMENTS_API_KEY missing)" }, { status: 500 });
   }
 
@@ -151,7 +173,11 @@ export async function POST(req: NextRequest) {
 
   if (existing && existing.user_id === user.id && existing.status === "active") {
     await refreshEntitlements(user.id);
-    console.log("[billing/sync] cache hit", { plan: existing.plan });
+    logEvent("info", "billing_sync_cache_hit", {
+      user_id_prefix:         user.id.slice(0, 8),
+      subscription_id_prefix: shortId(subscriptionId),
+      plan:                   existing.plan,
+    });
     return NextResponse.json({ ok: true, plan: existing.plan, source: "cache" });
   }
 
@@ -159,34 +185,47 @@ export async function POST(req: NextRequest) {
   let dodoData: Record<string, unknown>;
   try {
     const url = `${dodoBaseUrl()}/subscriptions/${subscriptionId}`;
-    console.log("[billing/sync] fetching", url);
+    logEvent("info", "billing_sync_fetching_subscription", {
+      subscription_id_prefix: shortId(subscriptionId),
+    });
     const res = await fetch(url, {
       headers: { "Authorization": `Bearer ${apiKey}` },
       cache: "no-store",
     });
     const txt = await res.text();
     if (!res.ok) {
-      console.log("[billing/sync] dodo lookup failed", {
+      logEvent("warn", "billing_sync_dodo_lookup_failed", {
+        subscription_id_prefix: shortId(subscriptionId),
         status: res.status,
-        body: txt.slice(0, 300),
       });
       return NextResponse.json(
-        { error: `Dodo lookup failed: ${res.status} ${txt.slice(0, 200)}` },
+        { error: `Dodo lookup failed with HTTP ${res.status}` },
         { status: 502 },
       );
     }
     try {
       dodoData = asRecord(JSON.parse(txt));
     } catch {
-      console.log("[billing/sync] dodo returned non-JSON");
+      logEvent("warn", "billing_sync_dodo_non_json", {
+        subscription_id_prefix: shortId(subscriptionId),
+      });
       return NextResponse.json({ error: "Dodo returned non-JSON response" }, { status: 502 });
     }
-    // Log the top-level shape so we can debug Dodo's actual response format
-    console.log("[billing/sync] dodo response keys", Object.keys(dodoData).slice(0, 30));
+    logEvent("info", "billing_sync_dodo_response_shape", {
+      subscription_id_prefix: shortId(subscriptionId),
+      key_count:              Object.keys(dodoData).length,
+      has_data:               Object.hasOwn(dodoData, "data"),
+      has_subscription:       Object.hasOwn(dodoData, "subscription"),
+      has_customer:           Object.hasOwn(dodoData, "customer"),
+      has_metadata:           Object.hasOwn(dodoData, "metadata"),
+    });
   } catch (err) {
-    console.log("[billing/sync] network error", err);
+    logEvent("warn", "billing_sync_dodo_network_error", {
+      subscription_id_prefix: shortId(subscriptionId),
+      error_kind:             errorKind(err),
+    });
     return NextResponse.json(
-      { error: err instanceof Error ? err.message : "Network error contacting Dodo" },
+      { error: "Network error contacting Dodo" },
       { status: 502 },
     );
   }
@@ -204,12 +243,13 @@ export async function POST(req: NextRequest) {
   const customerId  = deepStr(dodoData, ["customer_id", "customerId"]) ?? deepStr(customerObj, ["id", "customer_id"]);
   const statusRaw   = deepStr(dodoData, ["status"]);
 
-  console.log("[billing/sync] extracted", {
-    metaUserId,
-    customerEmail,
-    customerId,
-    productId,
-    statusRaw,
+  logEvent("info", "billing_sync_extracted_fields", {
+    subscription_id_prefix: shortId(subscriptionId),
+    meta_user_id_prefix:    shortId(metaUserId),
+    has_customer_email:     Boolean(customerEmail),
+    customer_id_prefix:     shortId(customerId),
+    product_id_prefix:      shortId(productId),
+    status:                 statusRaw,
   });
 
   // Ownership check: any one of these is sufficient
@@ -230,19 +270,18 @@ export async function POST(req: NextRequest) {
   }
 
   if (!ownsByMeta && !ownsByEmail && !ownsByEmailHint && !ownsByExistingCustomer) {
-    console.log("[billing/sync] 403 ownership mismatch", {
-      user_id:    user.id,
-      user_email: userEmail,
-      metaUserId,
-      customerEmail,
-      customerId,
+    logEvent("warn", "billing_sync_ownership_mismatch", {
+      user_id_prefix:         user.id.slice(0, 8),
+      subscription_id_prefix: shortId(subscriptionId),
+      meta_user_id_prefix:    shortId(metaUserId),
+      has_customer_email:     Boolean(customerEmail),
+      customer_id_prefix:     shortId(customerId),
     });
     return NextResponse.json(
       {
         error: "We couldn't confirm this subscription is yours.",
         details: {
-          your_email:      userEmail,
-          checkout_email:  customerEmail,
+          checkout_email_present: Boolean(customerEmail),
           hint: "If you paid with a different email than you signed in with, please contact support.",
         },
       },
@@ -256,10 +295,14 @@ export async function POST(req: NextRequest) {
     plan = CHECKOUT_PRODUCTS[fallbackProduct].plan;
   }
   if (!plan || plan === "free") {
-    console.log("[billing/sync] 422 unknown plan", { productId, fallbackProduct });
+    logEvent("warn", "billing_sync_unknown_plan", {
+      subscription_id_prefix: shortId(subscriptionId),
+      product_id_prefix:      shortId(productId),
+      fallback_product:       fallbackProduct || null,
+    });
     return NextResponse.json({
       error: "Could not determine your plan from Dodo product. Contact support with subscription id.",
-      productId,
+      productId: shortId(productId),
     }, { status: 422 });
   }
 
@@ -294,7 +337,12 @@ export async function POST(req: NextRequest) {
   }, { onConflict: "provider,provider_subscription_id" });
 
   const entitlement = await refreshEntitlements(user.id);
-  console.log("[billing/sync] success", { plan: entitlement.plan, source: entitlement.source });
+  logEvent("info", "billing_sync_success", {
+    user_id_prefix:         user.id.slice(0, 8),
+    subscription_id_prefix: shortId(subscriptionId),
+    plan:                   entitlement.plan,
+    source:                 entitlement.source,
+  });
 
   return NextResponse.json({
     ok:     true,

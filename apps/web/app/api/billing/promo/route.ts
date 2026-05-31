@@ -1,16 +1,26 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { redeemPromoCode } from "@/lib/billing/promo";
+import { rateLimitRoute } from "@/lib/security/route-rate-limit";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 export async function POST(req: NextRequest) {
+  const ipLimit = await rateLimitRoute(req, "billing_promo_ip", { limit: 30, windowMs: 10 * 60_000 });
+  if (ipLimit) return ipLimit;
+
   const supabase = await createSupabaseServerClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) {
     return NextResponse.json({ error: "Sign in first to redeem a promo code." }, { status: 401 });
   }
+  const userLimit = await rateLimitRoute(req, "billing_promo", {
+    limit: 10,
+    windowMs: 10 * 60_000,
+    userId: user.id,
+  });
+  if (userLimit) return userLimit;
 
   let body: { code?: string };
   try {

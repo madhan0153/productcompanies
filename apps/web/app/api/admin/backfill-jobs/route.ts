@@ -10,6 +10,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { runWithRetry, SchemaType, type Schema } from "@/lib/llm/gemini";
 import { requireCronAuth } from "@/lib/security/cron";
+import { rateLimitRoute } from "@/lib/security/route-rate-limit";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -72,6 +73,9 @@ Return only the role_function field.`;
 }
 
 export async function POST(req: NextRequest) {
+  const ipLimit = await rateLimitRoute(req, "admin_backfill_jobs_ip", { limit: 10, windowMs: 10 * 60_000 });
+  if (ipLimit) return ipLimit;
+
   const authFailure = requireCronAuth(req);
   if (authFailure) return authFailure;
 

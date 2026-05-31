@@ -1,5 +1,7 @@
 import assert from "node:assert/strict";
 import { createHmac } from "node:crypto";
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import { getCronAuthFailure, verifySensitiveCronAuth } from "../lib/security/cron";
 import { validateResumePdf } from "../lib/security/pdf";
 import { checkRateLimit } from "../lib/security/rate-limit";
@@ -55,6 +57,46 @@ const rateKey = `security-smoke:${Date.now()}`;
 assert.equal(checkRateLimit({ key: rateKey, limit: 2, windowMs: 60_000 }).ok, true);
 assert.equal(checkRateLimit({ key: rateKey, limit: 2, windowMs: 60_000 }).ok, true);
 assert.equal(checkRateLimit({ key: rateKey, limit: 2, windowMs: 60_000 }).ok, false);
+
+// Billing reconciliation handles raw payment provider objects. Keep logs useful
+// but never emit emails, full identifiers, or upstream response bodies.
+{
+  const syncRoute = readFileSync(join(process.cwd(), "apps/web/app/api/billing/sync/route.ts"), "utf8");
+  assert.equal(/console\.(log|warn|error)/.test(syncRoute), false);
+  assert.equal(
+    /user_email|customerEmail,|emailHint,|body:\s*txt|Network error.*err\.message/.test(syncRoute),
+    false,
+  );
+  assert.match(syncRoute, /subscription_id_prefix/);
+  assert.match(syncRoute, /has_customer_email/);
+  assert.match(syncRoute, /billing_sync_ip/);
+
+  const checkoutRoute = readFileSync(join(process.cwd(), "apps/web/app/api/billing/checkout/route.ts"), "utf8");
+  assert.equal(/console\.(log|warn|error)|err instanceof Error \? err\.message/.test(checkoutRoute), false);
+  assert.match(checkoutRoute, /billing_checkout_ip/);
+
+  const webhookRoute = readFileSync(join(process.cwd(), "apps/web/app/api/webhooks/dodo/route.ts"), "utf8");
+  assert.equal(/console\.(log|warn|error)|Invalid signature.*err|err instanceof Error \? err\.message/.test(webhookRoute), false);
+  assert.match(webhookRoute, /dodo_webhook_ip/);
+
+  const reconcileAction = readFileSync(join(process.cwd(), "apps/web/lib/admin/actions/reconcile.ts"), "utf8");
+  assert.equal(/dodoResponse|body:\s*txt|txt\.slice|customerEmail,\s*productId|err\.message/.test(reconcileAction), false);
+  assert.match(reconcileAction, /dodoShape/);
+  assert.match(reconcileAction, /shortId\(subscriptionId\)/);
+
+  const envExample = readFileSync(join(process.cwd(), ".env.example"), "utf8");
+  assert.match(envExample, /ADMIN_EMAILS=/);
+  assert.match(envExample, /INDEXNOW_KEY=/);
+  assert.equal(/NEXT_PUBLIC_.*(SERVICE_ROLE|CRON_SECRET|API_KEY|WEBHOOK|ADMIN_EMAILS)/.test(envExample), false);
+
+  const profileActions = readFileSync(join(process.cwd(), "apps/web/app/(app)/profile/actions.ts"), "utf8");
+  assert.equal(/RUPLOAD_|err_msg|err_stack|console\.error/.test(profileActions), false);
+  assert.match(profileActions, /Upload failed before processing\. Please retry\./);
+
+  const routeLimiter = readFileSync(join(process.cwd(), "apps/web/lib/security/route-rate-limit.ts"), "utf8");
+  assert.match(routeLimiter, /Retry-After/);
+  assert.match(routeLimiter, /Too many requests/);
+}
 
 // Security fix (S-8): HMAC verification for sensitive cron sub-modes.
 // Inject the secret via process.env for the duration of these asserts.

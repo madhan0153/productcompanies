@@ -14,7 +14,8 @@ export interface ReconcileFormState {
   ok:       boolean;
   message:  string;
   details?: {
-    dodoResponse?: Record<string, unknown>;
+    dodoShape?:   Record<string, unknown>;
+    productId?:   string | null;
     plan?:        BillingPlan;
     status?:      SubscriptionStatus;
   };
@@ -87,6 +88,21 @@ function statusMap(s: string | null): SubscriptionStatus {
   }
 }
 
+function shortId(value: string | null | undefined): string | null {
+  if (!value) return null;
+  return value.length <= 10 ? `${value.slice(0, 4)}...` : `${value.slice(0, 8)}...${value.slice(-4)}`;
+}
+
+function dodoShape(data: Record<string, unknown>): Record<string, unknown> {
+  return {
+    key_count:        Object.keys(data).length,
+    has_data:         Object.hasOwn(data, "data"),
+    has_subscription: Object.hasOwn(data, "subscription"),
+    has_customer:     Object.hasOwn(data, "customer"),
+    has_metadata:     Object.hasOwn(data, "metadata"),
+  };
+}
+
 /**
  * Admin tool — paste a subscription_id and an email/user_id, and we'll
  * fetch the subscription from Dodo, persist it, and grant entitlements
@@ -111,7 +127,7 @@ export async function reconcileSubscription(
 
   // Resolve target user
   const target = await resolveUser(emailOrId);
-  if (!target) return { ok: false, message: `No user found for "${emailOrId}".` };
+  if (!target) return { ok: false, message: "No user found for that identifier." };
 
   // Fetch from Dodo
   let dodoData: Record<string, unknown>;
@@ -121,18 +137,20 @@ export async function reconcileSubscription(
     const txt = await res.text();
     if (!res.ok) {
       await recordAdminAction({
-        actionType: "trigger_cron", targetRef: `reconcile:${subscriptionId}`, status: "failed",
-        metadata: { reason: "dodo_lookup_failed", http: res.status, body: txt.slice(0, 200) },
+        actionType: "trigger_cron",
+        targetRef: `reconcile:${shortId(subscriptionId)}`,
+        status: "failed",
+        metadata: { reason: "dodo_lookup_failed", http: res.status },
       });
-      return { ok: false, message: `Dodo returned ${res.status}: ${txt.slice(0, 200)}` };
+      return { ok: false, message: `Dodo lookup failed with HTTP ${res.status}.` };
     }
     try {
       dodoData = asRecord(JSON.parse(txt));
     } catch {
       return { ok: false, message: "Dodo returned non-JSON response." };
     }
-  } catch (err) {
-    return { ok: false, message: err instanceof Error ? err.message : "Network error reaching Dodo" };
+  } catch {
+    return { ok: false, message: "Network error reaching Dodo." };
   }
 
   const customerObj = deepObj(dodoData, "customer");
@@ -145,8 +163,8 @@ export async function reconcileSubscription(
   if (!plan || plan === "free") {
     return {
       ok: false,
-      message: `Could not infer plan from product_id "${productId}". Pick a plan override and try again.`,
-      details: { dodoResponse: dodoData },
+      message: "Could not infer plan from the Dodo product id. Pick a plan override and try again.",
+      details: { dodoShape: dodoShape(dodoData), productId: shortId(productId) },
     };
   }
 
@@ -184,8 +202,14 @@ export async function reconcileSubscription(
   await recordAdminAction({
     actionType:   "grant_entitlement",
     targetUserId: target.id,
-    targetRef:    `reconcile:${subscriptionId}`,
-    metadata:     { plan, status: mappedStatus, customerEmail, productId },
+    targetRef:    `reconcile:${shortId(subscriptionId)}`,
+    metadata:     {
+      plan,
+      status: mappedStatus,
+      hasCustomerEmail: Boolean(customerEmail),
+      customerId: shortId(customerId),
+      productId: shortId(productId),
+    },
   });
 
   revalidatePath("/admin/billing");

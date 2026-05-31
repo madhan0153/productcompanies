@@ -232,38 +232,26 @@ export async function uploadAndParseResume(formData: FormData): Promise<UploadRe
     return await uploadAndParseResumeInner(formData);
   } catch (err) {
     const name = err instanceof Error ? err.name : "unknown";
-    const message = err instanceof Error ? err.message : String(err);
-    const firstStackLine = err instanceof Error
-      ? (err.stack ?? "").split("\n").slice(1, 4).join(" | ").slice(0, 500)
-      : null;
-    console.error(`RUPLOAD_THROW [${name}] ${message.slice(0, 240)} || ${firstStackLine ?? ""}`);
     logEvent("error", "resume_upload_uncaught", {
       err_name:  name,
-      err_msg:   message.slice(0, 240),
-      err_stack: firstStackLine,
     });
-    // Persist the full error to the profiles row so we can read it via the
-    // admin API without fighting log-table truncation. resume_parse_error
-    // already exists and is reset on every successful parse.
+    // Store only a generic marker. Raw error messages can contain provider,
+    // storage, or parser internals and should never be shown to users or logs.
     try {
       const admin = createSupabaseAdminClient();
       const supabase = await createSupabaseServerClient();
       const { data: { user } } = await supabase.auth.getUser();
       if (user) {
-        const tag = `[${name}] ${message.slice(0, 200)} || ${(firstStackLine ?? "").slice(0, 240)}`;
         await (admin.from("profiles") as any)
-          .update({ resume_parse_error: tag })
+          .update({ resume_parse_error: "Upload failed before processing. Please retry." })
           .eq("id", user.id);
       }
     } catch {
       // Best effort.
     }
-    // Surface the actual TypeError name + first 200 chars to the UI so the
-    // user (and we) can see what's happening instead of a black-box "try
-    // again".
     return {
       ok: false,
-      error: `Upload error [${name}]: ${message.slice(0, 200)}`,
+      error: "Upload failed before processing. Please retry.",
       retryable: true,
     };
   }
@@ -415,23 +403,10 @@ async function uploadAndParseResumeInner(formData: FormData): Promise<UploadResu
     });
     assertNoSupabaseError(queueError, "Could not mark resume parsing as queued");
   } catch (err) {
-    // CRITICAL: this catch was silent. The original error never reached
-    // logs, so all the user saw was "Could not start resume processing"
-    // with no way to know whether the DB rejected an INSERT, the schema
-    // drifted, or RLS blocked the write. Mirror the top-level
-    // RUPLOAD_THROW emission here so the next failure tells us exactly
-    // which line in the DB-write chain threw.
     const name = err instanceof Error ? err.name : "unknown";
-    const message = err instanceof Error ? err.message : String(err);
-    const firstStackLine = err instanceof Error
-      ? (err.stack ?? "").split("\n").slice(1, 3).join(" | ").slice(0, 400)
-      : null;
-    console.error(`RUPLOAD_QUEUE_FAIL [${name}] ${message.slice(0, 240)} || ${firstStackLine ?? ""}`);
     logEvent("error", "resume_upload_queue_failed", {
       user_id:   userId.slice(0, 8),
       err_name:  name,
-      err_msg:   message.slice(0, 240),
-      err_stack: firstStackLine,
     });
     try {
       await removeUploadedResume(admin, path);
@@ -439,13 +414,13 @@ async function uploadAndParseResumeInner(formData: FormData): Promise<UploadResu
       // Best effort cleanup; the user should see the original queue failure.
     }
     try {
-      await failDurableJob(admin, jobId, "queue_failed", err instanceof Error ? err.message : "Could not queue resume parsing.");
+      await failDurableJob(admin, jobId, "queue_failed", "Could not queue resume parsing.");
     } catch {
       // The job row may not exist yet.
     }
     return {
       ok: false,
-      error: `Could not start resume processing. Detail: ${message.slice(0, 120)}. Please retry.`,
+      error: "Could not start resume processing. Please retry.",
       retryable: true,
     };
   }

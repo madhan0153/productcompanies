@@ -9,22 +9,32 @@
 // triggered from a sidebar link in /admin/content. Idempotent — safe to
 // hit multiple times.
 
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { DSA_V2_BANK } from "@prodmatch/shared";
 import { requireAdmin } from "@/lib/admin/auth";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
+import { rateLimitRoute } from "@/lib/security/route-rate-limit";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-export async function GET()  { return runSeed(); }
-export async function POST() { return runSeed(); }
+export async function GET(req: NextRequest)  { return runSeed(req); }
+export async function POST(req: NextRequest) { return runSeed(req); }
 
-async function runSeed() {
+async function runSeed(req: NextRequest) {
+  const ipLimit = await rateLimitRoute(req, "admin_dsa_seed_ip", { limit: 20, windowMs: 10 * 60_000 });
+  if (ipLimit) return ipLimit;
+
   const gate = await requireAdmin();
   if (!gate.isAdmin) {
     return NextResponse.json({ ok: false, error: "Not authorised" }, { status: 403 });
   }
+  const adminLimit = await rateLimitRoute(req, "admin_dsa_seed", {
+    limit: 10,
+    windowMs: 10 * 60_000,
+    userId: gate.userId,
+  });
+  if (adminLimit) return adminLimit;
 
   const admin = createSupabaseAdminClient();
 
