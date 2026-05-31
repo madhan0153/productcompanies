@@ -120,10 +120,17 @@ function paisePerDay(monthlyPaise: number): string {
   return `₹${Math.round(perDay)}/day`;
 }
 
+function yearlyPaisePerDay(yearlyPaise: number): string {
+  const perDay = yearlyPaise / 100 / 365;
+  return `₹${Math.round(perDay)}/day`;
+}
+
 export const PRICING_COPY = {
   // Per-day (the headline number — feels smallest)
   proPerDay:                paisePerDay(PRICING.pro.monthly),               // "₹3/day"
+  proPerDayYearly:          yearlyPaisePerDay(PRICING.pro.yearly),          // "₹3/day" (slightly less)
   sprintPerDay:             paisePerDay(PRICING.career_sprint.monthly),     // "₹17/day"
+  sprintPerDayYearly:       yearlyPaisePerDay(PRICING.career_sprint.yearly),// "₹14/day"
   creditPerUse:             `₹${Math.round(PRICING.credit_pack_50.once / 100 / 50)} per tailored resume`, // "₹20 per..."
 
   // Real billed amount (shown smaller, for clarity)

@@ -7,8 +7,9 @@ import {
   Check, Zap, Rocket, Star, CreditCard, ShieldCheck, ArrowRight, ArrowLeft,
   Clock, Sparkles, X as XIcon, LayoutDashboard,
 } from "lucide-react";
-import { PRICING_COPY } from "@/lib/billing/catalog";
+import { PRICING_COPY, type CheckoutProductId } from "@/lib/billing/catalog";
 import { createSupabaseBrowserClient } from "@/lib/supabase/browser";
+import { useAvailability } from "@/lib/billing/use-availability";
 
 type Interval = "monthly" | "yearly";
 
@@ -57,6 +58,12 @@ export default function PricingPage() {
   const [interval, setInterval] = useState<Interval>("monthly");
   const [state, setState] = useState<CheckoutState>({ loading: null, error: null });
   const [isSignedIn, setIsSignedIn] = useState<boolean | null>(null);
+  const availability = useAvailability();
+  // Once a CTA returns 503 unavailable mid-session, dim it for the rest of
+  // the visit even if the cached availability probe was optimistic.
+  const [unavailable, setUnavailable] = useState<Set<CheckoutProductId>>(new Set());
+  const isUnavailable = (id: CheckoutProductId): boolean =>
+    unavailable.has(id) || !availability.isAvailable(id);
 
   // Detect auth state on the client so the nav can show the right CTA.
   // null = unknown (initial paint), true = signed in, false = signed out.
@@ -69,7 +76,8 @@ export default function PricingPage() {
     return () => { cancelled = true; };
   }, []);
 
-  async function startCheckout(product: string) {
+  async function startCheckout(product: CheckoutProductId) {
+    if (isUnavailable(product)) return; // hard-stop: CTA is decorative
     setState({ loading: product, error: null });
     try {
       const res = await fetch("/api/billing/checkout", {
@@ -81,6 +89,15 @@ export default function PricingPage() {
       if (!res.ok) {
         if (res.status === 401) {
           router.push(`/auth/login?next=/pricing`);
+          return;
+        }
+        if (data.code === "unavailable") {
+          setUnavailable((prev) => {
+            const next = new Set(prev);
+            next.add(product);
+            return next;
+          });
+          setState({ loading: null, error: "That plan isn't available yet — try a different one or apply a coupon below." });
           return;
         }
         setState({ loading: null, error: data.error ?? "We couldn't start checkout. Please try again." });
@@ -182,74 +199,101 @@ export default function PricingPage() {
             Career Sprint first anchors the perceived value of Pro. */}
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           {/* Career Sprint — anchor */}
-          <PlanCard
-            icon={<Rocket className="h-5 w-5 text-violet-500" />}
-            name="Career Sprint"
-            tagline="30–60 day job push"
-            primary={interval === "monthly" ? PRICING_COPY.sprintPerDay : PRICING_COPY.sprintPerDay}
-            secondary={interval === "monthly"
-              ? `${PRICING_COPY.sprintMonthly}/month, cancel anytime`
-              : `${PRICING_COPY.sprintYearly}/year · save ${PRICING_COPY.sprintYearlySavings}`}
-            anchor={interval === "yearly" ? `was ${PRICING_COPY.sprintYearlyAnchor}/yr` : undefined}
-            highlight={false}
-            features={SPRINT_FEATURES}
-            cta={
-              <button
-                onClick={() => startCheckout(interval === "monthly" ? "career_sprint_monthly" : "career_sprint_yearly")}
-                disabled={!!state.loading}
-                className="inline-flex h-10 w-full items-center justify-center rounded-lg border border-violet-500/40 bg-violet-500/10 px-4 text-sm font-semibold text-violet-700 transition hover:bg-violet-500/15 disabled:opacity-60 dark:text-violet-300"
-              >
-                {state.loading === (interval === "monthly" ? "career_sprint_monthly" : "career_sprint_yearly")
-                  ? "Redirecting…" : "Start Sprint"}
-              </button>
-            }
-          />
+          {(() => {
+            const sprintProduct: CheckoutProductId = interval === "monthly" ? "career_sprint_monthly" : "career_sprint_yearly";
+            const sprintUnavail = isUnavailable(sprintProduct);
+            return (
+              <PlanCard
+                icon={<Rocket className="h-5 w-5 text-violet-500" />}
+                name="Career Sprint"
+                tagline="30–60 day job push"
+                primary={interval === "monthly" ? PRICING_COPY.sprintPerDay : PRICING_COPY.sprintPerDayYearly}
+                secondary={interval === "monthly"
+                  ? `${PRICING_COPY.sprintMonthly}/month, cancel anytime`
+                  : `${PRICING_COPY.sprintYearly}/year · save ${PRICING_COPY.sprintYearlySavings}`}
+                anchor={interval === "yearly" ? `was ${PRICING_COPY.sprintYearlyAnchor}/yr` : undefined}
+                highlight={false}
+                features={SPRINT_FEATURES}
+                cta={
+                  <button
+                    onClick={() => startCheckout(sprintProduct)}
+                    disabled={!!state.loading || sprintUnavail}
+                    className="inline-flex h-10 w-full items-center justify-center rounded-lg border border-violet-500/40 bg-violet-500/10 px-4 text-sm font-semibold text-violet-700 transition hover:bg-violet-500/15 disabled:cursor-not-allowed disabled:opacity-60 dark:text-violet-300"
+                  >
+                    {sprintUnavail
+                      ? "Coming soon"
+                      : state.loading === sprintProduct
+                        ? "Redirecting…"
+                        : "Start Sprint"}
+                  </button>
+                }
+              />
+            );
+          })()}
 
           {/* Pro — most popular */}
-          <PlanCard
-            icon={<Zap className="h-5 w-5 text-primary" />}
-            name="Pro"
-            badge="Most popular"
-            tagline="Active applicants"
-            primary={interval === "monthly" ? PRICING_COPY.proPerDay : PRICING_COPY.proPerDay}
-            secondary={interval === "monthly"
-              ? `${PRICING_COPY.proMonthly}/month, cancel anytime`
-              : `${PRICING_COPY.proYearly}/year · save ${PRICING_COPY.proYearlySavings}`}
-            anchor={interval === "yearly" ? `was ${PRICING_COPY.proYearlyAnchor}/yr` : undefined}
-            highlight={true}
-            features={PRO_FEATURES}
-            cta={
-              <button
-                onClick={() => startCheckout(interval === "monthly" ? "pro_monthly" : "pro_yearly")}
-                disabled={!!state.loading}
-                className="inline-flex h-10 w-full items-center justify-center rounded-lg bg-primary px-4 text-sm font-semibold text-primary-foreground transition hover:bg-primary/90 disabled:opacity-60"
-              >
-                {state.loading === (interval === "monthly" ? "pro_monthly" : "pro_yearly")
-                  ? "Redirecting…" : "Upgrade to Pro"}
-              </button>
-            }
-          />
+          {(() => {
+            const proProduct: CheckoutProductId = interval === "monthly" ? "pro_monthly" : "pro_yearly";
+            const proUnavail = isUnavailable(proProduct);
+            return (
+              <PlanCard
+                icon={<Zap className="h-5 w-5 text-primary" />}
+                name="Pro"
+                badge={proUnavail ? "Coming soon" : "Most popular"}
+                tagline="Active applicants"
+                primary={interval === "monthly" ? PRICING_COPY.proPerDay : PRICING_COPY.proPerDayYearly}
+                secondary={interval === "monthly"
+                  ? `${PRICING_COPY.proMonthly}/month, cancel anytime`
+                  : `${PRICING_COPY.proYearly}/year · save ${PRICING_COPY.proYearlySavings}`}
+                anchor={interval === "yearly" ? `was ${PRICING_COPY.proYearlyAnchor}/yr` : undefined}
+                highlight={true}
+                features={PRO_FEATURES}
+                cta={
+                  <button
+                    onClick={() => startCheckout(proProduct)}
+                    disabled={!!state.loading || proUnavail}
+                    className="inline-flex h-10 w-full items-center justify-center rounded-lg bg-primary px-4 text-sm font-semibold text-primary-foreground transition hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-60"
+                  >
+                    {proUnavail
+                      ? "Coming soon"
+                      : state.loading === proProduct
+                        ? "Redirecting…"
+                        : "Upgrade to Pro"}
+                  </button>
+                }
+              />
+            );
+          })()}
 
           {/* Credit Pack — one-time */}
-          <PlanCard
-            id="credits"
-            icon={<CreditCard className="h-5 w-5 text-amber-500" />}
-            name="Credit Pack"
-            tagline="No subscription"
-            primary={PRICING_COPY.creditPerUse}
-            secondary={`${PRICING_COPY.creditPack50} · one-time`}
-            highlight={false}
-            features={CREDIT_FEATURES}
-            cta={
-              <button
-                onClick={() => startCheckout("tailor_credits_50")}
-                disabled={!!state.loading}
-                className="inline-flex h-10 w-full items-center justify-center rounded-lg border border-border bg-background px-4 text-sm font-medium text-foreground transition hover:bg-secondary disabled:opacity-60"
-              >
-                {state.loading === "tailor_credits_50" ? "Redirecting…" : "Buy 50 credits"}
-              </button>
-            }
-          />
+          {(() => {
+            const creditUnavail = isUnavailable("tailor_credits_50");
+            return (
+              <PlanCard
+                id="credits"
+                icon={<CreditCard className="h-5 w-5 text-amber-500" />}
+                name="Credit Pack"
+                tagline="No subscription"
+                primary={PRICING_COPY.creditPerUse}
+                secondary={`${PRICING_COPY.creditPack50} · one-time`}
+                highlight={false}
+                features={CREDIT_FEATURES}
+                cta={
+                  <button
+                    onClick={() => startCheckout("tailor_credits_50")}
+                    disabled={!!state.loading || creditUnavail}
+                    className="inline-flex h-10 w-full items-center justify-center rounded-lg border border-border bg-background px-4 text-sm font-medium text-foreground transition hover:bg-secondary disabled:cursor-not-allowed disabled:opacity-60"
+                  >
+                    {creditUnavail
+                      ? "Coming soon"
+                      : state.loading === "tailor_credits_50"
+                        ? "Redirecting…"
+                        : "Buy 50 credits"}
+                  </button>
+                }
+              />
+            );
+          })()}
 
           {/* Free */}
           <PlanCard
@@ -340,14 +384,24 @@ function CouponRedemption({ isSignedIn }: { isSignedIn: boolean | null }) {
         headers: { "Content-Type": "application/json" },
         body:    JSON.stringify({ code: code.trim() }),
       });
-      const data = await res.json() as { ok?: boolean; message?: string; error?: string };
+      const data = await res.json() as { ok?: boolean; message?: string; error?: string; grantType?: string };
       if (!res.ok) {
         setResult({ ok: false, msg: data.error ?? "Could not redeem code." });
       } else {
-        setResult({ ok: true, msg: data.message ?? "Code redeemed! Refreshing…" });
+        setResult({ ok: true, msg: data.message ?? "Code redeemed! Activating…" });
         setCode("");
-        // Reflect new entitlement everywhere — refresh after a brief celebration window
-        setTimeout(() => router.refresh(), 1400);
+        // Plan grants change the sidebar UsageChip, dashboard usage, every
+        // gate in the app — a router.refresh() in-place keeps the user on
+        // /pricing with stale chrome above the fold. Push them to the
+        // dashboard so the new plan is the first thing they see. Credit /
+        // tailor packs are local to /pricing → refresh in place is fine.
+        setTimeout(() => {
+          if (data.grantType === "plan" || data.grantType === "subscription") {
+            router.push("/dashboard?redeemed=1");
+          } else {
+            router.refresh();
+          }
+        }, 1400);
       }
     } catch {
       setResult({ ok: false, msg: "Network error. Please try again." });

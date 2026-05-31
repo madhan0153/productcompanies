@@ -7,6 +7,7 @@ import { CheckCircle2, Loader2, ArrowRight, AlertTriangle, Copy } from "lucide-r
 import {
   CHECKOUT_PRODUCTS, PLAN_LIMITS, type CheckoutProductId,
 } from "@/lib/billing/catalog";
+import { clientEnv } from "@/lib/env";
 import { CelebrationOverlay } from "./celebration";
 
 // Dodo redirects to /billing/success?product=...&session=...&return_to=...
@@ -77,7 +78,7 @@ function BillingSuccessContent() {
         const data = await res.json() as { plan?: string; error?: string; details?: unknown };
         if (!res.ok) {
           // Surface the error to the user so they can take action / contact support
-          console.warn("[billing/success] sync failed", res.status, data);
+          console.warn("[billing/success] sync failed", { status: res.status });
           if (res.status === 403) {
             // Ownership mismatch — most actionable error
             setSyncError(
@@ -94,7 +95,7 @@ function BillingSuccessContent() {
           setPhase("activated");
         }
       } catch (err) {
-        console.warn("[billing/success] sync error", err);
+        console.warn("[billing/success] sync error", { name: err instanceof Error ? err.name : "unknown" });
       }
     }
 
@@ -154,7 +155,7 @@ function BillingSuccessContent() {
 
   // ── Wrong-host fallback (env var misconfigured at checkout time) ───────
   if (onWrongHost) {
-    const correctUrl = `https://prodmatchai.in/settings/billing`;
+    const correctUrl = `${clientEnv.NEXT_PUBLIC_APP_URL.replace(/\/$/, "")}/settings/billing`;
     return (
       <Centered>
         <div className="max-w-md space-y-4 rounded-2xl border border-amber-500/30 bg-amber-500/8 p-6 text-center">

@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
 import { Lock, Sparkles, ArrowRight } from "lucide-react";
+import { UpgradeModal } from "@/components/billing/upgrade-modal";
 
 // India-focused emotional copy — rotates inside ONE single card rather than
 // being scattered across many. Each quote earns its 4-second slot.
@@ -37,6 +38,7 @@ interface Props {
 export function LockedMatchesPanel({ count, tab }: Props) {
   const reduce = useReducedMotion();
   const [idx, setIdx] = useState(0);
+  const [upgradeOpen, setUpgradeOpen] = useState(false);
 
   useEffect(() => {
     if (reduce) return;
@@ -93,20 +95,37 @@ export function LockedMatchesPanel({ count, tab }: Props) {
           })}
         </div>
 
-        {/* Primary CTA */}
-        <Link
-          href="/pricing"
+        {/* Primary CTA — opens the upgrade modal directly so the user can
+            check out without losing their /matches scroll position. */}
+        <button
+          type="button"
+          onClick={() => setUpgradeOpen(true)}
           className="group mt-6 inline-flex items-center gap-2 rounded-full bg-primary px-6 py-3 text-sm font-bold text-primary-foreground shadow-pop transition hover:bg-primary/90 sm:text-base"
         >
           <Sparkles className="h-4 w-4" />
           Unlock all matches — ₹3/day
           <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
+        </button>
+
+        {/* Secondary: full pricing page */}
+        <Link
+          href="/pricing"
+          className="mt-2 inline-flex items-center gap-1 text-[11px] font-medium text-muted-foreground hover:text-foreground"
+        >
+          Compare all plans →
         </Link>
 
         {/* Trust line */}
         <p className="mt-3 text-[11px] text-muted-foreground">
           Cancel anytime · DPDP-compliant · UPI / Cards / Net banking
         </p>
+
+        <UpgradeModal
+          open={upgradeOpen}
+          onClose={() => setUpgradeOpen(false)}
+          trigger="matches_exhausted"
+          returnTo="/matches"
+        />
 
         {/* Blurred peek strip — decorative “there's more” signal */}
         <div className="mt-6 flex w-full max-w-md items-center gap-2 px-2 opacity-50">

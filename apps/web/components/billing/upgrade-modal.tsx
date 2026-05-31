@@ -7,7 +7,8 @@ import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
 import {
   X, Zap, Check, Loader2, ArrowRight, Sparkles, CreditCard,
 } from "lucide-react";
-import { PRICING_COPY } from "@/lib/billing/catalog";
+import { PRICING_COPY, type CheckoutProductId } from "@/lib/billing/catalog";
+import { useAvailability } from "@/lib/billing/use-availability";
 
 // ─── Trigger registry ─────────────────────────────────────────────────────────
 // One source of truth for which UX moment fired the modal — used for both
@@ -28,6 +29,7 @@ export type UpgradeTrigger =
   | "dsa_company_track"
   | "dsa_ai_coach"
   | "dsa_bonus_practice"
+  | "dsa_freeze_exhausted"
   | "generic";
 
 interface TriggerCopy {
@@ -37,6 +39,14 @@ interface TriggerCopy {
   ctaSecondary?: { label: string; href: string };
 }
 
+// Wiring status (search the codebase to confirm callsites):
+//   wired:    tailor_exhausted, matches_exhausted, dsa_*, generic
+//   reserved: strong_fit_locked, advanced_filter, interview_plan,
+//             reparse_locked, priority_recompute
+// Reserved triggers exist as copy ready for surfaces that aren't built yet
+// (individual strong-fit cards, Pro filter chips, an interview plan banner,
+// re-parse quota gate, "Recompute now" button). When those land, they should
+// import this enum rather than reinvent the copy.
 const TRIGGER_COPY: Record<UpgradeTrigger, TriggerCopy> = {
   tailor_exhausted: {
     eyebrow: "You're applying! 🎯",
@@ -110,6 +120,11 @@ const TRIGGER_COPY: Record<UpgradeTrigger, TriggerCopy> = {
     title:   "5 bonus questions a day with Pro",
     body:    "Go beyond today's pick. Pro adds 5 daily; Career Sprint is unlimited.",
   },
+  dsa_freeze_exhausted: {
+    eyebrow: "Out of freezes",
+    title:   "Pro gives you 3 freeze tokens",
+    body:    "Pause your streak on busy days. Pro accrues 1 freeze every 3 days, up to 3.",
+  },
   generic: {
     eyebrow: "Upgrade",
     title:   "Unlock the full ProdMatch experience",
@@ -131,8 +146,16 @@ export function UpgradeModal({ open, onClose, trigger, returnTo }: UpgradeModalP
   const router  = useRouter();
   const reduce  = useReducedMotion();
   const copy    = TRIGGER_COPY[trigger];
+  const availability = useAvailability();
   const [loading, setLoading] = useState<string | null>(null);
   const [error, setError]     = useState<string | null>(null);
+  // Per-session "this product is misconfigured" set — once a checkout returns
+  // code "unavailable", we dim that button for the rest of the visit even if
+  // the availability probe was optimistic.
+  const [unavailable, setUnavailable] = useState<Set<CheckoutProductId>>(new Set());
+
+  const isUnavailable = (id: CheckoutProductId): boolean =>
+    unavailable.has(id) || !availability.isAvailable(id);
 
   // ESC closes
   useEffect(() => {
@@ -146,7 +169,16 @@ export function UpgradeModal({ open, onClose, trigger, returnTo }: UpgradeModalP
     };
   }, [open, onClose]);
 
-  async function startCheckout(product: string) {
+  // Reset transient state after close, but only after the exit animation has
+  // played out — otherwise the user sees the error banner vanish mid-fade.
+  useEffect(() => {
+    if (open) return;
+    const t = setTimeout(() => { setError(null); setLoading(null); }, 260);
+    return () => clearTimeout(t);
+  }, [open]);
+
+  async function startCheckout(product: CheckoutProductId) {
+    if (isUnavailable(product)) return; // hard-stop: button is decorative
     setError(null);
     setLoading(product);
     try {
@@ -162,7 +194,16 @@ export function UpgradeModal({ open, onClose, trigger, returnTo }: UpgradeModalP
           return;
         }
         setLoading(null);
-        setError(data.error ?? "We couldn't start checkout. Please try again.");
+        if (data.code === "unavailable") {
+          setUnavailable((prev) => {
+            const next = new Set(prev);
+            next.add(product);
+            return next;
+          });
+          setError("That plan isn't available yet — try a different one or use a coupon.");
+        } else {
+          setError(data.error ?? "We couldn't start checkout. Please try again.");
+        }
         return;
       }
       if (!data.checkoutUrl) {
@@ -231,23 +272,33 @@ export function UpgradeModal({ open, onClose, trigger, returnTo }: UpgradeModalP
             {/* Pro card — primary recommendation */}
             <div className="space-y-3 px-5 pb-5 pt-3">
               {error && (
-                <p role="alert" className="rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-xs font-medium text-destructive">
+                <p
+                  role="alert"
+                  className="rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2.5 text-sm font-medium leading-snug text-destructive"
+                >
                   {error}
                 </p>
               )}
               <button
                 type="button"
                 onClick={() => startCheckout("pro_monthly")}
-                disabled={!!loading}
-                className="group flex w-full items-center justify-between gap-3 rounded-xl border-2 border-primary bg-primary/8 p-4 text-left transition hover:bg-primary/12 disabled:opacity-60"
+                disabled={!!loading || isUnavailable("pro_monthly")}
+                aria-label={isUnavailable("pro_monthly") ? "Pro — coming soon" : "Upgrade to Pro"}
+                className="group flex w-full items-center justify-between gap-3 rounded-xl border-2 border-primary bg-primary/8 p-4 text-left transition hover:bg-primary/12 disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:bg-primary/8"
               >
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-2">
                     <Zap className="h-4 w-4 text-primary" />
                     <span className="text-sm font-semibold">Pro</span>
-                    <span className="rounded-full bg-primary px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-primary-foreground">
-                      Most popular
-                    </span>
+                    {isUnavailable("pro_monthly") ? (
+                      <span className="rounded-full bg-secondary px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+                        Coming soon
+                      </span>
+                    ) : (
+                      <span className="rounded-full bg-primary px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-primary-foreground">
+                        Most popular
+                      </span>
+                    )}
                   </div>
                   <div className="mt-2 flex items-baseline gap-1.5">
                     <span className="font-display text-2xl font-bold">{PRICING_COPY.proPerDay}</span>
@@ -270,13 +321,19 @@ export function UpgradeModal({ open, onClose, trigger, returnTo }: UpgradeModalP
               <button
                 type="button"
                 onClick={() => startCheckout("career_sprint_monthly")}
-                disabled={!!loading}
-                className="group flex w-full items-center justify-between gap-3 rounded-xl border border-border bg-background p-3.5 text-left transition hover:border-violet-500/40 hover:bg-violet-500/5 disabled:opacity-60"
+                disabled={!!loading || isUnavailable("career_sprint_monthly")}
+                aria-label={isUnavailable("career_sprint_monthly") ? "Career Sprint — coming soon" : "Upgrade to Career Sprint"}
+                className="group flex w-full items-center justify-between gap-3 rounded-xl border border-border bg-background p-3.5 text-left transition hover:border-violet-500/40 hover:bg-violet-500/5 disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:border-border disabled:hover:bg-background"
               >
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-2">
                     <Sparkles className="h-3.5 w-3.5 text-violet-500" />
                     <span className="text-sm font-semibold">Career Sprint</span>
+                    {isUnavailable("career_sprint_monthly") && (
+                      <span className="rounded-full bg-secondary px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+                        Coming soon
+                      </span>
+                    )}
                   </div>
                   <p className="mt-0.5 text-[11px] text-muted-foreground">
                     {PRICING_COPY.sprintPerDay} · 100 tailors + priority queue + premium exports
