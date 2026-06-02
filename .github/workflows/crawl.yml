@@ -255,12 +255,18 @@ jobs:
             echo "::warning::APP_URL or CRON_SECRET missing — skipping recompute"
             exit 0
           fi
+          # Normalise trailing slash + follow Vercel's canonical-domain redirect
+          # (apex↔www / *.vercel.app → primary). Without -L the POST got a bare
+          # HTTP 307 and this whole fan-out bailed — which is why matches stayed
+          # stale ("Computed Nh ago") even though the crawl refreshed jobs.
+          # --location-trusted re-sends the Bearer header across the redirect.
+          APP_URL="${APP_URL%/}"
           MAX_ITER=30
           iter=0
           conflict_streak=0
           while [ $iter -lt $MAX_ITER ]; do
             iter=$((iter + 1))
-            http_code=$(curl -sS -o /tmp/recompute-resp.json -w "%{http_code}" \
+            http_code=$(curl -sS -L --location-trusted -o /tmp/recompute-resp.json -w "%{http_code}" \
               -X POST "${APP_URL}/api/cron/recompute-matches" \
               -H "Authorization: Bearer ${CRON_SECRET}" \
               -H "Content-Type: application/json" \
@@ -329,7 +335,8 @@ jobs:
             exit 0
           fi
 
-          http_code=$(curl -sS -o /tmp/indexnow-resp.json -w "%{http_code}" \
+          APP_URL="${APP_URL%/}"
+          http_code=$(curl -sS -L --location-trusted -o /tmp/indexnow-resp.json -w "%{http_code}" \
             -X POST "${APP_URL}/api/cron/indexnow" \
             -H "Authorization: Bearer ${CRON_SECRET}" \
             -H "Content-Type: application/json" \
