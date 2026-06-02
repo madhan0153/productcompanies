@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { AlertTriangle, RefreshCw } from "lucide-react";
 
 export default function AppError({
@@ -10,6 +11,8 @@ export default function AppError({
   error: Error & { digest?: string };
   reset: () => void;
 }) {
+  const router = useRouter();
+
   useEffect(() => {
     if (process.env.NODE_ENV === "production") {
       console.error("[AppError]", {
@@ -34,7 +37,10 @@ export default function AppError({
         )}
       </div>
       <button
-        onClick={reset}
+        onClick={() => {
+          reset();
+          router.refresh();
+        }}
         className="press tap-target inline-flex items-center gap-2 rounded-md border border-border bg-card px-4 py-2 text-sm font-medium text-muted-foreground transition hover:border-primary/40 hover:text-foreground focus-ring"
       >
         <RefreshCw className="h-4 w-4" aria-hidden="true" />

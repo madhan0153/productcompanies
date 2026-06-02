@@ -39,6 +39,13 @@ type MatchRow = MatchCardData & {
   hidden_reason: string | null;
 };
 
+type ComputeJobLite = {
+  status: "queued" | "running" | "succeeded" | "failed" | "cancelled" | "superseded";
+  queued_at: string | null;
+  started_at: string | null;
+  error_message: string | null;
+};
+
 // ----------------------------------------------------------------------
 // Page
 // ----------------------------------------------------------------------
@@ -83,38 +90,29 @@ export default async function MatchesPage({
   // resume version. A stale resume is not the same thing as an active compute:
   // if no job is queued/running, the page should prompt the user instead of
   // showing endless progress.
-  let isComputing = false;
-  if (hasActiveResume) {
-    try {
-      const { count } = await ((admin.from("background_jobs") as any)
-        .select("id", { count: "exact", head: true })
-        .eq("user_id", user.id)
-        .eq("job_type", "match_compute")
-        .eq("resume_version_id", activeResumeVersionId)
-        .in("status", ["queued", "running"]) as any) as { count: number | null };
-      isComputing = (count ?? 0) > 0;
-    } catch {
-      // background_jobs might not exist on fresh schemas — fail quietly.
-    }
-  }
-  let latestComputeError: string | null = null;
+  let latestComputeJob: ComputeJobLite | null = null;
   if (hasActiveResume && activeResumeVersionId) {
     try {
-      const { data: latestCompute } = await ((admin.from("background_jobs") as any)
-        .select("status, error_message")
+      const { data } = await ((admin.from("background_jobs") as any)
+        .select("status, queued_at, started_at, error_message")
         .eq("user_id", user.id)
         .eq("job_type", "match_compute")
         .eq("resume_version_id", activeResumeVersionId)
         .order("created_at", { ascending: false })
         .limit(1)
-        .maybeSingle() as any) as { data: { status: string; error_message: string | null } | null };
-      if (latestCompute?.status === "failed") {
-        latestComputeError = latestCompute.error_message ?? "Match computation failed. Your previous matches are still available.";
-      }
+        .maybeSingle() as any) as { data: ComputeJobLite | null };
+      latestComputeJob = data;
     } catch {
-      latestComputeError = null;
+      latestComputeJob = null;
     }
   }
+  const activeJobStatus = latestComputeJob?.status === "queued" || latestComputeJob?.status === "running"
+    ? latestComputeJob.status
+    : null;
+  const isComputing = activeJobStatus !== null;
+  const latestComputeError = latestComputeJob?.status === "failed"
+    ? latestComputeJob.error_message ?? "Match computation failed. Your previous matches are still available."
+    : null;
 
   // End-user fix (EU-2): show "Jobs updated Nh ago" so users can trust the
   // freshness of the underlying inventory. Reads the most-recent successful
@@ -336,7 +334,14 @@ export default async function MatchesPage({
           The ComputeAutoRefresh poller above swaps in fresh matches the moment
           the background job finishes, so this is the only status the user
           needs to see. */}
-      {isComputing && <ComputingBanner hasExisting={allRows.length > 0} />}
+      {isComputing && (
+        <ComputingBanner
+          hasExisting={allRows.length > 0}
+          jobStatus={activeJobStatus ?? "queued"}
+          queuedAt={latestComputeJob?.queued_at ?? null}
+          startedAt={latestComputeJob?.started_at ?? null}
+        />
+      )}
 
       {!isComputing && latestComputeError && (
         <div className="rounded-xl border border-warning/30 bg-warning/5 px-4 py-3 text-sm text-warning">
