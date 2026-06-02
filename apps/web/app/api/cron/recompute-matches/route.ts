@@ -20,6 +20,11 @@ import { NextRequest, NextResponse } from "next/server";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { runUserRecomputeBlocking } from "@/lib/queue/recompute";
 import { requireCronAuth, verifySensitiveCronAuth } from "@/lib/security/cron";
+import {
+  fetchRecomputeCandidates,
+  remainingAfterProcessed,
+  type RecomputeCandidate,
+} from "@/lib/cron/recompute-candidates";
 
 export const runtime = "nodejs";
 export const maxDuration = 300;
@@ -148,54 +153,19 @@ export async function POST(req: NextRequest) {
     }
 
     // ── Build the work queue ─────────────────────────────────────────────
-    // Eligibility joins: matching consent granted + profile has a resume
-    // embedding. We pull from `consents` (source of truth) and intersect
-    // with profiles that have something to score against.
-    const { data: consented } = await admin
-      .from("consents")
-      .select("user_id")
-      .eq("purpose", "matching")
-      .eq("granted", true);
-    const consentedIds = new Set((consented ?? []).map((c) => c.user_id as string));
-
-    // Sprint 4 Item 13: order by oldest last_match_compute_at first so the
-    // batch always works on the most stale users. nullsFirst = brand-new
-    // profiles get their first compute promptly.
-
-    let profileQuery = (admin
-      .from("profiles")
-      .select("id, resume_storage_path, resume_parsed_version_id, resume_embedding_at, resume_embedding_version_id, active_resume_version_id, pending_resume_version_id, resume_parse_error, last_match_compute_at")
-      .not("resume_embedding_at", "is", null)
-      .is("pending_resume_version_id", null)
-      .is("resume_parse_error", null) as any);
-    profileQuery = targetUserId
-      ? profileQuery.eq("id", targetUserId).limit(1)
-      : profileQuery.order("last_match_compute_at", { ascending: true, nullsFirst: true }).limit(BATCH_SIZE * 4);
-    const { data: profiles } = await profileQuery as {
-        data: Array<{
-          id: string;
-          resume_storage_path: string | null;
-          resume_embedding_at: string | null;
-          resume_parsed_version_id: string | null;
-          resume_embedding_version_id: string | null;
-          active_resume_version_id: string | null;
-          pending_resume_version_id: string | null;
-          resume_parse_error: string | null;
-          last_match_compute_at: string | null;
-        }> | null;
-      };
-
-    const eligibleAll = (profiles ?? [])
-      .filter((p) => p.resume_storage_path)
-      .filter((p) => p.active_resume_version_id)
-      .filter((p) => p.resume_parsed_version_id === p.active_resume_version_id)
-      .filter((p) => p.resume_embedding_version_id === p.active_resume_version_id)
-      .filter((p) => consentedIds.has(p.id))
-      .filter((p) => targetUserId === null || p.id === targetUserId);
-
-    // Snapshot batch size BEFORE slicing so the caller can compute remaining.
-    const eligibleCount = eligibleAll.length;
-    const batch = eligibleAll.slice(0, BATCH_SIZE);
+    // Eligibility is DB-backed (match_recompute_candidates) with a scan
+    // fallback for deployments that have not applied the latest schema yet.
+    // This prevents old ineligible profiles from filling the page and hiding
+    // later valid users, which was the reason daily recompute could appear to
+    // work while only upload-time matches were fresh.
+    const {
+      candidates: batch,
+      totalEligible: eligibleCount,
+      source: candidateSource,
+    } = await fetchRecomputeCandidates(admin, {
+      batchSize: BATCH_SIZE,
+      targetUserId,
+    });
 
     // ── Drain the batch under wall-clock budget (concurrent) ─────────────
     const results: UserResult[] = [];
@@ -203,7 +173,7 @@ export async function POST(req: NextRequest) {
     let bailed = false;
 
     // Shared work queue — COMPUTE_CONCURRENCY workers pull from it concurrently.
-    const workQueue = [...batch];
+    const workQueue: RecomputeCandidate[] = [...batch];
     let drainBailed = false;
 
     const drainWorker = async () => {
@@ -249,19 +219,21 @@ export async function POST(req: NextRequest) {
         if (r.ok) {
           const idx = results.findIndex((res) => res.user_id === p.id);
           if (idx >= 0) results[idx] = { user_id: p.id, ok: true, mode: r.mode, total: r.total, new_matches: r.new_matches, with_fit_card: r.with_fit_card, duration_ms: r.duration_ms };
-          // Don't double-count in `processed`; already counted on first attempt.
+          processed++;
         }
       }
     }
 
     // `remaining` lets the GH Actions workflow loop until 0 — that's the
     // "queue empty" signal across invocations.
-    const remaining = Math.max(0, eligibleCount - processed);
+    const remaining = remainingAfterProcessed(eligibleCount, processed);
 
     return NextResponse.json({
       ok: true,
       batch_size: BATCH_SIZE,
+      eligible_total: eligibleCount,
       eligible_visible: eligibleCount,
+      candidate_source: candidateSource,
       processed,
       failed: results.filter((r) => !r.ok).length,
       bailed_on_budget: bailed,

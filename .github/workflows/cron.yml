@@ -1,20 +1,16 @@
 name: Scheduled Crons
 
-# Replaces Vercel Cron Jobs (which the Hobby plan caps at 2 daily-only
-# schedules). Each job below pings a cron endpoint with the same Bearer auth
-# the in-app routes expect (requireCronAuth → CRON_SECRET). All schedules are
-# in UTC; the IST intent is noted next to each.
-#
-# Endpoints + original Vercel schedules preserved 1:1:
-#   /api/cron/digest                30 2 * * 1    (weekly digest, Mon 02:30)
-#   /api/cron/recompute-matches     30 22 * * *   (nightly, 22:30)
-#   /api/cron/drain-background-jobs */15 * * * *  (every 15 min)
+# One routed job avoids misleading "This job was skipped" runs in GitHub's UI.
+# Schedules are UTC:
+#   digest                  Mon 02:30 UTC
+#   recompute-matches       Daily 22:30 UTC / 04:00 IST
+#   drain-background-jobs   Every 15 minutes
 
 on:
   schedule:
-    - cron: "30 2 * * 1"     # digest
-    - cron: "30 22 * * *"    # recompute-matches
-    - cron: "*/15 * * * *"   # drain-background-jobs
+    - cron: "30 2 * * 1"
+    - cron: "30 22 * * *"
+    - cron: "*/15 * * * *"
   workflow_dispatch:
     inputs:
       endpoint:
@@ -35,110 +31,125 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  digest:
-    name: "Weekly digest"
+  run_scheduled_cron:
+    name: "Run scheduled cron"
     runs-on: ubuntu-latest
-    timeout-minutes: 10
-    if: >-
-      ${{ github.event.schedule == '30 2 * * 1'
-          || (github.event_name == 'workflow_dispatch' && github.event.inputs.endpoint == 'digest') }}
+    timeout-minutes: 20
+    env:
+      APP_URL: ${{ secrets.APP_URL }}
+      CRON_SECRET: ${{ secrets.CRON_SECRET }}
+      EVENT_NAME: ${{ github.event_name }}
+      EVENT_SCHEDULE: ${{ github.event.schedule }}
+      INPUT_ENDPOINT: ${{ github.event.inputs.endpoint }}
     steps:
-      - name: POST /api/cron/digest
-        env:
-          APP_URL: ${{ secrets.APP_URL }}
-          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+      - name: Install jq
+        run: sudo apt-get update && sudo apt-get install -y jq
+
+      - name: Resolve endpoint
+        id: endpoint
+        shell: bash
         run: |
-          if [ -z "$APP_URL" ] || [ -z "$CRON_SECRET" ]; then
-            echo "::warning::APP_URL or CRON_SECRET missing — skipping digest"
-            exit 0
-          fi
-          APP_URL="${APP_URL%/}"
-          http_code=$(curl -sS -L --location-trusted -o /tmp/resp.json -w "%{http_code}" \
-            -X POST "${APP_URL}/api/cron/digest" \
-            -H "Authorization: Bearer ${CRON_SECRET}" \
-            -H "Content-Type: application/json" \
-            --max-time 280)
-          cat /tmp/resp.json; echo
-          if [ "$http_code" != "200" ]; then
-            echo "::warning::digest returned HTTP $http_code"
+          set -euo pipefail
+
+          endpoint=""
+          case "${EVENT_NAME}:${EVENT_SCHEDULE}" in
+            "schedule:30 2 * * 1") endpoint="digest" ;;
+            "schedule:30 22 * * *") endpoint="recompute-matches" ;;
+            "schedule:*/15 * * * *") endpoint="drain-background-jobs" ;;
+            "workflow_dispatch:"*) endpoint="${INPUT_ENDPOINT}" ;;
+          esac
+
+          if [ -z "$endpoint" ]; then
+            echo "::error::No endpoint mapping for event=${EVENT_NAME} schedule='${EVENT_SCHEDULE}' input='${INPUT_ENDPOINT}'"
             exit 1
           fi
 
-  recompute_matches:
-    name: "Recompute matches"
-    runs-on: ubuntu-latest
-    timeout-minutes: 15
-    if: >-
-      ${{ github.event.schedule == '30 22 * * *'
-          || (github.event_name == 'workflow_dispatch' && github.event.inputs.endpoint == 'recompute-matches') }}
-    steps:
-      - name: POST /api/cron/recompute-matches
-        env:
-          APP_URL: ${{ secrets.APP_URL }}
-          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+          echo "endpoint=${endpoint}" >> "$GITHUB_OUTPUT"
+          echo "Resolved endpoint: ${endpoint}"
+
+      - name: Validate cron secrets
+        shell: bash
         run: |
-          if [ -z "$APP_URL" ] || [ -z "$CRON_SECRET" ]; then
-            echo "::warning::APP_URL or CRON_SECRET missing — skipping recompute"
-            exit 0
+          set -euo pipefail
+          missing=()
+          [ -n "${APP_URL:-}" ] || missing+=("APP_URL")
+          [ -n "${CRON_SECRET:-}" ] || missing+=("CRON_SECRET")
+          if [ "${#missing[@]}" -gt 0 ]; then
+            echo "::error::Missing required Action secret(s): ${missing[*]}"
+            exit 1
           fi
-          # Normalise a trailing slash so we never POST to a //double-slash URL
-          # that Vercel would 307-redirect.
-          APP_URL="${APP_URL%/}"
-          # The route drains BATCH_SIZE users per call and returns `remaining`.
-          # Loop until the queue is empty (or the job times out). -L follows the
-          # canonical-domain redirect (apex↔www / *.vercel.app → primary) and
-          # --location-trusted re-sends the Bearer header across that hop — the
-          # previous run failed with a bare HTTP 307 because curl didn't follow.
-          MAX_ITER=20
-          for i in $(seq 1 "$MAX_ITER"); do
-            http_code=$(curl -sS -L --location-trusted -o /tmp/resp.json -w "%{http_code}" \
-              -X POST "${APP_URL}/api/cron/recompute-matches" \
+
+      - name: Call cron endpoint
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          endpoint="${{ steps.endpoint.outputs.endpoint }}"
+          app_url="${APP_URL%/}"
+
+          call_endpoint() {
+            local path="$1"
+            curl -sS -L --location-trusted -o /tmp/cron-resp.json -w "%{http_code}" \
+              -X POST "${app_url}${path}" \
               -H "Authorization: Bearer ${CRON_SECRET}" \
               -H "Content-Type: application/json" \
-              --max-time 295)
-            cat /tmp/resp.json; echo
-            if [ "$http_code" = "409" ]; then
-              echo "Another run holds the lock — waiting 30s and retrying."
-              sleep 30
-              continue
-            fi
+              --max-time 280
+          }
+
+          if [ "$endpoint" != "recompute-matches" ]; then
+            http_code=$(call_endpoint "/api/cron/${endpoint}")
+            cat /tmp/cron-resp.json; echo
             if [ "$http_code" != "200" ]; then
-              echo "::error::recompute-matches returned HTTP $http_code"
+              echo "::error::${endpoint} returned HTTP ${http_code}"
               exit 1
             fi
-            remaining=$(jq -r '.remaining // 0' /tmp/resp.json 2>/dev/null || echo 0)
-            echo "iteration $i: remaining=${remaining}"
-            if [ -z "$remaining" ] || [ "$remaining" = "0" ] || [ "$remaining" = "null" ]; then
-              echo "Recompute queue drained."
-              break
-            fi
-          done
-
-  drain_background_jobs:
-    name: "Drain background jobs"
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
-    if: >-
-      ${{ github.event.schedule == '*/15 * * * *'
-          || (github.event_name == 'workflow_dispatch' && github.event.inputs.endpoint == 'drain-background-jobs') }}
-    steps:
-      - name: POST /api/cron/drain-background-jobs
-        env:
-          APP_URL: ${{ secrets.APP_URL }}
-          CRON_SECRET: ${{ secrets.CRON_SECRET }}
-        run: |
-          if [ -z "$APP_URL" ] || [ -z "$CRON_SECRET" ]; then
-            echo "::warning::APP_URL or CRON_SECRET missing — skipping drain"
             exit 0
           fi
-          APP_URL="${APP_URL%/}"
-          http_code=$(curl -sS -L --location-trusted -o /tmp/resp.json -w "%{http_code}" \
-            -X POST "${APP_URL}/api/cron/drain-background-jobs" \
-            -H "Authorization: Bearer ${CRON_SECRET}" \
-            -H "Content-Type: application/json" \
-            --max-time 280)
-          cat /tmp/resp.json; echo
-          if [ "$http_code" != "200" ]; then
-            echo "::warning::drain-background-jobs returned HTTP $http_code"
-            exit 1
-          fi
+
+          max_iter=30
+          conflict_streak=0
+          last_remaining=""
+          for i in $(seq 1 "$max_iter"); do
+            http_code=$(call_endpoint "/api/cron/recompute-matches")
+            resp=$(cat /tmp/cron-resp.json)
+            echo "iteration=${i} http=${http_code} ${resp}"
+
+            if [ "$http_code" = "409" ]; then
+              conflict_streak=$((conflict_streak + 1))
+              if [ "$conflict_streak" -ge 3 ]; then
+                echo "::error::recompute lock held for 3 consecutive attempts"
+                exit 1
+              fi
+              sleep 60
+              continue
+            fi
+            conflict_streak=0
+
+            if [ "$http_code" != "200" ]; then
+              echo "::error::recompute-matches returned HTTP ${http_code}"
+              exit 1
+            fi
+
+            bailed=$(echo "$resp" | jq -r '.bailed_on_budget // false')
+            processed=$(echo "$resp" | jq -r '.processed // 0')
+            remaining=$(echo "$resp" | jq -r '.remaining // 0')
+            eligible=$(echo "$resp" | jq -r '.eligible_total // .eligible_visible // 0')
+            source=$(echo "$resp" | jq -r '.candidate_source // "unknown"')
+            last_remaining="$remaining"
+
+            echo "candidate_source=${source} eligible=${eligible} processed=${processed} remaining=${remaining} bailed=${bailed}"
+
+            if [ "$bailed" != "true" ] && [ "$remaining" = "0" ]; then
+              echo "Recompute fan-out complete."
+              exit 0
+            fi
+            if [ "$processed" = "0" ]; then
+              echo "::error::Recompute made no progress while remaining=${remaining}"
+              exit 1
+            fi
+
+            sleep 5
+          done
+
+          echo "::error::Recompute did not drain after ${max_iter} iterations; remaining=${last_remaining}"
+          exit 1

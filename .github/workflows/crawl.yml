@@ -251,9 +251,10 @@ jobs:
           APP_URL: ${{ secrets.APP_URL }}
           CRON_SECRET: ${{ secrets.CRON_SECRET }}
         run: |
+          set -euo pipefail
           if [ -z "$APP_URL" ] || [ -z "$CRON_SECRET" ]; then
-            echo "::warning::APP_URL or CRON_SECRET missing — skipping recompute"
-            exit 0
+            echo "::error::APP_URL or CRON_SECRET missing — cannot refresh daily matches"
+            exit 1
           fi
           # Normalise trailing slash + follow Vercel's canonical-domain redirect
           # (apex↔www / *.vercel.app → primary). Without -L the POST got a bare
@@ -264,6 +265,7 @@ jobs:
           MAX_ITER=30
           iter=0
           conflict_streak=0
+          last_remaining=""
           while [ $iter -lt $MAX_ITER ]; do
             iter=$((iter + 1))
             http_code=$(curl -sS -L --location-trusted -o /tmp/recompute-resp.json -w "%{http_code}" \
@@ -279,8 +281,8 @@ jobs:
             if [ "$http_code" = "409" ]; then
               conflict_streak=$((conflict_streak + 1))
               if [ $conflict_streak -ge 3 ]; then
-                echo "::warning::3 consecutive 409s — lock appears stuck; bailing"
-                exit 0
+                echo "::error::3 consecutive 409s — recompute lock appears stuck"
+                exit 1
               fi
               echo "  lock held, sleeping 60s before retry"
               sleep 60
@@ -289,26 +291,32 @@ jobs:
             conflict_streak=0
 
             if [ "$http_code" != "200" ]; then
-              echo "::warning::Recompute returned $http_code — bailing"
-              exit 0
+              echo "::error::Recompute returned $http_code"
+              exit 1
             fi
 
             bailed=$(echo "$resp" | jq -r '.bailed_on_budget // false')
             processed=$(echo "$resp" | jq -r '.processed // 0')
             remaining=$(echo "$resp" | jq -r '.remaining // 0')
+            eligible=$(echo "$resp" | jq -r '.eligible_total // .eligible_visible // 0')
+            source=$(echo "$resp" | jq -r '.candidate_source // "unknown"')
+            last_remaining="$remaining"
+            echo "candidate_source=${source} eligible=${eligible} processed=${processed} remaining=${remaining} bailed=${bailed}"
 
             if [ "$bailed" != "true" ] && [ "$remaining" = "0" ]; then
               echo "Recompute fan-out complete."
-              break
-            fi
-            if [ "$processed" = "0" ] && [ "$bailed" = "true" ]; then
-              echo "::warning::No progress (bailed=true, processed=0) — stopping"
               exit 0
+            fi
+            if [ "$processed" = "0" ]; then
+              echo "::error::No recompute progress while remaining=${remaining}"
+              exit 1
             fi
             # Brief pause between iterations so the next call hits a clean
             # lock window (the prior caller releases on response).
             sleep 5
           done
+          echo "::error::Recompute did not drain after ${MAX_ITER} iterations; remaining=${last_remaining}"
+          exit 1
 
   indexnow:
     name: "Submit IndexNow URLs"

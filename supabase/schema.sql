@@ -587,6 +587,59 @@ $$;
 revoke all on function public.release_cron_lock(text, uuid) from public;
 grant execute on function public.release_cron_lock(text, uuid) to service_role;
 
+-- Daily match recompute candidates.
+-- Keeps eligibility in SQL so old invalid profiles cannot hide later valid
+-- users from the cron batch. Ordered stale-first so repeated invocations drain
+-- every consented active resume, not only recently uploaded resumes.
+create or replace function public.match_recompute_candidates(
+  batch_limit integer default 60,
+  target_user_id uuid default null
+)
+returns table (
+  id uuid,
+  active_resume_version_id uuid,
+  last_match_compute_at timestamptz,
+  total_count bigint
+)
+language sql
+security definer
+set search_path = public
+as $$
+  with eligible as (
+    select
+      p.id,
+      p.active_resume_version_id,
+      p.last_match_compute_at
+    from public.profiles p
+    where p.resume_storage_path is not null
+      and p.resume_embedding_at is not null
+      and p.pending_resume_version_id is null
+      and p.resume_parse_error is null
+      and p.active_resume_version_id is not null
+      and p.resume_parsed_version_id = p.active_resume_version_id
+      and p.resume_embedding_version_id = p.active_resume_version_id
+      and (target_user_id is null or p.id = target_user_id)
+      and exists (
+        select 1
+        from public.consents c
+        where c.user_id = p.id
+          and c.purpose = 'matching'::consent_purpose
+          and c.granted = true
+      )
+  )
+  select
+    eligible.id,
+    eligible.active_resume_version_id,
+    eligible.last_match_compute_at,
+    count(*) over() as total_count
+  from eligible
+  order by eligible.last_match_compute_at asc nulls first, eligible.id asc
+  limit greatest(1, least(coalesce(batch_limit, 60), 500));
+$$;
+
+revoke all on function public.match_recompute_candidates(integer, uuid) from public;
+grant execute on function public.match_recompute_candidates(integer, uuid) to service_role;
+
 
 -- ─────────────────────────────────────────────────────────────────────────────
 -- Security fix (S-1): distributed rate-limit counter shared across all

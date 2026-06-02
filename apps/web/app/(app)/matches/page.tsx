@@ -1,7 +1,7 @@
 ﻿import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { after } from "next/server";
-import { Eye, Activity, ArrowUpRight } from "lucide-react";
+import { Eye, Activity, AlertTriangle, ArrowUpRight } from "lucide-react";
 import Link from "next/link";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
@@ -25,6 +25,8 @@ export const metadata: Metadata = { title: "Matches" };
 export const maxDuration = 60;
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
+
+const DAILY_MATCH_FRESHNESS_MS = 30 * 60 * 60 * 1000;
 
 // ----------------------------------------------------------------------
 // Types
@@ -289,6 +291,10 @@ export default async function MatchesPage({
 
   const computeAgo = lastComputeAt ? humanAgo(lastComputeAt) : null;
   const crawlAgo = lastCrawlAt ? humanAgo(lastCrawlAt) : null;
+  const dailyRefreshDelayed = Boolean(
+    lastComputeAt &&
+    Date.now() - new Date(lastComputeAt).getTime() > DAILY_MATCH_FRESHNESS_MS,
+  );
 
   return (
     <MatchNavProvider>
@@ -312,7 +318,7 @@ export default async function MatchesPage({
           <div className="mt-0.5 flex flex-wrap items-center gap-x-3 gap-y-0.5 text-[11px] text-muted-foreground">
             {computeAgo ? (
               <span className="inline-flex items-center gap-1">
-                <Activity className="h-3 w-3 text-success" />
+                <Activity className={`h-3 w-3 ${dailyRefreshDelayed ? "text-warning" : "text-success"}`} />
                 Computed {computeAgo}
               </span>
             ) : null}
@@ -349,6 +355,20 @@ export default async function MatchesPage({
           <p className="mt-1 text-xs text-warning/85">
             {latestComputeError} Previous matches remain visible so you do not lose your shortlist.
           </p>
+        </div>
+      )}
+
+      {!isComputing && dailyRefreshDelayed && allRows.length > 0 && (
+        <div className="rounded-xl border border-warning/30 bg-warning/5 px-4 py-3 text-sm text-warning">
+          <div className="flex gap-2">
+            <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
+            <div className="min-w-0">
+              <p className="font-semibold">Daily match refresh is delayed</p>
+              <p className="mt-1 text-xs leading-relaxed text-warning/85">
+                Showing your last trusted rankings from {computeAgo}. The daily worker refreshes every active resume against the latest product-company roles.
+              </p>
+            </div>
+          </div>
         </div>
       )}
 
