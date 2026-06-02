@@ -1,7 +1,7 @@
 "use client";
 
 import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
-import { Brain } from "lucide-react";
+import { Brain, CheckCircle2, Clock3, Sparkles } from "lucide-react";
 
 const MESSAGES = [
   "Your AI match engine is scanning thousands of product roles",
@@ -9,19 +9,20 @@ const MESSAGES = [
   "Crunching skill overlaps, seniority bands, and tech fit",
 ];
 
+const STEPS = [
+  "Reading your saved resume signals",
+  "Scoring live product-company roles",
+  "Preparing strengths, gaps, and next actions",
+];
+
 // Presentation-only banner shown while a match-compute job is running for this
 // user. The page-level <ComputeAutoRefresh /> poller drives router.refresh()
-// (in both the first-compute and replace flows), so this component no longer
-// owns a timer — it just renders the animated progress state.
-//
-// `hasExisting` tailors the copy: a first-time compute reads as "analysing
-// your profile"; a re-compute over existing matches reassures the user their
-// current matches stay visible until the fresh ones land.
+// in both first-compute and replace flows.
 export function ComputingBanner({ hasExisting = false }: { hasExisting?: boolean }) {
   const reduce = useReducedMotion();
-  const title = hasExisting ? "Updating your matches…" : "Analysing your profile…";
+  const title = hasExisting ? "Updating your matches..." : "Analysing your profile...";
   const subtitle = hasExisting
-    ? "Re-ranking every role against your latest resume — your current matches stay visible until the new ones are ready."
+    ? "Re-ranking every role against your latest resume. Your current matches stay visible until the new ones are ready."
     : `${MESSAGES[0]}.`;
 
   return (
@@ -30,9 +31,8 @@ export function ComputingBanner({ hasExisting = false }: { hasExisting?: boolean
         initial={{ opacity: 0, y: -6 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.35, ease: "easeOut" }}
-        className="relative overflow-hidden rounded-xl border border-primary/25 bg-gradient-to-r from-primary/5 via-primary/8 to-transparent px-4 py-4"
+        className="relative overflow-hidden rounded-xl border border-primary/25 bg-card/70 px-4 py-4 shadow-sm"
       >
-        {/* Subtle shimmer sweep */}
         {!reduce && (
           <motion.div
             className="pointer-events-none absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-primary/10 to-transparent"
@@ -41,8 +41,7 @@ export function ComputingBanner({ hasExisting = false }: { hasExisting?: boolean
           />
         )}
 
-        <div className="relative flex items-center gap-3">
-          {/* Pulsing icon */}
+        <div className="relative flex flex-col gap-4 sm:flex-row sm:items-start">
           <div className="relative shrink-0">
             {!reduce && (
               <>
@@ -63,19 +62,35 @@ export function ComputingBanner({ hasExisting = false }: { hasExisting?: boolean
             </span>
           </div>
 
-          {/* Text */}
-          <div className="min-w-0 flex-1">
-            <p className="text-sm font-semibold text-foreground">
-              {title}
-            </p>
-            <p className="mt-0.5 text-xs leading-relaxed text-muted-foreground">
-              {subtitle}{" "}
-              <span className="text-foreground/70">Usually ready in 30–60 seconds.</span>
-            </p>
+          <div className="min-w-0 flex-1 space-y-3">
+            <div>
+              <div className="flex flex-wrap items-center gap-2">
+                <p className="text-sm font-semibold text-foreground">{title}</p>
+                <span className="inline-flex items-center gap-1 rounded-full border border-primary/20 bg-primary/10 px-2 py-0.5 text-[10px] font-medium text-primary">
+                  <Clock3 className="h-3 w-3" />
+                  30-60s
+                </span>
+              </div>
+              <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
+                {subtitle}{" "}
+                <span className="text-foreground/70">This page refreshes automatically when results land.</span>
+              </p>
+            </div>
+
+            <div className="grid gap-2 sm:grid-cols-3">
+              {STEPS.map((step, index) => {
+                const Icon = index === 0 ? CheckCircle2 : index === 1 ? Brain : Sparkles;
+                return (
+                  <div key={step} className="flex items-center gap-2 rounded-lg border border-border/60 bg-background/50 px-3 py-2">
+                    <Icon className={`h-3.5 w-3.5 shrink-0 ${index === 1 ? "text-primary" : "text-success"}`} />
+                    <span className="min-w-0 text-[11px] leading-snug text-muted-foreground">{step}</span>
+                  </div>
+                );
+              })}
+            </div>
           </div>
 
-          {/* Bouncing dots */}
-          <div className="shrink-0">
+          <div className="hidden shrink-0 pt-3 sm:block">
             {!reduce ? (
               <div className="flex items-center gap-1">
                 {[0, 0.15, 0.3].map((delay, i) => (

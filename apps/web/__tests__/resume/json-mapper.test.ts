@@ -11,6 +11,7 @@ import {
   jsonToParsedResume,
   emptyJsonResume,
 } from "../../lib/resume/json-mapper";
+import { sanitizeParsedResume } from "../../lib/resume/parsed-sanitizer";
 import { JsonResumeSchema } from "@prodmatch/shared";
 import type { ParsedResume } from "../../lib/llm/prompts/resume-parse";
 
@@ -247,4 +248,50 @@ test("schema accepts unknown vendor extension keys via passthrough", () => {
     awards: [], certificates: [], languages: [], interests: [],
   });
   assert.equal(ok.success, true);
+});
+
+test("parser sanitizer removes leaked instructions and preserves rich resume sections", () => {
+  const cleaned = sanitizeParsedResume({
+    ...fixture(),
+    companies: [
+      {
+        name: "Services Co",
+        role: "Senior Engineer",
+        years: 4,
+        is_product_company: false,
+        start_date: "2020-08",
+        end_date: "Present",
+        summary: "Payments modernization team",
+        highlights: [
+          "Translate bullets to product-co language",
+          "Worked on payment APIs handling 20K requests/day.",
+          "Responsible for release automation across 6 services.",
+        ],
+      },
+    ],
+    products_built: ["Payments Console"],
+    projects: [
+      {
+        name: "Payments Console",
+        description: "Internal dashboard for payment operations",
+        highlights: ["Involved in improving refund workflows."],
+        tech: ["React", "Node.js", "Postgres"],
+      },
+    ],
+    certifications: [
+      { name: "AWS Certified Developer", issuer: "AWS", date: "2023" },
+      { name: "N/A", issuer: "not specified" },
+    ],
+  });
+
+  assert.deepEqual(cleaned.companies[0].highlights, [
+    "Built payment APIs handling 20K requests/day.",
+    "Owned release automation across 6 services.",
+  ]);
+  assert.equal(cleaned.projects?.[0].description, "Internal dashboard for payment operations");
+  assert.deepEqual(cleaned.projects?.[0].highlights, ["Contributed to improving refund workflows."]);
+  assert.deepEqual(cleaned.projects?.[0].tech, ["React", "Node.js", "Postgres"]);
+  assert.deepEqual(cleaned.certifications, [
+    { name: "AWS Certified Developer", issuer: "AWS", date: "2023" },
+  ]);
 });

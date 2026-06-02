@@ -66,44 +66,39 @@ export default async function MatchesPage({
 
   const { data: profile } = await (supabase
     .from("profiles")
-    .select("resume_storage_path, resume_score, resume_score_at, last_match_compute_at, active_resume_version_id, matches_resume_version_id")
+    .select("resume_score, resume_score_at, last_match_compute_at, active_resume_version_id, matches_resume_version_id")
     .eq("id", user.id)
-    .maybeSingle() as any) as { data: { resume_storage_path: string | null; resume_score: number | null; resume_score_at: string | null; last_match_compute_at: string | null; active_resume_version_id: string | null; matches_resume_version_id: string | null } | null };
+    .maybeSingle() as any) as { data: { resume_score: number | null; resume_score_at: string | null; last_match_compute_at: string | null; active_resume_version_id: string | null; matches_resume_version_id: string | null } | null };
 
-  const hasResume = !!profile?.resume_storage_path;
   const resumeScore = profile?.resume_score ?? null;
   const lastComputeAt = profile?.last_match_compute_at ?? null;
   const activeResumeVersionId = profile?.active_resume_version_id ?? null;
   const matchesResumeVersionId = profile?.matches_resume_version_id ?? null;
+  const hasActiveResume = !!activeResumeVersionId;
+  const needsFreshCompute = Boolean(
+    activeResumeVersionId && activeResumeVersionId !== matchesResumeVersionId,
+  );
 
-  // Detect whether a match-compute job is actively running for this user.
-  // We show the ComputingBanner when:
-  //   1. An active durable job exists (queued | running), OR
-  //   2. The resume was (re-)parsed after the last compute finished —
-  //      meaning the current resume hasn't been matched against yet.
+  // Detect whether a match-compute job is actively running for this exact
+  // resume version. A stale resume is not the same thing as an active compute:
+  // if no job is queued/running, the page should prompt the user instead of
+  // showing endless progress.
   let isComputing = false;
-  if (hasResume) {
-    const resumeAt = profile?.resume_score_at ?? null;
-    const staleCompute = resumeAt && (!lastComputeAt || resumeAt > lastComputeAt);
-    if (staleCompute) {
-      isComputing = true;
-    } else {
-      // Check background_jobs for an active match_compute job.
-      try {
-        const { count } = await (admin
-          .from("background_jobs")
-          .select("id", { count: "exact", head: true })
-          .eq("user_id", user.id)
-          .eq("job_type", "match_compute")
-          .in("status", ["queued", "running"]) as any) as { count: number | null };
-        if ((count ?? 0) > 0) isComputing = true;
-      } catch {
-        // background_jobs might not exist on fresh schemas — fail quietly.
-      }
+  if (hasActiveResume) {
+    try {
+      const { count } = await ((admin.from("background_jobs") as any)
+        .select("id", { count: "exact", head: true })
+        .eq("user_id", user.id)
+        .eq("job_type", "match_compute")
+        .eq("resume_version_id", activeResumeVersionId)
+        .in("status", ["queued", "running"]) as any) as { count: number | null };
+      isComputing = (count ?? 0) > 0;
+    } catch {
+      // background_jobs might not exist on fresh schemas — fail quietly.
     }
   }
   let latestComputeError: string | null = null;
-  if (hasResume && activeResumeVersionId) {
+  if (hasActiveResume && activeResumeVersionId) {
     try {
       const { data: latestCompute } = await ((admin.from("background_jobs") as any)
         .select("status, error_message")
@@ -352,7 +347,7 @@ export default async function MatchesPage({
         </div>
       )}
 
-      {!isComputing && activeResumeVersionId && matchesResumeVersionId && activeResumeVersionId !== matchesResumeVersionId && allRows.length > 0 && (
+      {!isComputing && needsFreshCompute && allRows.length > 0 && (
         <div className="rounded-xl border border-border bg-secondary/40 px-4 py-3 text-sm text-muted-foreground">
           These matches are from your previous resume. Use the Compute Matches button after submitting your reviewed resume to refresh rankings.
         </div>
@@ -380,7 +375,7 @@ export default async function MatchesPage({
       {/* Resume score strip — only when score < 60 (where the
           weak-resume -†’ weak-matches connection actually matters).
           Strong/Application-ready scores hide entirely. */}
-      {hasResume && resumeScore !== null && resumeScore < 60 && (
+      {hasActiveResume && resumeScore !== null && resumeScore < 60 && (
         <ResumeScoreStrip score={resumeScore} />
       )}
 
@@ -426,13 +421,23 @@ export default async function MatchesPage({
           </>
         ) : allRows.length > 0 ? (
           emptyStateForTab(tab, selectedCompanies.length + selectedHubs.length + (minScore !== null ? 1 : 0))
-        ) : hasResume ? (
+        ) : hasActiveResume ? (
           isComputing ? null : (
-            <EmptyState
-              icon={<Activity className="h-5 w-5" />}
-              title="No matches computed yet"
-              body="Submit your reviewed resume, then use Compute Matches to rank active jobs against it."
-            />
+            needsFreshCompute ? (
+              <EmptyState
+                icon={<Activity className="h-5 w-5" />}
+                title="Ready to compute matches"
+                body="Your reviewed resume is saved. Start Compute Matches from the resume editor to rank active jobs against it."
+                actions={[{ label: "Back to resume editor", href: "/profile/resume", variant: "primary" }]}
+              />
+            ) : (
+              <EmptyState
+                icon={<Activity className="h-5 w-5" />}
+                title="No matches computed yet"
+                body="Submit your reviewed resume, then use Compute Matches to rank active jobs against it."
+                actions={[{ label: "Open resume editor", href: "/profile/resume", variant: "primary" }]}
+              />
+            )
           )
         ) : null}
       </MatchCardArea>

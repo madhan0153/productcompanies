@@ -23,7 +23,7 @@ const AI_STEPS = [
   { icon: FileText,  label: "Validating resume file",          duration: 2000 },
   { icon: Brain,     label: "Parsing experience and skills",   duration: 5000 },
   { icon: Cpu,       label: "Preparing review draft",          duration: 4000 },
-  { icon: Sparkles,  label: "Ready for your review",           duration: 3000 },
+  { icon: Sparkles,  label: "Opening review form",             duration: 3000 },
 ];
 
 // Client-visible result shape — derived from UploadResult + poll outcomes.
@@ -123,7 +123,7 @@ export function ResumeUpload({ hasExisting, existingRole, existingDnaScore, isPa
             if (status.state === "done") {
               // Parse already finished server-side — go straight to review.
               setPollingStartedAt(null);
-              router.push("/profile/resume");
+              router.replace("/profile/resume");
               return "adopted";
             }
             if (status.state === "failed") {
@@ -205,10 +205,10 @@ export function ResumeUpload({ hasExisting, existingRole, existingDnaScore, isPa
       if (status.state === "done") {
         // Smooth hand-off: instead of showing a second "finished" banner here
         // (the profile page also has a "Parsed resume ready" card), take the
-        // user straight into the review/edit form. router.push unmounts this
+        // user straight into the review/edit form. router.replace unmounts this
         // component, so no duplicate success state is shown.
         setPollingStartedAt(null);
-        router.push("/profile/resume");
+        router.replace("/profile/resume");
         return;
       }
       if (status.state === "failed") {

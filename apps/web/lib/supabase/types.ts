@@ -425,7 +425,7 @@ export interface Database {
           resume_storage_path: string | null;
           product_dna_score: number | null; dna_breakdown: Json | null;
           resume_signature: string | null;
-          source: "overwrite" | "manual_revert";
+          source: "overwrite" | "manual_revert" | "json_import" | "editor";
           created_at: string;
         };
         Insert: {
@@ -433,7 +433,7 @@ export interface Database {
           resume_storage_path?: string | null;
           product_dna_score?: number | null; dna_breakdown?: Json | null;
           resume_signature?: string | null;
-          source?: "overwrite" | "manual_revert";
+          source?: "overwrite" | "manual_revert" | "json_import" | "editor";
           created_at?: string;
         };
         Update: {
@@ -441,7 +441,7 @@ export interface Database {
           resume_storage_path?: string | null;
           product_dna_score?: number | null; dna_breakdown?: Json | null;
           resume_signature?: string | null;
-          source?: "overwrite" | "manual_revert";
+          source?: "overwrite" | "manual_revert" | "json_import" | "editor";
           created_at?: string;
         };
         Relationships: [];

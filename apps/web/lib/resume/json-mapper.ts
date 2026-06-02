@@ -45,7 +45,7 @@ export function parsedResumeToJson(parsed: ParsedResume): JsonResume {
     startDate: normalizeDate(c.start_date),
     endDate: normalizeDate(c.end_date),
     summary: c.summary || undefined,
-    highlights: c.highlights ?? [],
+    highlights: cleanHighlights(c.highlights ?? []),
     ...({ "x-prodmatch-product": c.is_product_company } as Record<string, unknown>),
     ...({ "x-prodmatch-years": c.years } as Record<string, unknown>),
   } as JsonResumeWork));
@@ -67,8 +67,8 @@ export function parsedResumeToJson(parsed: ParsedResume): JsonResume {
     ? parsed.projects.map((p) => ({
         name: p.name,
         description: p.description || undefined,
-        highlights: p.highlights ?? [],
-        keywords: p.tech ?? [],
+        highlights: cleanHighlights(p.highlights ?? []),
+        keywords: dedupe(p.tech ?? []),
         roles: [],
       }))
     : parsed.products_built.map((p) => ({
@@ -251,6 +251,13 @@ function dedupe(arr: string[]): string[] {
     out.push(k);
   }
   return out;
+}
+
+function cleanHighlights(arr: string[]): string[] {
+  return dedupe(arr)
+    .map((item) => item.replace(/^[\s\-–—•*]+/, "").replace(/\s+/g, " ").trim())
+    .filter((item) => item.length > 0)
+    .filter((item) => !/translate\s+bullets?\s+to\s+product[-\s]?co(?:mpany)?\s+language/i.test(item));
 }
 
 function sumYears(work: JsonResumeWork[]): number {

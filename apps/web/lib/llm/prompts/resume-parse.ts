@@ -1,6 +1,7 @@
 import { runWithRetry, SchemaType, type Schema } from "@/lib/llm/gemini";
 import { extractPdfText } from "@/lib/resume/pdf-text";
 import { logEvent } from "@/lib/observability/log";
+import { sanitizeParsedResume } from "@/lib/resume/parsed-sanitizer";
 import { parseJsonObject } from "@prodmatch/shared";
 
 export interface ParsedResume {
@@ -81,7 +82,7 @@ const SCHEMA: Schema = {
           summary:            { type: SchemaType.STRING },
           highlights:         { type: SchemaType.ARRAY, items: { type: SchemaType.STRING } },
         },
-        required: ["name", "role", "years", "is_product_company"],
+        required: ["name", "role", "years", "is_product_company", "start_date", "end_date", "summary", "highlights"],
       },
     },
     projects: {
@@ -94,7 +95,7 @@ const SCHEMA: Schema = {
           highlights:  { type: SchemaType.ARRAY, items: { type: SchemaType.STRING } },
           tech:        { type: SchemaType.ARRAY, items: { type: SchemaType.STRING } },
         },
-        required: ["name"],
+        required: ["name", "description", "highlights", "tech"],
       },
     },
     certifications: {
@@ -169,6 +170,13 @@ Estimate total_years_experience from work history dates.
 Do NOT include PII in summary — only professional summary.
 For estimated_current_lpa: estimate in LPA (lakhs per annum) based on role seniority, company tier, and years of experience in India market. Return null/omit if insufficient data.
 
+Extraction discipline:
+- Read the whole resume, including sidebars, two-column layouts, tables, headers/footers, and final sections.
+- Never copy instructions, section labels, placeholders, or helper text into output fields.
+- Never output text like "Translate bullets to product-co language", "rewrite", "not available", "N/A", or "not specified" in highlights, summaries, descriptions, or certifications.
+- If a field is absent from the resume, use an empty string or empty array; do not fabricate.
+- Preserve every explicit number, scale marker, date range, certification name, issuer, and project technology that appears in the resume.
+
 For EACH company in "companies", fill these fields completely from the resume:
 - start_date / end_date: the employment dates. Normalise to "YYYY-MM" (e.g. "2024-08") when month+year are present, or "YYYY" when only a year is present. Use "Present" for the end_date of the candidate's current role. Never leave these blank if the resume shows any dates.
 - summary: a single concise line describing the team / product / scope of that role (no PII).
@@ -177,12 +185,15 @@ For EACH company in "companies", fill these fields completely from the resume:
   * Use strong ownership verbs (Built, Designed, Led, Shipped, Scaled, Owned) — avoid "Responsible for", "Worked on", "Involved in", "Assisted".
   * Emphasise systems built, ownership, scale, and measurable results over task lists or client/process language.
   * Keep each bullet one sentence, ≤ 240 characters. Do NOT fabricate facts not supported by the resume.
+  * Translate services-style wording into product language: "worked on module" -> "Built/Owned the module"; "handled client requirements" -> "Shipped product requirements"; "support/maintenance" -> "Improved reliability/operations" only when the source supports it.
 
 For "projects": extract EVERY project / product the candidate built (from a Projects section AND notable products built inside their jobs). For each project fill:
 - name (required), description (one line of what it is / does), highlights (1–4 achievement bullets rewritten in the same product-company style as above), and tech (the concrete technologies/keywords used in that project).
+- Project tech must include frameworks, languages, databases, cloud, tools, and domain keywords explicitly tied to that project when present.
+- If the resume lists a project with only a name and tech, still create the project: use the name, the visible tech, and an empty description/highlights only when no description or bullet exists.
 Also keep "products_built" as the list of project/product NAMES (for backward compatibility).
 
-For "certifications": extract every certification, license, or credential. For each, fill name (required), issuer (the awarding body, e.g. "Microsoft", "AWS"), and date ("YYYY" or "YYYY-MM") when shown. Return an empty array if the resume has none.`;
+For "certifications": extract every certification, license, course credential, badge, or professional credential from sections named Certifications, Licenses, Courses, Achievements, Training, or Credentials. For each, fill name (required), issuer (the awarding body, e.g. "Microsoft", "AWS", "Coursera", "Udemy", "NPTEL"), and date ("YYYY" or "YYYY-MM") when shown. Return an empty array if the resume has none.`;
 
 const PDF_PROMPT = `You are an expert resume parser for an India-focused engineering job platform.
 Extract structured information from the provided resume PDF.
@@ -251,7 +262,7 @@ export async function parseResumeMultimodal(pdfBase64: string): Promise<ParsedRe
     return result.response.text();
   }, { operation: "resume_pdf_parse" });
 
-  return parseJsonObject<ParsedResume>(text);
+  return sanitizeParsedResume(parseJsonObject<ParsedResume>(text));
 }
 
 /**
@@ -309,7 +320,7 @@ export async function parseResumeFromText(resumeText: string): Promise<ParsedRes
     return result.response.text();
   }, { operation: "resume_text_parse" });
 
-  return parseJsonObject<ParsedResume>(text);
+  return sanitizeParsedResume(parseJsonObject<ParsedResume>(text));
 }
 
 // ── Diagnostics helpers ────────────────────────────────────────────────────

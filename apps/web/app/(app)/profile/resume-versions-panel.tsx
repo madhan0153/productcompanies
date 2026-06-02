@@ -40,7 +40,11 @@ function VersionRow({ version }: { version: ResumeVersionLite }) {
   const [error, setError] = useState<string | null>(null);
 
   const when = new Date(version.created_at).toLocaleString();
-  const sourceLabel = version.source === "manual_revert" ? "Snapshot before revert" : "Snapshot before re-upload";
+  const sourceLabel =
+    version.source === "manual_revert" ? "Snapshot before revert" :
+    version.source === "json_import" ? "Imported JSON" :
+    version.source === "editor" ? "Saved in editor" :
+    "Snapshot before re-upload";
 
   return (
     <li className="flex items-center justify-between gap-3 px-5 py-3">

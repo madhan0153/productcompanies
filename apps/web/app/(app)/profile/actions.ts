@@ -1026,7 +1026,7 @@ export async function revertResumeToVersion(versionId: string): Promise<RevertRe
 export type ResumeVersionLite = {
   id: string;
   product_dna_score: number | null;
-  source: "overwrite" | "manual_revert";
+  source: "overwrite" | "manual_revert" | "json_import" | "editor";
   created_at: string;
   current_role: string | null;
   total_years_experience: number | null;
@@ -1046,7 +1046,7 @@ export async function listResumeVersions(): Promise<ResumeVersionLite[]> {
     .limit(10) as any) as { data: Array<{
       id: string;
       product_dna_score: number | null;
-      source: "overwrite" | "manual_revert";
+      source: "overwrite" | "manual_revert" | "json_import" | "editor";
       created_at: string;
       resume_parsed: { current_role?: string | null; total_years_experience?: number | null } | null;
     }> | null };

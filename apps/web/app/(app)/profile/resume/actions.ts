@@ -12,7 +12,7 @@
 
 import { revalidatePath } from "next/cache";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
-import { JsonResumeSchema } from "@prodmatch/shared";
+import { JsonResumeSchema, type JsonResume } from "@prodmatch/shared";
 import { jsonToParsedResume } from "@/lib/resume/json-mapper";
 import { logEvent } from "@/lib/observability/log";
 import {
@@ -49,7 +49,7 @@ export async function saveResumeJson(payload: unknown): Promise<SaveResumeResult
     return { ok: false, error: `Resume too large (max ${MAX_PAYLOAD_BYTES} bytes).` };
   }
 
-  const parsed = JsonResumeSchema.safeParse(payload);
+  const parsed = parseEditableResumePayload(payload);
   if (!parsed.success) {
     const fields = parsed.error.issues.map((i) => i.path.join(".")).slice(0, 5);
     logEvent("warn", "resume_editor_invalid", {
@@ -108,7 +108,7 @@ export async function submitReviewedResume(
     return { ok: false, error: `Resume too large (max ${MAX_PAYLOAD_BYTES} bytes).` };
   }
 
-  const parsed = JsonResumeSchema.safeParse(payload);
+  const parsed = parseEditableResumePayload(payload);
   if (!parsed.success) {
     const fields = parsed.error.issues.map((i) => i.path.join(".")).slice(0, 5);
     logEvent("warn", "resume_review_invalid", {
@@ -139,4 +139,151 @@ export async function submitReviewedResume(
 
 export async function startMatchCompute(): Promise<ComputeMatchesResult> {
   return computeMatchesForActiveResume();
+}
+
+function parseEditableResumePayload(payload: unknown) {
+  return JsonResumeSchema.safeParse(normalizeEditableResumePayload(payload));
+}
+
+function normalizeEditableResumePayload(payload: unknown): unknown {
+  if (!payload || typeof payload !== "object" || Array.isArray(payload)) return payload;
+  const record = payload as Record<string, unknown>;
+  const basics = asRecord(record.basics);
+
+  return {
+    ...record,
+    basics: {
+      ...basics,
+      name: asString(basics.name),
+      label: asOptionalString(basics.label),
+      email: asOptionalString(basics.email),
+      phone: asOptionalString(basics.phone),
+      url: asOptionalString(basics.url),
+      summary: asOptionalString(basics.summary),
+      location: normalizeLocation(basics.location),
+      profiles: normalizeArray(basics.profiles).map((profile) => {
+        const p = asRecord(profile);
+        return {
+          ...p,
+          network: asString(p.network),
+          username: asOptionalString(p.username),
+          url: asOptionalString(p.url),
+        };
+      }),
+    },
+    work: normalizeArray(record.work).map((work) => {
+      const w = asRecord(work);
+      return {
+        ...w,
+        name: asString(w.name),
+        position: asString(w.position),
+        startDate: asOptionalString(w.startDate),
+        endDate: asOptionalString(w.endDate),
+        summary: asOptionalString(w.summary),
+        highlights: normalizeStringArray(w.highlights),
+      };
+    }),
+    education: normalizeArray(record.education).map((education) => {
+      const e = asRecord(education);
+      return {
+        ...e,
+        institution: asString(e.institution),
+        area: asOptionalString(e.area),
+        studyType: asOptionalString(e.studyType),
+        startDate: asOptionalString(e.startDate),
+        endDate: asOptionalString(e.endDate),
+        courses: normalizeStringArray(e.courses),
+      };
+    }),
+    skills: normalizeArray(record.skills).map((skill) => {
+      const s = asRecord(skill);
+      return {
+        ...s,
+        name: asString(s.name),
+        level: asOptionalString(s.level),
+        keywords: normalizeStringArray(s.keywords),
+      };
+    }),
+    projects: normalizeArray(record.projects).map((project) => {
+      const p = asRecord(project);
+      return {
+        ...p,
+        name: asString(p.name),
+        description: asOptionalString(p.description),
+        highlights: normalizeStringArray(p.highlights),
+        keywords: normalizeStringArray(p.keywords),
+        roles: normalizeStringArray(p.roles),
+      };
+    }),
+    awards: normalizeArray(record.awards).map((award) => {
+      const a = asRecord(award);
+      return {
+        ...a,
+        title: asString(a.title),
+        date: asOptionalString(a.date),
+        awarder: asOptionalString(a.awarder),
+        summary: asOptionalString(a.summary),
+      };
+    }),
+    certificates: normalizeArray(record.certificates).map((certificate) => {
+      const c = asRecord(certificate);
+      return {
+        ...c,
+        name: asString(c.name),
+        issuer: asOptionalString(c.issuer),
+        date: asOptionalString(c.date),
+        url: asOptionalString(c.url),
+      };
+    }),
+    languages: normalizeArray(record.languages).map((language) => {
+      const l = asRecord(language);
+      return {
+        ...l,
+        language: asString(l.language),
+        fluency: asOptionalString(l.fluency),
+      };
+    }),
+    interests: normalizeArray(record.interests).map((interest) => {
+      const i = asRecord(interest);
+      return {
+        ...i,
+        name: asString(i.name),
+        keywords: normalizeStringArray(i.keywords),
+      };
+    }),
+  } satisfies JsonResume;
+}
+
+function asRecord(value: unknown): Record<string, unknown> {
+  return value && typeof value === "object" && !Array.isArray(value) ? value as Record<string, unknown> : {};
+}
+
+function normalizeLocation(value: unknown): Record<string, string> | undefined {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return undefined;
+  const location = asRecord(value);
+  const normalized = {
+    address: asOptionalString(location.address),
+    postalCode: asOptionalString(location.postalCode),
+    city: asOptionalString(location.city),
+    countryCode: asOptionalString(location.countryCode),
+    region: asOptionalString(location.region),
+  };
+  return Object.fromEntries(Object.entries(normalized).filter(([, item]) => item !== undefined)) as Record<string, string>;
+}
+
+function normalizeArray(value: unknown): unknown[] {
+  return Array.isArray(value) ? value : [];
+}
+
+function normalizeStringArray(value: unknown): string[] {
+  return normalizeArray(value).map(asString).map((item) => item.trim()).filter(Boolean);
+}
+
+function asString(value: unknown): string {
+  return typeof value === "string" ? value : value == null ? "" : String(value);
+}
+
+function asOptionalString(value: unknown): string | undefined {
+  const str = asString(value).trim();
+  return str ? str : undefined;
 }
