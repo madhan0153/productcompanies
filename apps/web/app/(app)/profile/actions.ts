@@ -128,6 +128,18 @@ export async function refreshResumeScore(): Promise<{ ok: true; score: number } 
   return { ok: true, score: result.score };
 }
 
+// Upper bound on the background parse. Kept well under the /profile route's
+// maxDuration (90s) so failProcessing + cleanup always run before Vercel can
+// terminate the function. See the Promise.race in the upload after() block.
+const PARSE_TIMEOUT_MS = 55_000;
+
+class ResumeParseTimeout extends Error {
+  constructor() {
+    super("resume_parse_timeout");
+    this.name = "ResumeParseTimeout";
+  }
+}
+
 const INDIA_HUBS = ["Bengaluru", "Hyderabad", "Pune", "Gurugram", "Noida", "Delhi NCR", "Mumbai", "Chennai", "Remote-India"];
 
 // Years-of-experience normaliser. `Math.round(v) || null` was coercing a true
@@ -717,15 +729,30 @@ async function uploadAndParseResumeInner(formData: FormData): Promise<UploadResu
 
     let parsed: ParsedResume;
     try {
-      parsed = await parseResumePdf(base64);
+      // Hard cap on the parse. runWithRetry can back off up to ~60s per model
+      // on rate-limited Gemini keys, and parseResumePdf runs a second full
+      // cascade on the text fallback — together that can exceed the serverless
+      // function budget. If Vercel kills the function mid-retry, resume_parsing_at
+      // is never cleared and the user is pinned on the "parsing" spinner until
+      // the staleness sweep. Racing a timeout guarantees we always reach
+      // failProcessing (which clears the row) inside the budget.
+      parsed = await Promise.race([
+        parseResumePdf(base64),
+        new Promise<never>((_, reject) =>
+          setTimeout(() => reject(new ResumeParseTimeout()), PARSE_TIMEOUT_MS),
+        ),
+      ]);
     } catch (err) {
-      const { message } = friendlyParseError(err);
+      const isTimeout = err instanceof ResumeParseTimeout;
+      const message = isTimeout
+        ? "Parsing took too long and was stopped. Please try again — this usually clears within a minute."
+        : friendlyParseError(err).message;
       logEvent("warn", "resume_parse_failed", {
         user_id: userId.slice(0, 8),
         resume_version_id: resumeVersionId,
-        error: err instanceof LlmRunError ? err.detail.kind : "parse_error",
+        error: isTimeout ? "parse_timeout" : err instanceof LlmRunError ? err.detail.kind : "parse_error",
       });
-      await failProcessing("parse_failed", message);
+      await failProcessing(isTimeout ? "parse_timeout" : "parse_failed", message);
       return;
     }
 
@@ -840,7 +867,13 @@ export async function getParseStatus(): Promise<ParseStatus> {
 
   if (row.resume_parsing_at) {
     const startedMs = new Date(row.resume_parsing_at).getTime();
-    const isStale = Number.isFinite(startedMs) && (Date.now() - startedMs) > 10 * 60 * 1000;
+    // Self-heal threshold. The in-function parse is hard-capped at
+    // PARSE_TIMEOUT_MS (55s) + DB writes, so a healthy parse always resolves
+    // well under 2 minutes. If the row is still "parsing" past 2.5 min, the
+    // background after() was killed or never ran (Vercel terminated the
+    // function) — clear the row so the user gets a retry instead of an endless
+    // spinner. Was 10 min, which left users stuck for that whole window.
+    const isStale = Number.isFinite(startedMs) && (Date.now() - startedMs) > 150 * 1000;
     if (isStale) {
       const timeoutError = "Resume parsing timed out. Please re-upload your PDF.";
       // Clear stale "in progress" state so the UI can recover instead of
