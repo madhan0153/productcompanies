@@ -90,18 +90,35 @@ export function ResumeEditor({
 
   function handleSave() {
     startTransition(async () => {
-      const res = mode === "review" && versionId
-        ? await submitReviewedResume(versionId, doc)
-        : await saveResumeJson(doc);
+      let res: { ok: boolean; error?: string };
+      if (mode === "review" && versionId) {
+        // Review draft → promote to active (existing behavior).
+        res = await submitReviewedResume(versionId, doc);
+      } else {
+        // Edit mode: persist, then PROMOTE the saved version so it becomes the
+        // active resume for matching. Previously Save only created a version
+        // that was never promoted, so a subsequent "Compute Matches" used the
+        // older active resume — the user's edits were silently ignored. Now
+        // Save → Compute uses exactly what was just saved.
+        let vid = versionId ?? null;
+        if (!vid) {
+          const saved = await saveResumeJson(doc);
+          if (!saved.ok || !saved.versionId) {
+            setFlash({ kind: "err", text: saved.error ?? "Save failed." });
+            return;
+          }
+          vid = saved.versionId;
+        }
+        res = await submitReviewedResume(vid, doc);
+      }
       if (res.ok) {
-        setSubmitted(mode === "review");
+        setSubmitted(true);
         setFlash({
           kind: "ok",
           text: mode === "review"
             ? "Resume submitted successfully — ready to compute matches"
-            : "Resume saved.",
+            : "Saved — this is now your active resume. Compute matches to refresh your rankings.",
         });
-        if (mode !== "review") setTimeout(() => setFlash(null), 3000);
         router.refresh();
       } else {
         setFlash({ kind: "err", text: res.error ?? "Save failed." });

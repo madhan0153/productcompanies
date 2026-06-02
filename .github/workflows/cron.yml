@@ -52,7 +52,8 @@ jobs:
             echo "::warning::APP_URL or CRON_SECRET missing — skipping digest"
             exit 0
           fi
-          http_code=$(curl -sS -o /tmp/resp.json -w "%{http_code}" \
+          APP_URL="${APP_URL%/}"
+          http_code=$(curl -sS -L --location-trusted -o /tmp/resp.json -w "%{http_code}" \
             -X POST "${APP_URL}/api/cron/digest" \
             -H "Authorization: Bearer ${CRON_SECRET}" \
             -H "Content-Type: application/json" \
@@ -80,16 +81,38 @@ jobs:
             echo "::warning::APP_URL or CRON_SECRET missing — skipping recompute"
             exit 0
           fi
-          http_code=$(curl -sS -o /tmp/resp.json -w "%{http_code}" \
-            -X POST "${APP_URL}/api/cron/recompute-matches" \
-            -H "Authorization: Bearer ${CRON_SECRET}" \
-            -H "Content-Type: application/json" \
-            --max-time 280)
-          cat /tmp/resp.json; echo
-          if [ "$http_code" != "200" ]; then
-            echo "::warning::recompute-matches returned HTTP $http_code"
-            exit 1
-          fi
+          # Normalise a trailing slash so we never POST to a //double-slash URL
+          # that Vercel would 307-redirect.
+          APP_URL="${APP_URL%/}"
+          # The route drains BATCH_SIZE users per call and returns `remaining`.
+          # Loop until the queue is empty (or the job times out). -L follows the
+          # canonical-domain redirect (apex↔www / *.vercel.app → primary) and
+          # --location-trusted re-sends the Bearer header across that hop — the
+          # previous run failed with a bare HTTP 307 because curl didn't follow.
+          MAX_ITER=20
+          for i in $(seq 1 "$MAX_ITER"); do
+            http_code=$(curl -sS -L --location-trusted -o /tmp/resp.json -w "%{http_code}" \
+              -X POST "${APP_URL}/api/cron/recompute-matches" \
+              -H "Authorization: Bearer ${CRON_SECRET}" \
+              -H "Content-Type: application/json" \
+              --max-time 295)
+            cat /tmp/resp.json; echo
+            if [ "$http_code" = "409" ]; then
+              echo "Another run holds the lock — waiting 30s and retrying."
+              sleep 30
+              continue
+            fi
+            if [ "$http_code" != "200" ]; then
+              echo "::error::recompute-matches returned HTTP $http_code"
+              exit 1
+            fi
+            remaining=$(jq -r '.remaining // 0' /tmp/resp.json 2>/dev/null || echo 0)
+            echo "iteration $i: remaining=${remaining}"
+            if [ -z "$remaining" ] || [ "$remaining" = "0" ] || [ "$remaining" = "null" ]; then
+              echo "Recompute queue drained."
+              break
+            fi
+          done
 
   drain_background_jobs:
     name: "Drain background jobs"
@@ -108,7 +131,8 @@ jobs:
             echo "::warning::APP_URL or CRON_SECRET missing — skipping drain"
             exit 0
           fi
-          http_code=$(curl -sS -o /tmp/resp.json -w "%{http_code}" \
+          APP_URL="${APP_URL%/}"
+          http_code=$(curl -sS -L --location-trusted -o /tmp/resp.json -w "%{http_code}" \
             -X POST "${APP_URL}/api/cron/drain-background-jobs" \
             -H "Authorization: Bearer ${CRON_SECRET}" \
             -H "Content-Type: application/json" \
