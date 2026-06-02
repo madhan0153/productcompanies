@@ -51,11 +51,12 @@ export default async function ProfilePage() {
     target_role_functions: string[] | null;
     resume_parsing_at: string | null;
     resume_parse_error: string | null;
+    pending_resume_version_id: string | null;
   };
   const { data: profile } = await (supabase
     .from("profiles")
     .select(
-      "display_name, current_role, years_experience, current_lpa, target_lpa, tech_stack, preferred_hubs, seniority, resume_storage_path, product_dna_score, dna_breakdown, resume_parsed, resume_score, resume_score_breakdown, resume_tips, resume_score_at, role_function, target_role_functions, resume_parsing_at, resume_parse_error",
+      "display_name, current_role, years_experience, current_lpa, target_lpa, tech_stack, preferred_hubs, seniority, resume_storage_path, product_dna_score, dna_breakdown, resume_parsed, resume_score, resume_score_breakdown, resume_tips, resume_score_at, role_function, target_role_functions, resume_parsing_at, resume_parse_error, pending_resume_version_id",
     )
     .eq("id", user.id)
     .maybeSingle() as unknown as Promise<{ data: ProfileRow | null }>);
@@ -68,6 +69,7 @@ export default async function ProfilePage() {
     : [];
   const isParsing = !!profile?.resume_parsing_at;
   const parseError = profile?.resume_parse_error ?? null;
+  const hasPendingReview = !!profile?.pending_resume_version_id && !isParsing && !parseError;
   // hasResume is true whenever parsed data exists — even if a NEW parse is
   // currently running. This keeps the tabs + previous data visible during a
   // re-upload, and the ParseStatusBanner explains the in-flight parse.
@@ -151,7 +153,29 @@ export default async function ProfilePage() {
 
       {/* First-time path: no parsed resume, no parse in flight — show only
           the upload card. Tabs would be empty noise here. */}
-      {!hasResume && (
+      {hasPendingReview && (
+        <SectionCard
+          title="Review parsed resume"
+          subtitle="Submit the reviewed draft before computing matches"
+          icon={<FileText className="h-4 w-4" />}
+        >
+          <div className="rounded-xl border border-success/30 bg-success/5 p-4">
+            <p className="text-sm font-semibold text-success">Parsed resume ready</p>
+            <p className="mt-1 text-xs text-success/80">
+              Review and edit the parsed data before it becomes your active matching profile.
+            </p>
+            <Link
+              href="/profile/resume"
+              className="press tap-target-sm mt-3 inline-flex items-center gap-1.5 rounded-md border border-success/30 bg-success/10 px-3 py-1.5 text-xs font-semibold text-success transition hover:bg-success/20 focus-ring"
+            >
+              <FileText className="h-3.5 w-3.5" />
+              Review & edit
+            </Link>
+          </div>
+        </SectionCard>
+      )}
+
+      {!hasResume && !hasPendingReview && (
         <SectionCard
           title="Resume"
           subtitle={isParsing ? "Parse in progress — you can keep this tab open while we finish." : "Upload your PDF to get started"}

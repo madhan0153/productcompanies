@@ -6,7 +6,7 @@ import Link from "next/link";
 import { motion, useReducedMotion, AnimatePresence } from "framer-motion";
 import {
   Upload, FileText, CheckCircle2, AlertCircle,
-  Sparkles, Brain, Cpu, TrendingUp, Zap,
+  Sparkles, Brain, Cpu,
 } from "lucide-react";
 import { uploadAndParseResume, getParseStatus, type UploadResult, type ParseStatus } from "./actions";
 
@@ -19,24 +19,23 @@ type Props = {
 
 // Simulated AI processing steps shown during upload
 const AI_STEPS = [
-  { icon: FileText,  label: "Parsing PDF resume",             duration: 3000 },
-  { icon: Brain,     label: "Detecting seniority & role",     duration: 4000 },
-  { icon: Cpu,       label: "Understanding tech stack",        duration: 4000 },
-  { icon: Sparkles,  label: "Computing semantic embeddings",   duration: 5000 },
-  { icon: TrendingUp, label: "Matching against 51 companies", duration: 5000 },
-  { icon: Zap,       label: "Generating Fit Cards",           duration: 4000 },
+  { icon: Upload,    label: "Uploading PDF securely",          duration: 1500 },
+  { icon: FileText,  label: "Validating resume file",          duration: 2000 },
+  { icon: Brain,     label: "Parsing experience and skills",   duration: 5000 },
+  { icon: Cpu,       label: "Preparing review draft",          duration: 4000 },
+  { icon: Sparkles,  label: "Ready for your review",           duration: 3000 },
 ];
 
 // Client-visible result shape — derived from UploadResult + poll outcomes.
 type DisplayResult =
-  | { ok: true; dnaScore: number; role: string; years: number; techCount: number }
+  | { ok: true; dnaScore: number; role: string; years: number; techCount: number; reviewRequired?: boolean }
   | { ok: false; error: string; retryable?: boolean };
 
 function formatUploadFailure(err: unknown): { error: string; retryable: boolean } {
   const message = err instanceof Error ? err.message : "";
-  if (/unexpected response|failed to fetch|network|aborted/i.test(message)) {
+  if (/unexpected response|failed to fetch|network|aborted|too long/i.test(message)) {
     return {
-      error: "The server took too long to respond. Please retry.",
+      error: "Your connection dropped during upload. Check your network and tap retry — your previous resume is untouched.",
       retryable: true,
     };
   }
@@ -106,64 +105,84 @@ export function ResumeUpload({ hasExisting, existingRole, existingDnaScore, isPa
     const fd = new FormData();
     fd.append("resume", file);
     startTransition(async () => {
-      try {
-        const r: UploadResult = await uploadAndParseResume(fd);
-        if (r.ok) {
-          // Upload + storage write succeeded; parse is running in after().
-          // The poll effect below will watch for completion. A soft refresh
-          // here is best-effort only; the upload must not look failed if the
-          // refreshed Server Component tree hits a transient render issue.
-          setPollingStartedAt(r.startedAt);
+      // Probe the canonical DB-backed status after a thrown POST. A flaky 3G
+      // POST can commit server-side yet drop the response; this tells the two
+      // apart so we never falsely show a failure (or double-upload).
+      //   "adopted" — an in-flight/done/failed state was found and surfaced.
+      //   "retry"   — server confirmed nothing committed → safe to re-POST.
+      //   "unknown" — probe itself failed (offline); don't re-POST blindly.
+      const probeAfterError = async (): Promise<"adopted" | "retry" | "unknown"> => {
+        for (let i = 0; i < 2; i++) {
+          await new Promise((r) => setTimeout(r, 1500));
           try {
-            router.refresh();
+            const status = await getParseStatus();
+            if (status.state === "parsing") {
+              setPollingStartedAt(status.startedAt);
+              return "adopted";
+            }
+            if (status.state === "done") {
+              setCurrentStep(-1);
+              setResult({
+                ok: true,
+                dnaScore: status.dnaScore,
+                role: status.role,
+                years: status.years,
+                techCount: status.techCount,
+                reviewRequired: status.reviewRequired,
+              });
+              return "adopted";
+            }
+            if (status.state === "failed") {
+              setCurrentStep(-1);
+              resetFileInput();
+              setResult({ ok: false, error: status.error, retryable: true });
+              return "adopted";
+            }
+            // state === "idle" → nothing committed; a re-POST is safe.
+            return "retry";
           } catch {
-            // Polling remains the source of truth for this in-tab flow.
+            // Network blip on the probe itself — keep trying within the loop.
           }
-        } else {
-          setCurrentStep(-1);
-          resetFileInput();
-          setResult({ ok: false, error: r.error, retryable: r.retryable });
         }
-      } catch (err) {
-        // Universal recovery — any thrown error (RSC payload error, hydration
-        // mismatch, network blip, etc.) is treated as a possible "action
-        // committed DB writes but response was broken." Probe the canonical
-        // DB-backed status: if parsing actually kicked off, we are NOT failed.
-        // This is the only reliable way to tell a successful upload (where
-        // the response failed during revalidation) apart from a real failure.
-        console.error("resume upload action threw:", err);
+        return "unknown";
+      };
+
+      // Probe-gated retry-with-backoff on the initial POST (max 2 attempts).
+      for (let attempt = 1; ; attempt++) {
         try {
-          const status = await getParseStatus();
-          if (status.state === "parsing") {
-            setPollingStartedAt(status.startedAt);
-            return;
-          }
-          if (status.state === "done") {
-            setCurrentStep(-1);
-            setResult({
-              ok: true,
-              dnaScore: status.dnaScore,
-              role: status.role,
-              years: status.years,
-              techCount: status.techCount,
-            });
-            return;
-          }
-          if (status.state === "failed") {
+          const r: UploadResult = await uploadAndParseResume(fd);
+          if (r.ok) {
+            // Upload + storage write succeeded; parse runs in after(). The poll
+            // effect watches for completion. router.refresh() is best-effort —
+            // the upload must not look failed if the refreshed Server Component
+            // tree hits a transient render issue.
+            setPollingStartedAt(r.startedAt);
+            try {
+              router.refresh();
+            } catch {
+              // Polling remains the source of truth for this in-tab flow.
+            }
+          } else {
             setCurrentStep(-1);
             resetFileInput();
-            setResult({ ok: false, error: status.error, retryable: true });
-            return;
+            setResult({ ok: false, error: r.error, retryable: r.retryable });
           }
-        } catch {
-          // Fall through to the generic failure UI if the status probe also
-          // fails (e.g. the user is offline). The original action error is
-          // logged above for diagnostics.
+          return;
+        } catch (err) {
+          console.error("resume upload action threw:", err);
+          const outcome = await probeAfterError();
+          if (outcome === "adopted") return;
+          // Server confirmed nothing committed → retry the POST once. The
+          // server's idempotency key + active-job guard make a same-file
+          // re-POST safe even in the rare race where the first did commit.
+          if (outcome === "retry" && attempt < 2) continue;
+          // Exhausted retries, or probe couldn't confirm state (offline).
+          setCurrentStep(-1);
+          resetFileInput();
+          const failure = formatUploadFailure(err);
+          setResult({ ok: false, ...failure });
+          return;
         }
-        setCurrentStep(-1);
-        resetFileInput();
-        const failure = formatUploadFailure(err);
-        setResult({ ok: false, ...failure });
       }
     });
   }
@@ -198,6 +217,7 @@ export function ResumeUpload({ hasExisting, existingRole, existingDnaScore, isPa
           role: status.role,
           years: status.years,
           techCount: status.techCount,
+          reviewRequired: status.reviewRequired,
         });
         router.refresh();
         return;
@@ -308,8 +328,8 @@ export function ResumeUpload({ hasExisting, existingRole, existingDnaScore, isPa
             </div>
             <p className="mt-2 text-center text-[10px] text-muted-foreground">
               {pollingStartedAt
-                ? "Saved — our AI is finishing the parse in the background. You can leave this page; we'll keep your spot."
-                : "Usually takes 15–30 seconds"}
+                ? "Uploaded — our AI is parsing it now. You can leave this page; we'll keep your spot."
+                : "Resume received — uploading securely…"}
             </p>
           </motion.div>
         ) : (
@@ -409,7 +429,7 @@ export function ResumeUpload({ hasExisting, existingRole, existingDnaScore, isPa
             <div className="text-sm">
               {result.ok ? (
                 <>
-                  <p className="font-semibold text-success">Resume parsed successfully!</p>
+                  <p className="font-semibold text-success">Resume parsed. Review it before matching.</p>
                   <p className="mt-1 text-xs text-success/80">
                     Role: {result.role} · {result.years}y exp · {result.techCount} technologies detected
                   </p>
@@ -417,10 +437,10 @@ export function ResumeUpload({ hasExisting, existingRole, existingDnaScore, isPa
                     Product-Co Readiness: <strong>{result.dnaScore}/100</strong>
                   </p>
                   <Link
-                    href="/matches"
+                    href="/profile/resume"
                     className="press tap-target-sm mt-3 inline-flex items-center gap-1.5 rounded-md border border-success/30 bg-success/10 px-3 py-1.5 text-xs font-semibold text-success transition hover:bg-success/20 focus-ring"
                   >
-                    <Zap className="h-3 w-3" /> Compute matches now
+                    <FileText className="h-3 w-3" /> Review & edit parsed resume
                   </Link>
                 </>
               ) : (
@@ -434,15 +454,26 @@ export function ResumeUpload({ hasExisting, existingRole, existingDnaScore, isPa
                       Matches and profile data continue using your last successfully parsed resume.
                     </p>
                   )}
-                  {result.retryable && (
-                    <button
-                      type="button"
-                      onClick={() => inputRef.current?.click()}
-                      className={`tap-target-sm mt-3 inline-flex items-center gap-1.5 rounded-md border px-3 text-xs font-semibold transition focus-ring ${buttonTone}`}
+                  <div className="mt-3 flex flex-wrap items-center gap-2">
+                    {result.retryable && (
+                      <button
+                        type="button"
+                        onClick={() => inputRef.current?.click()}
+                        className={`tap-target-sm inline-flex items-center gap-1.5 rounded-md border px-3 text-xs font-semibold transition focus-ring ${buttonTone}`}
+                      >
+                        <Upload className="h-3 w-3" /> Choose PDF again
+                      </button>
+                    )}
+                    {/* Editor fallback — an image-only / unreadable PDF will
+                        never parse, so never dead-end the user: let them build
+                        the resume structurally instead. */}
+                    <Link
+                      href="/profile/resume"
+                      className="tap-target-sm inline-flex items-center gap-1.5 rounded-md border border-border bg-background px-3 py-1.5 text-xs font-medium transition hover:bg-secondary focus-ring"
                     >
-                      <Upload className="h-3 w-3" /> Choose PDF again
-                    </button>
-                  )}
+                      <FileText className="h-3 w-3" /> Build in the editor instead
+                    </Link>
+                  </div>
                 </>
               )}
             </div>

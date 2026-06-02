@@ -90,6 +90,42 @@ test("round-trip merges tech_stack + soft_skills into the right buckets", () => 
   }
 });
 
+test("review edit payload maps submitted changes back to ParsedResume", () => {
+  const json = parsedResumeToJson(fixture());
+  json.basics.name = "Reviewed Candidate";
+  json.basics.label = "Staff Backend Engineer";
+  json.basics.summary = "Reviewed summary focused on platform ownership.";
+  json.work[0] = {
+    ...json.work[0],
+    name: "Reviewed Product Co",
+    position: "Staff Backend Engineer",
+    highlights: ["Led a platform migration used by 40 product teams."],
+    "x-prodmatch-product": true,
+    "x-prodmatch-years": 4,
+  };
+  json.skills = [
+    { name: "Technical", keywords: ["TypeScript", "Kubernetes", "Postgres"] },
+    { name: "Soft Skills", keywords: ["mentorship"] },
+  ];
+  json.projects = [
+    { name: "Reviewed Platform", description: "Internal platform", highlights: [], keywords: ["Kubernetes"], roles: [] },
+  ];
+
+  const submitted = JsonResumeSchema.parse(json);
+  const parsed = jsonToParsedResume(submitted);
+
+  assert.equal(parsed.name, "Reviewed Candidate");
+  assert.equal(parsed.current_role, "Staff Backend Engineer");
+  assert.equal(parsed.summary, "Reviewed summary focused on platform ownership.");
+  assert.equal(parsed.companies[0].name, "Reviewed Product Co");
+  assert.equal(parsed.companies[0].role, "Staff Backend Engineer");
+  assert.equal(parsed.companies[0].years, 4);
+  assert.equal(parsed.companies[0].is_product_company, true);
+  assert.deepEqual(parsed.tech_stack, ["TypeScript", "Kubernetes", "Postgres"]);
+  assert.deepEqual(parsed.soft_skills, ["mentorship"]);
+  assert.deepEqual(parsed.products_built, ["Reviewed Platform"]);
+});
+
 test("imports a third-party JSON Resume with no x-prodmatch extensions", () => {
   // Realistic JSON Resume from another tool — no ProdMatch metadata at all.
   const incoming = JsonResumeSchema.parse({

@@ -26,6 +26,7 @@ import {
 import { logEvent } from "@/lib/observability/log";
 import { validateResumePdf, verifyPdfPageCount } from "@/lib/security/pdf";
 import { checkRateLimitShared, userActionKey } from "@/lib/security/rate-limit";
+import { parsedResumeToJson } from "@/lib/resume/json-mapper";
 import type { ParsedResume } from "@/lib/llm/prompts/resume-parse";
 import type { SeniorityLevel } from "@/lib/supabase/types";
 import type { Json } from "@/lib/supabase/types";
@@ -129,6 +130,17 @@ export async function refreshResumeScore(): Promise<{ ok: true; score: number } 
 
 const INDIA_HUBS = ["Bengaluru", "Hyderabad", "Pune", "Gurugram", "Noida", "Delhi NCR", "Mumbai", "Chennai", "Remote-India"];
 
+// Years-of-experience normaliser. `Math.round(v) || null` was coercing a true
+// fresher's 0 years into null (0 is falsy), and the matching engine treats null
+// years as "unknown" — which disables the senior_no_exp cap and the years-gap
+// hard-mismatch, so Lead / Engineering-Manager roles leaked into a fresher's
+// Priority list. Preserve 0 as 0; return null ONLY when years are genuinely
+// unknown (null / NaN / negative).
+function roundedYearsOrNull(v: number | null | undefined): number | null {
+  if (typeof v !== "number" || !Number.isFinite(v) || v < 0) return null;
+  return Math.round(v);
+}
+
 // ── Save profile fields (no resume) ──────────────────────────────────────────
 
 export async function saveProfile(formData: FormData) {
@@ -190,6 +202,14 @@ type PriorResumeProfile = {
   active_resume_version_id: string | null;
 };
 
+type PromotionResult =
+  | { ok: true; activeResumeVersionId: string }
+  | { ok: false; error: string };
+
+export type ComputeMatchesResult =
+  | { ok: true; queuedAt: string }
+  | { ok: false; error: string };
+
 function friendlyParseError(err: unknown): { message: string; retryable: boolean } {
   if (err instanceof LlmRunError) {
     switch (err.detail.kind) {
@@ -219,6 +239,240 @@ function friendlyParseError(err: unknown): { message: string; retryable: boolean
     message: "We couldn't read your resume just now. Please try again.",
     retryable: true,
   };
+}
+
+async function buildActiveResumePatch(
+  admin: ReturnType<typeof createSupabaseAdminClient>,
+  parsed: ParsedResume,
+  resumeVersionId: string,
+): Promise<Record<string, unknown>> {
+  const dnaBreakdown = computeDnaBreakdown(parsed);
+  const resumeSignature = computeResumeSignature(parsed);
+  const resumeEmbedding = await embed(buildResumeEmbedText(parsed), "resume_embedding");
+  if (resumeEmbedding.length === 0) {
+    throw new Error("Resume embedding returned no vector.");
+  }
+
+  let resumeScorePatch: Record<string, unknown> = {};
+  try {
+    const top30 = await fetchTop30Demand(admin);
+    const score = computeResumeScore({
+      resume: parsed,
+      top30Demand: top30,
+      userTargets: parsed.target_role_functions ?? [],
+    });
+    resumeScorePatch = {
+      resume_score: score.score,
+      resume_score_breakdown: score.breakdown as unknown as Json,
+      resume_tips: score.tips as unknown as Json,
+      resume_score_at: new Date().toISOString(),
+    };
+  } catch (err) {
+    logEvent("warn", "resume_score_review_submit_failed", {
+      resume_version_id: resumeVersionId,
+      error: err instanceof Error ? err.name : "unknown",
+    });
+  }
+
+  const promotedAt = new Date().toISOString();
+  return {
+    resume_parsed: parsed as unknown as Json,
+    resume_parsed_version_id: resumeVersionId,
+    active_resume_version_id: resumeVersionId,
+    pending_resume_version_id: null,
+    display_name: parsed.name || undefined,
+    current_role: parsed.current_role || null,
+    role_function: parsed.role_function || null,
+    target_role_functions: parsed.target_role_functions ?? [],
+    years_experience: roundedYearsOrNull(parsed.total_years_experience),
+    current_lpa: parsed.estimated_current_lpa ?? null,
+    tech_stack: parsed.tech_stack ?? [],
+    preferred_hubs: (parsed.preferred_hubs ?? []).filter((h: string) => INDIA_HUBS.includes(h)),
+    product_dna_score: dnaBreakdown.total,
+    dna_breakdown: dnaBreakdown as unknown as Json,
+    resume_signature: resumeSignature,
+    resume_parsing_at: null,
+    resume_parse_error: null,
+    resume_embedding: resumeEmbedding,
+    resume_embedding_at: promotedAt,
+    resume_embedding_version_id: resumeVersionId,
+    ...resumeScorePatch,
+  };
+}
+
+export async function promoteReviewedResumeDraft(
+  resumeVersionId: string,
+  parsed: ParsedResume,
+  resumeJson: Json,
+): Promise<PromotionResult> {
+  const supabase = await createSupabaseServerClient();
+  const admin = createSupabaseAdminClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return { ok: false, error: "Not signed in." };
+
+  const userId = user.id;
+  const { data: draft, error: draftError } = await (admin
+    .from("resume_versions")
+    .select("id, user_id, resume_storage_path")
+    .eq("id", resumeVersionId)
+    .eq("user_id", userId)
+    .maybeSingle() as any) as {
+      data: { id: string; user_id: string; resume_storage_path: string | null } | null;
+      error: { message: string } | null;
+    };
+  if (draftError) return { ok: false, error: "Could not load the parsed resume draft." };
+  if (!draft) return { ok: false, error: "Parsed resume draft not found. Please upload again." };
+
+  const { data: current, error: currentError } = await (admin
+    .from("profiles")
+    .select("resume_storage_path, resume_parsed, product_dna_score, dna_breakdown, resume_signature, active_resume_version_id")
+    .eq("id", userId)
+    .maybeSingle() as any) as { data: PriorResumeProfile | null; error: { message: string } | null };
+  if (currentError) return { ok: false, error: "Could not read your current resume." };
+
+  try {
+    const patch = await buildActiveResumePatch(admin, parsed, resumeVersionId);
+
+    if (current?.resume_parsed && current.active_resume_version_id !== resumeVersionId) {
+      await snapshotCurrentResume(admin, {
+        userId,
+        resume_parsed: current.resume_parsed,
+        resume_storage_path: current.resume_storage_path,
+        product_dna_score: current.product_dna_score,
+        dna_breakdown: current.dna_breakdown,
+        resume_signature: current.resume_signature,
+        source: "overwrite",
+      });
+    }
+
+    const { error: versionError } = await (admin.from("resume_versions") as any)
+      .update({
+        resume_parsed: parsed as unknown as Json,
+        resume_json: resumeJson,
+      })
+      .eq("id", resumeVersionId)
+      .eq("user_id", userId);
+    assertNoSupabaseError(versionError, "Could not save reviewed resume draft");
+
+    const updatePayload = {
+      ...patch,
+      resume_storage_path: draft.resume_storage_path ?? current?.resume_storage_path ?? null,
+    };
+    const { data: promoted, error: promoteError } = await (admin.from("profiles") as any)
+      .update(updatePayload)
+      .eq("id", userId)
+      .select("id")
+      .maybeSingle() as { data: { id: string } | null; error: { message: string } | null };
+    assertNoSupabaseError(promoteError, "Could not submit reviewed resume");
+    if (!promoted) return { ok: false, error: "Could not submit reviewed resume. Please retry." };
+
+    if (
+      current?.resume_storage_path &&
+      draft.resume_storage_path &&
+      current.resume_storage_path !== draft.resume_storage_path
+    ) {
+      try {
+        await removeUploadedResume(admin, current.resume_storage_path);
+      } catch (cleanupErr) {
+        logEvent("warn", "resume_old_file_cleanup_failed", {
+          user_id: userId.slice(0, 8),
+          resume_version_id: resumeVersionId,
+          error: cleanupErr instanceof Error ? cleanupErr.name : "unknown",
+        });
+      }
+    }
+
+    await supersedeActiveJobs(admin, {
+      userId,
+      type: "match_compute",
+      errorMessage: "A reviewed resume was submitted before this computation finished.",
+    });
+
+    revalidatePath("/profile");
+    revalidatePath("/profile/resume");
+    revalidatePath("/dashboard");
+    revalidatePath("/matches");
+    return { ok: true, activeResumeVersionId: resumeVersionId };
+  } catch (err) {
+    logEvent("warn", "resume_review_submit_failed", {
+      user_id: userId.slice(0, 8),
+      resume_version_id: resumeVersionId,
+      error: err instanceof Error ? err.name : "unknown",
+    });
+    return { ok: false, error: "Could not submit your reviewed resume. Please retry." };
+  }
+}
+
+export async function computeMatchesForActiveResume(): Promise<ComputeMatchesResult> {
+  const supabase = await createSupabaseServerClient();
+  const admin = createSupabaseAdminClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return { ok: false, error: "Not signed in." };
+
+  const { data: profile, error } = await (admin
+    .from("profiles")
+    .select("active_resume_version_id, resume_parsed_version_id, resume_embedding_version_id")
+    .eq("id", user.id)
+    .maybeSingle() as any) as {
+      data: {
+        active_resume_version_id: string | null;
+        resume_parsed_version_id: string | null;
+        resume_embedding_version_id: string | null;
+      } | null;
+      error: { message: string } | null;
+    };
+  if (error || !profile?.active_resume_version_id) {
+    return { ok: false, error: "Submit a reviewed resume before computing matches." };
+  }
+  const versionId = profile.active_resume_version_id;
+  if (profile.resume_parsed_version_id !== versionId || profile.resume_embedding_version_id !== versionId) {
+    return { ok: false, error: "Resume signals are still being prepared. Please retry in a moment." };
+  }
+
+  const activeJob = await findActiveJob(admin, {
+    userId: user.id,
+    type: "match_compute",
+    resumeVersionId: versionId,
+  });
+  if (activeJob) return { ok: true, queuedAt: activeJob.queued_at };
+
+  let jobId: string | null = null;
+  try {
+    const job = await createDurableJob(admin, {
+      userId: user.id,
+      type: "match_compute",
+      resumeVersionId: versionId,
+      source: "user_compute",
+      idempotencyKey: `match_compute:${user.id}:${versionId}`,
+    });
+    jobId = job.id;
+    enqueueUserRecompute(user.id, {
+      forceFull: true,
+      source: "user_compute",
+      resumeVersionId: versionId,
+      jobId,
+    });
+    revalidatePath("/matches");
+    return { ok: true, queuedAt: job.queued_at };
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "";
+    if (/duplicate|uniq_background_jobs_active/i.test(message)) {
+      return { ok: true, queuedAt: new Date().toISOString() };
+    }
+    logEvent("warn", "user_match_compute_queue_failed", {
+      user_id: user.id.slice(0, 8),
+      resume_version_id: versionId,
+      error: err instanceof Error ? err.name : "unknown",
+    });
+    if (jobId) {
+      try {
+        await failDurableJob(admin, jobId, "queue_failed", "Could not start match computation.");
+      } catch {
+        // Best effort.
+      }
+    }
+    return { ok: false, error: "Could not start match computation. Please retry." };
+  }
 }
 
 export async function uploadAndParseResume(formData: FormData): Promise<UploadResult> {
@@ -368,17 +622,8 @@ async function uploadAndParseResumeInner(formData: FormData): Promise<UploadResu
   }
 
   const startedAt = new Date().toISOString();
-  let priorProfile: PriorResumeProfile | null = null;
 
   try {
-    const { data, error } = await (admin
-      .from("profiles")
-      .select("resume_storage_path, resume_parsed, product_dna_score, dna_breakdown, resume_signature, active_resume_version_id")
-      .eq("id", userId)
-      .maybeSingle() as any) as { data: PriorResumeProfile | null; error: { message: string } | null };
-    assertNoSupabaseError(error, "Could not read existing resume profile");
-    priorProfile = data;
-
     await supersedeActiveJobs(admin, {
       userId,
       type: "match_compute",
@@ -500,80 +745,31 @@ async function uploadAndParseResumeInner(formData: FormData): Promise<UploadResu
         return;
       }
 
-      const dnaBreakdown = computeDnaBreakdown(parsed);
-      const resumeSignature = computeResumeSignature(parsed);
-      const resumeEmbedding = await embed(buildResumeEmbedText(parsed), "resume_embedding");
-      if (resumeEmbedding.length === 0) {
-        throw new Error("Resume embedding returned no vector.");
-      }
-
-      let resumeScorePatch: Record<string, unknown> = {};
-      try {
-        const top30 = await fetchTop30Demand(admin);
-        const score = computeResumeScore({
-          resume: parsed,
-          top30Demand: top30,
-          userTargets: parsed.target_role_functions ?? [],
-        });
-        resumeScorePatch = {
-          resume_score: score.score,
-          resume_score_breakdown: score.breakdown as unknown as Json,
-          resume_tips: score.tips as unknown as Json,
-          resume_score_at: new Date().toISOString(),
-        };
-      } catch (err) {
-        logEvent("warn", "resume_score_post_upload_failed", {
-          user_id: userId.slice(0, 8),
-          resume_version_id: resumeVersionId,
-          error: err instanceof Error ? err.name : "unknown",
-        });
-      }
-
-      if (priorProfile?.resume_parsed) {
-        await snapshotCurrentResume(admin, {
-          userId,
-          resume_parsed: priorProfile.resume_parsed,
-          resume_storage_path: priorProfile.resume_storage_path,
-          product_dna_score: priorProfile.product_dna_score,
-          dna_breakdown: priorProfile.dna_breakdown,
-          resume_signature: priorProfile.resume_signature,
-          source: "overwrite",
-        });
-      }
-
-      const promotedAt = new Date().toISOString();
-      const promoteQuery = (admin.from("profiles") as any).update({
-        resume_storage_path: path,
+      const draftDnaBreakdown = computeDnaBreakdown(parsed);
+      const { error: draftError } = await (admin.from("resume_versions") as any).upsert({
+        id: resumeVersionId,
+        user_id: userId,
         resume_parsed: parsed as unknown as Json,
-        resume_parsed_version_id: resumeVersionId,
-        active_resume_version_id: resumeVersionId,
-        pending_resume_version_id: null,
-        display_name: parsed.name || undefined,
-        current_role: parsed.current_role || null,
-        role_function: parsed.role_function || null,
-        target_role_functions: parsed.target_role_functions ?? [],
-        years_experience: Math.round(parsed.total_years_experience) || null,
-        current_lpa: parsed.estimated_current_lpa ?? null,
-        tech_stack: parsed.tech_stack ?? [],
-        preferred_hubs: (parsed.preferred_hubs ?? []).filter((h: string) => INDIA_HUBS.includes(h)),
-        product_dna_score: dnaBreakdown.total,
-        dna_breakdown: dnaBreakdown as unknown as Json,
-        resume_signature: resumeSignature,
+        resume_json: parsedResumeToJson(parsed) as unknown as Json,
+        resume_storage_path: path,
+        product_dna_score: draftDnaBreakdown.total,
+        dna_breakdown: draftDnaBreakdown as unknown as Json,
+        resume_signature: computeResumeSignature(parsed),
+        source: "overwrite",
+      }, { onConflict: "id" });
+      assertNoSupabaseError(draftError, "Could not save parsed resume draft");
+
+      const { data: queued, error: queuedError } = await (admin.from("profiles") as any).update({
         resume_parsing_at: null,
         resume_parse_error: null,
-        resume_embedding: resumeEmbedding,
-        resume_embedding_at: promotedAt,
-        resume_embedding_version_id: resumeVersionId,
-        ...resumeScorePatch,
+        pending_resume_version_id: resumeVersionId,
       })
         .eq("id", userId)
         .eq("pending_resume_version_id", resumeVersionId)
         .select("id")
         .maybeSingle();
-      const promoteResult = await promoteQuery as { data: { id: string } | null; error: { message: string } | null };
-      const { data: promoted, error: promoteError } = promoteResult;
-      assertNoSupabaseError(promoteError, "Could not promote parsed resume");
-      if (!promoted) {
+      assertNoSupabaseError(queuedError, "Could not mark parsed resume ready for review");
+      if (!queued) {
         await removeUploadedResume(admin, path);
         await transitionDurableJob(admin, jobId, "superseded", {
           errorCode: "superseded",
@@ -582,24 +778,7 @@ async function uploadAndParseResumeInner(formData: FormData): Promise<UploadResu
         return;
       }
 
-      if (priorProfile?.resume_storage_path && priorProfile.resume_storage_path !== path) {
-        try {
-          await removeUploadedResume(admin, priorProfile.resume_storage_path);
-        } catch (cleanupErr) {
-          logEvent("warn", "resume_old_file_cleanup_failed", {
-            user_id: userId.slice(0, 8),
-            resume_version_id: resumeVersionId,
-            error: cleanupErr instanceof Error ? cleanupErr.name : "unknown",
-          });
-        }
-      }
-
       await transitionDurableJob(admin, jobId, "succeeded");
-      enqueueUserRecompute(userId, {
-        forceFull: true,
-        source: "resume_upload",
-        resumeVersionId,
-      });
     } catch (err) {
       logEvent("warn", "resume_parse_post_processing_failed", {
         user_id: userId.slice(0, 8),
@@ -611,10 +790,8 @@ async function uploadAndParseResumeInner(formData: FormData): Promise<UploadResu
     }
 
     revalidatePath("/profile");
+    revalidatePath("/profile/resume");
     revalidatePath("/dashboard");
-    revalidatePath("/matches");
-    revalidatePath("/coach");
-    revalidatePath("/insights");
   });
 
   return { ok: true, processing: true, startedAt };
@@ -629,7 +806,7 @@ async function uploadAndParseResumeInner(formData: FormData): Promise<UploadResu
 export type ParseStatus =
   | { state: "idle" }
   | { state: "parsing"; startedAt: string }
-  | { state: "done"; dnaScore: number; role: string; years: number; techCount: number }
+  | { state: "done"; dnaScore: number; role: string; years: number; techCount: number; reviewRequired?: boolean }
   | { state: "failed"; error: string };
 
 export async function getParseStatus(): Promise<ParseStatus> {
@@ -686,6 +863,23 @@ export async function getParseStatus(): Promise<ParseStatus> {
   }
   if (row.resume_parse_error) {
     return { state: "failed", error: row.resume_parse_error };
+  }
+  if (row.pending_resume_version_id) {
+    const { data: draft } = await (supabase
+      .from("resume_versions")
+      .select("resume_parsed")
+      .eq("id", row.pending_resume_version_id)
+      .maybeSingle() as any) as { data: { resume_parsed: ParsedResume | null } | null };
+    const parsed = draft?.resume_parsed ?? null;
+    const dnaScore = parsed ? computeDnaBreakdown(parsed).total : 0;
+    return {
+      state: "done",
+      dnaScore,
+      role: parsed?.current_role ?? "Ready for review",
+      years: Math.round(parsed?.total_years_experience ?? 0),
+      techCount: (parsed?.tech_stack ?? []).length,
+      reviewRequired: true,
+    };
   }
   if (
     row.resume_parsed &&
@@ -782,7 +976,7 @@ export async function revertResumeToVersion(versionId: string): Promise<RevertRe
     // Mirror the convenience fields the parser otherwise sets directly.
     role_function:         restored.role_function ?? null,
     target_role_functions: restored.target_role_functions ?? [],
-    years_experience:      Math.round(restored.total_years_experience ?? 0) || null,
+    years_experience:      roundedYearsOrNull(restored.total_years_experience),
     current_role:          restored.current_role ?? null,
     tech_stack:            restored.tech_stack ?? [],
     preferred_hubs:        (restored.preferred_hubs ?? []).filter((h: string) => INDIA_HUBS.includes(h)),

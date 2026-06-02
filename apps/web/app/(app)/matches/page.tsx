@@ -16,6 +16,7 @@ import { MatchesURLBeacon } from "./matches-url-beacon";
 import { MatchNavProvider } from "./match-transition-context";
 import { MatchCardArea } from "./match-card-area";
 import { ComputingBanner } from "./computing-banner";
+import { ComputeAutoRefresh } from "./compute-auto-refresh";
 import { LockedMatchesPanel } from "./locked-card";
 import { getEntitlements } from "@/lib/billing/entitlements";
 import { PLAN_LIMITS } from "@/lib/billing/catalog";
@@ -65,13 +66,15 @@ export default async function MatchesPage({
 
   const { data: profile } = await (supabase
     .from("profiles")
-    .select("resume_storage_path, resume_score, resume_score_at, last_match_compute_at")
+    .select("resume_storage_path, resume_score, resume_score_at, last_match_compute_at, active_resume_version_id, matches_resume_version_id")
     .eq("id", user.id)
-    .maybeSingle() as any) as { data: { resume_storage_path: string | null; resume_score: number | null; resume_score_at: string | null; last_match_compute_at: string | null } | null };
+    .maybeSingle() as any) as { data: { resume_storage_path: string | null; resume_score: number | null; resume_score_at: string | null; last_match_compute_at: string | null; active_resume_version_id: string | null; matches_resume_version_id: string | null } | null };
 
   const hasResume = !!profile?.resume_storage_path;
   const resumeScore = profile?.resume_score ?? null;
   const lastComputeAt = profile?.last_match_compute_at ?? null;
+  const activeResumeVersionId = profile?.active_resume_version_id ?? null;
+  const matchesResumeVersionId = profile?.matches_resume_version_id ?? null;
 
   // Detect whether a match-compute job is actively running for this user.
   // We show the ComputingBanner when:
@@ -85,18 +88,36 @@ export default async function MatchesPage({
     if (staleCompute) {
       isComputing = true;
     } else {
-      // Check durable_jobs for an active match_compute job.
+      // Check background_jobs for an active match_compute job.
       try {
         const { count } = await (admin
-          .from("durable_jobs")
+          .from("background_jobs")
           .select("id", { count: "exact", head: true })
           .eq("user_id", user.id)
           .eq("job_type", "match_compute")
           .in("status", ["queued", "running"]) as any) as { count: number | null };
         if ((count ?? 0) > 0) isComputing = true;
       } catch {
-        // durable_jobs might not exist on fresh schemas — fail quietly.
+        // background_jobs might not exist on fresh schemas — fail quietly.
       }
+    }
+  }
+  let latestComputeError: string | null = null;
+  if (hasResume && activeResumeVersionId) {
+    try {
+      const { data: latestCompute } = await ((admin.from("background_jobs") as any)
+        .select("status, error_message")
+        .eq("user_id", user.id)
+        .eq("job_type", "match_compute")
+        .eq("resume_version_id", activeResumeVersionId)
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle() as any) as { data: { status: string; error_message: string | null } | null };
+      if (latestCompute?.status === "failed") {
+        latestComputeError = latestCompute.error_message ?? "Match computation failed. Your previous matches are still available.";
+      }
+    } catch {
+      latestComputeError = null;
     }
   }
 
@@ -283,12 +304,15 @@ export default async function MatchesPage({
       {/* Session-history beacon */}
       <MatchesURLBeacon />
 
-      {/* Header — freshness pills only. Matches recompute automatically on
-          every resume upload (enqueueUserRecompute in after()) AND after
-          every daily crawl (recompute_matches step in crawl.yml), so the
-          manual compute affordance was redundant and confused users when
-          it transiently failed. The two timestamps below are the
-          authoritative freshness signal. */}
+      {/* Live-refresh while a compute is in flight — covers BOTH the first
+          compute (no rows yet) and the replace flow (old rows visible). The
+          page re-renders with isComputing=false the moment the background job
+          stamps matches_resume_version_id, and this poller unmounts itself. */}
+      {isComputing && <ComputeAutoRefresh />}
+
+      {/* Header — freshness pills only. User-triggered computes run after the
+          reviewed resume is submitted; daily crawl recompute still refreshes
+          already-active resumes. */}
       <div className="flex items-center justify-between gap-3">
         <div className="min-w-0">
           <h1 className="text-xl font-semibold tracking-tight sm:text-2xl">Matches</h1>
@@ -325,6 +349,21 @@ export default async function MatchesPage({
             <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-primary" />
           </span>
           Refreshing matches with your latest resume — they&apos;ll update automatically.
+        </div>
+      )}
+
+      {!isComputing && latestComputeError && (
+        <div className="rounded-xl border border-warning/30 bg-warning/5 px-4 py-3 text-sm text-warning">
+          <p className="font-semibold">Could not refresh matches for the latest resume</p>
+          <p className="mt-1 text-xs text-warning/85">
+            {latestComputeError} Previous matches remain visible so you do not lose your shortlist.
+          </p>
+        </div>
+      )}
+
+      {activeResumeVersionId && matchesResumeVersionId && activeResumeVersionId !== matchesResumeVersionId && allRows.length > 0 && (
+        <div className="rounded-xl border border-border bg-secondary/40 px-4 py-3 text-sm text-muted-foreground">
+          These matches are from your previous resume. Use the Compute Matches button after submitting your reviewed resume to refresh rankings.
         </div>
       )}
 
@@ -401,7 +440,7 @@ export default async function MatchesPage({
             <EmptyState
               icon={<Activity className="h-5 w-5" />}
               title="No matches computed yet"
-              body="Matches are computed automatically right after your resume parses and after every daily crawl. If you just uploaded, give it a minute and refresh."
+              body="Submit your reviewed resume, then use Compute Matches to rank active jobs against it."
             />
           )
         ) : null}

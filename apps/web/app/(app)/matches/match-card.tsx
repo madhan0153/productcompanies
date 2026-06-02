@@ -143,7 +143,12 @@ export function MatchCard({
 }: MatchCardProps) {
   const job = match.jobs;
   const company = job.companies;
-  const meta = VERDICT_META[verdict];
+  // Defensive: legacy/internal verdicts (e.g. "evidence_pending", which the
+  // engine baseline path could persist before the normalization fix) are not
+  // keys in VERDICT_META. Falling back to `stretch` keeps the Explore tab from
+  // crashing on those rows — they live in the 40–58 band, so stretch is the
+  // correct display verdict anyway.
+  const meta = VERDICT_META[verdict] ?? VERDICT_META.stretch;
   const scoreBand = getScoreBand(match.score);
 
   const card = (match.fit_card as FitCardLite | null) ?? null;

@@ -15,6 +15,12 @@ import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { JsonResumeSchema } from "@prodmatch/shared";
 import { jsonToParsedResume } from "@/lib/resume/json-mapper";
 import { logEvent } from "@/lib/observability/log";
+import {
+  computeMatchesForActiveResume,
+  promoteReviewedResumeDraft,
+  type ComputeMatchesResult,
+} from "../actions";
+import type { Json } from "@/lib/supabase/types";
 
 const MAX_PAYLOAD_BYTES = 256 * 1024;
 
@@ -22,6 +28,12 @@ export interface SaveResumeResult {
   ok: boolean;
   error?: string;
   versionId?: string;
+}
+
+export interface SubmitReviewedResumeResult {
+  ok: boolean;
+  error?: string;
+  activeResumeVersionId?: string;
 }
 
 export async function saveResumeJson(payload: unknown): Promise<SaveResumeResult> {
@@ -79,4 +91,52 @@ export async function saveResumeJson(payload: unknown): Promise<SaveResumeResult
   logEvent("info", "resume_editor_saved", { bytes: size, versionId: inserted.id });
   revalidatePath("/profile/resume");
   return { ok: true, versionId: inserted.id };
+}
+
+export async function submitReviewedResume(
+  versionId: string,
+  payload: unknown,
+): Promise<SubmitReviewedResumeResult> {
+  const supabase = await createSupabaseServerClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { ok: false, error: "Sign in required." };
+
+  const size = JSON.stringify(payload).length;
+  if (size > MAX_PAYLOAD_BYTES) {
+    return { ok: false, error: `Resume too large (max ${MAX_PAYLOAD_BYTES} bytes).` };
+  }
+
+  const parsed = JsonResumeSchema.safeParse(payload);
+  if (!parsed.success) {
+    const fields = parsed.error.issues.map((i) => i.path.join(".")).slice(0, 5);
+    logEvent("warn", "resume_review_invalid", {
+      bytes: size,
+      fields: fields.join(","),
+    });
+    return { ok: false, error: `Some fields are invalid: ${fields.join(", ")}` };
+  }
+
+  const jsonResume = parsed.data;
+  const parsedResume = jsonToParsedResume(jsonResume);
+  const promoted = await promoteReviewedResumeDraft(
+    versionId,
+    parsedResume,
+    jsonResume as unknown as Json,
+  );
+  if (!promoted.ok) return promoted;
+
+  logEvent("info", "resume_review_submitted", {
+    bytes: size,
+    versionId,
+  });
+  revalidatePath("/profile");
+  revalidatePath("/profile/resume");
+  revalidatePath("/matches");
+  return { ok: true, activeResumeVersionId: promoted.activeResumeVersionId };
+}
+
+export async function startMatchCompute(): Promise<ComputeMatchesResult> {
+  return computeMatchesForActiveResume();
 }

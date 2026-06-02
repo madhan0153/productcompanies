@@ -241,6 +241,19 @@ export async function computeMatchesForUser(
     resume_signature:      (profileRow.resume_signature as string | null) ?? null,
   };
 
+  // Defensive years fallback. Legacy rows (and any profile written before the
+  // roundedYearsOrNull fix) can have a null years_experience even when the
+  // parsed resume carries a real value — including 0 for a fresher. Null years
+  // disable the senior_no_exp cap + years-gap hard-mismatch, which lets senior
+  // roles leak into a fresher's Priority list. Recover the value from the
+  // parsed resume so filtering is correct without forcing a profile rewrite.
+  if (profile.years_experience === null && profile.resume_parsed) {
+    const y = profile.resume_parsed.total_years_experience;
+    if (typeof y === "number" && Number.isFinite(y) && y >= 0) {
+      profile.years_experience = Math.round(y);
+    }
+  }
+
   if (opts.resumeVersionId) {
     if (
       profile.active_resume_version_id !== opts.resumeVersionId ||
@@ -388,35 +401,14 @@ export async function computeMatchesForUser(
   const validMatches = scored.filter((s) => !(s.rules?.hardMismatch === true));
   const ghostFiltered = validMatches.filter((s) => s.job.is_likely_ghost);
 
-  // 6. Inactive-job + hard-mismatch cleanup.
-  // (a) Drop matches for jobs that are no longer in our active set.
+  // 6. Inactive-job + hard-mismatch cleanup candidates.
+  // Actual deletes happen only after the final current-job check, so a
+  // superseded compute cannot erase the user's currently trusted matches.
   const activeIds = new Set(jobs.map((j) => j.id));
   const orphanIds = (existingMatchRows ?? [])
     .map((m) => m.job_id)
     .filter((id) => !activeIds.has(id));
-  if (orphanIds.length > 0) {
-    // Chunk to keep IN clauses short.
-    for (let i = 0; i < orphanIds.length; i += 200) {
-      const { error } = await admin
-        .from("matches")
-        .delete()
-        .eq("user_id", userId)
-        .in("job_id", orphanIds.slice(i, i + 200));
-      assertNoSupabaseError(error as { message: string } | null, "Could not delete inactive matches");
-    }
-  }
-  // (b) Drop matches whose latest scoring flagged hard-mismatch.
-  if (hardMismatchScored.length > 0) {
-    const ids = hardMismatchScored.map((s) => s.job.id);
-    for (let i = 0; i < ids.length; i += 200) {
-      const { error } = await admin
-        .from("matches")
-        .delete()
-        .eq("user_id", userId)
-        .in("job_id", ids.slice(i, i + 200));
-      assertNoSupabaseError(error as { message: string } | null, "Could not delete hard-mismatch matches");
-    }
-  }
+  const hardMismatchIds = hardMismatchScored.map((s) => s.job.id);
 
   // 7. Persist baselines for jobs that were re-scored. Mark seen_at=NULL on
   //    rescored rows so the UI can flag them as "new".
@@ -429,6 +421,13 @@ export async function computeMatchesForUser(
     // Fit-card-only updates without score movement → keep existing seen_at.
     const isNew = !existing || Math.abs((existing.score ?? 0) - score) >= 3;
     if (isNew) newMatchCount++;
+    // The DB `Verdict` enum (and the UI's VERDICT_META) has no
+    // "evidence_pending" — it's an internal calibrate state. The Fit-Card path
+    // already coerces it to "stretch"; mirror that here so the baseline path
+    // never persists a verdict the matches UI can't render (was crashing the
+    // Explore tab). evidence_pending sits in the 40–58 band → stretch is right.
+    const storedVerdict: Verdict | null =
+      verdict === ("evidence_pending" as Verdict) ? "stretch" : verdict;
     const rowHiddenReason =
       rules?.hardMismatch ? "mismatch"
       : job.is_likely_ghost ? "ghost"
@@ -451,7 +450,7 @@ export async function computeMatchesForUser(
       user_id:       userId,
       job_id:        job.id,
       score,
-      verdict,
+      verdict:       storedVerdict,
       fit_card:      existing?.fit_card ?? null,
       fit_card_at:   existing?.fit_card_at ?? null,
       hidden_reason: rowHiddenReason,
@@ -468,11 +467,10 @@ export async function computeMatchesForUser(
     };
   });
 
-  await batchUpsert(admin, baselineRows);
-
   // 8. Fit Cards — dynamic top-K, lazy regeneration.
   const parsedResume = profile.resume_parsed;
   let withFitCard = 0;
+  const fitCardRows: FitCardUpsertRow[] = [];
 
   // Sprint 3 Item 28 — pre-compute comp percentiles across the active
   // catalog. One pass, ~few ms; passed per-job into the Fit Card prompt
@@ -542,7 +540,6 @@ export async function computeMatchesForUser(
     if (candidates.length > 0) {
       const startedAt = Date.now();
       const queue = [...candidates];
-      const fitCardRows: FitCardUpsertRow[] = [];
 
       const worker = async () => {
         while (queue.length > 0) {
@@ -648,17 +645,36 @@ export async function computeMatchesForUser(
       await Promise.allSettled(
         Array.from({ length: Math.min(FIT_CARD_CONCURRENCY, candidates.length) }, worker),
       );
-
-      if (fitCardRows.length > 0) await batchUpsert(admin, fitCardRows);
     }
   }
 
-  // 9. Stamp last_match_compute_at on the profile.
+  // 9. Persist rows only after proving this compute is still current, then
+  // stamp last_match_compute_at on the profile. Until this point the previous
+  // matches remain the displayed fallback.
   await assertComputeJobIsCurrent(admin, {
     userId,
     resumeVersionId: opts.resumeVersionId,
     jobId: opts.jobId,
   });
+
+  for (let i = 0; i < orphanIds.length; i += 200) {
+    const { error } = await admin
+      .from("matches")
+      .delete()
+      .eq("user_id", userId)
+      .in("job_id", orphanIds.slice(i, i + 200));
+    assertNoSupabaseError(error as { message: string } | null, "Could not delete inactive matches");
+  }
+  for (let i = 0; i < hardMismatchIds.length; i += 200) {
+    const { error } = await admin
+      .from("matches")
+      .delete()
+      .eq("user_id", userId)
+      .in("job_id", hardMismatchIds.slice(i, i + 200));
+    assertNoSupabaseError(error as { message: string } | null, "Could not delete hard-mismatch matches");
+  }
+  await batchUpsert(admin, baselineRows);
+  if (fitCardRows.length > 0) await batchUpsert(admin, fitCardRows);
 
   let stampQuery = (admin.from("profiles") as any)
     .update({

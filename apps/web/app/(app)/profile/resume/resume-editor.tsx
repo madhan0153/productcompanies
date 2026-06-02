@@ -17,7 +17,7 @@ import { useMemo, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import {
   Save, Upload, Download, Eye, Plus, Trash2, ChevronDown,
-  Loader2, CheckCircle2, AlertTriangle, FileText,
+  Loader2, CheckCircle2, AlertTriangle, FileText, Zap,
 } from "lucide-react";
 import type {
   JsonResume,
@@ -28,14 +28,17 @@ import type {
   JsonResumeCertificate,
   JsonResumeLanguage,
 } from "@prodmatch/shared";
-import { saveResumeJson } from "./actions";
+import { saveResumeJson, startMatchCompute, submitReviewedResume } from "./actions";
 import { ProjectTranslatorButton } from "@/components/lab/project-translator-button";
 
-type DerivedFrom = "json" | "parsed" | "empty";
+type DerivedFrom = "json" | "parsed" | "empty" | "pending";
 
 interface ResumeEditorProps {
   initial: JsonResume;
   derivedFrom: DerivedFrom;
+  mode?: "edit" | "review";
+  versionId?: string | null;
+  needsCompute?: boolean;
 }
 
 type Section =
@@ -53,7 +56,13 @@ const SECTION_LABEL: Record<Section, string> = {
   awards: "Awards",
 };
 
-export function ResumeEditor({ initial, derivedFrom }: ResumeEditorProps) {
+export function ResumeEditor({
+  initial,
+  derivedFrom,
+  mode = "edit",
+  versionId = null,
+  needsCompute = false,
+}: ResumeEditorProps) {
   const router = useRouter();
   const [doc, setDoc] = useState<JsonResume>(initial);
   const [open, setOpen] = useState<Record<Section, boolean>>({
@@ -61,8 +70,11 @@ export function ResumeEditor({ initial, derivedFrom }: ResumeEditorProps) {
     projects: false, certificates: false, languages: false, awards: false,
   });
   const [pending, startTransition] = useTransition();
+  const [computePending, startComputeTransition] = useTransition();
   const [flash, setFlash] = useState<{ kind: "ok" | "err"; text: string } | null>(null);
+  const [submitted, setSubmitted] = useState(false);
   const importInput = useRef<HTMLInputElement>(null);
+  const showComputeCta = submitted || needsCompute;
 
   const counts = useMemo(
     () => ({
@@ -79,13 +91,33 @@ export function ResumeEditor({ initial, derivedFrom }: ResumeEditorProps) {
 
   function handleSave() {
     startTransition(async () => {
-      const res = await saveResumeJson(doc);
+      const res = mode === "review" && versionId
+        ? await submitReviewedResume(versionId, doc)
+        : await saveResumeJson(doc);
       if (res.ok) {
-        setFlash({ kind: "ok", text: "Resume saved." });
-        // Clear flash after 3s.
-        setTimeout(() => setFlash(null), 3000);
+        setSubmitted(mode === "review");
+        setFlash({
+          kind: "ok",
+          text: mode === "review"
+            ? "Resume submitted successfully — ready to compute matches"
+            : "Resume saved.",
+        });
+        if (mode !== "review") setTimeout(() => setFlash(null), 3000);
+        router.refresh();
       } else {
         setFlash({ kind: "err", text: res.error ?? "Save failed." });
+      }
+    });
+  }
+
+  function handleComputeMatches() {
+    startComputeTransition(async () => {
+      const res = await startMatchCompute();
+      if (res.ok) {
+        router.push("/matches");
+        router.refresh();
+      } else {
+        setFlash({ kind: "err", text: res.error });
       }
     });
   }
@@ -128,9 +160,13 @@ export function ResumeEditor({ initial, derivedFrom }: ResumeEditorProps) {
       <div className="space-y-3">
         <Toolbar
           pending={pending}
+          computePending={computePending}
           flash={flash}
           derivedFrom={derivedFrom}
+          mode={mode}
+          showComputeCta={showComputeCta}
           onSave={handleSave}
+          onComputeMatches={handleComputeMatches}
           onImportClick={() => importInput.current?.click()}
         />
         <input
@@ -223,8 +259,19 @@ export function ResumeEditor({ initial, derivedFrom }: ResumeEditorProps) {
             className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground shadow hover:bg-primary/90 disabled:opacity-60 lg:w-auto"
           >
             {pending ? <Loader2 className="h-4 w-4 animate-spin motion-reduce:animate-none" /> : <Save className="h-4 w-4" />}
-            Save changes
+            {mode === "review" ? "Submit Parsed Resume" : "Save changes"}
           </button>
+          {showComputeCta && (
+            <button
+              type="button"
+              onClick={handleComputeMatches}
+              disabled={computePending}
+              className="press mt-2 inline-flex w-full items-center justify-center gap-2 rounded-lg bg-primary px-4 py-2.5 text-sm font-bold text-primary-foreground shadow-pop transition hover:bg-primary/90 disabled:opacity-60 lg:w-auto"
+            >
+              {computePending ? <Loader2 className="h-4 w-4 animate-spin motion-reduce:animate-none" /> : <Zap className="h-4 w-4" />}
+              Compute Matches
+            </button>
+          )}
         </div>
       </div>
 
@@ -265,12 +312,16 @@ export function ResumeEditor({ initial, derivedFrom }: ResumeEditorProps) {
 // ── Toolbar ────────────────────────────────────────────────────────────────
 
 function Toolbar({
-  pending, flash, derivedFrom, onSave, onImportClick,
+  pending, computePending, flash, derivedFrom, mode, showComputeCta, onSave, onComputeMatches, onImportClick,
 }: {
   pending: boolean;
+  computePending: boolean;
   flash: { kind: "ok" | "err"; text: string } | null;
   derivedFrom: DerivedFrom;
+  mode: "edit" | "review";
+  showComputeCta: boolean;
   onSave: () => void;
+  onComputeMatches: () => void;
   onImportClick: () => void;
 }) {
   return (
@@ -282,32 +333,48 @@ function Toolbar({
         className="inline-flex items-center gap-2 rounded-lg bg-primary px-3 py-1.5 text-xs font-semibold text-primary-foreground hover:bg-primary/90 disabled:opacity-60"
       >
         {pending ? <Loader2 className="h-3.5 w-3.5 animate-spin motion-reduce:animate-none" /> : <Save className="h-3.5 w-3.5" />}
-        Save
+        {mode === "review" ? "Submit Parsed Resume" : "Save"}
       </button>
-      <button
-        type="button"
-        onClick={onImportClick}
-        className="inline-flex items-center gap-2 rounded-lg border border-border bg-card/60 px-3 py-1.5 text-xs font-medium hover:bg-card"
-      >
-        <Upload className="h-3.5 w-3.5" /> Import JSON
-      </button>
-      <a
-        href="/api/resume/export"
-        className="inline-flex items-center gap-2 rounded-lg border border-border bg-card/60 px-3 py-1.5 text-xs font-medium hover:bg-card"
-        download
-      >
-        <Download className="h-3.5 w-3.5" /> Export JSON
-      </a>
-      <a
-        href="/profile/resume/print?template=ats&autoprint=1"
-        target="_blank"
-        rel="noreferrer"
-        className="inline-flex items-center gap-2 rounded-lg border border-border bg-card/60 px-3 py-1.5 text-xs font-medium hover:bg-card"
-      >
-        <Eye className="h-3.5 w-3.5" /> Print PDF
-      </a>
+      {showComputeCta && (
+        <button
+          type="button"
+          onClick={onComputeMatches}
+          disabled={computePending}
+          className="press inline-flex items-center gap-2 rounded-lg bg-primary px-3 py-1.5 text-xs font-bold text-primary-foreground shadow-pop hover:bg-primary/90 disabled:opacity-60"
+        >
+          {computePending ? <Loader2 className="h-3.5 w-3.5 animate-spin motion-reduce:animate-none" /> : <Zap className="h-3.5 w-3.5" />}
+          Compute Matches
+        </button>
+      )}
+      {mode !== "review" && (
+        <>
+          <button
+            type="button"
+            onClick={onImportClick}
+            className="inline-flex items-center gap-2 rounded-lg border border-border bg-card/60 px-3 py-1.5 text-xs font-medium hover:bg-card"
+          >
+            <Upload className="h-3.5 w-3.5" /> Import JSON
+          </button>
+          <a
+            href="/api/resume/export"
+            className="inline-flex items-center gap-2 rounded-lg border border-border bg-card/60 px-3 py-1.5 text-xs font-medium hover:bg-card"
+            download
+          >
+            <Download className="h-3.5 w-3.5" /> Export JSON
+          </a>
+          <a
+            href="/profile/resume/print?template=ats&autoprint=1"
+            target="_blank"
+            rel="noreferrer"
+            className="inline-flex items-center gap-2 rounded-lg border border-border bg-card/60 px-3 py-1.5 text-xs font-medium hover:bg-card"
+          >
+            <Eye className="h-3.5 w-3.5" /> Print PDF
+          </a>
+        </>
+      )}
       <span className="ml-auto text-[10px] text-muted-foreground">
-        {derivedFrom === "json" ? "Editing saved JSON Resume" :
+        {derivedFrom === "pending" ? "Parsed from PDF - review before matching" :
+         derivedFrom === "json" ? "Editing saved JSON Resume" :
          derivedFrom === "parsed" ? "Derived from PDF parse — review & save" :
          "New resume"}
       </span>

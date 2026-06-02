@@ -1,7 +1,5 @@
 "use client";
 
-import { useEffect } from "react";
-import { useRouter } from "next/navigation";
 import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
 import { Brain } from "lucide-react";
 
@@ -11,17 +9,12 @@ const MESSAGES = [
   "Crunching skill overlaps, seniority bands, and tech fit",
 ];
 
-// Shown while a match-compute job is actively running for this user.
-// Auto-refreshes the page every 5 s so the banner disappears as soon as
-// the compute finishes and matches are ready.
+// Presentation-only banner shown while a match-compute job is running for this
+// user. The page-level <ComputeAutoRefresh /> poller drives router.refresh()
+// (in both the first-compute and replace flows), so this component no longer
+// owns a timer — it just renders the animated "analysing…" state.
 export function ComputingBanner() {
-  const router = useRouter();
   const reduce = useReducedMotion();
-
-  useEffect(() => {
-    const id = setInterval(() => router.refresh(), 5000);
-    return () => clearInterval(id);
-  }, [router]);
 
   return (
     <AnimatePresence>
