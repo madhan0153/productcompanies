@@ -336,21 +336,12 @@ export default async function MatchesPage({
         </div>
       </div>
 
-      {/* Computing banner (first-time) — no old matches exist yet */}
-      {isComputing && allRows.length === 0 && <ComputingBanner />}
-
-      {/* Quiet "refresh in progress" indicator — preserves trust by not
-          implying the displayed results are wrong. The new matches replace
-          these silently when ready. */}
-      {isComputing && allRows.length > 0 && (
-        <div className="flex items-center justify-center gap-2 rounded-full border border-border bg-secondary/50 px-3 py-1.5 text-[11px] text-muted-foreground">
-          <span className="relative flex h-1.5 w-1.5">
-            <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-primary opacity-60" />
-            <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-primary" />
-          </span>
-          Refreshing matches with your latest resume — they&apos;ll update automatically.
-        </div>
-      )}
+      {/* Single progress card whenever a compute is in flight — covers both
+          the first-time (no rows yet) and replace (old rows visible) flows.
+          The ComputeAutoRefresh poller above swaps in fresh matches the moment
+          the background job finishes, so this is the only status the user
+          needs to see. */}
+      {isComputing && <ComputingBanner hasExisting={allRows.length > 0} />}
 
       {!isComputing && latestComputeError && (
         <div className="rounded-xl border border-warning/30 bg-warning/5 px-4 py-3 text-sm text-warning">
@@ -361,7 +352,7 @@ export default async function MatchesPage({
         </div>
       )}
 
-      {activeResumeVersionId && matchesResumeVersionId && activeResumeVersionId !== matchesResumeVersionId && allRows.length > 0 && (
+      {!isComputing && activeResumeVersionId && matchesResumeVersionId && activeResumeVersionId !== matchesResumeVersionId && allRows.length > 0 && (
         <div className="rounded-xl border border-border bg-secondary/40 px-4 py-3 text-sm text-muted-foreground">
           These matches are from your previous resume. Use the Compute Matches button after submitting your reviewed resume to refresh rankings.
         </div>

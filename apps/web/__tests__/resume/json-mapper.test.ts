@@ -175,6 +175,67 @@ test("rejects malformed JSON Resume (wrong types) via schema parse", () => {
   assert.equal(result.success, false);
 });
 
+test("rich parse fields (dates, summary, highlights, projects, certs) round-trip", () => {
+  const before: ParsedResume = {
+    ...fixture(),
+    companies: [
+      {
+        name: "Alpha",
+        role: "Senior Backend Engineer",
+        years: 3,
+        is_product_company: true,
+        start_date: "2022-01",
+        end_date: "Present",
+        summary: "Payments platform team",
+        highlights: ["Built a reconciliation service handling 2M txns/day."],
+      },
+    ],
+    projects: [
+      {
+        name: "Order Service",
+        description: "Core order pipeline",
+        highlights: ["Cut p99 latency 40%."],
+        tech: ["Go", "Kafka"],
+      },
+    ],
+    certifications: [
+      { name: "AWS Solutions Architect", issuer: "AWS", date: "2023" },
+    ],
+  };
+
+  const json = parsedResumeToJson(before);
+  // Schema must accept the enriched document.
+  assert.equal(JsonResumeSchema.safeParse(json).success, true);
+  assert.equal(json.work[0].startDate, "2022-01");
+  assert.equal(json.work[0].endDate, "Present");
+  assert.equal(json.work[0].summary, "Payments platform team");
+  assert.deepEqual(json.work[0].highlights, ["Built a reconciliation service handling 2M txns/day."]);
+  assert.equal(json.projects[0].description, "Core order pipeline");
+  assert.deepEqual(json.projects[0].keywords, ["Go", "Kafka"]);
+  assert.equal(json.certificates[0].name, "AWS Solutions Architect");
+  assert.equal(json.certificates[0].issuer, "AWS");
+
+  const after = jsonToParsedResume(JsonResumeSchema.parse(json));
+  assert.equal(after.companies[0].start_date, "2022-01");
+  assert.equal(after.companies[0].end_date, "Present");
+  assert.equal(after.companies[0].summary, "Payments platform team");
+  assert.deepEqual(after.companies[0].highlights, ["Built a reconciliation service handling 2M txns/day."]);
+  assert.equal(after.projects?.[0].description, "Core order pipeline");
+  assert.deepEqual(after.projects?.[0].tech, ["Go", "Kafka"]);
+  assert.equal(after.certifications?.[0].name, "AWS Solutions Architect");
+  assert.equal(after.certifications?.[0].issuer, "AWS");
+});
+
+test("free-form dates and partial URLs no longer break schema validation", () => {
+  // The exact failure that broke the Save button: real resume date ranges and
+  // bare LinkedIn handles. These must now pass.
+  const doc = parsedResumeToJson(fixture());
+  doc.work[0] = { ...doc.work[0], startDate: "Aug 2024", endDate: "Present" };
+  doc.basics.url = "linkedin.com/in/someone";
+  doc.basics.email = "not-an-email";
+  assert.equal(JsonResumeSchema.safeParse(doc).success, true);
+});
+
 test("schema accepts unknown vendor extension keys via passthrough", () => {
   const ok = JsonResumeSchema.safeParse({
     basics: {

@@ -42,11 +42,10 @@ export function parsedResumeToJson(parsed: ParsedResume): JsonResume {
   const work: JsonResumeWork[] = parsed.companies.map((c) => ({
     name: c.name,
     position: c.role,
-    summary: undefined,
-    highlights: [],
-    // years → approximate startDate using total_years_experience anchored
-    // at the most recent company; we don't know exact dates so leave undefined
-    // unless future input includes them.
+    startDate: normalizeDate(c.start_date),
+    endDate: normalizeDate(c.end_date),
+    summary: c.summary || undefined,
+    highlights: c.highlights ?? [],
     ...({ "x-prodmatch-product": c.is_product_company } as Record<string, unknown>),
     ...({ "x-prodmatch-years": c.years } as Record<string, unknown>),
   } as JsonResumeWork));
@@ -62,12 +61,28 @@ export function parsedResumeToJson(parsed: ParsedResume): JsonResume {
 
   const skills = buildSkills(parsed.tech_stack, parsed.soft_skills);
 
-  const projects: JsonResumeProject[] = parsed.products_built.map((p) => ({
-    name: p,
-    description: undefined,
-    highlights: [],
-    keywords: [],
-    roles: [],
+  // Prefer the rich `projects` (description / highlights / tech) when present;
+  // fall back to the legacy products_built (names only) for older parses.
+  const projects: JsonResumeProject[] = (parsed.projects && parsed.projects.length > 0)
+    ? parsed.projects.map((p) => ({
+        name: p.name,
+        description: p.description || undefined,
+        highlights: p.highlights ?? [],
+        keywords: p.tech ?? [],
+        roles: [],
+      }))
+    : parsed.products_built.map((p) => ({
+        name: p,
+        description: undefined,
+        highlights: [],
+        keywords: [],
+        roles: [],
+      }));
+
+  const certificates = (parsed.certifications ?? []).map((c) => ({
+    name: c.name,
+    issuer: c.issuer || undefined,
+    date: normalizeDate(c.date),
   }));
 
   return {
@@ -85,7 +100,7 @@ export function parsedResumeToJson(parsed: ParsedResume): JsonResume {
     skills,
     projects,
     awards: [],
-    certificates: [],
+    certificates,
     languages: [],
     interests: [],
     meta: {
@@ -134,8 +149,27 @@ export function jsonToParsedResume(json: JsonResume): ParsedResume {
       is_product_company: typeof ext["x-prodmatch-product"] === "boolean"
         ? (ext["x-prodmatch-product"] as boolean)
         : false,
+      start_date: w.startDate || undefined,
+      end_date: w.endDate || undefined,
+      summary: w.summary || undefined,
+      highlights: w.highlights ?? [],
     };
   });
+
+  // Rich projects round-trip so edits in the editor (description / highlights /
+  // tech) survive submit → matching, not just the names.
+  const projects = json.projects.map((p) => ({
+    name: p.name,
+    description: p.description || undefined,
+    highlights: p.highlights ?? [],
+    tech: p.keywords ?? [],
+  }));
+
+  const certifications = json.certificates.map((c) => ({
+    name: c.name,
+    issuer: c.issuer || undefined,
+    date: c.date || undefined,
+  }));
 
   const education = json.education.map((e) => {
     const y = parseYear(e.endDate);
@@ -171,6 +205,8 @@ export function jsonToParsedResume(json: JsonResume): ParsedResume {
     tech_stack: techStack,
     soft_skills: softSkills,
     products_built: productsBuilt,
+    projects,
+    certifications,
     companies,
     education,
     summary: json.basics.summary ?? "",
@@ -192,6 +228,15 @@ function buildSkills(tech: string[], soft: string[]) {
   if (tech.length > 0) groups.push({ name: "Technical", keywords: dedupe(tech) });
   if (soft.length > 0) groups.push({ name: "Soft Skills", keywords: dedupe(soft) });
   return groups;
+}
+
+/** Trim a date-ish string; return undefined when empty so optional fields stay
+ *  absent rather than empty strings. The JSON Resume schema is lenient about
+ *  the exact format, so we pass values through as the parser/user supplied. */
+function normalizeDate(v?: string | null): string | undefined {
+  if (typeof v !== "string") return undefined;
+  const t = v.trim();
+  return t.length > 0 ? t : undefined;
 }
 
 function dedupe(arr: string[]): string[] {

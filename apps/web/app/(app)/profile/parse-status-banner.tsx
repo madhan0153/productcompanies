@@ -41,7 +41,10 @@ export function ParseStatusBanner({
         if (status.state === "done") {
           setParsing(false);
           setError(null);
-          router.refresh();
+          // Consistent with the upload card: take the user straight into the
+          // review/edit form when the parse finishes, instead of just
+          // refreshing /profile into the "Parsed resume ready" card.
+          router.push("/profile/resume");
           return;
         }
         if (status.state === "failed") {

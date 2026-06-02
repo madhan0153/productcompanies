@@ -17,6 +17,27 @@ export interface ParsedResume {
     role: string;
     years: number;
     is_product_company: boolean;
+    /** ISO-ish: "YYYY-MM" or "YYYY". Optional — older parses omit it. */
+    start_date?: string;
+    /** "YYYY-MM", "YYYY", or "Present" for the current role. */
+    end_date?: string;
+    /** One-line role context (team / scope), product-company register. */
+    summary?: string;
+    /** 2–5 achievement bullets, rewritten in product-company language. */
+    highlights?: string[];
+  }>;
+  /** Rich project detail for the editor. Superset of products_built (names). */
+  projects?: Array<{
+    name: string;
+    description?: string;
+    highlights?: string[];
+    tech?: string[];
+  }>;
+  /** Certifications with issuer + date when present on the resume. */
+  certifications?: Array<{
+    name: string;
+    issuer?: string;
+    date?: string; // "YYYY" or "YYYY-MM"
   }>;
   education: Array<{
     degree: string;
@@ -55,8 +76,37 @@ const SCHEMA: Schema = {
           role:               { type: SchemaType.STRING },
           years:              { type: SchemaType.NUMBER },
           is_product_company: { type: SchemaType.BOOLEAN },
+          start_date:         { type: SchemaType.STRING },
+          end_date:           { type: SchemaType.STRING },
+          summary:            { type: SchemaType.STRING },
+          highlights:         { type: SchemaType.ARRAY, items: { type: SchemaType.STRING } },
         },
         required: ["name", "role", "years", "is_product_company"],
+      },
+    },
+    projects: {
+      type: SchemaType.ARRAY,
+      items: {
+        type: SchemaType.OBJECT,
+        properties: {
+          name:        { type: SchemaType.STRING },
+          description: { type: SchemaType.STRING },
+          highlights:  { type: SchemaType.ARRAY, items: { type: SchemaType.STRING } },
+          tech:        { type: SchemaType.ARRAY, items: { type: SchemaType.STRING } },
+        },
+        required: ["name"],
+      },
+    },
+    certifications: {
+      type: SchemaType.ARRAY,
+      items: {
+        type: SchemaType.OBJECT,
+        properties: {
+          name:   { type: SchemaType.STRING },
+          issuer: { type: SchemaType.STRING },
+          date:   { type: SchemaType.STRING },
+        },
+        required: ["name"],
       },
     },
     education: {
@@ -117,7 +167,22 @@ For preferred_hubs, infer from work history cities. Use only: ${INDIA_HUBS.join(
 If current company is a product company (Google, Meta, Razorpay, Zerodha, CRED, Groww, etc.), set is_product_company=true.
 Estimate total_years_experience from work history dates.
 Do NOT include PII in summary — only professional summary.
-For estimated_current_lpa: estimate in LPA (lakhs per annum) based on role seniority, company tier, and years of experience in India market. Return null/omit if insufficient data.`;
+For estimated_current_lpa: estimate in LPA (lakhs per annum) based on role seniority, company tier, and years of experience in India market. Return null/omit if insufficient data.
+
+For EACH company in "companies", fill these fields completely from the resume:
+- start_date / end_date: the employment dates. Normalise to "YYYY-MM" (e.g. "2024-08") when month+year are present, or "YYYY" when only a year is present. Use "Present" for the end_date of the candidate's current role. Never leave these blank if the resume shows any dates.
+- summary: a single concise line describing the team / product / scope of that role (no PII).
+- highlights: 2–5 of the candidate's strongest achievement bullets for that role. REWRITE each bullet in crisp PRODUCT-COMPANY language, not IT-services language. Rules for rewriting:
+  * Lead with the impact / outcome, then how. Quantify with real numbers from the resume (latency, scale, %, volume, cost) — never invent numbers.
+  * Use strong ownership verbs (Built, Designed, Led, Shipped, Scaled, Owned) — avoid "Responsible for", "Worked on", "Involved in", "Assisted".
+  * Emphasise systems built, ownership, scale, and measurable results over task lists or client/process language.
+  * Keep each bullet one sentence, ≤ 240 characters. Do NOT fabricate facts not supported by the resume.
+
+For "projects": extract EVERY project / product the candidate built (from a Projects section AND notable products built inside their jobs). For each project fill:
+- name (required), description (one line of what it is / does), highlights (1–4 achievement bullets rewritten in the same product-company style as above), and tech (the concrete technologies/keywords used in that project).
+Also keep "products_built" as the list of project/product NAMES (for backward compatibility).
+
+For "certifications": extract every certification, license, or credential. For each, fill name (required), issuer (the awarding body, e.g. "Microsoft", "AWS"), and date ("YYYY" or "YYYY-MM") when shown. Return an empty array if the resume has none.`;
 
 const PDF_PROMPT = `You are an expert resume parser for an India-focused engineering job platform.
 Extract structured information from the provided resume PDF.

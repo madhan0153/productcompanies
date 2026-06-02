@@ -12,9 +12,17 @@ const MESSAGES = [
 // Presentation-only banner shown while a match-compute job is running for this
 // user. The page-level <ComputeAutoRefresh /> poller drives router.refresh()
 // (in both the first-compute and replace flows), so this component no longer
-// owns a timer — it just renders the animated "analysing…" state.
-export function ComputingBanner() {
+// owns a timer — it just renders the animated progress state.
+//
+// `hasExisting` tailors the copy: a first-time compute reads as "analysing
+// your profile"; a re-compute over existing matches reassures the user their
+// current matches stay visible until the fresh ones land.
+export function ComputingBanner({ hasExisting = false }: { hasExisting?: boolean }) {
   const reduce = useReducedMotion();
+  const title = hasExisting ? "Updating your matches…" : "Analysing your profile…";
+  const subtitle = hasExisting
+    ? "Re-ranking every role against your latest resume — your current matches stay visible until the new ones are ready."
+    : `${MESSAGES[0]}.`;
 
   return (
     <AnimatePresence>
@@ -58,10 +66,10 @@ export function ComputingBanner() {
           {/* Text */}
           <div className="min-w-0 flex-1">
             <p className="text-sm font-semibold text-foreground">
-              Analysing your profile&hellip;
+              {title}
             </p>
             <p className="mt-0.5 text-xs leading-relaxed text-muted-foreground">
-              {MESSAGES[0]}.{" "}
+              {subtitle}{" "}
               <span className="text-foreground/70">Usually ready in 30–60 seconds.</span>
             </p>
           </div>

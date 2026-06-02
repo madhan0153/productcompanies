@@ -18,10 +18,12 @@
 
 import { z } from "zod";
 
-const isoDate = z.string().regex(
-  /^(\d{4}(-\d{2}(-\d{2})?)?|present)$/i,
-  "expected YYYY, YYYY-MM, YYYY-MM-DD, or 'present'",
-);
+// Lenient date: accept whatever the parser or user supplies (e.g. "2024-08",
+// "2024", "Present", "Aug 2024 – Present"). The previous strict regex rejected
+// common real-world formats, which made the Save / Submit actions throw
+// "Some fields are invalid" the moment a user edited an employment date.
+// Display/print render dates as plain text, so strict validation buys nothing.
+const isoDate = z.string();
 
 const LocationSchema = z.object({
   address:     z.string().optional(),
@@ -34,16 +36,16 @@ const LocationSchema = z.object({
 const ProfileSchema = z.object({
   network:  z.string(),
   username: z.string().optional(),
-  url:      z.string().url().optional(),
+  url:      z.string().optional(),
 }).passthrough();
 
 const BasicsSchema = z.object({
   name:     z.string().default(""),
   label:    z.string().optional(),
-  image:    z.string().url().optional(),
-  email:    z.string().email().optional(),
+  image:    z.string().optional(),
+  email:    z.string().optional(),
   phone:    z.string().optional(),
-  url:      z.string().url().optional(),
+  url:      z.string().optional(),
   summary:  z.string().optional(),
   location: LocationSchema.optional(),
   profiles: z.array(ProfileSchema).default([]),
@@ -52,7 +54,7 @@ const BasicsSchema = z.object({
 const WorkSchema = z.object({
   name:       z.string(),               // company name
   position:   z.string(),                // role title
-  url:        z.string().url().optional(),
+  url:        z.string().optional(),
   startDate:  isoDate.optional(),
   endDate:    isoDate.optional(),
   summary:    z.string().optional(),
@@ -61,7 +63,7 @@ const WorkSchema = z.object({
 
 const EducationSchema = z.object({
   institution: z.string(),
-  url:         z.string().url().optional(),
+  url:         z.string().optional(),
   area:        z.string().optional(),    // field of study
   studyType:   z.string().optional(),    // e.g. "Bachelor"
   startDate:   isoDate.optional(),
@@ -83,7 +85,7 @@ const ProjectSchema = z.object({
   keywords:    z.array(z.string()).default([]),
   startDate:   isoDate.optional(),
   endDate:     isoDate.optional(),
-  url:         z.string().url().optional(),
+  url:         z.string().optional(),
   roles:       z.array(z.string()).default([]),
   entity:      z.string().optional(),
   type:        z.string().optional(),
@@ -100,7 +102,7 @@ const CertificateSchema = z.object({
   name:   z.string(),
   date:   isoDate.optional(),
   issuer: z.string().optional(),
-  url:    z.string().url().optional(),
+  url:    z.string().optional(),
 }).passthrough();
 
 const LanguageSchema = z.object({
@@ -114,7 +116,7 @@ const InterestSchema = z.object({
 }).passthrough();
 
 const MetaSchema = z.object({
-  canonical:    z.string().url().optional(),
+  canonical:    z.string().optional(),
   version:      z.string().optional(),
   lastModified: z.string().optional(),
 }).passthrough();

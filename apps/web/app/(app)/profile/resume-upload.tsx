@@ -121,15 +121,9 @@ export function ResumeUpload({ hasExisting, existingRole, existingDnaScore, isPa
               return "adopted";
             }
             if (status.state === "done") {
-              setCurrentStep(-1);
-              setResult({
-                ok: true,
-                dnaScore: status.dnaScore,
-                role: status.role,
-                years: status.years,
-                techCount: status.techCount,
-                reviewRequired: status.reviewRequired,
-              });
+              // Parse already finished server-side — go straight to review.
+              setPollingStartedAt(null);
+              router.push("/profile/resume");
               return "adopted";
             }
             if (status.state === "failed") {
@@ -209,17 +203,12 @@ export function ResumeUpload({ hasExisting, existingRole, existingDnaScore, isPa
       // If the row reports a different (or absent) parsing_at, the
       // background work has either finished or failed.
       if (status.state === "done") {
-        setCurrentStep(-1);
+        // Smooth hand-off: instead of showing a second "finished" banner here
+        // (the profile page also has a "Parsed resume ready" card), take the
+        // user straight into the review/edit form. router.push unmounts this
+        // component, so no duplicate success state is shown.
         setPollingStartedAt(null);
-        setResult({
-          ok: true,
-          dnaScore: status.dnaScore,
-          role: status.role,
-          years: status.years,
-          techCount: status.techCount,
-          reviewRequired: status.reviewRequired,
-        });
-        router.refresh();
+        router.push("/profile/resume");
         return;
       }
       if (status.state === "failed") {
