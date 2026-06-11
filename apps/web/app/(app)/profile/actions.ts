@@ -365,7 +365,11 @@ export async function promoteReviewedResumeDraft(
   try {
     const patch = await buildActiveResumePatch(admin, parsed, resumeVersionId);
 
-    if (current?.resume_parsed && current.active_resume_version_id !== resumeVersionId) {
+    // Snapshot only legacy profiles whose active resume predates version
+    // rows. When active_resume_version_id is set, that exact state already
+    // exists as an immutable resume_versions row — snapshotting again would
+    // duplicate it and churn the snapshot retention window (latest 5).
+    if (current?.resume_parsed && !current.active_resume_version_id) {
       await snapshotCurrentResume(admin, {
         userId,
         resume_parsed: current.resume_parsed,
