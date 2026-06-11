@@ -17,6 +17,11 @@ type Props = {
   isParsing?: boolean;
 };
 
+// Client-side size gates — mirror the server's MAX/MIN in
+// lib/security/pdf.ts so oversized files fail before any bytes upload.
+const MAX_PDF_BYTES = 5 * 1024 * 1024;
+const MIN_PDF_BYTES = 4 * 1024;
+
 // Simulated AI processing steps shown during upload
 const AI_STEPS = [
   { icon: Upload,    label: "Uploading PDF securely",          duration: 1500 },
@@ -68,9 +73,11 @@ export function ResumeUpload({ hasExisting, existingRole, existingDnaScore, isPa
     if (inputRef.current) inputRef.current.value = "";
   }
 
+  // Advances the step *state* for everyone — reduced-motion users still get
+  // live progress information; only the decorative animation (pulse, shimmer,
+  // eased bar) is suppressed via `reduce` / motion-reduce at render time.
   function startStepAnimation() {
     setCurrentStep(0);
-    if (reduce) return;
     let step = 0;
     const advance = () => {
       step++;
@@ -92,8 +99,34 @@ export function ResumeUpload({ hasExisting, existingRole, existingDnaScore, isPa
       resetFileInput();
       return;
     }
-    if (file.type !== "application/pdf") {
-      setResult({ ok: false, error: "Only PDF files are supported." });
+    // Advisory pre-checks mirroring the server's limits (the server re-validates
+    // authoritatively, including PDF magic bytes). Rejecting here means an
+    // oversized file fails instantly instead of after a full upload on mobile
+    // data. Some Android file pickers report an empty/octet-stream MIME for
+    // real PDFs, so fall back to the file extension in that case.
+    const looksLikePdf =
+      file.type === "application/pdf" ||
+      ((file.type === "" || file.type === "application/octet-stream") && /\.pdf$/i.test(file.name));
+    if (!looksLikePdf) {
+      setResult({ ok: false, error: "Only PDF files are supported.", retryable: true });
+      resetFileInput();
+      return;
+    }
+    if (file.size > MAX_PDF_BYTES) {
+      setResult({
+        ok: false,
+        error: "File too large — max 5 MB. Export a compressed PDF and try again.",
+        retryable: true,
+      });
+      resetFileInput();
+      return;
+    }
+    if (file.size < MIN_PDF_BYTES) {
+      setResult({
+        ok: false,
+        error: "This PDF is too small to be a real resume. Re-export it and try again.",
+        retryable: true,
+      });
       resetFileInput();
       return;
     }
@@ -261,7 +294,7 @@ export function ResumeUpload({ hasExisting, existingRole, existingDnaScore, isPa
                 <p className="text-xs text-muted-foreground">{fileName}</p>
               </div>
               <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/15">
-                <div className="h-4 w-4 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+                <div className="h-4 w-4 animate-spin rounded-full border-2 border-primary border-t-transparent motion-reduce:animate-none" />
               </div>
             </div>
 
@@ -281,7 +314,7 @@ export function ResumeUpload({ hasExisting, existingRole, existingDnaScore, isPa
                       {isDone ? (
                         <CheckCircle2 className="h-3.5 w-3.5" />
                       ) : (
-                        <Icon className={`h-3.5 w-3.5 ${isActive ? "animate-pulse" : ""}`} />
+                        <Icon className={`h-3.5 w-3.5 ${isActive ? "animate-pulse motion-reduce:animate-none" : ""}`} />
                       )}
                     </div>
                     <span className={`text-xs transition-all ${
@@ -312,7 +345,7 @@ export function ResumeUpload({ hasExisting, existingRole, existingDnaScore, isPa
                 className="h-1 rounded-full bg-primary"
                 initial={{ width: "0%" }}
                 animate={{ width: `${Math.min(((currentStep + 1) / AI_STEPS.length) * 100, 95)}%` }}
-                transition={{ duration: 0.5, ease: "easeOut" }}
+                transition={{ duration: reduce ? 0 : 0.5, ease: "easeOut" }}
               />
             </div>
             <p className="mt-2 text-center text-[10px] text-muted-foreground">
@@ -344,7 +377,7 @@ export function ResumeUpload({ hasExisting, existingRole, existingDnaScore, isPa
               onKeyDown={(e) => { if (!isParsing && (e.key === "Enter" || e.key === " ")) inputRef.current?.click(); }}
               aria-label="Upload resume PDF"
               className={[
-                "flex flex-col items-center justify-center gap-3 rounded-xl border-2 border-dashed py-6 transition",
+                "flex flex-col items-center justify-center gap-3 rounded-xl border-2 border-dashed py-6 transition focus-ring",
                 isParsing ? "cursor-not-allowed opacity-70" : "cursor-pointer",
                 dragging
                   ? "border-primary bg-primary-soft"
@@ -354,7 +387,7 @@ export function ResumeUpload({ hasExisting, existingRole, existingDnaScore, isPa
               <input
                 ref={inputRef}
                 type="file"
-                accept="application/pdf"
+                accept="application/pdf,.pdf"
                 className="sr-only"
                 onChange={(e) => { const f = e.target.files?.[0]; if (f) onFile(f); }}
               />

@@ -155,30 +155,50 @@ function roundedYearsOrNull(v: number | null | undefined): number | null {
 
 // ── Save profile fields (no resume) ──────────────────────────────────────────
 
+const SENIORITY_LEVELS: ReadonlySet<string> = new Set([
+  "intern", "junior", "mid", "senior", "staff", "principal", "lead", "manager", "director", "vp",
+] satisfies SeniorityLevel[]);
+
+// Null-safe FormData readers. `formData.get()` returns null for absent fields
+// and File for file inputs — blind `as string` casts threw on both.
+function formText(formData: FormData, name: string): string {
+  const v = formData.get(name);
+  return typeof v === "string" ? v.trim() : "";
+}
+
+function formNonNegativeNumber(
+  formData: FormData,
+  name: string,
+  parse: (raw: string) => number,
+): number | null {
+  const raw = formText(formData, name);
+  if (!raw) return null;
+  const n = parse(raw);
+  return Number.isFinite(n) && n >= 0 ? n : null;
+}
+
 export async function saveProfile(formData: FormData) {
   const supabase = await createSupabaseServerClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect("/auth/login");
 
-  const displayName = (formData.get("display_name") as string).trim();
-  const currentRole = (formData.get("current_role") as string).trim();
-  const yearsRaw = formData.get("years_experience") as string;
-  const currentLpaRaw = formData.get("current_lpa") as string;
-  const targetLpaRaw = formData.get("target_lpa") as string;
-  const techRaw = (formData.get("tech_stack") as string).trim();
+  const displayName = formText(formData, "display_name");
+  const currentRole = formText(formData, "current_role");
+  const techRaw = formText(formData, "tech_stack");
   const hubs = INDIA_HUBS.filter((h) => formData.get(`hub_${h.replace(/\s+/g, "_")}`) === "on");
-  const seniority = (formData.get("seniority") as string) || null;
+  const seniorityRaw = formText(formData, "seniority");
+  const seniority = SENIORITY_LEVELS.has(seniorityRaw) ? (seniorityRaw as SeniorityLevel) : null;
 
   await supabase.from("profiles").upsert({
     id: user.id,
     display_name: displayName || null,
     current_role: currentRole || null,
-    years_experience: yearsRaw ? parseInt(yearsRaw, 10) : null,
-    current_lpa: currentLpaRaw ? parseFloat(currentLpaRaw) : null,
-    target_lpa: targetLpaRaw ? parseFloat(targetLpaRaw) : null,
+    years_experience: formNonNegativeNumber(formData, "years_experience", (s) => parseInt(s, 10)),
+    current_lpa: formNonNegativeNumber(formData, "current_lpa", parseFloat),
+    target_lpa: formNonNegativeNumber(formData, "target_lpa", parseFloat),
     tech_stack: techRaw ? techRaw.split(",").map((t) => t.trim()).filter(Boolean) : [],
     preferred_hubs: hubs,
-    seniority: seniority as SeniorityLevel | null,
+    seniority,
   });
 
   revalidatePath("/profile");
@@ -536,7 +556,14 @@ async function uploadAndParseResumeInner(formData: FormData): Promise<UploadResu
   }
 
   const file = formData.get("resume") as File | null;
-  if (!file || file.type !== "application/pdf") {
+  // Some Android file pickers report ""/octet-stream for real PDFs, so accept
+  // those when the extension says .pdf. The %PDF- magic-byte check inside
+  // validateResumePdf below remains the authoritative gate.
+  const looksLikePdf =
+    !!file &&
+    (file.type === "application/pdf" ||
+      ((file.type === "" || file.type === "application/octet-stream") && /\.pdf$/i.test(file.name)));
+  if (!file || !looksLikePdf) {
     return { ok: false, error: "Please upload a PDF file." };
   }
   if (file.size > 5 * 1024 * 1024) {

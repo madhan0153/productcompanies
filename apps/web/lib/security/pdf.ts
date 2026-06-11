@@ -36,8 +36,13 @@ function bytesToAscii(bytes: ArrayBuffer, maxBytes = 1024 * 1024): string {
   return Buffer.from(bytes.slice(0, Math.min(bytes.byteLength, maxBytes))).toString("latin1");
 }
 
+// Declared MIME types we accept before the magic-byte check. Empty and
+// octet-stream cover Android file pickers that don't sniff PDFs; the
+// %PDF- signature below is the authoritative gate either way.
+const ACCEPTED_PDF_MIME_TYPES = new Set(["application/pdf", "application/octet-stream", ""]);
+
 export function validateResumePdf(bytes: ArrayBuffer, mimeType: string | null): PdfValidationResult {
-  if (mimeType !== "application/pdf") {
+  if (mimeType !== null && !ACCEPTED_PDF_MIME_TYPES.has(mimeType)) {
     return { ok: false, code: "mime_type", message: "Please upload a PDF file." };
   }
   if (bytes.byteLength > MAX_RESUME_BYTES) {
