@@ -23,14 +23,14 @@ test("classifyMatch: 40 <= score < 60 → worth_a_look", () => {
 });
 
 test("classifyMatch: score < 40 → filtered", () => {
-  assert.equal(classifyMatch(m({ score: 0 })), "filtered");
-  assert.equal(classifyMatch(m({ score: 25 })), "filtered");
-  assert.equal(classifyMatch(m({ score: 39 })), "filtered");
+  assert.equal(classifyMatch(m({ score: 0 })), null);
+  assert.equal(classifyMatch(m({ score: 25 })), null);
+  assert.equal(classifyMatch(m({ score: 39 })), null);
 });
 
 test("classifyMatch: hidden_reason forces filtered regardless of score", () => {
-  assert.equal(classifyMatch(m({ score: 95, hidden_reason: "mismatch" })), "filtered");
-  assert.equal(classifyMatch(m({ score: 70, hidden_reason: "role_signal_conflict" })), "filtered");
+  assert.equal(classifyMatch(m({ score: 95, hidden_reason: "mismatch" })), null);
+  assert.equal(classifyMatch(m({ score: 70, hidden_reason: "role_signal_conflict" })), null);
 });
 
 test("classifyMatch: 'evidence_pending' is informational — row stays in its score band", () => {
@@ -39,5 +39,5 @@ test("classifyMatch: 'evidence_pending' is informational — row stays in its sc
   // Mid score + informational reason → worth_a_look
   assert.equal(classifyMatch(m({ score: 45, hidden_reason: "evidence_pending" })), "worth_a_look");
   // Low score + informational reason → still filtered (by score alone)
-  assert.equal(classifyMatch(m({ score: 20, hidden_reason: "evidence_pending" })), "filtered");
+  assert.equal(classifyMatch(m({ score: 20, hidden_reason: "evidence_pending" })), null);
 });

@@ -1,5 +1,236 @@
 # ProdMatch.ai — Production Audit Report
 
+> **Round 2 — 2026-06-03 (live production + database + tests).** This pass adds
+> live browser click-through of `prodmatchai.in` (authenticated as
+> `madhan6556@gmail.com`), live Supabase advisor scans on the real ProdmatchAI
+> project (`wmnuinlnsisifalgrpui`), and execution of the unit-test suites. The
+> 2026-05-30 report below remains valid for the static/code-level audit. Read
+> this Round 2 section first.
+
+---
+
+## ROUND 2 — 2026-06-03
+
+**Auditor:** Claude (Cowork) — QA, security, full-stack, live verification
+**Scope this round:** live site behaviour, live DB security/performance
+advisors, unit-test execution + fixes. Production deployment is healthy
+(Vercel `prodmatchai`, latest deploy READY).
+
+### Executive summary
+
+The app is in strong shape. Admin authorization, payment verification, and
+RLS on sensitive tables are all correctly enforced **server-side and in
+production**. No critical (ERROR-level) issues were found on the real
+database. This round found and fixed **4 broken test/config artifacts** (stale
+assertions + a dead npm script that referenced a deleted file), and surfaced
+several **WARN/INFO** hardening items on the live DB plus two payment-config
+observations (Dodo is in test mode; Dodo merchant branding shows "CoreJob").
+
+### Routes / pages audited live (logged-in, prodmatchai.in)
+
+| Route | Result | Notes |
+|-------|--------|-------|
+| `/` → `/dashboard` | ✓ | Auth session active; dynamic greeting, career-health 22/100, stat cards (Readiness, 36 shortlisted of 1,300, 0 applications, 51 companies). No console errors. |
+| `/admin` | ✓ correct 404 | `notFound()` gate fires for non-admin email — surface not leaked. |
+| `/settings` → `/settings/privacy` | ✓ | DPDP granular consent toggles render (Account required, AI Matching, Digest, Analytics, Resume Intelligence) + Update preferences. |
+| `/profile` | ✓ | Loads; shows account email. |
+| `/pricing` | ✓ | 4 tiers; Monthly/Yearly toggle; coupon redeem box. |
+| `/matches` | ✓ | Dynamic "Computed 9h ago / Jobs updated 7h ago"; Priority 36 / Explore 61; filters; explainable cards (Amazon, SAP Labs, Arcesium, Google, MoEngage — all approved companies); resume-score banner. |
+| `/applications` | ✓ | Empty-state + "Add application"; no console errors. |
+| Dodo checkout (external) | ✓ | Reached `test.checkout.dodopayments.com` after server session creation. |
+
+No React hydration errors or app-level console errors were observed on any
+page (only third-party browser-extension logs were present).
+
+### Button / action audit (live)
+
+| Page | Button/Action | Expected | Actual | Dynamic update | Loading state | Error state | Mobile | Status |
+|------|---------------|----------|--------|----------------|---------------|-------------|--------|--------|
+| /pricing | Yearly/Monthly toggle | Per-day + annual price changes | Career Sprint ₹17→₹14/day, "was ₹5,988/yr → ₹4,999/yr · save ₹989" | Yes (instant) | n/a | n/a | code: responsive | ✓ PASS (prior toggle bug confirmed fixed) |
+| /pricing | Upgrade to Pro | Create Dodo session + redirect | Button → "Redirecting…" (disabled), server session created, redirect to Dodo hosted checkout | Yes | Yes ("Redirecting…") | Yes (graceful "coming soon" path in code) | code: responsive | ✓ PASS |
+| /admin (page) | Direct nav as non-admin | Blocked / 404 | 404 "gone off the map" | n/a | n/a | n/a | ✓ | ✓ PASS |
+| /api/admin/dsa-v2-seed | GET as non-admin | 403 | `403 {"ok":false,"error":"Not authorised"}` | n/a | n/a | n/a | n/a | ✓ PASS |
+| sidebar | Admin link visibility (non-admin) | Hidden | Not rendered | n/a | n/a | n/a | ✓ | ✓ PASS |
+| /settings/privacy | Update preferences | Persist consent | Renders; server-action backed (code-verified) | code-verified | code-verified | code-verified | ✓ | ✓ (UI verified; persistence code-verified) |
+
+### Admin privilege audit (the headline answer)
+
+- **Env var:** `ADMIN_EMAILS` (comma-separated). Parser in
+  `apps/web/lib/admin/auth.ts` is **trimmed + lowercased + memoized**; empty/unset
+  ⇒ deny everyone (admin pages 404, no leak).
+- **Server-side enforced:** `requireAdmin()` runs in `app/admin/layout.tsx`
+  (every admin page) and inside every `/api/admin/*` route. Verified live:
+  `/admin` → 404 and `/api/admin/dsa-v2-seed` → 403 for a non-admin session.
+- **Non-admin UX:** no Admin link in the sidebar; pages 404; APIs 403. ✓
+- **Why your admin didn't appear:** the browser is logged in as
+  **`madhan6556@gmail.com`**, which is **not** in `ADMIN_EMAILS`. This is the
+  gate working correctly, not a bug. **To get admin:** either sign in with the
+  exact email you placed in `ADMIN_EMAILS`, **or** add `madhan6556@gmail.com`
+  to `ADMIN_EMAILS` in Vercel (Production), then **redeploy** (the allowlist is
+  read at build/boot). Comparison is case-insensitive and trims spaces, so
+  formatting/casing won't be the cause.
+- **Could not auto-verify the exact `ADMIN_EMAILS` value:** Vercel does not
+  expose env values via the MCP, so confirm the value in the Vercel dashboard.
+
+### Payment flow audit
+
+- **Verified live:** checkout button shows a disabled "Redirecting…" loading
+  state, the server creates the Dodo checkout session, and the browser
+  redirects to the hosted checkout. No secret keys touch the client (session
+  is created in `/api/billing/checkout`, server-only).
+- **Code-verified (server):** webhook (`/api/webhooks/dodo`) validates the
+  `standardwebhooks` signature, is **idempotent** (unique `provider_event_id`
+  insert; duplicates short-circuit), returns 500 to trigger Dodo retries, and
+  is rate-limited. Premium is **never** granted from URL params — the success
+  page polls `/api/billing/sync` + `/api/billing/refresh`, which verify the
+  subscription against Dodo's API and check **ownership** (403 on mismatch)
+  before writing entitlements. `returnTo` is open-redirect-guarded
+  (`startsWith("/") && !startsWith("//")`).
+- **⚠ Config observations (action for you, not bugs in code):**
+  1. **Production is using Dodo TEST mode** — checkout went to
+     `test.checkout.dodopayments.com`. Real payments will not be captured until
+     you set live-mode Dodo keys (`DODO_PAYMENTS_ENVIRONMENT` + live API/secret/
+     product IDs) in Vercel.
+  2. **Dodo merchant/product branding shows "CoreJob"**, not ProdMatch — fix in
+     the Dodo dashboard so customers see the right name on the checkout/receipt.
+
+### Live database audit — Supabase `ProdmatchAI` (`wmnuinlnsisifalgrpui`, ap-south-1)
+
+**Security advisors — NO ERROR-level findings.** Sensitive user tables
+(`profiles`, `resume_versions`, `matches`, `subscriptions`, `tailored_resumes`,
+interview/DSA tables, etc.) all have RLS enabled with owner policies.
+
+INFO/WARN items to consider (none auto-applied — DDL on prod is yours to run):
+- **INFO — RLS enabled, no policy** on `admin_actions`, `crawl_runs`,
+  `cron_locks`, `llm_dead_keys`, `payment_events`, `promo_codes`,
+  `rate_limit_counters`. These are **service-role-only** tables; RLS-on +
+  no-policy correctly denies anon/authenticated. Safe by design.
+- **WARN — `SECURITY DEFINER` functions executable by `anon`/`authenticated`**
+  via PostgREST RPC: `acquire_cron_lock`, `release_cron_lock`, `rls_auto_enable`,
+  `increment_apply_click_count`. Recommend `REVOKE EXECUTE ... FROM anon,
+  authenticated` on the cron-lock + `rls_auto_enable` functions (they are
+  backend/maintenance helpers and shouldn't be publicly callable).
+  `increment_apply_click_count` may be intentional (client apply-tracking) —
+  confirm.
+- **WARN — mutable `search_path`** on `tg_set_updated_at`, `compute_freshness`
+  → add `SET search_path = public, pg_temp`.
+- **WARN — `pg_trgm` installed in `public`** → move to an `extensions` schema.
+- **WARN — leaked-password protection disabled** in Supabase Auth → enable
+  (HaveIBeenPwned check) in the Auth settings (low impact since sign-in is
+  Google OAuth).
+
+**Performance advisors — all INFO/WARN:**
+- **WARN — `auth_rls_initplan`:** many RLS policies call `auth.uid()` /
+  `current_setting()` per-row. Replace with `(select auth.uid())` in the
+  affected policies (resume_versions, tailored_resumes, negotiation_memos,
+  enhanced_resumes, resume_intel_events, interview_*, dsa_*). Meaningful at
+  scale; fix in `supabase/schema.sql` then re-apply.
+- **INFO — unindexed foreign keys:** `applications.job_id`, `matches.job_id`,
+  `invoices.subscription_id`, `offers.company_id`, `refunds.invoice_id`,
+  `tailored_resumes.job_id`, `negotiation_memos.job_id`,
+  `dsa_question_review_events.reviewer_id`, `dsa_questions.reviewed_by`,
+  `entitlement_grants.granted_by`, `promo_codes.created_by`. Add covering
+  indexes if these tables grow.
+- **INFO — unused indexes:** several `idx_jobs_*`, `idx_profiles_*`, etc.
+  (expected for low row counts; revisit later).
+
+### Bugs found & fixes applied (this round)
+
+| # | Severity | File | Problem | Fix |
+|---|----------|------|---------|-----|
+| R2-1 | Medium (CI red) | `apps/web/__tests__/admin/crawler-resilience.test.ts` | `byKind.htmlDom` hardcoded to `4`; crawler registry grew to 6 html-dom companies → test failed (`6 !== 4`). | Derive expected counts from `CRAWLER_META_BY_SLUG` so the test won't rot as companies are added. |
+| R2-2 | Medium (CI red) | `apps/web/app/(app)/matches/match-types.test.ts` | `classifyMatch` was refactored to return `null` for hidden matches, but 6 assertions still expected the string `"filtered"` → 3 tests failed. | Updated assertions to expect `null`. |
+| R2-3 | Medium (CI red) | `apps/web/__tests__/matching/banding-benchmark.test.ts` | Same `"filtered"`→`null` refactor → 4 benchmark tests failed. | Replaced `result.band, "filtered"` with `result.band, null` (9 occurrences; makes both `equal`/`notEqual` semantically correct). |
+| R2-4 | Low | `package.json` | `test:dsa` script pointed at deleted `packages/shared/src/dsa-learning.test.ts` (refactored into `dsa-v2/`) → script always errored. | Removed the dead script (no replacement test exists; `test:bench` covers `dna-benchmarks`). |
+| R2-5 | Low (hardening) | `packages/crawler/source-invariants.ts` | `EXPECTED_CRAWLER_SLUGS` tripwire still listed 33 companies; registry is now the full 51 approved (CLAUDE.md). | Updated the tripwire list to all 51 approved slugs + clarifying comment. |
+
+All five are test/config artifacts; **no production application code was
+changed this round.**
+
+### Commands run (this round)
+
+| Command | Result |
+|---------|--------|
+| `corepack` enable pnpm 9.12.0 | ✓ (pnpm not preinstalled in sandbox) |
+| `pnpm install` (native copy, hoisted linker) | ✓ (`canvas` native dep failed to compile — optional, expected) |
+| `pnpm --filter @prodmatch/shared typecheck` | **✓ exit 0** |
+| `pnpm test:resilience` | ✓ 8/8 (after R2-1 fix; was 7/8) |
+| `pnpm test:resume-mapper` | ✓ 12/12 |
+| `pnpm test:matches` | ✓ 5/5 (after R2-2 fix; was 2/5) |
+| `pnpm test:pdf-text` | ✓ 5/5 |
+| `pnpm test:bench` | ✓ 8/8 |
+| `pnpm test:matching-bench` | ✓ 22/22 (after R2-3 fix; was 18/22) |
+| `pnpm test:llm-runtime` | ✓ 16/16 |
+| `pnpm test:crawler` | ✓ 35/35 |
+| `pnpm test:crawler-invariants` | ✓ (after R2-5 fix) |
+| `pnpm test:llm-governance` | ✓ |
+| `pnpm test:role-benchmarks` | ✓ |
+
+### Commands that could NOT be completed (and why)
+
+- **`pnpm --filter web typecheck`**, **`pnpm --filter web lint`**, and
+  **`pnpm build`** could not run to completion in this sandbox. Each command is
+  capped at ~45s, and these take several minutes on this codebase; the sandbox
+  also reaps background processes between calls, so they cannot be backgrounded
+  to completion. The mounted project folder additionally blocks the symlink/
+  unlink ops pnpm needs, so the app was copied to native disk to run anything.
+  **Mitigation:** the 2026-05-30 report verified `typecheck`, `lint`, and
+  `build` (1163 pages) all pass; this round's edits are confined to test/config
+  files that execute cleanly under `tsx`, and `packages/shared` typecheck
+  passes. **Please run `pnpm typecheck && pnpm lint && pnpm build` in CI/locally
+  to confirm green before deploy.**
+- **`pnpm test:dsa`** — removed (dead script, see R2-4).
+- **`test:security` / `test:deploy-readiness` / `audit:tailored-resume`** — not
+  run; require real secret env + live LLM/network and would exercise prod keys.
+
+### Mobile UI audit
+
+- Could not reliably force a true mobile viewport via the browser tool (the
+  screenshot capture stayed at desktop resolution after window resize), so
+  **real-device mobile rendering needs manual verification.**
+- Code-level: a `mobile-bottom-nav` component, iOS safe-area-inset padding, and
+  responsive Tailwind grids are present; the prior round confirmed
+  `prefers-reduced-motion` is respected in every Framer Motion component (my
+  re-scan found zero violators).
+
+### Remaining risks
+
+1. **Full `build`/`lint`/`typecheck` not re-run here** — verify in CI before
+   deploy (low risk; changes are test/config only).
+2. **Dodo in test mode + "CoreJob" branding** — real payments won't capture and
+   customers see the wrong merchant name until reconfigured.
+3. **`ADMIN_EMAILS` value unconfirmed** — confirm it contains the email you
+   actually sign in with, and redeploy after changes.
+4. **DB hardening items** (SECURITY DEFINER RPC grants, RLS initplan, FK
+   indexes, leaked-password protection) — not blocking, but worth scheduling.
+5. **Mobile** needs a real-device pass.
+
+### Manual verification needed
+
+- Run `pnpm typecheck && pnpm lint && pnpm build` and confirm green.
+- Confirm `ADMIN_EMAILS` in Vercel; sign in with that email and confirm `/admin`
+  loads + admin actions work.
+- Switch Dodo to live mode and fix merchant branding; then run one real
+  end-to-end paid upgrade and confirm the plan flips to Pro after the webhook.
+- Real-device mobile pass (tap targets, bottom nav, no horizontal scroll).
+
+### Recommended future improvements
+
+- Apply the `(select auth.uid())` RLS rewrite in `schema.sql` for the flagged
+  policies; add the covering FK indexes.
+- `REVOKE EXECUTE` on cron-lock + `rls_auto_enable` RPCs from `anon`,
+  `authenticated`; set `search_path` on the two flagged functions; move
+  `pg_trgm` out of `public`; enable leaked-password protection.
+- Add a real `__tests__/admin/auth.test.ts` (unit tests for the admin allowlist
+  parser — empty/unset, trim/case, multi-email) to lock in the gate behaviour.
+- Add a tiny CI guard so `byKind`/registry counts and band-classification
+  literals can't silently drift again (R2-1..R2-3 were all "magic number"
+  rot).
+
+---
+
+## ROUND 1 — 2026-05-30 (static / code-level)
+
 **Date:** 2026-05-30  
 **Branch:** `claude/prodmatchai-prod-audit-Dlhxs`  
 **Auditor:** Claude Code (full-stack, security, QA, UX review)

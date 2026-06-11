@@ -103,8 +103,13 @@ test("scoreFleet aggregates and sorts lowest-grade first", () => {
   assert.ok(overall.fixtureCoverage > 0);
   assert.ok(overall.fixtureCoverage <= 1);
   assert.ok(overall.companiesAtRisk >= 1);
-  assert.equal(overall.byKind.htmlDom, 4);
-  assert.ok(overall.byKind.api >= 12);
+  // Derive expected counts from the shared crawler metadata so this test
+  // doesn't rot as approved companies are added (previously hardcoded to 4).
+  const metaList = Object.values(CRAWLER_META_BY_SLUG);
+  const expectedHtmlDom = metaList.filter((m) => m.kind === "html-dom").length;
+  const expectedApi = metaList.filter((m) => m.kind === "api").length;
+  assert.equal(overall.byKind.htmlDom, expectedHtmlDom);
+  assert.equal(overall.byKind.api, expectedApi);
 });
 
 test("scoreFleet handles unknown slugs gracefully", () => {
