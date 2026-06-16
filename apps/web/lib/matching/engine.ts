@@ -49,7 +49,7 @@ const FIT_CARD_STRETCH_BUFFER = 5;
 const FIT_CARD_CONCURRENCY = 4;
 const FIT_CARD_BUDGET_MS = 45_000;
 
-const JOBS_PAGE_SIZE = 1000;
+const JOBS_PAGE_SIZE = 250;
 
 interface JobRow {
   id: string;
@@ -139,19 +139,32 @@ function jobToCalibrateInput(job: JobRow): import("./calibrate").CalibrateJobInp
 async function fetchAllActiveJobs(
   admin: ReturnType<typeof createSupabaseAdminClient>,
 ): Promise<JobRow[]> {
-  const all: JobRow[] = [];
-  for (let from = 0; ; from += JOBS_PAGE_SIZE) {
+  const { data: companies, error: companiesError } = await admin
+    .from("companies")
+    .select("id, name");
+  assertNoSupabaseError(companiesError as { message: string } | null, "Could not fetch company names for matching");
+  const companyNames = new Map<string, string>(
+    ((companies as Array<{ id: string; name: string }> | null) ?? []).map((c) => [c.id, c.name]),
+  );
 
-    const { data: rows, error } = await (admin
+  const all: JobRow[] = [];
+  let cursor: string | null = null;
+  for (;;) {
+    let query = admin
       .from("jobs")
       .select(
-        "id, title, description, hubs, min_experience_years, max_experience_years, comp_lpa_min, comp_lpa_max, tech_stack, seniority, location, company_id, role_function, role_function_jd, must_have_skills, nice_to_have_skills, jd_min_years, jd_max_years, jd_seniority_signal, jd_summary, is_likely_ghost, jd_parsed_at, embedding, embedding_at, signature, quality_score, companies(name)",
+        "id, title, description, hubs, min_experience_years, max_experience_years, comp_lpa_min, comp_lpa_max, tech_stack, seniority, location, company_id, role_function, role_function_jd, must_have_skills, nice_to_have_skills, jd_min_years, jd_max_years, jd_seniority_signal, jd_summary, is_likely_ghost, jd_parsed_at, embedding, embedding_at, signature, quality_score",
       )
       .eq("is_active", true)
       // Sprint 6 — read-side quality enforcement. Legacy rows default to 100
       // so we never accidentally hide pre-Sprint-6 jobs.
       .gte("quality_score", MIN_QUALITY_FOR_FEED)
-      .range(from, from + JOBS_PAGE_SIZE - 1) as any) as {
+      .order("id", { ascending: true })
+      .limit(JOBS_PAGE_SIZE);
+
+    if (cursor) query = query.gt("id", cursor);
+
+    const { data: rows, error } = await (query as any) as {
         data: Array<Record<string, unknown>> | null;
         error: { message: string } | null;
       };
@@ -174,7 +187,7 @@ async function fetchAllActiveJobs(
         seniority:            r.seniority as string | null,
         location:             (r.location as string | null) ?? "",
         company_id:           (r.company_id as string | null) ?? null,
-        company_name:         ((r.companies as Record<string, unknown>)?.name as string) ?? "",
+        company_name:         companyNames.get(r.company_id as string) ?? "",
         role_function:        (r.role_function as string | null) ?? null,
         role_function_jd:     (r.role_function_jd as string | null) ?? null,
         must_have_skills:     (r.must_have_skills as string[] | null) ?? [],
@@ -191,6 +204,7 @@ async function fetchAllActiveJobs(
         quality_score:        typeof r.quality_score === "number" ? (r.quality_score as number) : 100,
       });
     }
+    cursor = batch[batch.length - 1]?.id as string | undefined ?? null;
     if (batch.length < JOBS_PAGE_SIZE) break;
   }
   return all;

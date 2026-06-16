@@ -1958,6 +1958,9 @@ alter table public.jobs add column if not exists quality_gated_at timestamptz;
 create index if not exists idx_jobs_quality_high
   on public.jobs (quality_score desc)
   where is_active = true and quality_score >= 40;
+create index if not exists idx_jobs_match_feed_keyset
+  on public.jobs (id)
+  where is_active = true and quality_score >= 40;
 
 -- (2) Match-level explainability columns.
 alter table public.matches add column if not exists confidence numeric;
