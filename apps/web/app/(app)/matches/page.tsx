@@ -17,6 +17,7 @@ import { MatchNavProvider } from "./match-transition-context";
 import { MatchCardArea } from "./match-card-area";
 import { ComputingBanner } from "./computing-banner";
 import { ComputeAutoRefresh } from "./compute-auto-refresh";
+import { ComputeMatchesButton } from "./compute-matches-button";
 import { LockedMatchesPanel } from "./locked-card";
 import { getEntitlements } from "@/lib/billing/entitlements";
 import { PLAN_LIMITS } from "@/lib/billing/catalog";
@@ -293,7 +294,14 @@ export default async function MatchesPage({
   const crawlAgo = lastCrawlAt ? humanAgo(lastCrawlAt) : null;
   const dailyRefreshDelayed = Boolean(
     lastComputeAt &&
+    !needsFreshCompute &&
     Date.now() - new Date(lastComputeAt).getTime() > DAILY_MATCH_FRESHNESS_MS,
+  );
+  const computeLabel = needsFreshCompute ? "Previous resume computed" : "Computed";
+  const latestComputeDidNotPublish = Boolean(
+    latestComputeJob?.status === "succeeded" &&
+    needsFreshCompute &&
+    activeResumeVersionId,
   );
 
   return (
@@ -319,7 +327,7 @@ export default async function MatchesPage({
             {computeAgo ? (
               <span className="inline-flex items-center gap-1">
                 <Activity className={`h-3 w-3 ${dailyRefreshDelayed ? "text-warning" : "text-success"}`} />
-                Computed {computeAgo}
+                {computeLabel} {computeAgo}
               </span>
             ) : null}
             {crawlAgo && (
@@ -374,7 +382,15 @@ export default async function MatchesPage({
 
       {!isComputing && needsFreshCompute && allRows.length > 0 && (
         <div className="rounded-xl border border-border bg-secondary/40 px-4 py-3 text-sm text-muted-foreground">
-          These matches are from your previous resume. Use the Compute Matches button after submitting your reviewed resume to refresh rankings.
+          <p>
+            These matches are from your previous resume. Compute matches to refresh rankings against the resume you just saved.
+          </p>
+          {latestComputeDidNotPublish && (
+            <p className="mt-1 text-xs leading-relaxed">
+              The last compute run finished without publishing fresh rankings, so your previous trusted matches stayed visible.
+            </p>
+          )}
+          <ComputeMatchesButton className="mt-3" />
         </div>
       )}
 

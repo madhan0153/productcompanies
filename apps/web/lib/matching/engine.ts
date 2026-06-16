@@ -142,7 +142,7 @@ async function fetchAllActiveJobs(
   const all: JobRow[] = [];
   for (let from = 0; ; from += JOBS_PAGE_SIZE) {
 
-    const { data: rows } = await (admin
+    const { data: rows, error } = await (admin
       .from("jobs")
       .select(
         "id, title, description, hubs, min_experience_years, max_experience_years, comp_lpa_min, comp_lpa_max, tech_stack, seniority, location, company_id, role_function, role_function_jd, must_have_skills, nice_to_have_skills, jd_min_years, jd_max_years, jd_seniority_signal, jd_summary, is_likely_ghost, jd_parsed_at, embedding, embedding_at, signature, quality_score, companies(name)",
@@ -151,7 +151,12 @@ async function fetchAllActiveJobs(
       // Sprint 6 — read-side quality enforcement. Legacy rows default to 100
       // so we never accidentally hide pre-Sprint-6 jobs.
       .gte("quality_score", MIN_QUALITY_FOR_FEED)
-      .range(from, from + JOBS_PAGE_SIZE - 1) as any) as { data: Array<Record<string, unknown>> | null };
+      .range(from, from + JOBS_PAGE_SIZE - 1) as any) as {
+        data: Array<Record<string, unknown>> | null;
+        error: { message: string } | null;
+      };
+
+    assertNoSupabaseError(error, "Could not fetch active jobs for matching");
 
     const batch = rows ?? [];
     if (batch.length === 0) break;
@@ -276,7 +281,7 @@ export async function computeMatchesForUser(
   // 2. Jobs (paginated — no cap)
   const jobs = await fetchAllActiveJobs(admin);
   if (jobs.length === 0) {
-    return { total: 0, new_matches: 0, skipped: 0, ghost_filtered: 0, with_fit_card: 0, unparsed_jobs: 0, mode: "full", duration_ms: Date.now() - t0 };
+    throw new Error("No active jobs are available for matching. Retry after the crawler finishes.");
   }
   const unparsed = jobs.filter((j) => j.jd_parsed_at === null).length;
 
