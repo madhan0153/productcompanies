@@ -9,10 +9,13 @@ export const BUCKET_LABEL: Record<Bucket, string> = {
   indian_domain: "Indian domain",
 };
 
+// Difficulty hue carries meaning (green→amber→red), so it maps onto the
+// theme-aware semantic tokens rather than fixed palette steps — readable in
+// both light and dark.
 export const DIFF_CLASS: Record<Difficulty, string> = {
-  easy: "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400",
-  medium: "bg-amber-500/10 text-amber-600 dark:text-amber-400",
-  hard: "bg-rose-500/10 text-rose-600 dark:text-rose-400",
+  easy: "bg-success/10 text-success",
+  medium: "bg-warning/10 text-warning",
+  hard: "bg-destructive/10 text-destructive",
 };
 
 export function patternLabel(pattern: string): string {

@@ -42,13 +42,14 @@ export interface RevealProps {
   edgeCases: string[];
   whyItMatters: string;
   aiCoach: "none" | "weekly" | "daily";
+  patternLabel: string;               // human pattern name, for honest coach copy
 }
 
 export function ProgressiveReveal(props: RevealProps) {
   const {
     slug, signedIn, approachTeaser, fullApproach, fullSteps,
     fullApproachesRemaining, codePython, langsEntitled, complexity,
-    pitfalls, edgeCases, whyItMatters, aiCoach,
+    pitfalls, edgeCases, whyItMatters, aiCoach, patternLabel,
   } = props;
 
   const router = useRouter();
@@ -194,7 +195,7 @@ export function ProgressiveReveal(props: RevealProps) {
             <ul className="space-y-2 text-sm leading-relaxed text-muted-foreground">
               {pitfalls.map((p, i) => (
                 <li key={i} className="flex gap-2">
-                  <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-rose-500/60" />
+                  <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-destructive/60" />
                   <span>{p}</span>
                 </li>
               ))}
@@ -205,7 +206,7 @@ export function ProgressiveReveal(props: RevealProps) {
             <ul className="space-y-2 text-sm leading-relaxed text-muted-foreground">
               {edgeCases.map((c, i) => (
                 <li key={i} className="flex gap-2">
-                  <Check className="mt-0.5 h-4 w-4 shrink-0 text-emerald-500" />
+                  <Check className="mt-0.5 h-4 w-4 shrink-0 text-success" />
                   <span>{c}</span>
                 </li>
               ))}
@@ -216,7 +217,7 @@ export function ProgressiveReveal(props: RevealProps) {
             <p className="text-sm leading-relaxed text-muted-foreground">{whyItMatters}</p>
           </Panel>
 
-          <AiCoachPanel aiCoach={aiCoach} />
+          <AiCoachPanel aiCoach={aiCoach} patternLabel={patternLabel} />
         </>
       )}
 
@@ -310,7 +311,7 @@ function SolutionPanel({
             onClick={copy}
             className="press tap-target-sm inline-flex items-center gap-1 rounded-lg bg-secondary px-2.5 py-1.5 text-xs font-semibold text-secondary-foreground transition hover:bg-secondary/70"
           >
-            {copied ? <Check className="h-3.5 w-3.5 text-emerald-500" /> : <Copy className="h-3.5 w-3.5" />}
+            {copied ? <Check className="h-3.5 w-3.5 text-success" /> : <Copy className="h-3.5 w-3.5" />}
             {copied ? "Copied" : "Copy"}
           </button>
         </div>
@@ -328,7 +329,8 @@ function SolutionPanel({
 
       {annotate && annotations && (
         <p className="mt-2 text-[11px] leading-relaxed text-muted-foreground">
-          Annotations highlight the key line-by-line decisions. Tap a line on desktop to read its note.
+          Read the inline <span className="text-foreground"># comments</span> in the code above — they walk through the
+          key decision on each step.
         </p>
       )}
 
@@ -351,7 +353,7 @@ function SolutionPanel({
   );
 }
 
-function AiCoachPanel({ aiCoach }: { aiCoach: "none" | "weekly" | "daily" }) {
+function AiCoachPanel({ aiCoach, patternLabel }: { aiCoach: "none" | "weekly" | "daily"; patternLabel: string }) {
   if (aiCoach === "daily") {
     return (
       <section className="surface-inset p-4 sm:p-5">
@@ -360,8 +362,9 @@ function AiCoachPanel({ aiCoach }: { aiCoach: "none" | "weekly" | "daily" }) {
           <h2 className="text-sm font-semibold tracking-tight">AI Coach</h2>
         </div>
         <p className="text-sm leading-relaxed text-muted-foreground">
-          You solved this with a graph + dynamic-programming pattern — the same shape shows up in your matched
-          backend roles. Tomorrow&apos;s pick will push you one notch harder on traversal order. Keep the streak alive.
+          Today drills the <span className="font-medium text-foreground">{patternLabel}</span> pattern — one of the
+          recurring shapes in product-company interviews. Notice the trade-off the solution makes, not just the answer:
+          that&apos;s what transfers to the next problem. Log today&apos;s rep and keep the streak alive.
         </p>
       </section>
     );

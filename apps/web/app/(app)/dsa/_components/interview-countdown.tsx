@@ -85,7 +85,7 @@ export function InterviewCountdown() {
             min={today}
             value={draft}
             onChange={(e) => setDraft(e.target.value)}
-            className="tap-target flex-1 rounded-lg border border-input bg-background px-3 py-2 text-sm focus-ring"
+            className="tap-target flex-1 rounded-lg border border-input bg-background px-3 py-2 text-base focus-ring sm:text-sm"
             aria-label="Interview date"
           />
           <button

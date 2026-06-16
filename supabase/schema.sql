@@ -1707,6 +1707,37 @@ do $$ begin
   end if;
 end $$;
 
+-- Records which full-approach reveals a Free user has already paid a monthly
+-- credit for. Lets a repeat reveal of the same question return the content
+-- without re-charging a credit (idempotent unlock). Pro/Sprint are unlimited
+-- and never write here.
+create table if not exists public.dsa_approach_unlocks (
+  user_id     uuid not null references auth.users(id) on delete cascade,
+  slug        text not null,
+  unlocked_at timestamptz not null default now(),
+  primary key (user_id, slug)
+);
+
+alter table public.dsa_approach_unlocks enable row level security;
+do $$ begin
+  if not exists (
+    select 1 from pg_policies
+    where schemaname='public' and tablename='dsa_approach_unlocks' and policyname='dsa_approach_unlocks_select_own'
+  ) then
+    create policy dsa_approach_unlocks_select_own on public.dsa_approach_unlocks
+      for select to authenticated using (auth.uid() = user_id);
+  end if;
+end $$;
+do $$ begin
+  if not exists (
+    select 1 from pg_policies
+    where schemaname='public' and tablename='dsa_approach_unlocks' and policyname='dsa_approach_unlocks_service_all'
+  ) then
+    create policy dsa_approach_unlocks_service_all on public.dsa_approach_unlocks
+      for all to service_role using (true) with check (true);
+  end if;
+end $$;
+
 -- AI-track readiness signal for personalisation (0-100).
 do $$ begin
   if exists (select 1 from information_schema.tables where table_schema='public' and table_name='interview_readiness') then

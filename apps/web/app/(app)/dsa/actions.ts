@@ -9,7 +9,7 @@ import {
   markSolved,
   skipToday,
   freezeStreak,
-  spendFullApproach,
+  unlockApproach,
 } from "@/lib/dsa/daily";
 
 async function requireUser() {
@@ -56,26 +56,22 @@ export async function freezeTodayAction(
  * Free users spend one of their monthly credits; if exhausted, the content is
  * withheld and the caller shows the upgrade path. The gated strings are only
  * ever returned from this server action — never embedded in the initial page.
+ *
+ * A credit is charged ONLY when (a) the question actually exists & is live and
+ * (b) the user has not already unlocked this exact question. Fetching the
+ * content first means an invalid slug never burns a credit, and per-question
+ * dedup means navigating back to an already-unlocked question is free.
  */
 export async function revealApproachAction(slug: string): Promise<
   | { ok: true; approach: string[]; solutionSteps: string[]; remaining: number | "unlimited" }
-  | { ok: false; reason: "auth" | "exhausted" }
+  | { ok: false; reason: "auth" | "exhausted" | "unavailable" }
 > {
   const user = await requireUser();
   if (!user) return { ok: false, reason: "auth" };
   const { plan } = await getEntitlements(user.id);
 
-  // Free users spend one of their monthly full-approach credits. Pro/Sprint
-  // are unlimited and skip the spend. `remaining` is the **actual** count
-  // after this spend so the client can update its counter inline without
-  // a round-trip.
-  let remaining: number | "unlimited" = "unlimited";
-  if (plan === "free") {
-    const spent = await spendFullApproach(user.id, plan);
-    if (!spent.ok) return { ok: false, reason: "exhausted" };
-    remaining = spent.remaining;
-  }
-
+  // Validate the content BEFORE charging anything. A missing/unpublished slug
+  // must never consume a credit.
   const admin = createSupabaseAdminClient() as unknown as { from: (t: string) => any };
   const { data } = await admin
     .from("dsa_questions")
@@ -83,9 +79,16 @@ export async function revealApproachAction(slug: string): Promise<
     .eq("slug", slug)
     .eq("status", "live")
     .maybeSingle();
+  if (!data) return { ok: false, reason: "unavailable" };
 
-  const approach = (data?.approach as string[] | undefined) ?? [];
-  const solutionSteps = (data?.solution_steps as string[] | undefined) ?? [];
+  // Spend (or skip, for unlimited plans / already-unlocked questions). The
+  // returned `remaining` is the actual post-spend count so the client updates
+  // its counter inline without a round-trip.
+  const unlock = await unlockApproach(user.id, plan, slug);
+  if (!unlock.ok) return { ok: false, reason: "exhausted" };
+
+  const approach = (data.approach as string[] | undefined) ?? [];
+  const solutionSteps = (data.solution_steps as string[] | undefined) ?? [];
 
   // Refresh both the hub statcard (full-approach credits remaining) and the
   // detail page (so a back-nav doesn't show a stale "Reveal" CTA).
@@ -96,7 +99,7 @@ export async function revealApproachAction(slug: string): Promise<
     ok: true,
     approach,
     solutionSteps,
-    remaining,
+    remaining: unlock.remaining,
   };
 }
 

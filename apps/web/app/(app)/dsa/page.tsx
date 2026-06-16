@@ -7,7 +7,7 @@ import { getEntitlements } from "@/lib/billing/entitlements";
 import { getDsaDailyState, ensureTodayAssigned, fetchLast7DaysHistory, type DsaDailyState, type DailyAction, type DailyStatus } from "@/lib/dsa/daily";
 import { dsaQuota } from "@/lib/dsa/quotas";
 import { getDsaPersonalization } from "@/lib/dsa/personalization";
-import { dsaDailySeed, dsaPickIndex, dsaTodayKey } from "@/lib/dsa/today";
+import { dsaDailySeed, dsaPickIndex, dsaTodayKey, istHour } from "@/lib/dsa/today";
 import { StatCard } from "@/components/section-card";
 import { absoluteUrl } from "@/lib/seo/site";
 import { DailyPanel, type HeroQuestion } from "./_components/daily-panel";
@@ -42,7 +42,7 @@ type LiveRow = {
 };
 
 function greeting(): string {
-  const h = new Date().getHours();
+  const h = istHour();
   if (h < 12) return "Good morning";
   if (h < 17) return "Good afternoon";
   return "Good evening";

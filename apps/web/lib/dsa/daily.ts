@@ -1,11 +1,21 @@
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
+import { logEvent } from "@/lib/observability/log";
 import type { BillingPlan } from "@/lib/billing/catalog";
 import { dsaQuota } from "./quotas";
 import { dsaTodayKey } from "./today";
 
 // Server-only daily-state store for the DSA habit loop. All access is wrapped
 // in try/catch and degrades to safe defaults, so the redesigned page renders
-// even before the dsa_streak / dsa_daily_log migration is applied.
+// even before the dsa_streak / dsa_daily_log migration is applied. Failures are
+// logged (operation + message only — never user PII) so a silently-failing
+// write surfaces in observability instead of vanishing.
+
+function dbError(op: string, e: unknown): void {
+  logEvent("error", "dsa_db_error", {
+    op,
+    message: e instanceof Error ? e.message : String(e),
+  });
+}
 
 export type DailyStatus = "not_started" | "in_progress" | "solved";
 export type DailyAction = "assigned" | "started" | "solved" | "skipped" | "frozen";
@@ -140,7 +150,8 @@ async function fetchStreakRow(userId: string, plan: BillingPlan): Promise<Streak
       .maybeSingle();
     if (!data) return defaultRow(plan);
     return data as StreakRow;
-  } catch {
+  } catch (e) {
+    dbError("fetchStreakRow", e);
     return defaultRow(plan);
   }
 }
@@ -156,7 +167,8 @@ async function fetchTodayLog(userId: string): Promise<{ status: DailyStatus; act
       .maybeSingle();
     if (!data) return { status: "not_started", action: "assigned", slug: null };
     return data as { status: DailyStatus; action: DailyAction; slug: string | null };
-  } catch {
+  } catch (e) {
+    dbError("fetchTodayLog", e);
     return { status: "not_started", action: "assigned", slug: null };
   }
 }
@@ -167,8 +179,10 @@ async function persistRow(userId: string, row: StreakRow): Promise<void> {
     await db
       .from("dsa_streak")
       .upsert({ user_id: userId, ...row, updated_at: new Date().toISOString() });
-  } catch {
-    /* table not present yet — no-op */
+  } catch (e) {
+    // Table not present yet, or a transient write failure — surface it so a
+    // silently-lost streak update is observable rather than invisible.
+    dbError("persistRow", e);
   }
 }
 
@@ -201,7 +215,8 @@ export async function fetchLast7DaysHistory(
       out.set(r.day, { action: r.action, status: r.status });
     }
     return out;
-  } catch {
+  } catch (e) {
+    dbError("fetchLast7DaysHistory", e);
     return new Map();
   }
 }
@@ -222,8 +237,8 @@ async function upsertTodayLog(
       action,
       updated_at: new Date().toISOString(),
     });
-  } catch {
-    /* no-op */
+  } catch (e) {
+    dbError("upsertTodayLog", e);
   }
 }
 
@@ -280,7 +295,15 @@ export async function skipToday(
   if (row.skips_used >= q.skipsAllowance) {
     return { ok: false, remaining: 0 };
   }
-  const updated: StreakRow = { ...row, skips_used: row.skips_used + 1 };
+  // A skip must genuinely protect the streak (the UI promises "your streak is
+  // protected"). Like a freeze, bridge today so the next solved day still
+  // continues the chain — but never advance the count past an existing solve.
+  const today = dsaTodayKey();
+  const bridged =
+    row.last_solved_on && daysBetween(row.last_solved_on, today) <= 0
+      ? row.last_solved_on // already solved today (or future) — leave untouched
+      : today;
+  const updated: StreakRow = { ...row, skips_used: row.skips_used + 1, last_solved_on: bridged };
   await persistRow(userId, updated);
   await upsertTodayLog(userId, slug, "not_started", "skipped");
   return { ok: true, remaining: Math.max(0, q.skipsAllowance - updated.skips_used) };
@@ -300,21 +323,71 @@ export async function freezeStreak(
   return { ok: true, remaining: updated.freeze_tokens };
 }
 
+async function hasUnlockedApproach(userId: string, slug: string): Promise<boolean> {
+  try {
+    const db = createSupabaseAdminClient() as unknown as { from: (t: string) => any };
+    const { data } = await db
+      .from("dsa_approach_unlocks")
+      .select("slug")
+      .eq("user_id", userId)
+      .eq("slug", slug)
+      .maybeSingle();
+    return !!data;
+  } catch (e) {
+    dbError("hasUnlockedApproach", e);
+    return false;
+  }
+}
+
+async function recordApproachUnlock(userId: string, slug: string): Promise<void> {
+  try {
+    const db = createSupabaseAdminClient() as unknown as { from: (t: string) => any };
+    await db
+      .from("dsa_approach_unlocks")
+      .upsert({ user_id: userId, slug, unlocked_at: new Date().toISOString() }, { onConflict: "user_id,slug" });
+  } catch (e) {
+    dbError("recordApproachUnlock", e);
+  }
+}
+
+function remainingApproaches(row: StreakRow, plan: BillingPlan): number | "unlimited" {
+  const q = dsaQuota(plan);
+  if (q.fullApproachesPerMonth === "unlimited") return "unlimited";
+  return Math.max(0, q.fullApproachesPerMonth - row.full_approaches_used);
+}
+
 /**
- * Spend one monthly full-approach credit (Free tier). Pro/Sprint are unlimited
- * and always succeed without consuming anything.
+ * Unlock the full approach for a question. Pro/Sprint are unlimited and never
+ * consume anything. Free users spend one monthly credit — but only the FIRST
+ * time they unlock a given question. Repeat reveals of an already-unlocked
+ * question return the content for free (idempotent), so navigating away and
+ * back never double-charges a credit.
  */
-export async function spendFullApproach(
+export async function unlockApproach(
   userId: string,
   plan: BillingPlan,
-): Promise<{ ok: boolean; remaining: number | "unlimited" }> {
+  slug: string,
+): Promise<
+  | { ok: true; remaining: number | "unlimited"; alreadyUnlocked: boolean }
+  | { ok: false; reason: "exhausted" }
+> {
   const q = dsaQuota(plan);
-  if (q.fullApproachesPerMonth === "unlimited") return { ok: true, remaining: "unlimited" };
+  if (q.fullApproachesPerMonth === "unlimited") {
+    return { ok: true, remaining: "unlimited", alreadyUnlocked: false };
+  }
+
+  // Already paid for this exact question — return it without re-charging.
+  if (await hasUnlockedApproach(userId, slug)) {
+    const row = applyResets(await fetchStreakRow(userId, plan), plan);
+    return { ok: true, remaining: remainingApproaches(row, plan), alreadyUnlocked: true };
+  }
+
   const row = applyResets(await fetchStreakRow(userId, plan), plan);
   if (row.full_approaches_used >= q.fullApproachesPerMonth) {
-    return { ok: false, remaining: 0 };
+    return { ok: false, reason: "exhausted" };
   }
   const updated: StreakRow = { ...row, full_approaches_used: row.full_approaches_used + 1 };
   await persistRow(userId, updated);
-  return { ok: true, remaining: Math.max(0, q.fullApproachesPerMonth - updated.full_approaches_used) };
+  await recordApproachUnlock(userId, slug);
+  return { ok: true, remaining: remainingApproaches(updated, plan), alreadyUnlocked: false };
 }

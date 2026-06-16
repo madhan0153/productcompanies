@@ -176,7 +176,11 @@ export function DailyPanel({
           </Link>
 
           {banner && (
-            <p className="animate-fade-up mt-3 flex items-center justify-center gap-1.5 text-center text-xs font-medium text-success">
+            <p
+              role="status"
+              aria-live="polite"
+              className="animate-fade-up mt-3 flex items-center justify-center gap-1.5 text-center text-xs font-medium text-success"
+            >
               <Check className="h-3.5 w-3.5" /> {banner}
             </p>
           )}

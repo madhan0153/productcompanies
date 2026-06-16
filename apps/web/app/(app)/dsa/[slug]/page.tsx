@@ -169,6 +169,7 @@ export default async function DsaQuestionPage({
         edgeCases={q.edge_cases}
         whyItMatters={q.why_it_matters}
         aiCoach={quota.aiCoach}
+        patternLabel={patternLabel(q.pattern)}
       />
     </article>
   );
