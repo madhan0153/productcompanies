@@ -278,7 +278,7 @@ export function Hero({ companies, liveStats }: Props) {
             icon={<Sparkles className="h-5 w-5" />}
             title="Explainable AI matching"
             body="Every match shows your strengths and gaps. AI grades each role and writes a structured Fit Card."
-            stat="100% transparent"
+            stat="Strengths & gaps shown"
           />
           <Feature
             icon={<ShieldCheck className="h-5 w-5" />}
@@ -673,7 +673,7 @@ function ExplainabilityShowcase() {
       <div className="grid grid-cols-1 gap-0 lg:grid-cols-5">
         <div className="col-span-2 border-b border-border p-5 lg:border-b-0 lg:border-r">
           <div className="flex items-start gap-3">
-            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-secondary text-lg font-semibold text-primary">R</div>
+            <CompanyLogo name={demoMatch.company} logoUrl={null} size={44} rounded="rounded-lg" />
             <div className="min-w-0">
               <p className="text-xs text-muted-foreground">{demoMatch.company}</p>
               <p className="text-sm font-medium leading-snug">{demoMatch.role}</p>
@@ -784,37 +784,58 @@ function Feature({
 // ─────────────────────────────────────────────────────────────────────────────
 
 function LogoCloud({ companies, reduce }: { companies: Company[]; reduce: boolean }) {
-  // Fall back to the static 51-company name list if the DB returned nothing
-  // (crawler hasn't run yet) so the visual section isn't empty.
+  // Fall back to a representative slice of the approved set if the DB returned
+  // nothing (crawler hasn't run yet) so the section is never empty.
   const FALLBACK = [
     "Google", "Microsoft", "Meta", "Amazon", "Apple", "Atlassian", "Nvidia",
     "Oracle", "Salesforce", "SAP Labs", "Razorpay", "PhonePe", "Zerodha",
     "CRED", "Groww", "Swiggy", "Zomato", "Flipkart",
   ];
-  const list: Company[] = companies.length > 0
+  const all: Company[] = companies.length > 0
     ? companies
     : FALLBACK.map((name) => ({ name, slug: name.toLowerCase().replace(/\s+/g, "-"), logoUrl: null }));
 
+  // Cap the visible set so the row reads as a confident sample, not an
+  // overcrowded wall. The remainder links through to the full directory.
+  const MAX = 24;
+  const list = all.slice(0, MAX);
+  const remaining = all.length - list.length;
+
+  // One container fade — we deliberately do NOT stagger each chip (that animates
+  // dozens of nodes separately and stalls low-end devices).
   return (
-    <div className="mt-8 grid grid-cols-3 gap-3 sm:grid-cols-6 lg:grid-cols-9">
-      {list.map((c, i) => (
-        <motion.div
-          key={c.slug}
-          initial={reduce ? { opacity: 1 } : { opacity: 0, y: 8 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true, margin: "-40px" }}
-          transition={{ duration: 0.35, delay: 0.025 * i, ease: [0.22, 1, 0.36, 1] }}
-        >
+    <motion.ul
+      initial={reduce ? { opacity: 1 } : { opacity: 0, y: 10 }}
+      whileInView={{ opacity: 1, y: 0 }}
+      viewport={{ once: true, margin: "-40px" }}
+      transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
+      className="mt-8 flex flex-wrap items-center justify-center gap-2.5"
+    >
+      {list.map((c) => (
+        <li key={c.slug}>
           <Link
             href={`/companies/${c.slug}`}
             title={`${c.name} careers in India`}
-            className="group flex aspect-square items-center justify-center rounded-lg border border-border bg-card p-3 transition hover:-translate-y-0.5 hover:border-primary/30 hover:bg-secondary/40 hover:shadow-elev2 motion-reduce:hover:translate-y-0"
+            className="lift group inline-flex items-center gap-2 rounded-full border border-border bg-card py-1.5 pl-1.5 pr-3.5 transition hover:border-primary/30 focus-ring"
           >
-            <CompanyLogo name={c.name} logoUrl={c.logoUrl} size={40} className="!border-0 !bg-transparent !rounded-md" />
+            <CompanyLogo name={c.name} logoUrl={c.logoUrl} size={26} rounded="rounded-full" />
+            <span className="text-sm font-medium text-foreground/80 transition-colors group-hover:text-foreground">
+              {c.name}
+            </span>
           </Link>
-        </motion.div>
+        </li>
       ))}
-    </div>
+      {remaining > 0 && (
+        <li>
+          <Link
+            href="/companies"
+            className="lift inline-flex items-center rounded-full border border-dashed border-border bg-secondary/40 px-4 py-2 text-sm font-medium text-muted-foreground transition hover:border-primary/30 hover:text-foreground focus-ring"
+          >
+            +{remaining} more
+          </Link>
+        </li>
+      )}
+    </motion.ul>
   );
 }
 
