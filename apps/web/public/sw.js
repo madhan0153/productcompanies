@@ -153,3 +153,53 @@ async function trimCache(cacheName, maxEntries) {
     await cache.delete(keys[i]);
   }
 }
+
+/* -------------------------------------------------------------------------- */
+/* Web Push                                                                   */
+/* -------------------------------------------------------------------------- */
+
+// The server sends a JSON body: { title, body, url, type, data }.
+self.addEventListener("push", (event) => {
+  let payload = {};
+  try {
+    payload = event.data ? event.data.json() : {};
+  } catch {
+    payload = { title: "ProdMatch.ai", body: event.data ? event.data.text() : "" };
+  }
+
+  const title = payload.title || "ProdMatch.ai";
+  const options = {
+    body: payload.body || "",
+    icon: "/logo-prodmatchai.png",
+    badge: "/logo-prodmatchai.png",
+    // Coalesce repeats of the same type into one notification, but re-alert.
+    tag: payload.type || "prodmatch",
+    renotify: true,
+    data: { url: payload.url || "/dashboard", ...(payload.data || {}) },
+  };
+
+  event.waitUntil(self.registration.showNotification(title, options));
+});
+
+// Focus an existing tab on the target path if one is open; otherwise open it.
+self.addEventListener("notificationclick", (event) => {
+  event.notification.close();
+  const target = (event.notification.data && event.notification.data.url) || "/dashboard";
+
+  event.waitUntil(
+    (async () => {
+      const targetUrl = new URL(target, self.location.origin);
+      const clientList = await self.clients.matchAll({
+        type: "window",
+        includeUncontrolled: true,
+      });
+      for (const client of clientList) {
+        const clientUrl = new URL(client.url);
+        if (clientUrl.pathname === targetUrl.pathname && "focus" in client) {
+          return client.focus();
+        }
+      }
+      if (self.clients.openWindow) return self.clients.openWindow(targetUrl.href);
+    })(),
+  );
+});

@@ -7,7 +7,8 @@ export type ConsentPurpose =
   | "matching"
   | "digest_email"
   | "analytics"
-  | "resume_intelligence";
+  | "resume_intelligence"
+  | "notifications";
 
 export const CONSENT_LABELS: Record<ConsentPurpose, { title: string; description: string; required: boolean }> = {
   account: {
@@ -33,6 +34,11 @@ export const CONSENT_LABELS: Record<ConsentPurpose, { title: string; description
   resume_intelligence: {
     title: "Resume Intelligence",
     description: "Run AI diagnosis and bullet-rewrite suggestions on your uploaded resume. Every change is reviewed by you before saving. We never invent experience.",
+    required: false,
+  },
+  notifications: {
+    title: "Push Notifications",
+    description: "Send browser/app push alerts when new strong-fit roles match your profile. You can still enable or disable the device itself separately.",
     required: false,
   },
 };

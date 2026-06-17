@@ -4,7 +4,7 @@
 export interface JsonObject { [key: string]: Json }
 export type Json = string | number | boolean | null | JsonObject | Json[];
 
-export type ConsentPurpose = "account" | "matching" | "digest_email" | "analytics" | "resume_intelligence";
+export type ConsentPurpose = "account" | "matching" | "digest_email" | "analytics" | "resume_intelligence" | "notifications";
 export type ApplicationStatus = "saved" | "applied" | "interviewing" | "offer" | "rejected" | "withdrawn";
 export type DigestFrequency = "weekly" | "off";
 export type DpdpEventType =
@@ -718,6 +718,37 @@ export interface Database {
         };
         Update: {
           status?: string; metadata?: Json;
+        };
+        Relationships: [];
+      };
+      push_subscriptions: {
+        Row: {
+          id: string; user_id: string; endpoint: string; p256dh: string; auth: string;
+          user_agent: string | null; created_at: string; last_used_at: string | null;
+          failure_count: number; disabled_at: string | null;
+        };
+        Insert: {
+          id?: string; user_id: string; endpoint: string; p256dh: string; auth: string;
+          user_agent?: string | null; created_at?: string; last_used_at?: string | null;
+          failure_count?: number; disabled_at?: string | null;
+        };
+        Update: {
+          endpoint?: string; p256dh?: string; auth?: string; user_agent?: string | null;
+          last_used_at?: string | null; failure_count?: number; disabled_at?: string | null;
+        };
+        Relationships: [];
+      };
+      notifications: {
+        Row: {
+          id: string; user_id: string; type: string; title: string; body: string | null;
+          url: string | null; data: Json; created_at: string; read_at: string | null;
+        };
+        Insert: {
+          id?: string; user_id: string; type: string; title: string; body?: string | null;
+          url?: string | null; data?: Json; created_at?: string; read_at?: string | null;
+        };
+        Update: {
+          read_at?: string | null;
         };
         Relationships: [];
       };

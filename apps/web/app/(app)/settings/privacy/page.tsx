@@ -1,11 +1,13 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
-import { Download, Trash2, ShieldCheck, Database, FileLock2 } from "lucide-react";
+import { Download, Trash2, ShieldCheck, Database, FileLock2, BellRing } from "lucide-react";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { CONSENT_LABELS, getUserConsents, type ConsentPurpose } from "@/lib/dpdp/consent";
 import { submitConsents } from "@/app/consent/actions";
 import { requestDataExport, requestErasure } from "./actions";
 import { SectionCard } from "@/components/section-card";
+import { PushOptIn } from "@/components/push-opt-in";
+import { clientEnv } from "@/lib/env";
 
 export const metadata: Metadata = { title: "Privacy settings" };
 
@@ -86,6 +88,18 @@ export default async function PrivacySettingsPage() {
             Update preferences
           </button>
         </form>
+      </SectionCard>
+
+      {/* Push notifications — device-level opt-in, gated on the notifications consent */}
+      <SectionCard
+        title="Push notifications"
+        subtitle="Get alerted on this device when new strong-fit roles match"
+        icon={<BellRing className="h-4 w-4" />}
+      >
+        <PushOptIn
+          vapidPublicKey={clientEnv.NEXT_PUBLIC_VAPID_PUBLIC_KEY ?? null}
+          consentGranted={current.notifications ?? false}
+        />
       </SectionCard>
 
       {/* Data export */}
