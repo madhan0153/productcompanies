@@ -6,7 +6,28 @@ import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { sendErasureConfirmed } from "@/lib/email";
 import { logEvent } from "@/lib/observability/log";
+import { NOTIFICATION_KINDS } from "@/lib/push/catalog";
 import type { DpdpEventType } from "@/lib/supabase/types";
+
+// Per-category push preferences. The `notifications` consent is the legal gate
+// (handled in the consent form); this only tunes which categories fire. Stored
+// as explicit booleans so an unchecked box mutes that category (false), while
+// any category left out of the map stays enabled by default.
+export async function updateNotificationPrefs(formData: FormData) {
+  const supabase = await createSupabaseServerClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) redirect("/auth/login");
+
+  const prefs: Record<string, boolean> = {};
+  for (const kind of NOTIFICATION_KINDS) {
+    prefs[kind] = formData.get(kind) === "on";
+  }
+
+  await supabase.from("profiles").update({ notification_prefs: prefs }).eq("id", user.id);
+  revalidatePath("/settings/privacy");
+}
 
 export async function requestDataExport() {
   const supabase = await createSupabaseServerClient();

@@ -4,10 +4,11 @@ import { Download, Trash2, ShieldCheck, Database, FileLock2, BellRing } from "lu
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { CONSENT_LABELS, getUserConsents, type ConsentPurpose } from "@/lib/dpdp/consent";
 import { submitConsents } from "@/app/consent/actions";
-import { requestDataExport, requestErasure } from "./actions";
+import { requestDataExport, requestErasure, updateNotificationPrefs } from "./actions";
 import { SectionCard } from "@/components/section-card";
 import { PushOptIn } from "@/components/push-opt-in";
 import { clientEnv } from "@/lib/env";
+import { NOTIFICATION_KINDS, NOTIFICATION_KIND_LABELS, isKindEnabled } from "@/lib/push/catalog";
 
 export const metadata: Metadata = { title: "Privacy settings" };
 
@@ -23,6 +24,14 @@ export default async function PrivacySettingsPage() {
     ConsentPurpose,
     (typeof CONSENT_LABELS)[ConsentPurpose],
   ][];
+
+  const notificationsOn = current.notifications ?? false;
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("notification_prefs")
+    .eq("id", user.id)
+    .maybeSingle();
+  const notificationPrefs = (profile?.notification_prefs as Record<string, unknown> | null) ?? null;
 
   return (
     <div className="mx-auto max-w-2xl space-y-5 pb-8">
@@ -98,8 +107,42 @@ export default async function PrivacySettingsPage() {
       >
         <PushOptIn
           vapidPublicKey={clientEnv.NEXT_PUBLIC_VAPID_PUBLIC_KEY ?? null}
-          consentGranted={current.notifications ?? false}
+          consentGranted={notificationsOn}
         />
+
+        {notificationsOn && (
+          <form
+            action={updateNotificationPrefs}
+            className="mt-4 space-y-2.5 border-t border-border/60 pt-4"
+          >
+            <p className="text-xs font-semibold text-muted-foreground">What to notify me about</p>
+            {NOTIFICATION_KINDS.map((kind) => (
+              <label
+                key={kind}
+                className="flex cursor-pointer items-start gap-3 rounded-lg border border-border bg-secondary/40 p-3 transition hover:border-primary/30 hover:bg-secondary"
+              >
+                <input
+                  type="checkbox"
+                  name={kind}
+                  defaultChecked={isKindEnabled(notificationPrefs, kind)}
+                  className="mt-0.5 h-4 w-4 shrink-0 rounded accent-[hsl(var(--primary))]"
+                />
+                <div className="min-w-0 flex-1">
+                  <div className="text-sm font-medium">{NOTIFICATION_KIND_LABELS[kind].title}</div>
+                  <p className="mt-0.5 text-xs leading-relaxed text-muted-foreground">
+                    {NOTIFICATION_KIND_LABELS[kind].description}
+                  </p>
+                </div>
+              </label>
+            ))}
+            <button
+              type="submit"
+              className="press tap-target w-full rounded-md border border-border bg-card px-4 text-sm font-medium text-muted-foreground transition hover:border-primary/40 hover:text-foreground focus-ring"
+            >
+              Save notification preferences
+            </button>
+          </form>
+        )}
       </SectionCard>
 
       {/* Data export */}

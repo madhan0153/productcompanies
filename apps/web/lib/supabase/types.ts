@@ -464,6 +464,7 @@ export interface Database {
           resume_embedding: number[] | null; resume_embedding_at: string | null;
           last_match_compute_at: string | null;
           suspended_at: string | null; suspension_reason: string | null;
+          notification_prefs: Json;
           created_at: string; updated_at: string;
         };
         Insert: {
@@ -483,6 +484,7 @@ export interface Database {
           resume_embedding?: number[] | null; resume_embedding_at?: string | null;
           last_match_compute_at?: string | null;
           suspended_at?: string | null; suspension_reason?: string | null;
+          notification_prefs?: Json;
           created_at?: string; updated_at?: string;
         };
         Update: {
@@ -502,6 +504,7 @@ export interface Database {
           resume_embedding?: number[] | null; resume_embedding_at?: string | null;
           last_match_compute_at?: string | null;
           suspended_at?: string | null; suspension_reason?: string | null;
+          notification_prefs?: Json;
           updated_at?: string;
         };
         Relationships: [];

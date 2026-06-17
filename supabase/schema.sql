@@ -2774,6 +2774,18 @@ comment on table public.notifications is 'Append-only push delivery log + in-app
 
 
 -- =============================================================================
+-- Phase O — Per-category push notification preferences
+--   Product-level mute switches layered on top of the `notifications` consent.
+--   Shape: {"job_alerts": false, ...}. An ABSENT key means enabled (opt-out per
+--   category). Consent remains the legal basis; this is product preference only.
+-- =============================================================================
+alter table public.profiles
+  add column if not exists notification_prefs jsonb not null default '{}'::jsonb;
+
+comment on column public.profiles.notification_prefs is 'Per-category push mute switches, e.g. {"job_alerts": false}. Absent key = enabled. The notifications consent is the legal basis; this is product preference only.';
+
+
+-- =============================================================================
 -- DONE. Verify in Supabase Studio:
 --   • 51 rows in `companies`, 0 rows in `jobs`
 --   • RLS enabled on every table above
