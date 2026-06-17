@@ -45,9 +45,14 @@ export default async function AdminJobsPage({
   const admin = createSupabaseAdminClient();
 
   type JobsBuilder = ReturnType<typeof admin.from>;
+  // When filtering by company, the embed MUST be an inner join — a plain
+  // (left) embed lets PostgREST apply `companies.name` to the embedded
+  // resource only, so non-matching jobs still return (with companies=null)
+  // and the filter silently does nothing. `!inner` restricts the parent rows.
+  const companyEmbed = companyFilter ? "companies!inner(name, slug)" : "companies(name, slug)";
   let jobsQ = admin
     .from("jobs")
-    .select("id, title, location, is_active, quality_score, jd_parsed_at, is_likely_ghost, apply_click_count, role_function_jd, last_seen_at, companies(name, slug)")
+    .select(`id, title, location, is_active, quality_score, jd_parsed_at, is_likely_ghost, apply_click_count, role_function_jd, last_seen_at, ${companyEmbed}`)
     .order("last_seen_at", { ascending: false, nullsFirst: false })
     .limit(60) as unknown as JobsBuilder;
   if (jobQuery)      jobsQ = (jobsQ as never as { ilike: (a: string, b: string) => JobsBuilder }).ilike("title", `%${jobQuery}%`);

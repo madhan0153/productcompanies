@@ -220,7 +220,7 @@ export default async function AdminHealthPage() {
           <li style={{ display: "flex", alignItems: "center", gap: 8 }}>
             <code style={{ fontFamily: "var(--font-mono)" }}>PARSE_BUDGET_PER_RUN:</code>
             <span className="pm-num" style={{ color: "var(--text)", fontWeight: 500 }}>
-              {process.env.PARSE_BUDGET_PER_RUN ?? "150 (default)"}
+              {process.env.PARSE_BUDGET_PER_RUN ?? "10000 (default)"}
             </span>
           </li>
         </ul>

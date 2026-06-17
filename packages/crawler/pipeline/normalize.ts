@@ -81,8 +81,10 @@ export function extractLPA(text: string): { min: number | null; max: number | nu
     /₹\s*(\d+(?:\.\d+)?)\s*L\s*[-–]\s*₹\s*(\d+(?:\.\d+)?)\s*L/i,
     // "30 LPA" (single value)
     /(\d+(?:\.\d+)?)\s*(?:lpa|l\.?p\.?a|lakhs?\s*per\s*annum)/i,
-    // "30 to 40 lakhs"
-    /(\d+(?:\.\d+)?)\s*(?:[-–]|to)\s*(\d+(?:\.\d+)?)\s*(?:lakhs?|lacs?)/i,
+    // "30 to 40 lakhs" — bare lakhs (no per-annum/LPA cue). Guard against
+    // volume phrasing like "10 to 15 lakh users/customers/downloads" which is
+    // NOT compensation and would otherwise poison comp_lpa.
+    /(\d+(?:\.\d+)?)\s*(?:[-–]|to)\s*(\d+(?:\.\d+)?)\s*(?:lakhs?|lacs?)(?!\s*(?:users?|customers?|merchants?|sellers?|riders?|members?|subscribers?|downloads?|installs?|transactions?|requests?|records?|rows?|orders?|people|reviews?|ratings?))/i,
   ];
 
   for (const re of patterns) {
