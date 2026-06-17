@@ -33,7 +33,7 @@ export default async function UnsubscribePage({
   if (!uid || !token || !verifyToken(uid, token)) {
     return (
       <UnsubscribeLayout>
-        <XCircle className="mx-auto h-12 w-12 text-rose-400" />
+        <XCircle className="mx-auto h-12 w-12 text-destructive" />
         <h1 className="mt-4 text-xl font-semibold">Invalid link</h1>
         <p className="mt-2 text-sm text-muted-foreground">
           This unsubscribe link is invalid or has expired. Please manage your
@@ -57,7 +57,7 @@ export default async function UnsubscribePage({
   if (error) {
     return (
       <UnsubscribeLayout>
-        <XCircle className="mx-auto h-12 w-12 text-rose-400" />
+        <XCircle className="mx-auto h-12 w-12 text-destructive" />
         <h1 className="mt-4 text-xl font-semibold">Something went wrong</h1>
         <p className="mt-2 text-sm text-muted-foreground">
           We couldn&apos;t process your unsubscribe request. Please try again
@@ -73,7 +73,7 @@ export default async function UnsubscribePage({
 
   return (
     <UnsubscribeLayout>
-      <CheckCircle2 className="mx-auto h-12 w-12 text-emerald-400" />
+      <CheckCircle2 className="mx-auto h-12 w-12 text-success" />
       <h1 className="mt-4 text-xl font-semibold">Unsubscribed</h1>
       <p className="mt-2 text-sm text-muted-foreground">
         You&apos;ve been removed from the weekly match digest. You won&apos;t

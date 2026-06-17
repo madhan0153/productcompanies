@@ -60,9 +60,9 @@ export default function EarlyAccessPage() {
 
         {phase === "success" ? (
           <div className="space-y-5 text-center">
-            <CheckCircle2 className="mx-auto h-12 w-12 text-emerald-500" />
+            <CheckCircle2 className="mx-auto h-12 w-12 text-success" />
             <div>
-              <p className="mb-1 font-semibold text-emerald-600 dark:text-emerald-400">{message}</p>
+              <p className="mb-1 font-semibold text-success">{message}</p>
               <p className="text-sm text-muted-foreground">
                 Your billing entitlements are active. Head to your dashboard to see your plan.
               </p>
@@ -92,7 +92,7 @@ export default function EarlyAccessPage() {
             </div>
 
             {phase === "error" && (
-              <p className="rounded-lg border border-rose-500/30 bg-rose-500/8 px-3 py-2 text-sm text-rose-600 dark:text-rose-400">
+              <p className="rounded-lg border border-destructive/30 bg-destructive/8 px-3 py-2 text-sm text-destructive">
                 {message}
               </p>
             )}
@@ -109,13 +109,13 @@ export default function EarlyAccessPage() {
 
         {/* Trust notes */}
         <div className="mt-8 space-y-2">
-          <SecurityNote icon={<ShieldCheck className="h-3.5 w-3.5 text-emerald-500" />}>
+          <SecurityNote icon={<ShieldCheck className="h-3.5 w-3.5 text-success" />}>
             Access codes grant billing entitlements only — never admin access.
           </SecurityNote>
-          <SecurityNote icon={<ShieldCheck className="h-3.5 w-3.5 text-emerald-500" />}>
+          <SecurityNote icon={<ShieldCheck className="h-3.5 w-3.5 text-success" />}>
             One redemption per account per code.
           </SecurityNote>
-          <SecurityNote icon={<ShieldCheck className="h-3.5 w-3.5 text-emerald-500" />}>
+          <SecurityNote icon={<ShieldCheck className="h-3.5 w-3.5 text-success" />}>
             DPDP data export & erasure remain free forever.
           </SecurityNote>
         </div>

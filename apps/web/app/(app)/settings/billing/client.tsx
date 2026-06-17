@@ -109,7 +109,7 @@ function CancelButton() {
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="inline-flex h-9 items-center rounded-lg border border-border bg-background px-3 text-xs font-medium text-muted-foreground hover:border-rose-500/40 hover:text-rose-600 dark:hover:text-rose-400"
+        className="inline-flex h-9 items-center rounded-lg border border-border bg-background px-3 text-xs font-medium text-muted-foreground hover:border-destructive/40 hover:text-destructive dark:hover:text-destructive"
       >
         Cancel
       </button>
@@ -139,7 +139,7 @@ function CancelButton() {
 
               {done ? (
                 <div className="space-y-3 px-5 py-6 text-center">
-                  <CheckCircle2 className="mx-auto h-10 w-10 text-emerald-500" />
+                  <CheckCircle2 className="mx-auto h-10 w-10 text-success" />
                   <p className="font-semibold">{done}</p>
                   <button onClick={close} className="mx-auto inline-flex h-10 items-center justify-center rounded-lg bg-primary px-4 text-sm font-semibold text-primary-foreground hover:bg-primary/90">
                     Got it
@@ -180,7 +180,7 @@ function CancelButton() {
                   )}
 
                   {error && (
-                    <p className="flex items-start gap-2 rounded-lg border border-rose-500/30 bg-rose-500/8 p-2 text-xs text-rose-600 dark:text-rose-400">
+                    <p className="flex items-start gap-2 rounded-lg border border-destructive/30 bg-destructive/8 p-2 text-xs text-destructive">
                       <AlertCircle className="mt-0.5 h-3.5 w-3.5 shrink-0" /> {error}
                     </p>
                   )}
@@ -195,7 +195,7 @@ function CancelButton() {
                     <button
                       disabled={!reason}
                       onClick={() => selectedReason?.retention ? setStage("retain") : confirmCancel()}
-                      className="flex-1 rounded-lg bg-rose-600 px-3 py-2 text-sm font-semibold text-white hover:bg-rose-700 disabled:opacity-50"
+                      className="flex-1 rounded-lg bg-destructive px-3 py-2 text-sm font-semibold text-destructive-foreground transition hover:bg-destructive/90 disabled:opacity-50 focus-ring"
                     >
                       Continue
                     </button>
@@ -214,7 +214,7 @@ function CancelButton() {
                     </button>
                     <button
                       onClick={confirmCancel}
-                      className="flex-1 rounded-lg border border-rose-500/40 bg-rose-500/10 px-3 py-2 text-sm font-semibold text-rose-700 dark:text-rose-400 hover:bg-rose-500/20"
+                      className="flex-1 rounded-lg border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm font-semibold text-destructive transition hover:bg-destructive/20 focus-ring"
                     >
                       Cancel anyway
                     </button>

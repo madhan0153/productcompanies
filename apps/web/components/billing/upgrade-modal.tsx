@@ -305,9 +305,9 @@ export function UpgradeModal({ open, onClose, trigger, returnTo }: UpgradeModalP
                     <span className="text-xs text-muted-foreground">· billed {PRICING_COPY.proMonthly}/mo</span>
                   </div>
                   <ul className="mt-3 space-y-1 text-xs text-muted-foreground">
-                    <li className="flex items-center gap-1.5"><Check className="h-3 w-3 text-emerald-500" />Unlimited matches</li>
-                    <li className="flex items-center gap-1.5"><Check className="h-3 w-3 text-emerald-500" />30 tailored resumes / month</li>
-                    <li className="flex items-center gap-1.5"><Check className="h-3 w-3 text-emerald-500" />Interview study plan + DSA</li>
+                    <li className="flex items-center gap-1.5"><Check className="h-3 w-3 text-success" />Unlimited matches</li>
+                    <li className="flex items-center gap-1.5"><Check className="h-3 w-3 text-success" />30 tailored resumes / month</li>
+                    <li className="flex items-center gap-1.5"><Check className="h-3 w-3 text-success" />Interview study plan + DSA</li>
                   </ul>
                 </div>
                 {loading === "pro_monthly" ? (

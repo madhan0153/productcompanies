@@ -255,7 +255,7 @@ function BillingSuccessContent() {
   return (
     <Centered>
       <div className="max-w-md space-y-4 text-center">
-        <CheckCircle2 className="mx-auto h-12 w-12 text-emerald-500" />
+        <CheckCircle2 className="mx-auto h-12 w-12 text-success" />
         <div>
           <h1 className="font-display text-2xl font-bold">Payment received ✅</h1>
           <p className="mt-1 text-sm text-muted-foreground">
@@ -291,7 +291,7 @@ function BillingSuccessContent() {
             onClick={copySupport}
             className="mt-2 inline-flex items-center gap-1 rounded-md bg-secondary px-2 py-1 text-[11px] font-medium hover:bg-secondary/70"
           >
-            {copied ? <CheckCircle2 className="h-3 w-3 text-emerald-500" /> : <Copy className="h-3 w-3" />}
+            {copied ? <CheckCircle2 className="h-3 w-3 text-success" /> : <Copy className="h-3 w-3" />}
             {copied ? "Copied" : "Copy"}
           </button>
         </div>

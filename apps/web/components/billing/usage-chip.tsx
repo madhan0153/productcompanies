@@ -25,7 +25,7 @@ export function UsageChip({ plan, tailorUsed, tailorLimit, tailorCredits = 0, is
       return (
         <Link
           href="/settings/billing"
-          className="inline-flex items-center gap-1.5 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2.5 py-1 text-[11px] font-semibold text-emerald-700 dark:text-emerald-300 hover:bg-emerald-500/15"
+          className="inline-flex items-center gap-1.5 rounded-full border border-success/30 bg-success/10 px-2.5 py-1 text-[11px] font-semibold text-success hover:bg-success/15"
           aria-label="Staff override — full Sprint entitlements"
         >
           <Shield className="h-3 w-3" />
@@ -66,7 +66,7 @@ export function UsageChip({ plan, tailorUsed, tailorLimit, tailorCredits = 0, is
     return (
       <Link
         href="/pricing"
-        className="inline-flex items-center gap-1.5 rounded-full border border-rose-500/30 bg-rose-500/10 px-2.5 py-1 text-[11px] font-semibold text-rose-600 dark:text-rose-400 hover:bg-rose-500/15"
+        className="inline-flex items-center gap-1.5 rounded-full border border-destructive/30 bg-destructive/10 px-2.5 py-1 text-[11px] font-semibold text-destructive hover:bg-destructive/15"
       >
         <Star className="h-3 w-3" />
         Upgrade · ₹3/day

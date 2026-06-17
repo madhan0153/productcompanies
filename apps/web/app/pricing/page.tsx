@@ -180,7 +180,7 @@ export default function PricingPage() {
               >
                 {i === "monthly" ? "Monthly" : "Yearly"}
                 {i === "yearly" && (
-                  <span className="ml-2 rounded-full bg-emerald-500/15 px-1.5 py-0.5 text-[10px] font-semibold text-emerald-600 dark:text-emerald-400">
+                  <span className="ml-2 rounded-full bg-success/15 px-1.5 py-0.5 text-[10px] font-semibold text-success">
                     Save {PRICING_COPY.proYearlySavingsPct}%
                   </span>
                 )}
@@ -190,7 +190,7 @@ export default function PricingPage() {
         </div>
 
         {state.error && (
-          <div className="mb-6 rounded-xl border border-rose-500/30 bg-rose-500/8 p-4 text-center text-sm text-rose-600 dark:text-rose-400">
+          <div className="mb-6 rounded-xl border border-destructive/30 bg-destructive/8 p-4 text-center text-sm text-destructive">
             {state.error}
           </div>
         )}
@@ -317,7 +317,7 @@ export default function PricingPage() {
 
         {/* Trust banner */}
         <div className="mt-6 grid gap-3 sm:grid-cols-3">
-          <Trust icon={<ShieldCheck className="h-4 w-4 text-emerald-500" />} text="Cancel anytime, keep access till period ends" />
+          <Trust icon={<ShieldCheck className="h-4 w-4 text-success" />} text="Cancel anytime, keep access till period ends" />
           <Trust icon={<Clock className="h-4 w-4 text-amber-500" />} text="No long-term commitment, billed monthly or yearly" />
           <Trust icon={<Sparkles className="h-4 w-4 text-primary" />} text="DPDP-compliant · UPI, cards, net banking" />
         </div>
@@ -414,7 +414,7 @@ function CouponRedemption({ isSignedIn }: { isSignedIn: boolean | null }) {
     <div className="mt-6 rounded-2xl border border-border bg-gradient-to-br from-secondary/40 to-secondary/10 p-5 sm:p-6">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-5">
         <div className="flex items-center gap-2 sm:flex-1">
-          <span className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-emerald-500/15 text-emerald-600 dark:text-emerald-400">
+          <span className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-success/15 text-success">
             <ShieldCheck className="h-4 w-4" />
           </span>
           <div className="min-w-0">
@@ -450,8 +450,8 @@ function CouponRedemption({ isSignedIn }: { isSignedIn: boolean | null }) {
       {result && (
         <div className={`mt-3 flex items-start gap-2 rounded-lg border px-3 py-2 text-xs ${
           result.ok
-            ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300"
-            : "border-rose-500/30 bg-rose-500/10 text-rose-700 dark:text-rose-300"
+            ? "border-success/30 bg-success/10 text-success"
+            : "border-destructive/30 bg-destructive/10 text-destructive"
         }`}>
           {result.ok ? <Check className="mt-0.5 h-3.5 w-3.5 shrink-0" /> : <XIcon className="mt-0.5 h-3.5 w-3.5 shrink-0" />}
           <span>{result.msg}</span>
@@ -511,7 +511,7 @@ function PlanCard({
       <ul className="mb-6 flex-1 space-y-2">
         {features.map((f) => (
           <li key={f} className="flex items-start gap-2 text-xs text-muted-foreground">
-            <Check className="mt-0.5 h-3.5 w-3.5 shrink-0 text-emerald-500" />
+            <Check className="mt-0.5 h-3.5 w-3.5 shrink-0 text-success" />
             <span>{f}</span>
           </li>
         ))}
@@ -538,14 +538,14 @@ function ContrastTable() {
         Tailoring a resume manually vs. with Pro — for one job application:
       </p>
       <div className="grid gap-4 md:grid-cols-2">
-        <div className="rounded-xl border border-rose-500/20 bg-rose-500/5 p-4">
-          <p className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-rose-600 dark:text-rose-400">
+        <div className="rounded-xl border border-destructive/20 bg-destructive/5 p-4">
+          <p className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-destructive">
             Doing it yourself
           </p>
           <ul className="space-y-1.5 text-sm">
-            <li className="flex items-start gap-2"><XIcon className="mt-0.5 h-3.5 w-3.5 shrink-0 text-rose-500" /><span>25-40 min reading JD & guessing keywords</span></li>
-            <li className="flex items-start gap-2"><XIcon className="mt-0.5 h-3.5 w-3.5 shrink-0 text-rose-500" /><span>15 min rewriting bullets</span></li>
-            <li className="flex items-start gap-2"><XIcon className="mt-0.5 h-3.5 w-3.5 shrink-0 text-rose-500" /><span>No idea if you're a fit until rejection</span></li>
+            <li className="flex items-start gap-2"><XIcon className="mt-0.5 h-3.5 w-3.5 shrink-0 text-destructive" /><span>25-40 min reading JD & guessing keywords</span></li>
+            <li className="flex items-start gap-2"><XIcon className="mt-0.5 h-3.5 w-3.5 shrink-0 text-destructive" /><span>15 min rewriting bullets</span></li>
+            <li className="flex items-start gap-2"><XIcon className="mt-0.5 h-3.5 w-3.5 shrink-0 text-destructive" /><span>No idea if you're a fit until rejection</span></li>
           </ul>
           <p className="mt-3 text-xs text-muted-foreground">
             ≈ <strong className="text-foreground">40 min × 20 roles = ~13 hours / month</strong>
@@ -556,9 +556,9 @@ function ContrastTable() {
             With Pro
           </p>
           <ul className="space-y-1.5 text-sm">
-            <li className="flex items-start gap-2"><Check className="mt-0.5 h-3.5 w-3.5 shrink-0 text-emerald-500" /><span>Fit score with strengths & gaps in seconds</span></li>
-            <li className="flex items-start gap-2"><Check className="mt-0.5 h-3.5 w-3.5 shrink-0 text-emerald-500" /><span>Tailored resume PDF in ~30 seconds</span></li>
-            <li className="flex items-start gap-2"><Check className="mt-0.5 h-3.5 w-3.5 shrink-0 text-emerald-500" /><span>Skip mismatch roles, focus on real fits</span></li>
+            <li className="flex items-start gap-2"><Check className="mt-0.5 h-3.5 w-3.5 shrink-0 text-success" /><span>Fit score with strengths & gaps in seconds</span></li>
+            <li className="flex items-start gap-2"><Check className="mt-0.5 h-3.5 w-3.5 shrink-0 text-success" /><span>Tailored resume PDF in ~30 seconds</span></li>
+            <li className="flex items-start gap-2"><Check className="mt-0.5 h-3.5 w-3.5 shrink-0 text-success" /><span>Skip mismatch roles, focus on real fits</span></li>
           </ul>
           <p className="mt-3 text-xs text-muted-foreground">
             ≈ <strong className="text-foreground">2 min × 20 roles = ~40 min / month</strong>, all for <strong className="text-foreground">{PRICING_COPY.proPerDay}</strong>
@@ -602,7 +602,7 @@ function ComparisonTable() {
               <tr key={r.label} className="hover:bg-secondary/20">
                 <td className="px-4 py-3 text-muted-foreground">{r.label}</td>
                 {[r.free, r.pro, r.sprint].map((val, i) => (
-                  <td key={i} className={`px-4 py-3 text-center tabular-nums ${val === "✓" ? "font-bold text-emerald-500" : val === "—" ? "text-muted-foreground" : "font-medium"}`}>
+                  <td key={i} className={`px-4 py-3 text-center tabular-nums ${val === "✓" ? "font-bold text-success" : val === "—" ? "text-muted-foreground" : "font-medium"}`}>
                     {val}
                   </td>
                 ))}

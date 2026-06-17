@@ -122,7 +122,7 @@ export default async function BillingSettingsPage() {
               </div>
               <span className="font-display text-xl font-bold tabular-nums">
                 {tailor.unlimited
-                  ? <span className="text-emerald-600 dark:text-emerald-400">Unlimited</span>
+                  ? <span className="text-success">Unlimited</span>
                   : `${tailor.used} / ${tailor.limit}`}
               </span>
             </div>
@@ -130,14 +130,14 @@ export default async function BillingSettingsPage() {
               <div className="relative h-2 overflow-hidden rounded-full bg-border">
                 <div
                   className={`absolute inset-y-0 left-0 rounded-full transition-all ${
-                    tone === "rose" ? "bg-rose-500" : tone === "amber" ? "bg-amber-500" : "bg-primary"
+                    tone === "rose" ? "bg-destructive" : tone === "amber" ? "bg-amber-500" : "bg-primary"
                   }`}
                   style={{ width: `${pct}%` }}
                 />
               </div>
             )}
             {tailor.exhausted && !tailor.unlimited && (
-              <p className="mt-2 text-[11px] text-rose-600 dark:text-rose-400">
+              <p className="mt-2 text-[11px] text-destructive">
                 Limit reached.{" "}
                 {usage.plan === "free"
                   ? <>Upgrade to Pro for 30/month, or grab a credit pack.</>
@@ -195,8 +195,8 @@ export default async function BillingSettingsPage() {
                 <div className="flex items-center gap-2">
                   <span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${
                     inv.status === "paid"
-                      ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
-                      : "bg-rose-500/10 text-rose-600 dark:text-rose-400"
+                      ? "bg-success/10 text-success"
+                      : "bg-destructive/10 text-destructive"
                   }`}>
                     {inv.status}
                   </span>
@@ -220,7 +220,7 @@ export default async function BillingSettingsPage() {
       {/* ── Trust / DPDP footer ───────────────────────────────────────────── */}
       <section className="rounded-xl border border-border bg-secondary/30 p-4 text-xs text-muted-foreground">
         <p className="mb-2 flex items-center gap-2 font-semibold text-foreground">
-          <ShieldCheck className="h-3.5 w-3.5 text-emerald-500" />
+          <ShieldCheck className="h-3.5 w-3.5 text-success" />
           Your data, your control
         </p>
         <ul className="space-y-1">

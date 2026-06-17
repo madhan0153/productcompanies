@@ -126,8 +126,8 @@ function TranslatorSheet({
         <div className="space-y-3 p-4">
           {flash && (
             <div className={`rounded-lg border px-3 py-2 text-xs ${flash.kind === "ok"
-              ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-300"
-              : "border-rose-500/30 bg-rose-500/10 text-rose-300"}`}>
+              ? "border-success/30 bg-success/10 text-success"
+              : "border-destructive/30 bg-destructive/10 text-destructive"}`}>
               <span className="inline-flex items-center gap-1.5">
                 {flash.kind === "ok" ? <CheckCircle2 className="h-3.5 w-3.5" /> : <AlertTriangle className="h-3.5 w-3.5" />}
                 {flash.text}

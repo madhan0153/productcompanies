@@ -216,7 +216,7 @@ export function AppShell({ user, navBadges, usage, banner, children }: Props) {
                   <p className="truncate text-sm font-medium leading-tight">{user.displayName ?? user.email.split("@")[0]}</p>
                   {user.isAdmin && (
                     <span
-                      className="inline-flex shrink-0 items-center gap-1 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-emerald-700 dark:text-emerald-300"
+                      className="inline-flex shrink-0 items-center gap-1 rounded-full border border-success/30 bg-success/10 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-success"
                       title="ADMIN_EMAILS override — full Career Sprint entitlements"
                     >
                       <Shield className="h-2.5 w-2.5" />
