@@ -3,6 +3,7 @@ import { Inter, Outfit } from "next/font/google";
 import Script from "next/script";
 import { Toaster } from "sonner";
 import { ThemeProvider } from "@/components/theme-provider";
+import { PwaRegister } from "@/components/pwa-register";
 import { JsonLd, organizationJsonLd, softwareApplicationJsonLd, websiteJsonLd } from "@/lib/seo/json-ld";
 import { siteOrigin } from "@/lib/seo/site";
 import "./globals.css";
@@ -111,6 +112,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           disableTransitionOnChange
         >
           {children}
+          <PwaRegister />
           <Toaster
             position="bottom-right"
             richColors

@@ -1,0 +1,110 @@
+<!doctype html>
+<html lang="en-IN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="theme-color" content="#070912" />
+    <meta name="robots" content="noindex" />
+    <title>Offline · ProdMatch.ai</title>
+    <style>
+      :root {
+        color-scheme: dark;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      html,
+      body {
+        height: 100%;
+        margin: 0;
+      }
+      body {
+        font-family: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+        background: radial-gradient(120% 80% at 50% 0%, #141a33 0%, #070912 62%);
+        color: #e8eaf2;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: max(24px, env(safe-area-inset-top)) 22px max(24px, env(safe-area-inset-bottom));
+        text-align: center;
+        -webkit-font-smoothing: antialiased;
+      }
+      .card {
+        width: 100%;
+        max-width: 360px;
+      }
+      .logo {
+        width: 64px;
+        height: 64px;
+        border-radius: 18px;
+        margin: 0 auto 26px;
+        display: block;
+        box-shadow: 0 14px 44px rgba(124, 92, 255, 0.3);
+      }
+      h1 {
+        font-size: 1.4rem;
+        line-height: 1.25;
+        margin: 0 0 10px;
+        font-weight: 700;
+        letter-spacing: -0.01em;
+      }
+      p {
+        font-size: 0.95rem;
+        line-height: 1.55;
+        color: #9aa0b5;
+        margin: 0 0 28px;
+      }
+      button {
+        -webkit-appearance: none;
+        appearance: none;
+        border: 0;
+        cursor: pointer;
+        width: 100%;
+        min-height: 52px;
+        padding: 15px 20px;
+        border-radius: 14px;
+        font-size: 1rem;
+        font-weight: 600;
+        color: #fff;
+        background: linear-gradient(135deg, #7c5cff, #5b8cff);
+        box-shadow: 0 8px 26px rgba(124, 92, 255, 0.38);
+        transition: transform 0.15s ease, opacity 0.15s ease;
+      }
+      button:active {
+        transform: scale(0.975);
+        opacity: 0.92;
+      }
+      .hint {
+        margin: 18px 0 0;
+        font-size: 0.8rem;
+        color: #6b7088;
+      }
+      @media (prefers-reduced-motion: reduce) {
+        button {
+          transition: none;
+        }
+        button:active {
+          transform: none;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <main class="card">
+      <img class="logo" src="/logo-prodmatchai.png" width="64" height="64" alt="ProdMatch.ai" />
+      <h1>You're offline</h1>
+      <p>
+        We can't reach ProdMatch.ai right now. Your matches are safe — reconnect and we'll pick up
+        where you left off.
+      </p>
+      <button type="button" onclick="location.reload()">Try again</button>
+      <p class="hint">Tip: install the app for faster, offline-ready access.</p>
+    </main>
+    <script>
+      // Auto-retry the moment connectivity returns.
+      window.addEventListener("online", function () {
+        location.reload();
+      });
+    </script>
+  </body>
+</html>
