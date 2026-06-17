@@ -28,7 +28,7 @@ export function DaysLeftBadge({ plan, activeUntil, variant = "pill", className }
   const Icon = plan === "career_sprint" ? Sparkles : plan === "pro" ? Zap : Star;
 
   const colour = plan === "career_sprint"
-    ? "border-violet-500/30 bg-violet-500/10 text-violet-700 dark:text-violet-300"
+    ? "border-premium/30 bg-premium/10 text-premium-soft-foreground"
     : plan === "pro"
       ? "border-primary/30 bg-primary/10 text-primary"
       : "border-border bg-secondary/40 text-muted-foreground";

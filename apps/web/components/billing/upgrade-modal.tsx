@@ -323,11 +323,11 @@ export function UpgradeModal({ open, onClose, trigger, returnTo }: UpgradeModalP
                 onClick={() => startCheckout("career_sprint_monthly")}
                 disabled={!!loading || isUnavailable("career_sprint_monthly")}
                 aria-label={isUnavailable("career_sprint_monthly") ? "Career Sprint — coming soon" : "Upgrade to Career Sprint"}
-                className="group flex w-full items-center justify-between gap-3 rounded-xl border border-border bg-background p-3.5 text-left transition hover:border-violet-500/40 hover:bg-violet-500/5 disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:border-border disabled:hover:bg-background"
+                className="group flex w-full items-center justify-between gap-3 rounded-xl border border-border bg-background p-3.5 text-left transition hover:border-premium/40 hover:bg-premium/5 disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:border-border disabled:hover:bg-background"
               >
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-2">
-                    <Sparkles className="h-3.5 w-3.5 text-violet-500" />
+                    <Sparkles className="h-3.5 w-3.5 text-premium" />
                     <span className="text-sm font-semibold">Career Sprint</span>
                     {isUnavailable("career_sprint_monthly") && (
                       <span className="rounded-full bg-secondary px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
@@ -340,7 +340,7 @@ export function UpgradeModal({ open, onClose, trigger, returnTo }: UpgradeModalP
                   </p>
                 </div>
                 {loading === "career_sprint_monthly"
-                  ? <Loader2 className="h-4 w-4 shrink-0 animate-spin text-violet-500" />
+                  ? <Loader2 className="h-4 w-4 shrink-0 animate-spin text-premium" />
                   : <ArrowRight className="h-4 w-4 shrink-0 text-muted-foreground transition group-hover:translate-x-0.5" />}
               </button>
 

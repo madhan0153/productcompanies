@@ -48,7 +48,9 @@ export function CompanyLogoFallback({
     <span
       aria-hidden
       className={cn(
-        "inline-flex shrink-0 select-none items-center justify-center font-semibold leading-none",
+        // Inset ring gives the tile depth so it reads as an intentional brand
+        // avatar, not a stray letter in a box. Neutral ring works over any tint.
+        "inline-flex shrink-0 select-none items-center justify-center font-semibold leading-none ring-1 ring-inset ring-black/[0.06] dark:ring-white/[0.08]",
         rounded,
         tintFor(name ?? ""),
         className,

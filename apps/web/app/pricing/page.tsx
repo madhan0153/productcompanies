@@ -204,7 +204,7 @@ export default function PricingPage() {
             const sprintUnavail = isUnavailable(sprintProduct);
             return (
               <PlanCard
-                icon={<Rocket className="h-5 w-5 text-violet-500" />}
+                icon={<Rocket className="h-5 w-5 text-premium" />}
                 name="Career Sprint"
                 tagline="30–60 day job push"
                 primary={interval === "monthly" ? PRICING_COPY.sprintPerDay : PRICING_COPY.sprintPerDayYearly}
@@ -218,7 +218,7 @@ export default function PricingPage() {
                   <button
                     onClick={() => startCheckout(sprintProduct)}
                     disabled={!!state.loading || sprintUnavail}
-                    className="inline-flex h-10 w-full items-center justify-center rounded-lg border border-violet-500/40 bg-violet-500/10 px-4 text-sm font-semibold text-violet-700 transition hover:bg-violet-500/15 disabled:cursor-not-allowed disabled:opacity-60 dark:text-violet-300"
+                    className="inline-flex h-10 w-full items-center justify-center rounded-lg border border-premium/40 bg-premium/10 px-4 text-sm font-semibold text-premium-soft-foreground transition hover:bg-premium/15 disabled:cursor-not-allowed disabled:opacity-60"
                   >
                     {sprintUnavail
                       ? "Coming soon"

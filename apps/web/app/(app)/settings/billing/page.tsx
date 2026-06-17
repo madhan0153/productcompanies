@@ -56,7 +56,7 @@ export default async function BillingSettingsPage() {
       {/* ── Plan card ─────────────────────────────────────────────────────── */}
       <section
         className={`mb-5 rounded-2xl border p-5 shadow-elev1 ${
-          usage.plan === "career_sprint" ? "border-violet-500/30 bg-violet-500/5"
+          usage.plan === "career_sprint" ? "border-premium/30 bg-premium/5"
           : usage.plan === "pro"          ? "border-primary/30 bg-primary/5"
           : "border-border bg-card"
         }`}
@@ -64,7 +64,7 @@ export default async function BillingSettingsPage() {
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div className="min-w-0">
             <div className="mb-1 flex items-center gap-2">
-              {usage.plan === "career_sprint" ? <Sparkles className="h-4 w-4 text-violet-500" />
+              {usage.plan === "career_sprint" ? <Sparkles className="h-4 w-4 text-premium" />
                 : usage.plan === "pro"        ? <Zap className="h-4 w-4 text-primary" />
                 : <Star className="h-4 w-4 text-muted-foreground" />}
               <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">

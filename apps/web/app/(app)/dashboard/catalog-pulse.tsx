@@ -25,7 +25,9 @@ export function CatalogPulse({
   activeJobCount: number;
 }) {
   let ageStr = "—";
-  let tone: "success" | "warning" | "destructive" = "warning";
+  // "info" = neutral/expected (first run, catalog warming up) — NOT an error.
+  // "destructive" is reserved for a genuinely stale/broken crawler.
+  let tone: "success" | "warning" | "destructive" | "info" = "warning";
   if (lastFinishedAt) {
     const ms = Date.now() - new Date(lastFinishedAt).getTime();
     const hrs = Math.max(0, ms / 3_600_000);
@@ -33,8 +35,8 @@ export function CatalogPulse({
     else if (hrs < 50)  { tone = "warning";     ageStr = `${Math.round(hrs)}h ago — refresh overdue`; }
     else                { tone = "destructive"; ageStr = `${Math.round(hrs / 24)}d ago — crawler may be down`; }
   } else {
-    ageStr = "no crawl yet";
-    tone = "destructive";
+    ageStr = "warming up";
+    tone = "info";
   }
 
   const next = nextCrawlUtc();
@@ -42,10 +44,12 @@ export function CatalogPulse({
   const dotCls =
     tone === "success" ? "bg-success"
     : tone === "warning" ? "bg-warning"
+    : tone === "info" ? "bg-info"
     : "bg-destructive";
   const textCls =
     tone === "success" ? "text-success"
     : tone === "warning" ? "text-warning"
+    : tone === "info" ? "text-info"
     : "text-destructive";
 
   return (

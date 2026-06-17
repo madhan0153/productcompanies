@@ -46,6 +46,20 @@
     --warning: 32 92% 48%;
     --warning-foreground: 0 0% 100%;
 
+    /* Information — neutral, non-alarming. For "warming up" / empty / pending
+       states that are NOT errors. Never use --destructive for those. */
+    --info: 212 88% 48%;
+    --info-foreground: 0 0% 100%;
+    --info-soft: 212 88% 96%;
+    --info-soft-foreground: 212 88% 38%;
+
+    /* Premium — the single sanctioned purple. Career Sprint / premium ONLY.
+       Brand actions stay --primary (indigo); this never competes with it. */
+    --premium: 262 83% 58%;
+    --premium-foreground: 0 0% 100%;
+    --premium-soft: 262 83% 96%;
+    --premium-soft-foreground: 262 83% 42%;
+
     --border: 220 14% 90%;
     --input: 220 14% 88%;
     --ring: 232 70% 50%;
@@ -92,6 +106,16 @@
 
     --warning: 32 92% 56%;
     --warning-foreground: 222 28% 6%;
+
+    --info: 212 90% 64%;
+    --info-foreground: 222 28% 6%;
+    --info-soft: 212 50% 20%;
+    --info-soft-foreground: 212 90% 82%;
+
+    --premium: 262 85% 72%;
+    --premium-foreground: 222 28% 6%;
+    --premium-soft: 262 45% 22%;
+    --premium-soft-foreground: 262 85% 86%;
 
     --border: 222 16% 18%;
     --input: 222 16% 20%;

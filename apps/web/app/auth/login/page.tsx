@@ -41,7 +41,7 @@ export default function LoginPage({
             career intelligence.
           </h2>
           <p className="mt-4 text-sm leading-relaxed text-muted-foreground">
-            Upload once. Get explainable, AI-ranked matches to high-package roles at Google, Microsoft, Razorpay, Zerodha and 14 more verified product companies.
+            Upload once. Get explainable, AI-ranked matches to high-package roles at Google, Microsoft, Razorpay, Zerodha and 47 more verified product companies.
           </p>
 
           <ul className="mt-6 space-y-3">

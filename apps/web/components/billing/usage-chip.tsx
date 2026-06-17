@@ -36,7 +36,7 @@ export function UsageChip({ plan, tailorUsed, tailorLimit, tailorCredits = 0, is
     return (
       <Link
         href="/settings/billing"
-        className="inline-flex items-center gap-1.5 rounded-full border border-violet-500/30 bg-violet-500/10 px-2.5 py-1 text-[11px] font-semibold text-violet-600 dark:text-violet-300 hover:bg-violet-500/15"
+        className="inline-flex items-center gap-1.5 rounded-full border border-premium/30 bg-premium/10 px-2.5 py-1 text-[11px] font-semibold text-premium-soft-foreground hover:bg-premium/15"
         aria-label="Career Sprint subscription — open billing"
       >
         <Sparkles className="h-3 w-3" />
