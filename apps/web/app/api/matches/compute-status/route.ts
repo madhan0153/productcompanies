@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { isComputeJobStale, reapStaleComputeJobs } from "@/lib/jobs/state";
+import { safeRoute } from "@/lib/http/api";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -13,7 +14,10 @@ type ComputeStatus =
   | "needs_compute"
   | "failed";
 
-export async function GET() {
+// Wrapped so a transient DB/auth throw mid-poll returns a logged, safe 500
+// (with a requestId) instead of an opaque crash. The poller reads `body.status`
+// and simply keeps polling when it's absent, so behaviour is unchanged.
+export const GET = safeRoute("matches.compute-status", async () => {
   const supabase = await createSupabaseServerClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ status: "no_resume" satisfies ComputeStatus }, { status: 401 });
@@ -96,4 +100,4 @@ export async function GET() {
     activeResumeVersionId,
     matchesResumeVersionId,
   });
-}
+});

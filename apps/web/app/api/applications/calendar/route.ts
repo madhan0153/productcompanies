@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { safeRoute, unauthorized } from "@/lib/http/api";
 
 export const dynamic = "force-dynamic";
 
@@ -19,8 +20,11 @@ function escapeText(s: string): string {
   return s.replace(/\\/g, "\\\\").replace(/;/g, "\\;").replace(/,/g, "\\,").replace(/\n/g, "\\n");
 }
 
-function fmtUtc(iso: string): string {
+// Returns null for an unparseable timestamp so a single bad row can't poison
+// the whole feed with `NaNNaNNaN…` (which most calendar clients reject).
+function fmtUtc(iso: string): string | null {
   const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return null;
   const pad = (n: number) => n.toString().padStart(2, "0");
   return (
     d.getUTCFullYear().toString() +
@@ -32,10 +36,10 @@ function fmtUtc(iso: string): string {
   );
 }
 
-export async function GET() {
+export const GET = safeRoute("applications.calendar", async () => {
   const supabase = await createSupabaseServerClient();
   const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  if (!user) return unauthorized("Please sign in to export your follow-ups.");
 
   const { data: rawApps } = await supabase
     .from("applications")
@@ -44,7 +48,7 @@ export async function GET() {
     .not("next_action_at", "is", null);
 
   const apps = (rawApps as unknown as AppRow[] | null) ?? [];
-  const now = fmtUtc(new Date().toISOString());
+  const now = fmtUtc(new Date().toISOString()) ?? "19700101T000000Z";
 
   const lines: string[] = [
     "BEGIN:VCALENDAR",
@@ -58,10 +62,13 @@ export async function GET() {
   for (const a of apps) {
     if (!a.next_action_at) continue;
     const start = fmtUtc(a.next_action_at);
+    // Skip rows with an unparseable timestamp rather than emitting a broken
+    // VEVENT that would invalidate the whole calendar in strict clients.
+    if (!start) continue;
     // Default 30-minute slot
     const endDate = new Date(a.next_action_at);
     endDate.setMinutes(endDate.getMinutes() + 30);
-    const end = fmtUtc(endDate.toISOString());
+    const end = fmtUtc(endDate.toISOString()) ?? start;
     const company = a.jobs?.companies?.name ?? "Application";
     const title = a.jobs?.title ?? "Follow up";
     const summary = `Follow up: ${title} — ${company}`;
@@ -94,4 +101,4 @@ export async function GET() {
       "Cache-Control": "no-store",
     },
   });
-}
+});

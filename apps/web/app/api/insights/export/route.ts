@@ -4,15 +4,16 @@ import {
   type JobLite, type CompanyLite,
   aggregate, adjacencyUnlocks, companyStackDemand,
 } from "@/lib/insights/aggregate";
+import { safeRoute, unauthorized } from "@/lib/http/api";
 
 export const dynamic = "force-dynamic";
 
 // JSON snapshot of the user's insights — useful as a "save state" before
 // learning a new skill so you can compare progress later. Pure-data, no LLM.
-export async function GET() {
+export const GET = safeRoute("insights.export", async () => {
   const supabase = await createSupabaseServerClient();
   const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  if (!user) return unauthorized("Please sign in to export your insights.");
 
   const [{ data: profile }, { data: rawJobs }, { data: companies }] = await Promise.all([
     supabase.from("profiles")
@@ -72,4 +73,4 @@ export async function GET() {
       "Cache-Control": "no-store",
     },
   });
-}
+});

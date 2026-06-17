@@ -18,17 +18,18 @@ import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { parsedResumeToJson, emptyJsonResume } from "@/lib/resume/json-mapper";
 import { JsonResumeSchema, type JsonResume } from "@prodmatch/shared";
 import type { ParsedResume } from "@/lib/llm/prompts/resume-parse";
+import { safeRoute, unauthorized, serverError } from "@/lib/http/api";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
-export async function GET() {
+export const GET = safeRoute("resume.export", async () => {
   const supabase = await createSupabaseServerClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    return unauthorized("Please sign in to export your resume.");
   }
 
   // Latest version wins. RLS guarantees user_id = auth.uid().
@@ -45,7 +46,7 @@ export async function GET() {
     }>);
 
   if (error) {
-    return NextResponse.json({ error: "Failed to load resume" }, { status: 500 });
+    return serverError("We couldn't load your resume right now. Please try again.");
   }
 
   let payload: JsonResume;
@@ -72,4 +73,4 @@ export async function GET() {
       "Cache-Control": "no-store, max-age=0",
     },
   });
-}
+});

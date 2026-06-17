@@ -30,6 +30,7 @@ import type {
   JsonResumeLanguage,
 } from "@prodmatch/shared";
 import { saveResumeJson, startMatchCompute, submitReviewedResume } from "./actions";
+import { toUserMessage } from "@/lib/errors/messages";
 
 type DerivedFrom = "json" | "parsed" | "empty" | "pending";
 
@@ -139,9 +140,18 @@ export function ResumeEditor({
       setFlash({ kind: "err", text: "File too large (max 256 KB)." });
       return;
     }
+    // Parse the file first; a bad file is a *format* error, distinct from a
+    // network/server error below — conflating them mislabels offline failures.
+    let parsed: unknown;
     try {
-      const text = await file.text();
-      const parsed = JSON.parse(text);
+      parsed = JSON.parse(await file.text());
+    } catch {
+      setFlash({ kind: "err", text: "That file isn't valid JSON. Export a JSON Resume and try again." });
+      if (importInput.current) importInput.current.value = "";
+      return;
+    }
+
+    try {
       const res = await fetch("/api/resume/import", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -149,7 +159,7 @@ export function ResumeEditor({
       });
       if (!res.ok) {
         const body = await res.json().catch(() => ({}));
-        setFlash({ kind: "err", text: body.error ?? "Import failed." });
+        setFlash({ kind: "err", text: body.error ?? "Import failed. Please try again." });
         return;
       }
       // The import only reaches 201 after server-side zod validation, so the
@@ -159,8 +169,8 @@ export function ResumeEditor({
       setFlash({ kind: "ok", text: "Resume imported." });
       setTimeout(() => setFlash(null), 3000);
       router.refresh();
-    } catch {
-      setFlash({ kind: "err", text: "File is not valid JSON." });
+    } catch (err) {
+      setFlash({ kind: "err", text: toUserMessage(err, "Import failed. Please try again.") });
     } finally {
       if (importInput.current) importInput.current.value = "";
     }
