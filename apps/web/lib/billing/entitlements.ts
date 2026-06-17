@@ -1,3 +1,4 @@
+import { cache } from "react";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import type { BillingPlan, Json } from "@/lib/supabase/types";
 import { betterPlan, getPlanLimits } from "./catalog";
@@ -101,10 +102,12 @@ export async function refreshEntitlements(userId: string): Promise<EntitlementSt
   return entitlements;
 }
 
-export async function getEntitlements(userId: string): Promise<EntitlementState> {
+// React cache(): dedupe per request — getEntitlements is read both directly by
+// pages (matches, dsa, jobs) and transitively via getUserUsage in the layout.
+export const getEntitlements = cache(async (userId: string): Promise<EntitlementState> => {
   const base = await readEntitlements(userId);
   return applyAdminOverride(userId, base);
-}
+});
 
 async function readEntitlements(userId: string): Promise<EntitlementState> {
   const admin = createSupabaseAdminClient();

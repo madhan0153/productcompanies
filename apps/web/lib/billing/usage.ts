@@ -1,3 +1,4 @@
+import { cache } from "react";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { getEntitlements } from "./entitlements";
 import { getCreditBalance } from "./credits";
@@ -33,7 +34,10 @@ export interface UserUsage {
  * Used by the user-facing /settings/billing page, the in-app usage chip,
  * and the admin user-detail page.
  */
-export async function getUserUsage(userId: string): Promise<UserUsage> {
+// Wrapped in React cache() so the (app) layout and the page it renders share a
+// single computation per request instead of each re-running the ~7 head-count
+// queries (was a duplicate fan-out on every dashboard / profile / billing view).
+const getUserUsageImpl = async (userId: string): Promise<UserUsage> => {
   const admin   = createSupabaseAdminClient();
   const since   = new Date(Date.now() - WINDOW_MS).toISOString();
   const entitle = await getEntitlements(userId);
@@ -105,7 +109,9 @@ export async function getUserUsage(userId: string): Promise<UserUsage> {
       recompute: recomputeCredits,
     },
   };
-}
+};
+
+export const getUserUsage = cache(getUserUsageImpl);
 
 /**
  * Human "in N days" helper that matches the existing resume-intel quota copy.
