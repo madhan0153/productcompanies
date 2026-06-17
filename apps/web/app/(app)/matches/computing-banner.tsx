@@ -1,29 +1,15 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
-import { Brain, CheckCircle2, Clock3, Sparkles } from "lucide-react";
+import { motion, useReducedMotion } from "framer-motion";
+import { Check, Sparkles } from "lucide-react";
 import { COMPUTE_STATUS_EVENT } from "./compute-auto-refresh";
-
-const MESSAGES = [
-  "Your AI match engine is scanning thousands of product roles",
-  "Weighing your experience against every job in our database",
-  "Crunching skill overlaps, seniority bands, and tech fit",
-];
 
 type ComputeJobStatus = "queued" | "running";
 
 const STEP_LABELS = {
-  queued: [
-    "Resume saved",
-    "Starting match worker",
-    "Results appear automatically",
-  ],
-  running: [
-    "Resume signals ready",
-    "Scoring live roles",
-    "Preparing match cards",
-  ],
+  queued: ["Resume signals saved", "Starting the match engine", "Scoring roles against your profile"],
+  running: ["Resume signals ready", "Scoring live roles", "Preparing your match cards"],
 } satisfies Record<ComputeJobStatus, string[]>;
 
 type ComputeStatusEventDetail = {
@@ -33,9 +19,19 @@ type ComputeStatusEventDetail = {
   startedAt?: string | null;
 };
 
+type StepState = "done" | "active" | "pending";
+
+function stepState(index: number, jobStatus: ComputeJobStatus): StepState {
+  if (jobStatus === "queued") return index === 0 ? "done" : index === 1 ? "active" : "pending";
+  // running — the engine is live, so the first two stages are behind us.
+  return index < 2 ? "done" : "active";
+}
+
 // Presentation-only banner shown while a match-compute job is running for this
 // user. The page-level <ComputeAutoRefresh /> poller drives router.refresh()
-// in both first-compute and replace flows.
+// once the backend reports a terminal state — this component never fakes a
+// percentage; the progress is intentionally indeterminate (an honest "working"
+// sweep) so we never imply a precision we don't have.
 export function ComputingBanner({
   hasExisting = false,
   jobStatus = "queued",
@@ -66,98 +62,160 @@ export function ComputingBanner({
         startedAt: detail.startedAt ?? current.startedAt,
       }));
     }
-
     window.addEventListener(COMPUTE_STATUS_EVENT, onStatus);
     return () => window.removeEventListener(COMPUTE_STATUS_EVENT, onStatus);
   }, []);
 
   const visibleJobStatus = liveJob.jobStatus;
   const title = hasExisting ? "Updating your matches" : "Computing your matches";
-  const statusLabel = visibleJobStatus === "running" ? "Running now" : "Starting";
+  const statusLabel = visibleJobStatus === "running" ? "Live" : "Starting";
   const subtitle = hasExisting
-    ? "Re-ranking every role against your latest resume. Your current matches stay visible until the new ones are ready."
-    : `${MESSAGES[0]}.`;
+    ? "Re-ranking every role against your latest resume — your current matches stay visible until the new ones land."
+    : "Our AI is weighing your experience against every live role at 51 product companies.";
   const referenceTime = liveJob.startedAt ?? liveJob.queuedAt;
   const elapsed = referenceTime ? humanElapsed(referenceTime) : null;
   const steps = STEP_LABELS[visibleJobStatus];
-  const progressWidth = visibleJobStatus === "running" ? "72%" : "34%";
 
   return (
-    <AnimatePresence>
-      <motion.div
-        initial={{ opacity: 0, y: -6 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.35, ease: "easeOut" }}
-        aria-live="polite"
-        className="relative overflow-hidden rounded-xl border border-primary/25 bg-card/75 px-4 py-4 shadow-sm"
-      >
-        {!reduce && (
+    <motion.div
+      initial={reduce ? false : { opacity: 0, y: -8 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
+      aria-live="polite"
+      aria-busy="true"
+      className="relative overflow-hidden rounded-2xl border border-primary/15 bg-card/80 p-4 shadow-lg shadow-primary/5 backdrop-blur-xl sm:p-5"
+    >
+      {/* Ambient brand glow — purely decorative, sits behind content. */}
+      <div
+        aria-hidden
+        className="pointer-events-none absolute -right-16 -top-16 h-40 w-40 rounded-full bg-primary/10 blur-3xl"
+      />
+
+      <div className="relative flex items-start gap-3.5 sm:gap-4">
+        {/* Radar scanner — a rotating conic sweep masked into a ring, with a
+            pulsing core. GPU-friendly (transform/opacity only). */}
+        <div className="relative h-12 w-12 shrink-0 sm:h-14 sm:w-14">
+          {!reduce && (
+            <motion.div
+              aria-hidden
+              className="absolute inset-0 rounded-full"
+              style={{
+                background:
+                  "conic-gradient(from 0deg, transparent 0deg, transparent 210deg, hsl(var(--primary) / 0.5) 320deg, hsl(var(--primary) / 0.9) 358deg, transparent 360deg)",
+              }}
+              animate={{ rotate: 360 }}
+              transition={{ duration: 1.9, repeat: Infinity, ease: "linear" }}
+            />
+          )}
+          {/* Inner disc carves the sweep into a thin ring. */}
+          <div className="absolute inset-[2.5px] rounded-full bg-card" />
+          {/* Static guide ring (also the full ring under reduced motion). */}
+          <div className="absolute inset-0 rounded-full border border-primary/15" />
+          {/* Pulsing core. */}
+          {!reduce && (
+            <motion.div
+              aria-hidden
+              className="absolute inset-[7px] rounded-full bg-primary/10"
+              animate={{ scale: [1, 1.18, 1], opacity: [0.6, 0.25, 0.6] }}
+              transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
+            />
+          )}
+          <span className="absolute inset-0 flex items-center justify-center">
+            <Sparkles className="h-4 w-4 text-primary sm:h-5 sm:w-5" />
+          </span>
+        </div>
+
+        <div className="min-w-0 flex-1">
+          <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+            <p className="text-sm font-semibold text-foreground sm:text-[15px]">{title}</p>
+            <span className="inline-flex items-center gap-1 rounded-full border border-primary/20 bg-primary/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-primary">
+              {!reduce && (
+                <motion.span
+                  className="h-1.5 w-1.5 rounded-full bg-primary"
+                  animate={{ opacity: [1, 0.3, 1] }}
+                  transition={{ duration: 1.4, repeat: Infinity, ease: "easeInOut" }}
+                />
+              )}
+              {statusLabel}
+            </span>
+            {elapsed && <span className="ml-auto text-[10px] tabular-nums text-muted-foreground">{elapsed}</span>}
+          </div>
+          <p className="mt-1 text-xs leading-relaxed text-muted-foreground">{subtitle}</p>
+        </div>
+      </div>
+
+      {/* Indeterminate progress sweep — honest "working" motion, no fake %. */}
+      <div className="relative mt-4 h-1.5 overflow-hidden rounded-full bg-secondary/70">
+        {reduce ? (
+          <div className="h-full w-2/5 rounded-full bg-primary/70" />
+        ) : (
           <motion.div
-            className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-primary/50 to-transparent"
-            animate={{ translateX: ["-100%", "200%"] }}
-            transition={{ duration: 2.8, repeat: Infinity, ease: "easeInOut", repeatDelay: 1.2 }}
+            className="absolute inset-y-0 w-2/5 rounded-full bg-gradient-to-r from-primary/20 via-primary to-primary/20"
+            animate={{ x: ["-110%", "320%"] }}
+            transition={{ duration: 1.5, repeat: Infinity, ease: "easeInOut" }}
           />
         )}
+      </div>
 
-        <div className="relative flex gap-3">
-          <div className="relative mt-0.5 shrink-0">
-            {!reduce && (
-              <motion.span
-                className="absolute inset-0 rounded-full bg-primary/20"
-                animate={{ scale: [1, 1.45, 1], opacity: [0.35, 0, 0.35] }}
-                transition={{ duration: 2.4, repeat: Infinity, ease: "easeInOut" }}
-              />
-            )}
-            <span className="relative flex h-10 w-10 items-center justify-center rounded-full border border-primary/20 bg-primary/10">
-              <Brain className="h-4 w-4 text-primary" />
-            </span>
-          </div>
+      {/* Stage checklist — vertical & finger-friendly on mobile, inline on sm+. */}
+      <ul className="mt-4 grid gap-2 sm:grid-cols-3">
+        {steps.map((step, index) => {
+          const state = stepState(index, visibleJobStatus);
+          return (
+            <motion.li
+              key={step}
+              initial={reduce ? false : { opacity: 0, y: 4 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: reduce ? 0 : index * 0.08, duration: 0.3 }}
+              className={`flex items-center gap-2 rounded-lg border px-2.5 py-2 transition-colors ${
+                state === "active"
+                  ? "border-primary/30 bg-primary/[0.06]"
+                  : "border-border/60 bg-background/40"
+              }`}
+            >
+              <StepDot state={state} reduce={reduce} />
+              <span
+                className={`min-w-0 truncate text-[11px] leading-snug ${
+                  state === "pending" ? "text-muted-foreground" : "text-foreground/90"
+                }`}
+              >
+                {step}
+              </span>
+            </motion.li>
+          );
+        })}
+      </ul>
 
-          <div className="min-w-0 flex-1 space-y-3">
-            <div>
-              <div className="flex flex-wrap items-center gap-2">
-                <p className="text-sm font-semibold text-foreground">{title}</p>
-                <span className="inline-flex items-center gap-1 rounded-full border border-primary/20 bg-primary/10 px-2 py-0.5 text-[10px] font-medium text-primary">
-                  <Clock3 className="h-3 w-3" />
-                  {statusLabel}
-                </span>
-                {elapsed && (
-                  <span className="text-[10px] text-muted-foreground">{elapsed}</span>
-                )}
-              </div>
-              <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
-                {subtitle}{" "}
-                <span className="text-foreground/70">You can stay here; results appear when compute finishes.</span>
-              </p>
-            </div>
-
-            <div className="overflow-hidden rounded-full bg-secondary/70">
-              <motion.div
-                className="h-1.5 rounded-full bg-primary"
-                initial={{ width: "18%" }}
-                animate={{ width: progressWidth }}
-                transition={{ duration: reduce ? 0 : 0.6, ease: "easeOut" }}
-              />
-            </div>
-
-            <div className="grid gap-2 sm:grid-cols-3">
-              {steps.map((step, index) => {
-                const Icon = index === 0 ? CheckCircle2 : index === 1 ? Brain : Sparkles;
-                const active = visibleJobStatus === "running" && index === 1;
-                const done = index === 0 || (visibleJobStatus === "running" && index < 2);
-                return (
-                  <div key={step} className="flex items-center gap-2 rounded-lg border border-border/60 bg-background/45 px-3 py-2">
-                    <Icon className={`h-3.5 w-3.5 shrink-0 ${active ? "text-primary" : done ? "text-success" : "text-muted-foreground"}`} />
-                    <span className={`min-w-0 text-[11px] leading-snug ${active ? "text-foreground" : "text-muted-foreground"}`}>{step}</span>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        </div>
-      </motion.div>
-    </AnimatePresence>
+      <p className="mt-3 text-[11px] leading-relaxed text-muted-foreground/80">
+        Stay on this page — your matches appear automatically the moment scoring finishes.
+      </p>
+    </motion.div>
   );
+}
+
+function StepDot({ state, reduce }: { state: StepState; reduce: boolean | null }) {
+  if (state === "done") {
+    return (
+      <span className="flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-success/15 text-success">
+        <Check className="h-2.5 w-2.5" strokeWidth={3} />
+      </span>
+    );
+  }
+  if (state === "active") {
+    return (
+      <span className="relative flex h-4 w-4 shrink-0 items-center justify-center">
+        {!reduce && (
+          <motion.span
+            className="absolute inset-0 rounded-full bg-primary/30"
+            animate={{ scale: [1, 1.7], opacity: [0.6, 0] }}
+            transition={{ duration: 1.4, repeat: Infinity, ease: "easeOut" }}
+          />
+        )}
+        <span className="relative h-2 w-2 rounded-full bg-primary" />
+      </span>
+    );
+  }
+  return <span className="h-4 w-4 shrink-0 rounded-full border border-border" />;
 }
 
 function humanElapsed(iso: string): string {
