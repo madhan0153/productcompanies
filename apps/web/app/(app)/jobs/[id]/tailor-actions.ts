@@ -38,7 +38,6 @@ import {
   renderExtractedAsText,
   type ExtractedResumeContent,
 } from "@/lib/llm/prompts/extract-resume-content";
-import { computeAtsScorecard, type AtsScorecard } from "@/lib/matching/ats-scorecard";
 import {
   buildEvidenceBackedTailoredContent,
   type TailoredEnhancementDecision,
@@ -435,44 +434,9 @@ export async function diagnoseTailored(
 // decisions save
 // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
-export async function applyTailoredDecisions(
-  jobId: string,
-  decisions: Record<string, EnhancementDecision>,
-): Promise<{ ok: true } | { ok: false; error: string }> {
-  const pre = await preflight(jobId);
-  if (!pre.ok) return pre;
-  const { user, admin } = pre;
-
-
-  const { data: row } = await (admin
-    .from("tailored_resumes")
-    .select("id, status")
-    .eq("user_id", user.id)
-    .eq("job_id", jobId)
-    .maybeSingle() as any) as { data: { id: string; status: string } | null };
-
-  if (!row) return { ok: false, error: "No tailored resume in review for this job." };
-  if (row.status !== "pending_review") {
-    return { ok: false, error: "Already finalised. Re-run diagnosis to revise." };
-  }
-
-
-  const { error } = await (admin.from("tailored_resumes") as any)
-    .update({ decisions, updated_at: new Date().toISOString() })
-    .eq("user_id", user.id)
-    .eq("job_id", jobId);
-
-  if (error) return { ok: false, error: "Couldn't save your changes. Please retry." };
-  return { ok: true };
-}
-
 // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 // finalise (render PDF)
 // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-
-export type FinaliseTailoredResult =
-  | { ok: true; pdf_url: string; print_url: string }
-  | { ok: false; error: string };
 
 export type GenerateTailoredResumeDownloadResult =
   | {
@@ -704,64 +668,9 @@ export async function generateTailoredResumeDownload(
   return renderAndStoreTailoredArtifact(pre, row, decisions);
 }
 
-export async function finaliseTailored(jobId: string): Promise<FinaliseTailoredResult> {
-  const pre = await preflight(jobId);
-  if (!pre.ok) return pre;
-  const { user, admin } = pre;
-
-  const { data: row } = await (admin
-    .from("tailored_resumes")
-    .select("id, status, diagnosis, rewrites, decisions, extracted_resume")
-    .eq("user_id", user.id)
-    .eq("job_id", jobId)
-    .maybeSingle() as any) as {
-      data: {
-        id: string;
-        status: string;
-        diagnosis: ResumeDiagnosis | null;
-        rewrites: Record<string, BulletRewrite> | null;
-        decisions: Record<string, EnhancementDecision> | null;
-        extracted_resume: ExtractedResumeContent | null;
-      } | null;
-    };
-
-  if (!row || !row.diagnosis) return { ok: false, error: "No tailored diagnosis found." };
-  if (row.status !== "pending_review") return { ok: false, error: "Already finalised." };
-
-  const generated = await renderAndStoreTailoredArtifact(pre, row, row.decisions ?? {});
-  if (!generated.ok) return generated;
-  return {
-    ok: true,
-    pdf_url: generated.pdf_url,
-    print_url: generated.print_url,
-  };
-}
-
 // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 // discard
 // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-
-export async function discardTailored(jobId: string): Promise<{ ok: true } | { ok: false; error: string }> {
-  const pre = await preflight(jobId);
-  if (!pre.ok) return pre;
-  const { user, admin } = pre;
-
-
-  const { error } = await (admin.from("tailored_resumes") as any)
-    .update({ status: "discarded", updated_at: new Date().toISOString() })
-    .eq("user_id", user.id)
-    .eq("job_id", jobId)
-    .eq("status", "pending_review");
-
-  if (error) return { ok: false, error: "Couldn't discard. Please retry." };
-
-  safeRecordResumeIntelEvent({
-    user_id: user.id, kind: "discard", scope: "tailored", ok: true,
-  });
-
-  safeRevalidate(`/jobs/${jobId}`);
-  return { ok: true };
-}
 
 // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 // signed download URL
@@ -792,24 +701,3 @@ export async function getTailoredDownloadUrl(
   return { ok: true, url: buildTailoredPdfUrl(jobId) };
 }
 
-export interface AtsBeforeAfter {
-  before: AtsScorecard;
-  after: AtsScorecard | null;
-}
-
-/**
- * Optional helper for the review screen â€” computes the ats_before scorecard
- * on demand. We don't persist it on tailored_resumes (keeps the row schema
- * minimal); the page calls this to render the side panel.
- */
-export async function getTailoredAts(jobId: string): Promise<AtsBeforeAfter | null> {
-  const pre = await preflight(jobId);
-  if (!pre.ok) return null;
-  const { profile } = pre;
-  const before = computeAtsScorecard({
-    resume:        profile.resume_parsed!,
-    resume_text:   profile.resume_text!,
-    role_function: profile.role_function ?? null,
-  });
-  return { before, after: null };
-}

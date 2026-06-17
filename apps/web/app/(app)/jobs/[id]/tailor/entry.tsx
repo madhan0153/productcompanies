@@ -131,12 +131,12 @@ export function TailorEntry({ jobId, quotaUsed, quotaLimit, quotaExhausted, must
           <button
             type="button"
             onClick={() => setUpgradeOpen(true)}
-            className="mt-3 flex w-full items-start gap-2 rounded-md border border-amber-500/40 bg-amber-500/8 px-3 py-2.5 text-left text-xs text-amber-700 transition hover:bg-amber-500/12 dark:text-amber-400"
+            className="mt-3 flex w-full items-start gap-2 rounded-md border border-warning/40 bg-warning/10 px-3 py-2.5 text-left text-xs text-warning transition hover:bg-warning/15 focus-ring"
           >
             <Zap className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden />
             <div className="flex-1">
               <p className="font-semibold">You&apos;ve used all {quotaLimit} free tailors this month.</p>
-              <p className="mt-0.5 text-amber-700/80 dark:text-amber-400/80">
+              <p className="mt-0.5 text-warning/80">
                 Tap to unlock unlimited tailoring with Pro — ₹3/day.
               </p>
             </div>
