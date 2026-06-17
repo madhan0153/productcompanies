@@ -76,7 +76,7 @@ export function ParseStatusBanner({
         className="flex items-start gap-3 rounded-xl border border-primary/30 bg-primary-soft px-4 py-3"
       >
         <div className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-primary/15">
-          <div className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+          <div className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-primary border-t-transparent motion-reduce:animate-none" />
         </div>
         <div className="min-w-0 flex-1">
           <p className="flex items-center gap-1.5 text-sm font-semibold">

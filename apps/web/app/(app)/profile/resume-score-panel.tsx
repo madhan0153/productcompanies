@@ -191,7 +191,7 @@ function RefreshButton({
     >
       {pending ? (
         <>
-          <Loader2 className="h-3.5 w-3.5 animate-spin" /> Scoring…
+          <Loader2 className="h-3.5 w-3.5 animate-spin motion-reduce:animate-none" /> Scoring…
         </>
       ) : (
         <>

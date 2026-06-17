@@ -36,15 +36,21 @@ type Props = {
 export function SaveProfileForm({ defaultValues }: Props) {
   const [pending, startTransition] = useTransition();
   const [saved, setSaved] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const formRef = useRef<HTMLFormElement>(null);
   const router = useRouter();
 
   function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setSaved(false);
+    setError(null);
     const fd = new FormData(e.currentTarget);
     startTransition(async () => {
-      await saveProfile(fd);
+      const res = await saveProfile(fd);
+      if (!res.ok) {
+        setError(res.error ?? "Couldn't save your profile. Please retry.");
+        return;
+      }
       setSaved(true);
       router.refresh();
       // Auto-hide "Saved" after 3 seconds
@@ -67,7 +73,7 @@ export function SaveProfileForm({ defaultValues }: Props) {
           <select
             name="seniority"
             defaultValue={defaultValues.seniority}
-            className="w-full rounded-xl border border-border bg-background px-3 py-2.5 text-sm outline-none focus:border-primary/60 focus:ring-2 focus:ring-primary/20"
+            className="w-full rounded-xl border border-border bg-background px-3 py-2.5 text-base outline-none focus:border-primary/60 focus:ring-2 focus:ring-primary/20 sm:text-sm"
           >
             <option value="">Select…</option>
             {SENIORITY_OPTIONS.map((o) => (
@@ -113,7 +119,7 @@ export function SaveProfileForm({ defaultValues }: Props) {
           name="tech_stack"
           defaultValue={defaultValues.tech_stack}
           placeholder="React, Node.js, Python, AWS, PostgreSQL"
-          className="w-full rounded-xl border border-border bg-background px-4 py-2.5 text-sm outline-none focus:border-primary/60 focus:ring-2 focus:ring-primary/20"
+          className="w-full rounded-xl border border-border bg-background px-4 py-2.5 text-base outline-none focus:border-primary/60 focus:ring-2 focus:ring-primary/20 sm:text-sm"
         />
         <p className="mt-1 text-xs text-muted-foreground">Comma-separated list</p>
       </div>
@@ -127,7 +133,7 @@ export function SaveProfileForm({ defaultValues }: Props) {
             return (
               <label
                 key={hub}
-                className="flex cursor-pointer items-center gap-1.5 rounded-full border border-border px-3 py-1 text-xs transition hover:border-primary/40 has-[:checked]:border-primary has-[:checked]:bg-primary/10 has-[:checked]:text-primary"
+                className="flex cursor-pointer items-center gap-1.5 rounded-full border border-border px-3 py-1.5 text-xs transition hover:border-primary/40 has-[:checked]:border-primary has-[:checked]:bg-primary/10 has-[:checked]:text-primary has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-ring has-[:focus-visible]:ring-offset-2 has-[:focus-visible]:ring-offset-background"
               >
                 <input
                   type="checkbox"
@@ -149,20 +155,25 @@ export function SaveProfileForm({ defaultValues }: Props) {
       </p>
 
       {/* Submit + feedback */}
-      <div className="flex items-center gap-3">
+      <div className="flex flex-wrap items-center gap-3">
         <button
           type="submit"
           disabled={pending}
-          className="flex items-center gap-2 rounded-xl bg-primary px-6 py-2.5 text-sm font-medium text-primary-foreground shadow shadow-primary/20 transition hover:opacity-90 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-60"
+          className="press tap-target flex items-center gap-2 rounded-xl bg-primary px-6 py-2.5 text-sm font-medium text-primary-foreground shadow shadow-primary/20 transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60 focus-ring"
         >
-          {pending && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
+          {pending && <Loader2 className="h-3.5 w-3.5 animate-spin motion-reduce:animate-none" />}
           {pending ? "Saving…" : "Save profile"}
         </button>
 
         {saved && !pending && (
-          <span className="flex items-center gap-1.5 text-sm font-medium text-green-400">
+          <span role="status" aria-live="polite" className="flex items-center gap-1.5 text-sm font-medium text-success">
             <CheckCircle2 className="h-4 w-4" />
             Profile saved!
+          </span>
+        )}
+        {error && !pending && (
+          <span role="status" aria-live="polite" className="text-sm font-medium text-destructive">
+            {error}
           </span>
         )}
       </div>
@@ -186,7 +197,7 @@ function Field({
         step={step}
         defaultValue={defaultValue}
         placeholder={placeholder}
-        className="w-full rounded-xl border border-border bg-background px-4 py-2.5 text-sm outline-none focus:border-primary/60 focus:ring-2 focus:ring-primary/20"
+        className="w-full rounded-xl border border-border bg-background px-4 py-2.5 text-base outline-none focus:border-primary/60 focus:ring-2 focus:ring-primary/20 sm:text-sm"
       />
       {hint && <p className="mt-1 text-xs text-muted-foreground">{hint}</p>}
     </div>

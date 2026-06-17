@@ -178,7 +178,7 @@ function formNonNegativeNumber(
   return Number.isFinite(n) && n >= 0 ? n : null;
 }
 
-export async function saveProfile(formData: FormData) {
+export async function saveProfile(formData: FormData): Promise<{ ok: boolean; error?: string }> {
   const supabase = await createSupabaseServerClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect("/auth/login");
@@ -190,7 +190,9 @@ export async function saveProfile(formData: FormData) {
   const seniorityRaw = formText(formData, "seniority");
   const seniority = SENIORITY_LEVELS.has(seniorityRaw) ? (seniorityRaw as SeniorityLevel) : null;
 
-  await supabase.from("profiles").upsert({
+  // Surface the write result so the form can show a real failure instead of a
+  // false "Profile saved!" — the upsert error was previously swallowed.
+  const { error } = await supabase.from("profiles").upsert({
     id: user.id,
     display_name: displayName || null,
     current_role: currentRole || null,
@@ -202,9 +204,15 @@ export async function saveProfile(formData: FormData) {
     seniority,
   });
 
+  if (error) {
+    logEvent("error", "save_profile_failed", { code: error.code ?? null });
+    return { ok: false, error: "Couldn't save your profile. Please retry." };
+  }
+
   revalidatePath("/profile");
   revalidatePath("/dashboard");
   revalidatePath("/matches");
+  return { ok: true };
 }
 
 // ── Upload PDF and parse ──────────────────────────────────────────────────────
