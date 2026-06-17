@@ -1,12 +1,14 @@
 import type { Metadata } from "next";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
-import { Badge, Card, KPI, ListRow, SectionHeader } from "@/components/admin/pm";
+import { Badge, Card, KPI, ListRow, Pager, SectionHeader } from "@/components/admin/pm";
 
 export const metadata: Metadata = { title: "Admin · Jobs & Matches" };
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
-type SearchParams = { job?: string; company?: string };
+type SearchParams = { job?: string; company?: string; page?: string };
+
+const JOBS_PAGE_SIZE = 50;
 
 type JobRow = {
   id: string;
@@ -41,6 +43,8 @@ export default async function AdminJobsPage({
   const params        = (await searchParams) ?? {};
   const jobQuery      = (params.job     ?? "").trim();
   const companyFilter = (params.company ?? "").trim();
+  const page          = Math.max(1, parseInt(params.page ?? "1", 10) || 1);
+  const from          = (page - 1) * JOBS_PAGE_SIZE;
 
   const admin = createSupabaseAdminClient();
 
@@ -54,12 +58,21 @@ export default async function AdminJobsPage({
     .from("jobs")
     .select(`id, title, location, is_active, quality_score, jd_parsed_at, is_likely_ghost, apply_click_count, role_function_jd, last_seen_at, ${companyEmbed}`)
     .order("last_seen_at", { ascending: false, nullsFirst: false })
-    .limit(60) as unknown as JobsBuilder;
+    .range(from, from + JOBS_PAGE_SIZE - 1) as unknown as JobsBuilder;
   if (jobQuery)      jobsQ = (jobsQ as never as { ilike: (a: string, b: string) => JobsBuilder }).ilike("title", `%${jobQuery}%`);
   if (companyFilter) jobsQ = (jobsQ as never as { ilike: (a: string, b: string) => JobsBuilder }).ilike("companies.name", `%${companyFilter}%`);
 
+  // Total matching the SAME filters, so the pager + "N of M" are accurate.
+  type CountBuilder = { ilike: (a: string, b: string) => CountBuilder };
+  let jobsCountQ = admin
+    .from("jobs")
+    .select(companyFilter ? "id, companies!inner(name)" : "id", { count: "exact", head: true }) as unknown as CountBuilder;
+  if (jobQuery)      jobsCountQ = jobsCountQ.ilike("title", `%${jobQuery}%`);
+  if (companyFilter) jobsCountQ = jobsCountQ.ilike("companies.name", `%${companyFilter}%`);
+
   const [
     jobsResult,
+    jobsCountResult,
     activeCountResult,
     parsedCountResult,
     ghostCountResult,
@@ -67,6 +80,7 @@ export default async function AdminJobsPage({
     companiesResult,
   ] = await Promise.all([
     jobsQ,
+    jobsCountQ as unknown as Promise<{ count: number | null }>,
     admin.from("jobs").select("id", { count: "exact", head: true }).eq("is_active", true),
     admin.from("jobs").select("id", { count: "exact", head: true }).not("jd_parsed_at", "is", null).eq("is_active", true),
     admin.from("jobs").select("id", { count: "exact", head: true }).eq("is_likely_ghost", true).eq("is_active", true),
@@ -79,6 +93,18 @@ export default async function AdminJobsPage({
   ]);
 
   const jobs      = ((jobsResult       as unknown as { data: JobRow[]   | null }).data ?? []);
+  const totalJobs = jobsCountResult.count ?? 0;
+  const pageCount = Math.max(1, Math.ceil(totalJobs / JOBS_PAGE_SIZE));
+  const mkJobsHref = (p: number) => {
+    const sp = new URLSearchParams();
+    if (jobQuery) sp.set("job", jobQuery);
+    if (companyFilter) sp.set("company", companyFilter);
+    if (p > 1) sp.set("page", String(p));
+    const qs = sp.toString();
+    return `/admin/jobs${qs ? `?${qs}` : ""}`;
+  };
+  const jobsPrevHref = page > 1 ? mkJobsHref(page - 1) : null;
+  const jobsNextHref = page < pageCount ? mkJobsHref(page + 1) : null;
   const matches   = ((matchesResult    as { data: MatchRow[] | null }).data ?? []);
   const companies = (((companiesResult as { data: Array<{ name: string }> | null }).data ?? [])).map((c) => c.name);
 
@@ -159,7 +185,10 @@ export default async function AdminJobsPage({
       </form>
 
       {/* Jobs */}
-      <SectionHeader title="Jobs" sub={`${jobs.length} rows${jobQuery ? ` · filtered by "${jobQuery}"` : ""}`} />
+      <SectionHeader
+        title="Jobs"
+        sub={`${totalJobs.toLocaleString("en-IN")} total${jobQuery ? ` · filtered by "${jobQuery}"` : ""}${companyFilter ? ` · ${companyFilter}` : ""}`}
+      />
       <Card p={0}>
         {jobs.length === 0 ? (
           <div style={{ padding: 24, textAlign: "center", color: "var(--text-3)", fontSize: 13 }}>
@@ -189,6 +218,7 @@ export default async function AdminJobsPage({
           </div>
         )}
       </Card>
+      <Pager page={page} pageCount={pageCount} prevHref={jobsPrevHref} nextHref={jobsNextHref} />
 
       <SectionHeader title="Recent matches" sub={`${matches.length} computed in window`} />
 

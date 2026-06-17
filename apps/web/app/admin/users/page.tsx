@@ -1,13 +1,15 @@
 import type { Metadata } from "next";
 import { AlertCircle, FileText, UserCheck } from "lucide-react";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
-import { Avatar, Badge, Card, KPI, ListRow, SectionHeader } from "@/components/admin/pm";
+import { Avatar, Badge, Card, KPI, ListRow, Pager, SectionHeader } from "@/components/admin/pm";
 
 export const metadata: Metadata = { title: "Admin · Users" };
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
-type SearchParams = { q?: string };
+type SearchParams = { q?: string; page?: string };
+
+const USERS_PAGE_SIZE = 50;
 
 type AuthUser = {
   id: string;
@@ -44,6 +46,7 @@ export default async function AdminUsersPage({
 }) {
   const params = (await searchParams) ?? {};
   const query  = (params.q ?? "").trim().toLowerCase();
+  const page   = Math.max(1, parseInt(params.page ?? "1", 10) || 1);
 
   const admin = createSupabaseAdminClient();
 
@@ -91,6 +94,22 @@ export default async function AdminUsersPage({
         [u.email, u.name, u.role].some((v) => v?.toLowerCase().includes(query)),
       )
     : all;
+
+  // Page through the filtered set so every account is reachable (was hard-capped
+  // at "first 200"). The fetch is bounded by the auth API page size above.
+  const pageCount = Math.max(1, Math.ceil(filtered.length / USERS_PAGE_SIZE));
+  const safePage  = Math.min(page, pageCount);
+  const pageStart = (safePage - 1) * USERS_PAGE_SIZE;
+  const pageRows  = filtered.slice(pageStart, pageStart + USERS_PAGE_SIZE);
+  const mkUsersHref = (p: number) => {
+    const sp = new URLSearchParams();
+    if (params.q) sp.set("q", params.q);
+    if (p > 1) sp.set("page", String(p));
+    const qs = sp.toString();
+    return `/admin/users${qs ? `?${qs}` : ""}`;
+  };
+  const usersPrevHref = safePage > 1 ? mkUsersHref(safePage - 1) : null;
+  const usersNextHref = safePage < pageCount ? mkUsersHref(safePage + 1) : null;
 
   const suspended   = all.filter((u) => u.suspended).length;
   const withResume  = all.filter((u) => u.hasResume).length;
@@ -151,11 +170,11 @@ export default async function AdminUsersPage({
           </div>
         ) : (
           <div style={{ paddingBottom: 4 }}>
-            {filtered.slice(0, 200).map((u, i) => (
+            {pageRows.map((u, i) => (
               <ListRow
                 key={u.id}
                 href={`/admin/users/${u.id}`}
-                divider={i < Math.min(filtered.length, 200) - 1}
+                divider={i < pageRows.length - 1}
                 leading={<Avatar name={u.name ?? u.email} tone={hashHue(u.id)} size={32} />}
                 title={u.name ?? u.email}
                 subtitle={`${u.email} · ${u.role}`}
@@ -181,12 +200,8 @@ export default async function AdminUsersPage({
             ))}
           </div>
         )}
-        {filtered.length > 200 && (
-          <div style={{ padding: 12, textAlign: "center", fontSize: 12, color: "var(--text-3)" }}>
-            Showing first 200 of {filtered.length}. Refine the search to narrow.
-          </div>
-        )}
       </Card>
+      <Pager page={safePage} pageCount={pageCount} prevHref={usersPrevHref} nextHref={usersNextHref} />
 
       <SectionHeader title="At a glance" />
       <div style={{ display: "grid", gap: 12, gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))" }}>

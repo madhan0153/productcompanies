@@ -5,7 +5,7 @@
  * focus management). Re-exported from pm.tsx so callers see a single module.
  */
 
-import { type CSSProperties, type ReactNode } from "react";
+import { type CSSProperties, type ReactNode, useCallback, useEffect, useRef, useState } from "react";
 import { Ico } from "./pm";
 
 // ─── Button ───────────────────────────────────────────────────────────────────
@@ -179,6 +179,122 @@ export function FilterPills<T extends string>({
           </button>
         );
       })}
+    </div>
+  );
+}
+
+// ─── Confirm dialog ───────────────────────────────────────────────────────────
+// Accessible, mobile-first replacement for window.confirm() across admin
+// mutations. Usage:
+//   const { confirm, dialog } = useConfirm();
+//   ... if (!(await confirm({ title, body, danger: true })) ) return;
+//   render {dialog} once in the component tree.
+
+export interface ConfirmOptions {
+  title: string;
+  body?: string;
+  confirmLabel?: string;
+  cancelLabel?: string;
+  danger?: boolean;
+}
+
+export function useConfirm(): {
+  confirm: (opts: ConfirmOptions) => Promise<boolean>;
+  dialog: ReactNode;
+} {
+  const [state, setState] = useState<{ opts: ConfirmOptions; resolve: (v: boolean) => void } | null>(null);
+
+  const confirm = useCallback(
+    (opts: ConfirmOptions) => new Promise<boolean>((resolve) => setState({ opts, resolve })),
+    [],
+  );
+
+  const settle = useCallback((value: boolean) => {
+    setState((s) => {
+      s?.resolve(value);
+      return null;
+    });
+  }, []);
+
+  const dialog = state ? (
+    <ConfirmDialog opts={state.opts} onConfirm={() => settle(true)} onCancel={() => settle(false)} />
+  ) : null;
+
+  return { confirm, dialog };
+}
+
+function ConfirmDialog({
+  opts, onConfirm, onCancel,
+}: { opts: ConfirmOptions; onConfirm: () => void; onCancel: () => void }) {
+  const confirmRef = useRef<HTMLButtonElement>(null);
+  const titleId = "pm-confirm-title";
+
+  useEffect(() => {
+    confirmRef.current?.focus();
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") onCancel(); };
+    window.addEventListener("keydown", onKey);
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      window.removeEventListener("keydown", onKey);
+      document.body.style.overflow = prev;
+    };
+  }, [onCancel]);
+
+  return (
+    <div
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby={titleId}
+      onClick={onCancel}
+      style={{
+        position: "fixed", inset: 0, zIndex: 80,
+        display: "flex", justifyContent: "center",
+        background: "color-mix(in oklab, var(--text) 45%, transparent)",
+        backdropFilter: "blur(2px)",
+        padding: 12,
+      }}
+      className="pm-confirm-overlay"
+    >
+      <div
+        onClick={(e) => e.stopPropagation()}
+        style={{
+          width: "100%", maxWidth: 420, alignSelf: "var(--pm-confirm-align, flex-end)",
+          background: "var(--surface)", border: "1px solid var(--line)",
+          borderRadius: "var(--radius-lg)", boxShadow: "var(--shadow-3)",
+          padding: 20,
+        }}
+      >
+        <h2 id={titleId} style={{ fontSize: 16, fontWeight: 600, color: "var(--text)" }}>
+          {opts.title}
+        </h2>
+        {opts.body && (
+          <p style={{ marginTop: 8, fontSize: 13, color: "var(--text-2)", lineHeight: 1.5 }}>
+            {opts.body}
+          </p>
+        )}
+        <div style={{ marginTop: 18, display: "flex", gap: 8, justifyContent: "flex-end" }}>
+          <Btn variant="secondary" onClick={onCancel}>{opts.cancelLabel ?? "Cancel"}</Btn>
+          <button
+            ref={confirmRef}
+            type="button"
+            onClick={onConfirm}
+            className="pm-btn"
+            data-variant="primary"
+            style={{
+              height: 36, padding: "0 14px", fontSize: 14, borderRadius: 9,
+              display: "inline-flex", alignItems: "center", gap: 6,
+              background: opts.danger ? "var(--err)" : "var(--accent)",
+              color: opts.danger ? "#fff" : "var(--accent-ink)",
+              border: "1px solid transparent", cursor: "pointer",
+              fontFamily: "inherit", fontWeight: 500,
+              boxShadow: "var(--shadow-1)",
+            }}
+          >
+            {opts.confirmLabel ?? "Confirm"}
+          </button>
+        </div>
+      </div>
     </div>
   );
 }

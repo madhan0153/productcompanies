@@ -2,6 +2,7 @@
 
 import { useActionState, useTransition } from "react";
 import { AlertCircle, CheckCircle2, Loader2, X } from "lucide-react";
+import { useConfirm } from "@/components/admin/pm";
 import {
   grantPlanToUser,
   grantCreditsToUser,
@@ -80,26 +81,36 @@ export function GrantCreditsForm() {
 
 export function RevokeGrantButton({ grantId, label }: { grantId: string; label: string }) {
   const [pending, start] = useTransition();
+  const { confirm, dialog } = useConfirm();
   return (
-    <button
-      type="button"
-      onClick={() => {
-        if (!confirm(`Revoke this grant for ${label}? The user will lose access after their entitlements refresh.`)) return;
-        start(() => revokeGrant(grantId));
-      }}
-      disabled={pending}
-      style={{
-        display: "inline-flex", alignItems: "center", gap: 4,
-        padding: "4px 10px", borderRadius: 6, fontSize: 11, fontWeight: 500,
-        background: "var(--surface)", color: "var(--text-3)",
-        border: "1px solid var(--line)",
-        cursor: pending ? "not-allowed" : "pointer",
-        opacity: pending ? 0.5 : 1,
-      }}
-    >
-      {pending ? <Loader2 size={12} className="animate-spin" /> : <X size={12} />}
-      Revoke
-    </button>
+    <>
+      <button
+        type="button"
+        onClick={async () => {
+          const ok = await confirm({
+            title: "Revoke this grant?",
+            body: `${label} will lose access after their entitlements refresh.`,
+            confirmLabel: "Revoke",
+            danger: true,
+          });
+          if (!ok) return;
+          start(() => revokeGrant(grantId));
+        }}
+        disabled={pending}
+        style={{
+          display: "inline-flex", alignItems: "center", gap: 4,
+          padding: "4px 10px", borderRadius: 6, fontSize: 11, fontWeight: 500,
+          background: "var(--surface)", color: "var(--text-3)",
+          border: "1px solid var(--line)",
+          cursor: pending ? "not-allowed" : "pointer",
+          opacity: pending ? 0.5 : 1,
+        }}
+      >
+        {pending ? <Loader2 size={12} className="animate-spin motion-reduce:animate-none" /> : <X size={12} />}
+        Revoke
+      </button>
+      {dialog}
+    </>
   );
 }
 

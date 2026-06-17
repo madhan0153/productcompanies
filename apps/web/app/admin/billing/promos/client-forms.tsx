@@ -2,6 +2,7 @@
 
 import { useActionState, useState, useTransition } from "react";
 import { AlertCircle, CheckCircle2, Copy, Loader2, X } from "lucide-react";
+import { useConfirm } from "@/components/admin/pm";
 import {
   createPromoCode,
   deactivatePromoCode,
@@ -121,26 +122,36 @@ export function CreatePromoForm() {
 
 export function DeactivatePromoButton({ id, label }: { id: string; label: string }) {
   const [pending, start] = useTransition();
+  const { confirm, dialog } = useConfirm();
   return (
-    <button
-      type="button"
-      onClick={() => {
-        if (!confirm(`Disable "${label}"? Existing redemptions stay valid; new redemptions will be rejected.`)) return;
-        start(() => deactivatePromoCode(id));
-      }}
-      disabled={pending}
-      style={{
-        display: "inline-flex", alignItems: "center", gap: 4,
-        padding: "4px 10px", borderRadius: 6, fontSize: 11, fontWeight: 500,
-        background: "var(--surface)", color: "var(--text-3)",
-        border: "1px solid var(--line)",
-        cursor: pending ? "not-allowed" : "pointer",
-        opacity: pending ? 0.5 : 1,
-      }}
-    >
-      {pending ? <Loader2 size={12} className="animate-spin" /> : <X size={12} />}
-      Disable
-    </button>
+    <>
+      <button
+        type="button"
+        onClick={async () => {
+          const ok = await confirm({
+            title: `Disable "${label}"?`,
+            body: "Existing redemptions stay valid; new redemptions will be rejected.",
+            confirmLabel: "Disable",
+            danger: true,
+          });
+          if (!ok) return;
+          start(() => deactivatePromoCode(id));
+        }}
+        disabled={pending}
+        style={{
+          display: "inline-flex", alignItems: "center", gap: 4,
+          padding: "4px 10px", borderRadius: 6, fontSize: 11, fontWeight: 500,
+          background: "var(--surface)", color: "var(--text-3)",
+          border: "1px solid var(--line)",
+          cursor: pending ? "not-allowed" : "pointer",
+          opacity: pending ? 0.5 : 1,
+        }}
+      >
+        {pending ? <Loader2 size={12} className="animate-spin motion-reduce:animate-none" /> : <X size={12} />}
+        Disable
+      </button>
+      {dialog}
+    </>
   );
 }
 

@@ -2,6 +2,7 @@
 
 import { useRouter, useSearchParams } from "next/navigation";
 import { useState, useTransition } from "react";
+import { useConfirm } from "@/components/admin/pm";
 import { approveAllPending } from "./actions";
 
 type Current = {
@@ -92,12 +93,15 @@ export function ApproveAllButton({ pending }: { pending: number }) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [msg, setMsg] = useState<string | null>(null);
+  const { confirm, dialog } = useConfirm();
 
-  function run() {
+  async function run() {
     if (pending === 0) return;
-    const ok = window.confirm(
-      `Approve all ${pending} pending question${pending === 1 ? "" : "s"}? They will go live and become eligible for daily dispatch.`,
-    );
+    const ok = await confirm({
+      title: `Approve all ${pending} pending question${pending === 1 ? "" : "s"}?`,
+      body: "They will go live and become eligible for daily dispatch.",
+      confirmLabel: "Approve all",
+    });
     if (!ok) return;
     setMsg(null);
     startTransition(async () => {
@@ -113,6 +117,7 @@ export function ApproveAllButton({ pending }: { pending: number }) {
 
   return (
     <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+      {dialog}
       <button
         type="button"
         onClick={run}

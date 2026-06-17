@@ -7,6 +7,7 @@ import {
 import {
   createPromoCode, deactivatePromoCode, type PromoFormState,
 } from "@/lib/admin/actions/promos";
+import { useConfirm } from "@/components/admin/pm";
 import type { CouponRow } from "./page";
 
 type Filter = "all" | "active" | "expiring" | "paused" | "expired";
@@ -253,6 +254,7 @@ function CouponRowItem({
   divider: boolean;
 }) {
   const [pending, start] = useTransition();
+  const { confirm, dialog } = useConfirm();
   const status = statusOf(coupon);
   const pct = coupon.max_redemptions
     ? Math.min(100, Math.round((coupon.redeemed_count / coupon.max_redemptions) * 100))
@@ -334,8 +336,14 @@ function CouponRowItem({
               <button
                 type="button"
                 disabled={pending}
-                onClick={() => {
-                  if (!confirm(`Pause "${coupon.code_label ?? "this code"}"? Existing redemptions stay valid; new ones will be rejected.`)) return;
+                onClick={async () => {
+                  const ok = await confirm({
+                    title: `Pause "${coupon.code_label ?? "this code"}"?`,
+                    body: "Existing redemptions stay valid; new ones will be rejected.",
+                    confirmLabel: "Pause coupon",
+                    danger: true,
+                  });
+                  if (!ok) return;
                   start(() => { deactivatePromoCode(coupon.id); });
                 }}
                 style={{
@@ -347,13 +355,14 @@ function CouponRowItem({
                   opacity: pending ? 0.5 : 1,
                 }}
               >
-                {pending ? <Loader2 size={14} className="animate-spin" /> : <Pause size={14} />}
+                {pending ? <Loader2 size={14} className="animate-spin motion-reduce:animate-none" /> : <Pause size={14} />}
                 Pause coupon
               </button>
             </div>
           )}
         </div>
       )}
+      {dialog}
     </li>
   );
 }

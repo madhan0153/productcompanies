@@ -126,6 +126,40 @@
   .pm-shell .pm-live-dot { animation: none; }
 }
 
+@keyframes pm-shimmer {
+  0%   { background-position: -160% 0; }
+  100% { background-position: 160% 0; }
+}
+.pm-shell .pm-skeleton {
+  border-radius: var(--radius);
+  background: linear-gradient(
+    90deg,
+    var(--surface-2) 25%,
+    var(--surface-3) 37%,
+    var(--surface-2) 63%
+  );
+  background-size: 280% 100%;
+  animation: pm-shimmer 1.4s ease-in-out infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .pm-shell .pm-skeleton { animation: none; }
+}
+
+/* Confirm dialog: bottom-sheet on mobile, centered modal on >= sm. The inner
+ * card reads --pm-confirm-align for its alignSelf. */
+.pm-shell .pm-confirm-overlay { --pm-confirm-align: flex-end; }
+@media (min-width: 640px) {
+  .pm-shell .pm-confirm-overlay { --pm-confirm-align: center; }
+}
+@keyframes pm-sheet-in {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.pm-shell .pm-confirm-overlay > div { animation: pm-sheet-in 0.16s ease-out; }
+@media (prefers-reduced-motion: reduce) {
+  .pm-shell .pm-confirm-overlay > div { animation: none; }
+}
+
 @keyframes pm-tick {
   0%   { transform: translateY(0);    opacity: 1;   }
   50%  { transform: translateY(-2px); opacity: 0.6; }

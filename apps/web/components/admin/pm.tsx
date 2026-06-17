@@ -11,8 +11,9 @@
  */
 
 import type { CSSProperties, ReactNode } from "react";
+import Link from "next/link";
 
-export { Btn, Toggle, SearchField, FilterPills, Tabs } from "./pm-client";
+export { Btn, Toggle, SearchField, FilterPills, Tabs, useConfirm, type ConfirmOptions } from "./pm-client";
 
 // ─── Tone tables ──────────────────────────────────────────────────────────────
 
@@ -148,6 +149,67 @@ export function Card({
       borderRadius: "var(--radius-lg)", padding: p, boxShadow: "var(--shadow-1)",
       ...style,
     }}>{children}</div>
+  );
+}
+
+// ─── Skeleton ───────────────────────────────────────────────────────────────
+// Shimmer placeholder for route-level loading states. Decorative → aria-hidden.
+
+export function Skeleton({
+  w = "100%", h = 16, radius, style,
+}: { w?: number | string; h?: number | string; radius?: number; style?: CSSProperties }) {
+  return (
+    <div
+      className="pm-skeleton"
+      aria-hidden
+      style={{ width: w, height: h, ...(radius != null ? { borderRadius: radius } : null), ...style }}
+    />
+  );
+}
+
+// ─── Pager ────────────────────────────────────────────────────────────────────
+// Server-rendered prev/next pagination. Caller computes the hrefs (preserving
+// existing query params) and passes null to disable an edge. Renders nothing
+// for a single page.
+
+export function Pager({
+  page, pageCount, prevHref, nextHref,
+}: { page: number; pageCount: number; prevHref: string | null; nextHref: string | null }) {
+  if (pageCount <= 1) return null;
+  return (
+    <nav
+      aria-label="Pagination"
+      style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, padding: "14px 4px 4px" }}
+    >
+      <PagerLink href={prevHref} label="Previous" arrow="‹" />
+      <span className="pm-num" style={{ fontSize: 12, color: "var(--text-3)" }}>
+        Page {page} of {pageCount}
+      </span>
+      <PagerLink href={nextHref} label="Next" arrow="›" trailing />
+    </nav>
+  );
+}
+
+function PagerLink({
+  href, label, arrow, trailing,
+}: { href: string | null; label: string; arrow: string; trailing?: boolean }) {
+  const base: CSSProperties = {
+    display: "inline-flex", alignItems: "center", gap: 6,
+    minHeight: 36, padding: "0 14px", borderRadius: 9,
+    fontSize: 13, fontWeight: 500, border: "1px solid var(--line)",
+  };
+  const content = trailing ? <>{label} <span aria-hidden>{arrow}</span></> : <><span aria-hidden>{arrow}</span> {label}</>;
+  if (!href) {
+    return (
+      <span aria-disabled="true" style={{ ...base, background: "var(--surface-2)", color: "var(--text-3)", opacity: 0.6, cursor: "not-allowed" }}>
+        {content}
+      </span>
+    );
+  }
+  return (
+    <Link href={href} rel={trailing ? "next" : "prev"} className="pm-btn" data-variant="secondary" style={{ ...base, background: "var(--surface)", color: "var(--text)", boxShadow: "var(--shadow-1)" }}>
+      {content}
+    </Link>
   );
 }
 
