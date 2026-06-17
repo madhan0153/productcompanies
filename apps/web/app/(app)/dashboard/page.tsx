@@ -12,7 +12,9 @@ import { ScoreRing } from "@/components/score-ring";
 import { Tooltip } from "@/components/tooltip";
 import { DnaBreakdownInline } from "@/components/dna-breakdown-panel";
 import type { DnaBreakdown } from "@/lib/matching/dna-breakdown";
-import { computeMarketSignals, type MarketJobLite } from "@/lib/insights/market-intel";
+import { signalsFromBuckets } from "@/lib/insights/market-intel";
+import { getMarketBuckets } from "@/lib/insights/market-cache";
+import { istGreeting } from "@/lib/util/ist";
 import { getUserConsents } from "@/lib/dpdp/consent";
 import { getUserUsage } from "@/lib/billing/usage";
 import { DaysLeftBadge } from "@/components/billing/days-left-badge";
@@ -100,8 +102,6 @@ export default async function DashboardPage() {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect("/auth/login");
 
-  const since7d  = new Date(Date.now() - 7  * 24 * 3_600_000).toISOString();
-  const since14d = new Date(Date.now() - 14 * 24 * 3_600_000).toISOString();
   const stuckSince = new Date(Date.now() - STUCK_DAYS * 24 * 3_600_000).toISOString();
 
   const [
@@ -116,7 +116,6 @@ export default async function DashboardPage() {
     { data: techCoverageRaw },
     { data: companyMatchRaw },
     { count: activeJobCount },
-    { data: marketJobsRaw },
     { data: latestCrawl },
     consents,
     { count: tailoredCount },
@@ -174,10 +173,6 @@ export default async function DashboardPage() {
     supabase.from("jobs")
       .select("id", { count: "exact", head: true })
       .eq("is_active", true),
-    supabase.from("jobs")
-      .select("title, tech_stack, role_function, created_at")
-      .eq("is_active", true)
-      .limit(5000),
     // Most-recent crawl_runs row.
     supabase.from("crawl_runs")
       .select("finished_at, status")
@@ -189,7 +184,8 @@ export default async function DashboardPage() {
     supabase.from("negotiation_memos").select("*", { count: "exact", head: true }).eq("user_id", user.id),
   ]);
 
-  const marketJobs = (marketJobsRaw as MarketJobLite[] | null) ?? [];
+  // Global, cached market aggregation (fleet-wide; not re-fetched per view).
+  const marketBuckets = await getMarketBuckets();
 
   const hasResume = !!profile?.resume_storage_path;
   const dnaScore = profile?.product_dna_score ?? null;
@@ -204,8 +200,8 @@ export default async function DashboardPage() {
   const careerHealth = dnaScore !== null && resumeScore !== null
     ? Math.round((dnaScore * 0.55 + resumeScore * 0.45))
     : null;
-  const { signals: marketSignals, roleLabel: marketRoleLabel } = computeMarketSignals(
-    marketJobs, since7d, since14d, techStack, 4,
+  const { signals: marketSignals, roleLabel: marketRoleLabel } = signalsFromBuckets(
+    marketBuckets, techStack, 4,
   );
 
   const bandCounts: MatchBandCounts = {
@@ -293,8 +289,7 @@ export default async function DashboardPage() {
     techStackCount: techStack.length,
   });
 
-  const hour = new Date().getHours();
-  const greeting = hour < 12 ? "Good morning" : hour < 17 ? "Good afternoon" : "Good evening";
+  const greeting = istGreeting();
 
   // Sprint 6 — Personalized greeting: use parsed current_role when displayName
   // is missing (this user's case). Falls back gracefully.

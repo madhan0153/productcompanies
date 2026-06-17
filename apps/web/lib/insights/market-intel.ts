@@ -102,29 +102,52 @@ function bucketJob(job: MarketJobLite): string {
   return "other";
 }
 
-export function computeMarketSignals(
+/**
+ * Per-role-family counts for the whole active catalog. This aggregation is
+ * GLOBAL — identical for every user — so it can be computed once and cached,
+ * instead of re-fetching + re-bucketing thousands of job rows on every
+ * dashboard view. Plain records (not Maps) so it survives Next.js cache
+ * serialization.
+ */
+export type MarketBuckets = {
+  totals: Record<string, number>;
+  thisWeek: Record<string, number>;
+  priorWeek: Record<string, number>;
+};
+
+/** Bucket the active catalog into per-family totals + weekly windows (global). */
+export function aggregateMarketBuckets(
   allJobs: MarketJobLite[],
-  thisWeekISO: string,                  // jobs.created_at >= this ⇒ "this week"
-  priorWeekISO: string,                 // [priorWeekISO, thisWeekISO) ⇒ "prior week"
-  userTechStack: string[] = [],
-  showCount = 4,
-): MarketIntel {
-  const totalsByBucket    = new Map<string, number>();
-  const thisWeekByBucket  = new Map<string, number>();
-  const priorWeekByBucket = new Map<string, number>();
+  thisWeekISO: string,
+  priorWeekISO: string,
+): MarketBuckets {
+  const totals: Record<string, number> = {};
+  const thisWeek: Record<string, number> = {};
+  const priorWeek: Record<string, number> = {};
 
   for (const j of allJobs) {
     const b = bucketJob(j);
-    totalsByBucket.set(b, (totalsByBucket.get(b) ?? 0) + 1);
-
+    totals[b] = (totals[b] ?? 0) + 1;
     const created = j.created_at;
     if (!created) continue;
-    if (created >= thisWeekISO) {
-      thisWeekByBucket.set(b, (thisWeekByBucket.get(b) ?? 0) + 1);
-    } else if (created >= priorWeekISO) {
-      priorWeekByBucket.set(b, (priorWeekByBucket.get(b) ?? 0) + 1);
-    }
+    if (created >= thisWeekISO) thisWeek[b] = (thisWeek[b] ?? 0) + 1;
+    else if (created >= priorWeekISO) priorWeek[b] = (priorWeek[b] ?? 0) + 1;
   }
+  return { totals, thisWeek, priorWeek };
+}
+
+/**
+ * Shape the cached global buckets into the user-facing signal list. Cheap,
+ * per-user (ordering + role label depend on the viewer's tech stack).
+ */
+export function signalsFromBuckets(
+  buckets: MarketBuckets,
+  userTechStack: string[] = [],
+  showCount = 4,
+): MarketIntel {
+  const totalsByBucket    = new Map(Object.entries(buckets.totals));
+  const thisWeekByBucket  = new Map(Object.entries(buckets.thisWeek));
+  const priorWeekByBucket = new Map(Object.entries(buckets.priorWeek));
 
   // Decide ordering: user's primary family first, then top remaining by total.
   const userFamily = inferUserRoleFamily(userTechStack);
@@ -179,4 +202,23 @@ export function computeMarketSignals(
     : "India product-company hiring · live";
 
   return { roleLabel, signals };
+}
+
+/**
+ * Backwards-compatible one-shot: aggregate raw jobs then shape signals.
+ * Prefer the cached `getMarketBuckets()` + `signalsFromBuckets()` split on hot
+ * paths so the global aggregation isn't repeated per request.
+ */
+export function computeMarketSignals(
+  allJobs: MarketJobLite[],
+  thisWeekISO: string,
+  priorWeekISO: string,
+  userTechStack: string[] = [],
+  showCount = 4,
+): MarketIntel {
+  return signalsFromBuckets(
+    aggregateMarketBuckets(allJobs, thisWeekISO, priorWeekISO),
+    userTechStack,
+    showCount,
+  );
 }

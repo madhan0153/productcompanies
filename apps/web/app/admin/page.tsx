@@ -7,6 +7,7 @@ import {
 import { describeLlmRuntime } from "@prodmatch/shared";
 import { scoreFleet, type CompanyRow, type CrawlRunRow } from "@/lib/admin/crawler-resilience";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
+import { istHour } from "@/lib/util/ist";
 import {
   Badge, Card, KPI, ListRow, SectionHeader, SevDot, Spark, StatusDot,
   type SevTone,
@@ -385,7 +386,7 @@ function sevBadgeTone(sev: SevTone): "ok" | "warn" | "err" | "info" {
 }
 
 function greetingFor(d: Date): string {
-  const h = d.getHours();
+  const h = istHour(d);
   if (h < 5)  return "Up late";
   if (h < 12) return "Good morning";
   if (h < 17) return "Good afternoon";

@@ -317,14 +317,14 @@ function TailorPlanCard({
           <p className="text-[10px] uppercase tracking-wider text-muted-foreground">Tailored resumes</p>
           <p className="font-display text-xl font-bold tabular-nums">
             {unlimited
-              ? <span className="text-emerald-600 dark:text-emerald-400">∞</span>
+              ? <span className="text-success">∞</span>
               : <>{used}<span className="text-muted-foreground"> / {limit}</span></>}
           </p>
         </div>
         {credits > 0 && (
           <div>
-            <p className="text-[10px] uppercase tracking-wider text-amber-600 dark:text-amber-400">Credits</p>
-            <p className="font-display text-xl font-bold tabular-nums text-amber-600 dark:text-amber-400">{credits}</p>
+            <p className="text-[10px] uppercase tracking-wider text-warning">Credits</p>
+            <p className="font-display text-xl font-bold tabular-nums text-warning">{credits}</p>
           </div>
         )}
         <Link

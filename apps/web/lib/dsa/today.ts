@@ -41,21 +41,9 @@ export function msUntilNextIstMidnight(now = Date.now()): number {
   return nextIstMidnightUtc - now;
 }
 
-/**
- * Current hour (0–23) in IST. Vercel servers run in UTC, so a naive
- * `new Date().getHours()` greets users 5h 30m off. India-first per CLAUDE.md
- * rule 7 — the greeting must follow the user's clock, not the server's.
- */
-export function istHour(date = new Date()): number {
-  const h = new Intl.DateTimeFormat("en-GB", {
-    timeZone: "Asia/Kolkata",
-    hour: "2-digit",
-    hour12: false,
-  }).format(date);
-  // en-GB renders "24" at midnight in some runtimes — normalize to 0.
-  const n = parseInt(h, 10);
-  return Number.isNaN(n) ? 0 : n % 24;
-}
+// Re-exported from the shared IST util so there is a single source of truth
+// for IST hour-of-day across DSA, dashboard, and admin greetings.
+export { istHour } from "@/lib/util/ist";
 
 /** FNV-ish stable hash → index in [0, len). Seed combines identity + day. */
 export function dsaPickIndex(seed: string, len: number): number {
