@@ -25,6 +25,18 @@ export default function GlobalError({
 
   return (
     <html lang="en">
+      <head>
+        {/* global-error replaces the root layout entirely, so it does NOT
+            inherit the app's viewport export. Without this meta, Chrome on
+            Android falls back to a 980px desktop layout — which is exactly the
+            "site loaded in desktop mode" symptom users hit when this boundary
+            fires mid-flow (e.g. a transient error right after OAuth login).
+            Keep it mobile-first and self-contained like the rest of this file. */}
+        <meta charSet="utf-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=5" />
+        <meta name="theme-color" content="#0b0f1a" />
+        <title>Something went wrong · ProdMatch.ai</title>
+      </head>
       <body
         style={{
           margin: 0,
