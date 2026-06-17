@@ -6,6 +6,7 @@ import {
 } from "lucide-react";
 import { describeLlmRuntime } from "@prodmatch/shared";
 import { scoreFleet, type CompanyRow, type CrawlRunRow } from "@/lib/admin/crawler-resilience";
+import { qualityPulse } from "@/lib/admin/pulse";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { istHour } from "@/lib/util/ist";
 import {
@@ -99,6 +100,8 @@ export default async function AdminPage() {
   const failedBgJobs  = bgJobs.filter((j) => j.status === "failed").length;
   const runtime       = describeLlmRuntime();
   const aiArtifacts   = (enhancedResult.count ?? 0) + (tailoredResult.count ?? 0);
+  // Real quality series only — never a fabricated trend (see lib/admin/pulse).
+  const qualityData   = qualityPulse(qualityRows);
 
   // Attention items, ordered by severity
   type Attention = { id: string; title: string; detail: string; sev: SevTone; href: string };
@@ -193,11 +196,16 @@ export default async function AdminPage() {
         <KPI
           label="LLM routing"
           value={`${runtime.providers.length}/${runtime.presets.length}`}
-          hint={`${runtime.providers.reduce((s, p) => s + p.keyCount, 0)} keys live`}
+          hint={`${runtime.providers.reduce((s, p) => s + p.keyCount, 0)} keys configured`}
         />
       </div>
 
-      <SectionHeader title="Pulse" sub={`Job quality across the last ${qualityRows.length || 20} jobs`} />
+      <SectionHeader
+        title="Pulse"
+        sub={qualityData.length > 0
+          ? `Job quality across the last ${qualityData.length} jobs`
+          : "Job quality — awaiting graded jobs"}
+      />
       <Card p={18}>
         <div style={{
           display: "flex", alignItems: "baseline", justifyContent: "space-between", marginBottom: 4,
@@ -216,13 +224,15 @@ export default async function AdminPage() {
             Fleet {fleet.overall.fleetGrade} · {fleet.overall.fleetScore}
           </Badge>
         </div>
-        <Spark
-          data={qualityRows.length > 0
-            ? qualityRows.map((r) => Math.round(r.quality_score))
-            : [30, 44, 40, 55, 62, 58, 70, 72, 68, 76]}
-          h={56}
-          style={{ marginTop: 8 }}
-        />
+        {/* Real quality series only. When nothing is graded yet we show an
+            honest note rather than a decorative placeholder trend line. */}
+        {qualityData.length > 0 ? (
+          <Spark data={qualityData} h={56} style={{ marginTop: 8 }} />
+        ) : (
+          <div style={{ marginTop: 12, fontSize: 12, color: "var(--text-3)" }}>
+            No quality-scored jobs yet — this trend appears once the crawler grades active jobs.
+          </div>
+        )}
       </Card>
 
       {/* Two-column: Needs attention + Quick stats */}
