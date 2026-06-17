@@ -318,8 +318,8 @@ export default async function InsightsPage({
                     Not enough comp data published on official career pages yet.
                   </p>
                 ) : (
-                  <div className="overflow-hidden rounded-lg border border-border">
-                    <table className="w-full text-sm">
+                  <div className="overflow-x-auto rounded-lg border border-border">
+                    <table className="w-full min-w-[360px] text-sm">
                       <thead className="bg-secondary/60 text-[11px] uppercase tracking-wider text-muted-foreground">
                         <tr>
                           <th className="px-4 py-2 text-left font-semibold">Seniority</th>

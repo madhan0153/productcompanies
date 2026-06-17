@@ -116,7 +116,8 @@ export default async function AdminSettingsPage() {
 
         {runtime.providers.length > 0 && (
           <Card p={0} style={{ marginTop: 12, overflow: "hidden" }}>
-            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
+            <div style={{ overflowX: "auto" }}>
+            <table style={{ width: "100%", minWidth: 420, borderCollapse: "collapse", fontSize: 13 }}>
               <thead style={{ background: "var(--surface-2)", borderBottom: "1px solid var(--line)" }}>
                 <tr>
                   {["Provider", "Keys", "Text models", "Embedding"].map((h) => (
@@ -139,6 +140,7 @@ export default async function AdminSettingsPage() {
                 ))}
               </tbody>
             </table>
+            </div>
           </Card>
         )}
       </Section>
