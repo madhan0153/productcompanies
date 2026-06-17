@@ -2654,6 +2654,126 @@ begin
 end $$;
 
 -- =============================================================================
+-- Phase N — Web Push notifications (DPDP-gated, owner-scoped)
+--   • `notifications` value added to consent_purpose (the legal basis)
+--   • push_subscriptions: one row per browser PushSubscription, owner-scoped
+--   • notifications: delivery log + in-app feed, service-role write only
+--   • Re-issues request_user_erasure() to explicitly clear both tables
+-- Privacy: we only ever store the title/body WE generate — no resume content,
+-- no parsed profile fields, no PII from matching ever reaches these tables.
+-- =============================================================================
+
+-- (1) Consent purpose (idempotent enum extension).
+alter type consent_purpose add value if not exists 'notifications';
+
+-- (2) push_subscriptions — the device transport. Unique per endpoint so a
+--     browser re-subscribing updates in place. disabled_at soft-retires dead
+--     endpoints (404/410 from the push service) without losing history.
+create table if not exists public.push_subscriptions (
+  id            uuid primary key default gen_random_uuid(),
+  user_id       uuid not null references auth.users(id) on delete cascade,
+  endpoint      text not null unique,
+  p256dh        text not null,
+  auth          text not null,
+  user_agent    text,
+  created_at    timestamptz not null default now(),
+  last_used_at  timestamptz,
+  failure_count integer not null default 0,
+  disabled_at   timestamptz
+);
+create index if not exists idx_push_subscriptions_user_active
+  on public.push_subscriptions(user_id) where disabled_at is null;
+
+-- (3) notifications — append-only delivery log; doubles as the in-app feed.
+create table if not exists public.notifications (
+  id          uuid primary key default gen_random_uuid(),
+  user_id     uuid not null references auth.users(id) on delete cascade,
+  type        text not null,
+  title       text not null,
+  body        text,
+  url         text,
+  data        jsonb not null default '{}'::jsonb,
+  created_at  timestamptz not null default now(),
+  read_at     timestamptz
+);
+create index if not exists idx_notifications_user
+  on public.notifications(user_id, created_at desc);
+
+-- (4) RLS.
+alter table public.push_subscriptions enable row level security;
+alter table public.notifications      enable row level security;
+
+-- push_subscriptions: the owner manages their own device rows.
+drop policy if exists "push_subscriptions_select_own" on public.push_subscriptions;
+create policy "push_subscriptions_select_own" on public.push_subscriptions for select
+  to authenticated using (user_id = (select auth.uid()));
+drop policy if exists "push_subscriptions_insert_own" on public.push_subscriptions;
+create policy "push_subscriptions_insert_own" on public.push_subscriptions for insert
+  to authenticated with check (user_id = (select auth.uid()));
+drop policy if exists "push_subscriptions_update_own" on public.push_subscriptions;
+create policy "push_subscriptions_update_own" on public.push_subscriptions for update
+  to authenticated using (user_id = (select auth.uid())) with check (user_id = (select auth.uid()));
+drop policy if exists "push_subscriptions_delete_own" on public.push_subscriptions;
+create policy "push_subscriptions_delete_own" on public.push_subscriptions for delete
+  to authenticated using (user_id = (select auth.uid()));
+
+-- notifications: owner reads + marks read; only the service-role dispatcher writes.
+drop policy if exists "notifications_select_own" on public.notifications;
+create policy "notifications_select_own" on public.notifications for select
+  to authenticated using (user_id = (select auth.uid()));
+drop policy if exists "notifications_update_own" on public.notifications;
+create policy "notifications_update_own" on public.notifications for update
+  to authenticated using (user_id = (select auth.uid())) with check (user_id = (select auth.uid()));
+
+grant select, insert, update, delete on public.push_subscriptions to authenticated;
+grant all on public.push_subscriptions to service_role;
+grant select, update on public.notifications to authenticated;
+grant all on public.notifications to service_role;
+
+-- (5) Re-issue erasure to explicitly clear push data. The auth.users on-delete
+--     cascade already covers both tables, but we delete first so the
+--     dpdp_events audit row records the erasure in full.
+create or replace function public.request_user_erasure(uid uuid)
+returns void
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  delete from public.interview_notes where application_id in (
+    select id from public.applications where user_id = uid
+  );
+  delete from public.refunds where user_id = uid;
+  delete from public.invoices where user_id = uid;
+  delete from public.credit_ledger where user_id = uid;
+  delete from public.entitlement_grants where user_id = uid;
+  delete from public.promo_redemptions where user_id = uid;
+  delete from public.payment_events where user_id = uid;
+  delete from public.user_entitlements where user_id = uid;
+  delete from public.subscriptions where user_id = uid;
+  delete from public.billing_customers where user_id = uid;
+  delete from public.notifications where user_id = uid;
+  delete from public.push_subscriptions where user_id = uid;
+  delete from public.applications where user_id = uid;
+  delete from public.matches where user_id = uid;
+  delete from public.stories where user_id = uid;
+  delete from public.offers where user_id = uid;
+  delete from public.digest_subscriptions where user_id = uid;
+  delete from public.consents where user_id = uid;
+  delete from public.profiles where id = uid;
+
+  insert into public.dpdp_events (user_id, event, metadata)
+  values (uid, 'erasure_completed', jsonb_build_object('completed_at', now()));
+end;
+$$;
+revoke all on function public.request_user_erasure(uuid) from public, anon, authenticated;
+grant execute on function public.request_user_erasure(uuid) to service_role;
+
+comment on table public.push_subscriptions is 'Web Push transport endpoints, one per browser PushSubscription. Owner-scoped via RLS; dead endpoints soft-retired with disabled_at.';
+comment on table public.notifications is 'Append-only push delivery log + in-app feed. Service-role write only. Stores only self-generated title/body — never resume/PII content.';
+
+
+-- =============================================================================
 -- DONE. Verify in Supabase Studio:
 --   • 51 rows in `companies`, 0 rows in `jobs`
 --   • RLS enabled on every table above

@@ -4,12 +4,14 @@ name: Scheduled Crons
 # Schedules are UTC:
 #   digest                  Mon 02:30 UTC
 #   recompute-matches       Daily 22:30 UTC / 04:00 IST
+#   notify-matches          Daily 23:30 UTC / 05:00 IST (after recompute)
 #   drain-background-jobs   Every 15 minutes
 
 on:
   schedule:
     - cron: "30 2 * * 1"
     - cron: "30 22 * * *"
+    - cron: "30 23 * * *"
     - cron: "*/15 * * * *"
   workflow_dispatch:
     inputs:
@@ -21,6 +23,7 @@ on:
         options:
           - digest
           - recompute-matches
+          - notify-matches
           - drain-background-jobs
 
 permissions:
@@ -55,6 +58,7 @@ jobs:
           case "${EVENT_NAME}:${EVENT_SCHEDULE}" in
             "schedule:30 2 * * 1") endpoint="digest" ;;
             "schedule:30 22 * * *") endpoint="recompute-matches" ;;
+            "schedule:30 23 * * *") endpoint="notify-matches" ;;
             "schedule:*/15 * * * *") endpoint="drain-background-jobs" ;;
             "workflow_dispatch:"*) endpoint="${INPUT_ENDPOINT}" ;;
           esac

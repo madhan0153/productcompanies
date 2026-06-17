@@ -8,12 +8,12 @@ import { LogoMark } from "@/components/logo-mark";
 // when the manifest + service worker + engagement criteria are met. iOS
 // Safari does NOT fire it — users have to "Add to Home Screen" manually.
 //
-// Dismissed state: 30-day cooldown via localStorage.
+// Dismissed state: 2-day cooldown via localStorage.
 // Install tracking: fires window.clarity("set") + marks localStorage so we
 // never re-prompt a user who already installed.
 
 const DISMISSED_KEY = "prodmatch.pwa.install.dismissed_until";
-const COOLDOWN_MS   = 30 * 24 * 3_600_000;
+const COOLDOWN_MS   = 2 * 24 * 3_600_000;
 
 const FIRST_VISIT_KEY      = "prodmatch.pwa.first_visit_at";
 const FIRST_VISIT_GRACE_MS = 60 * 1000;

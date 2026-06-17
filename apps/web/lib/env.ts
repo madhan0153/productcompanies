@@ -10,6 +10,11 @@ const serverSchema = z.object({
   RESEND_FROM_EMAIL: z.string().optional(),
   CRON_SECRET: z.string().optional(),
   DPDP_POLICY_VERSION: z.string().default("1"),
+  // Web Push (VAPID). Generate once with `npx web-push generate-vapid-keys`.
+  // Absent keys = push transport is a no-op (consent + in-app log still work).
+  VAPID_PUBLIC_KEY: optStr,
+  VAPID_PRIVATE_KEY: optStr,
+  VAPID_SUBJECT: z.string().default("mailto:privacy@prodmatch.ai"),
   DODO_PAYMENTS_API_KEY: optStr,
   DODO_PAYMENTS_WEBHOOK_KEY: optStr,
   DODO_PAYMENTS_ENVIRONMENT: z.enum(["test_mode", "live_mode"]).default("test_mode"),
@@ -31,6 +36,9 @@ const clientSchema = z.object({
   NEXT_PUBLIC_SUPABASE_URL: z.string().url(),
   NEXT_PUBLIC_SUPABASE_ANON_KEY: z.string().min(1),
   NEXT_PUBLIC_APP_URL: z.string().url().default("http://localhost:3000"),
+  // The VAPID public key is safe to expose — the browser needs it to create a
+  // PushSubscription. Must match the server VAPID_PUBLIC_KEY exactly.
+  NEXT_PUBLIC_VAPID_PUBLIC_KEY: optStr,
 });
 
 // During `next build` Next.js executes module code while collecting page data.
@@ -60,6 +68,7 @@ export const clientEnv = parseEnv(clientSchema, {
   NEXT_PUBLIC_SUPABASE_URL: process.env.NEXT_PUBLIC_SUPABASE_URL,
   NEXT_PUBLIC_SUPABASE_ANON_KEY: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
   NEXT_PUBLIC_APP_URL: process.env.NEXT_PUBLIC_APP_URL,
+  NEXT_PUBLIC_VAPID_PUBLIC_KEY: process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY,
 });
 
 export const serverEnv = parseEnv(serverSchema, {
@@ -69,6 +78,9 @@ export const serverEnv = parseEnv(serverSchema, {
   RESEND_FROM_EMAIL: process.env.RESEND_FROM_EMAIL,
   CRON_SECRET: process.env.CRON_SECRET,
   DPDP_POLICY_VERSION: process.env.DPDP_POLICY_VERSION,
+  VAPID_PUBLIC_KEY: process.env.VAPID_PUBLIC_KEY,
+  VAPID_PRIVATE_KEY: process.env.VAPID_PRIVATE_KEY,
+  VAPID_SUBJECT: process.env.VAPID_SUBJECT,
   DODO_PAYMENTS_API_KEY: process.env.DODO_PAYMENTS_API_KEY,
   DODO_PAYMENTS_WEBHOOK_KEY: process.env.DODO_PAYMENTS_WEBHOOK_KEY,
   DODO_PAYMENTS_ENVIRONMENT: process.env.DODO_PAYMENTS_ENVIRONMENT,

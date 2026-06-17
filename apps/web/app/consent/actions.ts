@@ -20,6 +20,7 @@ export async function submitConsents(formData: FormData) {
 
   const next = (formData.get("next") as string) || "/dashboard";
   const digestOn = formData.get("digest_email") === "on";
+  const notificationsOn = formData.get("notifications") === "on";
 
   const grants: Partial<Record<ConsentPurpose, boolean>> = {
     account: true, // always required
@@ -27,6 +28,7 @@ export async function submitConsents(formData: FormData) {
     digest_email: digestOn,
     analytics: formData.get("analytics") === "on",
     resume_intelligence: formData.get("resume_intelligence") === "on",
+    notifications: notificationsOn,
   };
 
   await saveConsents(user.id, grants);
@@ -42,6 +44,17 @@ export async function submitConsents(formData: FormData) {
     frequency: digestOn ? "weekly" : "off",
     next_send_at: digestOn ? nextMondayIST() : null,
   }, { onConflict: "user_id" });
+
+  // Revoking the notifications consent must immediately stop dispatch: disable
+  // every stored push subscription for this user (the legal basis is gone, so
+  // the operational state has to follow — same invariant as digest above).
+  if (!notificationsOn) {
+    await admin
+      .from("push_subscriptions")
+      .update({ disabled_at: new Date().toISOString() })
+      .eq("user_id", user.id)
+      .is("disabled_at", null);
+  }
 
   redirect(next.startsWith("/") ? next : "/dashboard");
 }
