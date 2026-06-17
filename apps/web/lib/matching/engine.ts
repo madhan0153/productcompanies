@@ -221,6 +221,16 @@ export interface ComputeOptions {
   resumeVersionId?: string | null;
   /** Durable job id, used to detect cancellation/supersession before final writes. */
   jobId?: string | null;
+  /**
+   * Called once the fast baseline scores are persisted and the profile is
+   * stamped — i.e. the user already has fresh, ranked matches. The expensive
+   * Fit-Card LLM phase then runs best-effort. Lets the caller mark the durable
+   * job "succeeded" the moment results are usable, so a function kill during
+   * Fit-Card generation can never strand the job in "running".
+   */
+  onPublished?: () => Promise<void>;
+  /** Wall-clock budget for the best-effort Fit-Card phase. Defaults to FIT_CARD_BUDGET_MS. */
+  fitCardBudgetMs?: number;
 }
 
 export async function computeMatchesForUser(
@@ -486,190 +496,12 @@ export async function computeMatchesForUser(
     };
   });
 
-  // 8. Fit Cards — dynamic top-K, lazy regeneration.
-  const parsedResume = profile.resume_parsed;
-  let withFitCard = 0;
-  const fitCardRows: FitCardUpsertRow[] = [];
-
-  // Sprint 3 Item 28 — pre-compute comp percentiles across the active
-  // catalog. One pass, ~few ms; passed per-job into the Fit Card prompt
-  // so the model can ground `negotiate_to_lpa` on real numbers instead of
-  // hallucinating.
-  const compTable: CompPercentileTable = buildCompPercentileTable(
-    jobs.map((j) => ({
-      seniority:     j.seniority,
-      role_function: j.role_function,
-      comp_lpa_min:  j.comp_lpa_min,
-      comp_lpa_max:  j.comp_lpa_max,
-    })),
-  );
-
-  if (parsedResume) {
-    // Dynamic top-K: cover every strong fit + a stretch buffer, bounded.
-    const strongCount = validMatches.filter((s) => s.score >= 75).length;
-    const topK = Math.max(FIT_CARD_MIN, Math.min(FIT_CARD_MAX, strongCount + FIT_CARD_STRETCH_BUFFER));
-
-    // Candidates: top-K of valid, non-ghost, JD-parsed jobs whose Fit Card
-    // is missing OR stale (jd_parsed_at > fit_card_at) OR resume changed.
-    // Sprint 1 Item 4 — never burn Gemini quota on user-dismissed roles.
-    const topRanked = validMatches
-      .filter((s) => !s.job.is_likely_ghost)
-      .filter((s) => !s.hidden_reason)
-      .filter((s) => s.score >= 50)
-      .filter((s) => s.job.jd_parsed_at !== null)
-      .filter((s) => s.existing?.user_hidden !== true)
-      .slice(0, topK);
-
-    // Sprint 1 Item 6 — content-signature cache. Skip Gemini entirely when
-    // both the resume and the JD haven't changed since the cached card was
-    // generated. Fallback to the legacy time-based heuristic when either
-    // signature is missing (legacy rows pre-Sprint-1).
-    const currentResumeSig = profile.resume_signature;
-    const candidates = topRanked.filter((s) => {
-      const ex = s.existing;
-      // No card yet → generate.
-      if (!ex || !ex.fit_card_at) return true;
-      // forceFull (admin recompute / engine logic change) bypasses the cache.
-      // Without this, a code change that re-derives verdict / score caps
-      // can't propagate to stored rows because cached cards still match
-      // signature. Costs ~25 Gemini calls per affected user — bounded by
-      // FIT_CARD_MAX so it's safe to invoke from admin scripts.
-      if (opts.forceFull) return true;
-      // Score moved materially → regenerate (verdict may have shifted).
-      if (Math.abs((ex.score ?? 0) - s.score) >= 5) return true;
-
-      const cachedResumeSig = ex.fit_card_resume_signature;
-      const cachedJdSig     = ex.fit_card_jd_signature;
-      const haveBothSigs    = cachedResumeSig !== null && cachedJdSig !== null;
-      if (haveBothSigs && currentResumeSig && s.job.signature) {
-        // Both signatures match the current state → cache hit, skip Gemini.
-        if (cachedResumeSig === currentResumeSig && cachedJdSig === s.job.signature) {
-          return false;
-        }
-        // Otherwise the content changed → regenerate.
-        return true;
-      }
-
-      // Legacy fallback (one or both signatures missing on the cached row).
-      if (resumeChanged) return true;
-      if (s.job.jd_parsed_at && new Date(s.job.jd_parsed_at).getTime() > new Date(ex.fit_card_at).getTime()) return true;
-      return false;
-    });
-
-    if (candidates.length > 0) {
-      const startedAt = Date.now();
-      const queue = [...candidates];
-
-      const worker = async () => {
-        while (queue.length > 0) {
-          if (Date.now() - startedAt > FIT_CARD_BUDGET_MS) return;
-          const next = queue.shift();
-          if (!next) return;
-          const { job, score } = next;
-
-          const jd: ParsedJD = {
-            must_have_skills:    job.must_have_skills,
-            nice_to_have_skills: job.nice_to_have_skills,
-            jd_min_years:        job.jd_min_years,
-            jd_max_years:        job.jd_max_years,
-            work_mode:           null,
-            jd_seniority_signal: (job.jd_seniority_signal as ParsedJD["jd_seniority_signal"]) ?? null,
-            jd_summary:          job.jd_summary ?? "",
-            is_boilerplate:      false,
-            ghost_reasons:       [],
-            role_function_jd:    null,
-            responsibilities:    [],
-            qualifications_required:  [],
-            qualifications_preferred: [],
-            tech_stack_explicit: [],
-            team_context:        null,
-          };
-
-          try {
-            const marketComp = lookupCompBracket(compTable, job.seniority, job.role_function);
-            const card = await generateFitCard({
-              resume: parsedResume,
-              jd,
-              job: {
-                title:         job.title,
-                company:       job.company_name,
-                seniority:     job.seniority,
-                comp_lpa_min:  job.comp_lpa_min,
-                comp_lpa_max:  job.comp_lpa_max,
-                role_function: job.role_function,
-                location:      job.location,
-              },
-              candidate: {
-                target_lpa:            profile.target_lpa,
-                current_lpa:           profile.current_lpa,
-                seniority:             profile.seniority,
-                target_role_functions: profile.target_role_functions,
-                years:                 profile.years_experience,
-              },
-              marketComp,
-            });
-
-            // Phase L — Don't let Gemini demote a rules-strong fit.
-            //
-            // The rubric has already verified direct role match + ≥80%
-            // must-have coverage + years fit + non-trivial semantic signal.
-            // When the score is ≥75 with the rubric concurring, the Fit
-            // Card LLM's job is to provide reasoning, not veto power. Letting
-            // it cap strong_fit → stretch wipes out the product USP for
-            // clearly-aligned candidates (audit found 0/2974 strong fits
-            // for a perfectly-targeted Data Engineer because every Fit
-            // Card came back "stretch").
-            const rubricStrong = (() => {
-              if (score < 75 || !next.rules) return false;
-              if (next.rules.breakdown.role       < 18) return false;
-              if (next.rules.breakdown.experience <  9) return false;
-              const tc = next.rules.techCoverage;
-              if (tc === null) return true;
-              return !tc.noCoverage && tc.missing.length === 0;
-            })();
-            const effectiveCardVerdict: Verdict =
-              rubricStrong && card.verdict === "stretch"
-                ? "strong_fit"
-                : card.verdict;
-            const cardScore = capScoreForVerdict(score, effectiveCardVerdict);
-            const cardVerdict = reconcileVerdictWithScore(effectiveCardVerdict, cardScore);
-            const storedCardVerdict: Verdict = cardVerdict === "evidence_pending" ? "stretch" : cardVerdict;
-            const storedCard = { ...card, verdict: storedCardVerdict };
-            fitCardRows.push({
-              user_id:       userId,
-              job_id:        job.id,
-              score:         cardScore,
-              verdict:       storedCardVerdict,
-              fit_card:      storedCard as unknown as Json,
-              fit_card_at:   new Date().toISOString(),
-              hidden_reason: storedCardVerdict === "mismatch" ? "mismatch" : null,
-              // Sprint 1 Item 6 — stamp the content signatures the card was
-              // generated against. The next compute reads these to decide
-              // cache hit vs regen, no LLM call needed when both match.
-              fit_card_resume_signature: currentResumeSig ?? null,
-              fit_card_jd_signature:     job.signature ?? null,
-              strengths:     [],
-              gaps:          [],
-              reasoning:     card.one_liner,
-              computed_at:   now,
-              seen_at:       null, // a freshly-generated card counts as new
-            });
-            withFitCard++;
-          } catch {
-            // Keep deterministic baseline; remaining work continues.
-          }
-        }
-      };
-
-      await Promise.allSettled(
-        Array.from({ length: Math.min(FIT_CARD_CONCURRENCY, candidates.length) }, worker),
-      );
-    }
-  }
-
-  // 9. Persist rows only after proving this compute is still current, then
-  // stamp last_match_compute_at on the profile. Until this point the previous
-  // matches remain the displayed fallback.
+  // 8. PUBLISH (fast path) — prove the compute is still current, run the
+  //    lethal deletes, upsert the deterministic baseline scores, and stamp the
+  //    profile. This is all CPU + a handful of DB round-trips, so the user gets
+  //    fresh, fully-ranked matches within seconds. The expensive Fit-Card LLM
+  //    phase runs AFTER this, best-effort — so a function kill during card
+  //    generation can never lose the ranking or strand the job in "running".
   await assertComputeJobIsCurrent(admin, {
     userId,
     resumeVersionId: opts.resumeVersionId,
@@ -693,7 +525,6 @@ export async function computeMatchesForUser(
     assertNoSupabaseError(error as { message: string } | null, "Could not delete hard-mismatch matches");
   }
   await batchUpsert(admin, baselineRows);
-  if (fitCardRows.length > 0) await batchUpsert(admin, fitCardRows);
 
   let stampQuery = (admin.from("profiles") as any)
     .update({
@@ -711,6 +542,176 @@ export async function computeMatchesForUser(
   assertNoSupabaseError(stampError, "Could not stamp match compute completion");
   if (!stamped) throw new Error("Resume changed before match computation could be stamped.");
 
+  // Matches are live. Let the caller flip the durable job to "succeeded" now,
+  // so the Fit-Card phase below is pure upside — a kill there is harmless.
+  if (opts.onPublished) {
+    try { await opts.onPublished(); } catch { /* job-state write is best-effort */ }
+  }
+
+  // 9. Fit Cards — best-effort enrichment. Dynamic top-K, signature-cached,
+  //    generated in concurrency-sized chunks and persisted after EACH chunk so
+  //    progress survives a mid-phase kill. Bounded by a wall-clock budget;
+  //    whatever isn't generated this run is filled by the daily recompute.
+  //    Wrapped so nothing here can throw away the already-published ranking.
+  const parsedResume = profile.resume_parsed;
+  let withFitCard = 0;
+  const fitCardBudgetMs = opts.fitCardBudgetMs ?? FIT_CARD_BUDGET_MS;
+
+  try {
+    if (parsedResume) {
+      // Sprint 3 Item 28 — comp percentiles across the active catalog, passed
+      // per-job into the Fit Card prompt so `negotiate_to_lpa` is grounded.
+      const compTable: CompPercentileTable = buildCompPercentileTable(
+        jobs.map((j) => ({
+          seniority:     j.seniority,
+          role_function: j.role_function,
+          comp_lpa_min:  j.comp_lpa_min,
+          comp_lpa_max:  j.comp_lpa_max,
+        })),
+      );
+
+      // Dynamic top-K: cover every strong fit + a stretch buffer, bounded.
+      const strongCount = validMatches.filter((s) => s.score >= 75).length;
+      const topK = Math.max(FIT_CARD_MIN, Math.min(FIT_CARD_MAX, strongCount + FIT_CARD_STRETCH_BUFFER));
+
+      // Candidates: top-K of valid, non-ghost, JD-parsed jobs whose Fit Card
+      // is missing OR stale OR resume changed. Never re-generate user-dismissed.
+      const topRanked = validMatches
+        .filter((s) => !s.job.is_likely_ghost)
+        .filter((s) => !s.hidden_reason)
+        .filter((s) => s.score >= 50)
+        .filter((s) => s.job.jd_parsed_at !== null)
+        .filter((s) => s.existing?.user_hidden !== true)
+        .slice(0, topK);
+
+      // Sprint 1 Item 6 — content-signature cache. Skip Gemini when both the
+      // resume and the JD are unchanged since the cached card was generated.
+      const currentResumeSig = profile.resume_signature;
+      const candidates = topRanked.filter((s) => {
+        const ex = s.existing;
+        if (!ex || !ex.fit_card_at) return true;
+        if (opts.forceFull) return true;
+        if (Math.abs((ex.score ?? 0) - s.score) >= 5) return true;
+
+        const cachedResumeSig = ex.fit_card_resume_signature;
+        const cachedJdSig     = ex.fit_card_jd_signature;
+        const haveBothSigs    = cachedResumeSig !== null && cachedJdSig !== null;
+        if (haveBothSigs && currentResumeSig && s.job.signature) {
+          if (cachedResumeSig === currentResumeSig && cachedJdSig === s.job.signature) {
+            return false;
+          }
+          return true;
+        }
+
+        if (resumeChanged) return true;
+        if (s.job.jd_parsed_at && new Date(s.job.jd_parsed_at).getTime() > new Date(ex.fit_card_at).getTime()) return true;
+        return false;
+      });
+
+      // Generate one card → row, or null on failure. Pure (no shared writes).
+      const buildFitCardRow = async (next: ScoredJob): Promise<FitCardUpsertRow | null> => {
+        const { job, score } = next;
+        const jd: ParsedJD = {
+          must_have_skills:    job.must_have_skills,
+          nice_to_have_skills: job.nice_to_have_skills,
+          jd_min_years:        job.jd_min_years,
+          jd_max_years:        job.jd_max_years,
+          work_mode:           null,
+          jd_seniority_signal: (job.jd_seniority_signal as ParsedJD["jd_seniority_signal"]) ?? null,
+          jd_summary:          job.jd_summary ?? "",
+          is_boilerplate:      false,
+          ghost_reasons:       [],
+          role_function_jd:    null,
+          responsibilities:    [],
+          qualifications_required:  [],
+          qualifications_preferred: [],
+          tech_stack_explicit: [],
+          team_context:        null,
+        };
+
+        try {
+          const marketComp = lookupCompBracket(compTable, job.seniority, job.role_function);
+          const card = await generateFitCard({
+            resume: parsedResume,
+            jd,
+            job: {
+              title:         job.title,
+              company:       job.company_name,
+              seniority:     job.seniority,
+              comp_lpa_min:  job.comp_lpa_min,
+              comp_lpa_max:  job.comp_lpa_max,
+              role_function: job.role_function,
+              location:      job.location,
+            },
+            candidate: {
+              target_lpa:            profile.target_lpa,
+              current_lpa:           profile.current_lpa,
+              seniority:             profile.seniority,
+              target_role_functions: profile.target_role_functions,
+              years:                 profile.years_experience,
+            },
+            marketComp,
+          });
+
+          // Phase L — don't let Gemini demote a rules-strong fit.
+          const rubricStrong = (() => {
+            if (score < 75 || !next.rules) return false;
+            if (next.rules.breakdown.role       < 18) return false;
+            if (next.rules.breakdown.experience <  9) return false;
+            const tc = next.rules.techCoverage;
+            if (tc === null) return true;
+            return !tc.noCoverage && tc.missing.length === 0;
+          })();
+          const effectiveCardVerdict: Verdict =
+            rubricStrong && card.verdict === "stretch" ? "strong_fit" : card.verdict;
+          const cardScore = capScoreForVerdict(score, effectiveCardVerdict);
+          const cardVerdict = reconcileVerdictWithScore(effectiveCardVerdict, cardScore);
+          const storedCardVerdict: Verdict = cardVerdict === "evidence_pending" ? "stretch" : cardVerdict;
+          const storedCard = { ...card, verdict: storedCardVerdict };
+          return {
+            user_id:       userId,
+            job_id:        job.id,
+            score:         cardScore,
+            verdict:       storedCardVerdict,
+            fit_card:      storedCard as unknown as Json,
+            fit_card_at:   new Date().toISOString(),
+            hidden_reason: storedCardVerdict === "mismatch" ? "mismatch" : null,
+            fit_card_resume_signature: currentResumeSig ?? null,
+            fit_card_jd_signature:     job.signature ?? null,
+            strengths:     [],
+            gaps:          [],
+            reasoning:     card.one_liner,
+            computed_at:   now,
+            seen_at:       null,
+          };
+        } catch {
+          return null; // keep the deterministic baseline for this row
+        }
+      };
+
+      const startedAt = Date.now();
+      const queue = [...candidates];
+      while (queue.length > 0) {
+        if (Date.now() - startedAt > fitCardBudgetMs) break;
+        // A newer compute (resume changed mid-flight) may now own these rows.
+        // Stop enriching so we never overwrite fresh cards with stale ones.
+        if (opts.resumeVersionId && !(await isStillActiveResume(admin, userId, opts.resumeVersionId))) break;
+        const chunk = queue.splice(0, FIT_CARD_CONCURRENCY);
+        const settled = await Promise.allSettled(chunk.map(buildFitCardRow));
+        const rows = settled
+          .map((r) => (r.status === "fulfilled" ? r.value : null))
+          .filter((r): r is FitCardUpsertRow => r !== null);
+        if (rows.length > 0) {
+          // Persist this chunk immediately so a kill loses at most one chunk.
+          await batchUpsert(admin, rows);
+          withFitCard += rows.length;
+        }
+      }
+    }
+  } catch {
+    // Enrichment is best-effort — the published ranking already stands.
+  }
+
   return {
     total:          validMatches.length,
     new_matches:    newMatchCount,
@@ -721,6 +722,29 @@ export async function computeMatchesForUser(
     mode,
     duration_ms:    Date.now() - t0,
   };
+}
+
+/**
+ * Lightweight, non-throwing check that the user's active resume is still the
+ * one this compute was queued for. Used by the best-effort Fit-Card phase to
+ * bail out instead of clobbering a newer compute's rows. Returns true on read
+ * error (fail-open) so a transient blip doesn't drop enrichment unnecessarily.
+ */
+async function isStillActiveResume(
+  admin: ReturnType<typeof createSupabaseAdminClient>,
+  userId: string,
+  resumeVersionId: string,
+): Promise<boolean> {
+  try {
+    const { data } = await (admin
+      .from("profiles")
+      .select("active_resume_version_id")
+      .eq("id", userId)
+      .maybeSingle() as any) as { data: { active_resume_version_id: string | null } | null };
+    return !data || data.active_resume_version_id === resumeVersionId;
+  } catch {
+    return true;
+  }
 }
 
 async function assertComputeJobIsCurrent(

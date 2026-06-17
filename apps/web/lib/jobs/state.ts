@@ -5,6 +5,35 @@ export type DurableJobStatus = "queued" | "running" | "succeeded" | "failed" | "
 
 export const ACTIVE_JOB_STATUSES = ["queued", "running"] as const;
 
+// A healthy user-triggered match_compute publishes baseline scores within a few
+// seconds and finishes (Fit Cards) well inside the function budget. If a job
+// has sat "running"/"queued" far longer, the serverless function that owned it
+// almost certainly died mid-run (cold-kill, timeout). These thresholds let the
+// UI and the retry path treat such a job as dead instead of showing "computing"
+// forever — the bug behind the multi-minute stuck progress banner.
+export const STALE_RUNNING_MS = 3 * 60_000;
+export const STALE_QUEUED_MS = 2 * 60_000;
+
+export function isComputeJobStale(
+  job: { status: string; queued_at: string | null; started_at: string | null },
+  now: number = Date.now(),
+): boolean {
+  const age = (iso: string | null): number | null => {
+    if (!iso) return null;
+    const t = new Date(iso).getTime();
+    return Number.isFinite(t) ? now - t : null;
+  };
+  if (job.status === "running") {
+    const a = age(job.started_at) ?? age(job.queued_at);
+    return a === null ? true : a > STALE_RUNNING_MS; // no timestamp → assume dead
+  }
+  if (job.status === "queued") {
+    const a = age(job.queued_at);
+    return a === null ? true : a > STALE_QUEUED_MS;
+  }
+  return false;
+}
+
 type AdminClient = SupabaseClient;
 
 type SupabaseError = { message: string; code?: string | null } | null;
@@ -207,4 +236,36 @@ export async function countRecentJobs(
 
   assertNoSupabaseError(error as SupabaseError, "Could not read recent background job count");
   return count ?? 0;
+}
+
+/**
+ * Transition any stale (dead-but-active) match_compute jobs for a user to
+ * "failed" so the UI stops reporting "computing" and a retry can start a fresh
+ * job. Best-effort: never throws — a failure here must not block the caller.
+ * Returns the number of jobs reaped.
+ */
+export async function reapStaleComputeJobs(
+  admin: AdminClient,
+  userId: string,
+): Promise<number> {
+  try {
+    const { data } = await admin
+      .from("background_jobs")
+      .select("id, status, queued_at, started_at")
+      .eq("user_id", userId)
+      .eq("job_type", "match_compute")
+      .in("status", [...ACTIVE_JOB_STATUSES]) as {
+        data: Array<{ id: string; status: string; queued_at: string | null; started_at: string | null }> | null;
+      };
+    const stale = (data ?? []).filter((j) => isComputeJobStale(j));
+    for (const job of stale) {
+      await transitionDurableJob(admin, job.id, "failed", {
+        errorCode: "timeout",
+        errorMessage: "Match computation timed out before it finished. Please retry.",
+      });
+    }
+    return stale.length;
+  } catch {
+    return 0;
+  }
 }

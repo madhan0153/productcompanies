@@ -33,6 +33,9 @@ async function runTrackedRecompute(
   const admin = createSupabaseAdminClient();
   const source = opts.source ?? "unspecified";
   let jobId = opts.jobId ?? null;
+  // Hoisted so the catch can tell a pre-publish failure (mark failed/superseded)
+  // from a post-publish one (matches already live — leave the job succeeded).
+  let published = false;
 
   try {
     if (!jobId) {
@@ -47,15 +50,23 @@ async function runTrackedRecompute(
     }
 
     await transitionDurableJob(admin, jobId, "running", { incrementAttempts: true });
+    // The engine flips the job to "succeeded" the moment baseline scores are
+    // published (before the best-effort Fit-Card phase), so a function kill
+    // during enrichment can never strand the job in "running".
+    const publishedJobId = jobId;
     const result = await computeMatchesForUser(userId, {
       forceFull: opts.forceFull,
       resumeVersionId: opts.resumeVersionId,
       jobId,
+      onPublished: async () => {
+        await transitionDurableJob(admin, publishedJobId, "succeeded");
+        published = true;
+      },
     });
-    await transitionDurableJob(admin, jobId, "succeeded");
+    if (!published) await transitionDurableJob(admin, jobId, "succeeded");
     return result;
   } catch (err) {
-    if (jobId) {
+    if (jobId && !published) {
       const message = err instanceof Error ? err.message : String(err);
       const superseded = /superseded|resume changed/i.test(message);
       if (superseded) {

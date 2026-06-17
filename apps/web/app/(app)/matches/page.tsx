@@ -21,6 +21,7 @@ import { ComputeMatchesButton } from "./compute-matches-button";
 import { LockedMatchesPanel } from "./locked-card";
 import { getEntitlements } from "@/lib/billing/entitlements";
 import { PLAN_LIMITS } from "@/lib/billing/catalog";
+import { isComputeJobStale, reapStaleComputeJobs } from "@/lib/jobs/state";
 
 export const metadata: Metadata = { title: "Matches" };
 export const maxDuration = 60;
@@ -109,13 +110,32 @@ export default async function MatchesPage({
       latestComputeJob = null;
     }
   }
-  const activeJobStatus = latestComputeJob?.status === "queued" || latestComputeJob?.status === "running"
-    ? latestComputeJob.status
-    : null;
+  // Self-heal: a compute that has sat "running"/"queued" far longer than any
+  // healthy run had its serverless function killed mid-flight. Treat it as dead
+  // so the page never shows an endless progress banner, and reap it (after the
+  // response) so a retry can start a fresh job.
+  const staleActiveCompute = Boolean(
+    latestComputeJob &&
+    (latestComputeJob.status === "queued" || latestComputeJob.status === "running") &&
+    isComputeJobStale(latestComputeJob),
+  );
+  if (staleActiveCompute) {
+    const uid = user.id;
+    after(async () => {
+      try { await reapStaleComputeJobs(admin, uid); } catch { /* best effort */ }
+    });
+  }
+
+  const activeJobStatus =
+    !staleActiveCompute && (latestComputeJob?.status === "queued" || latestComputeJob?.status === "running")
+      ? latestComputeJob.status
+      : null;
   const isComputing = activeJobStatus !== null;
   const latestComputeError = latestComputeJob?.status === "failed"
     ? latestComputeJob.error_message ?? "Match computation failed. Your previous matches are still available."
-    : null;
+    : staleActiveCompute
+      ? "Match computation timed out before it finished. Please retry."
+      : null;
 
   // End-user fix (EU-2): show "Jobs updated Nh ago" so users can trust the
   // freshness of the underlying inventory. Reads the most-recent successful
@@ -361,8 +381,9 @@ export default async function MatchesPage({
         <div className="rounded-xl border border-warning/30 bg-warning/5 px-4 py-3 text-sm text-warning">
           <p className="font-semibold">Could not refresh matches for the latest resume</p>
           <p className="mt-1 text-xs text-warning/85">
-            {latestComputeError} Previous matches remain visible so you do not lose your shortlist.
+            {latestComputeError}{allRows.length > 0 ? " Previous matches remain visible so you do not lose your shortlist." : ""}
           </p>
+          <ComputeMatchesButton className="mt-3" />
         </div>
       )}
 

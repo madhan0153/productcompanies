@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
+import { isComputeJobStale, reapStaleComputeJobs } from "@/lib/jobs/state";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -56,6 +57,18 @@ export async function GET() {
     };
 
   if (latestJob?.status === "queued" || latestJob?.status === "running") {
+    // Self-heal: a job that has sat active far longer than any healthy run had
+    // its serverless function killed mid-run. Reap it so the poller stops and
+    // the user can retry, instead of polling a zombie "computing" forever.
+    if (isComputeJobStale(latestJob)) {
+      await reapStaleComputeJobs(admin, user.id);
+      return NextResponse.json({
+        status: "failed" satisfies ComputeStatus,
+        error: "Match computation timed out before it finished. Please retry.",
+        activeResumeVersionId,
+        matchesResumeVersionId: profile?.matches_resume_version_id ?? null,
+      });
+    }
     return NextResponse.json({
       status: "computing" satisfies ComputeStatus,
       jobStatus: latestJob.status,

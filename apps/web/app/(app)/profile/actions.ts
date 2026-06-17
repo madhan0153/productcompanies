@@ -20,6 +20,7 @@ import {
   createDurableJob,
   failDurableJob,
   findActiveJob,
+  reapStaleComputeJobs,
   supersedeActiveJobs,
   transitionDurableJob,
 } from "@/lib/jobs/state";
@@ -464,6 +465,11 @@ export async function computeMatchesForActiveResume(): Promise<ComputeMatchesRes
   if (profile.resume_parsed_version_id !== versionId || profile.resume_embedding_version_id !== versionId) {
     return { ok: false, error: "Resume signals are still being prepared. Please retry in a moment." };
   }
+
+  // Clear any dead "running"/"queued" compute whose function was killed mid-run
+  // (the cause of the stuck progress banner) so a retry can start a fresh job
+  // instead of being short-circuited by a zombie active job below.
+  await reapStaleComputeJobs(admin, user.id);
 
   const activeJob = await findActiveJob(admin, {
     userId: user.id,
