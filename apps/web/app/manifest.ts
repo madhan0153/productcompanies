@@ -10,6 +10,7 @@ export default function manifest(): MetadataRoute.Manifest {
     short_name: "ProdMatch",
     description:
       "AI-powered job matching for Indian software engineers — get explainable matches to high-package roles at top product companies.",
+    id: "/",
     start_url: "/dashboard",
     scope: "/",
     display: "standalone",
@@ -18,10 +19,11 @@ export default function manifest(): MetadataRoute.Manifest {
     orientation: "portrait-primary",
     categories: ["productivity", "business"],
     lang: "en-IN",
+    prefer_related_applications: false,
     icons: [
-      { src: "/logo-prodmatchai.png", sizes: "192x192", type: "image/png", purpose: "any" },
-      { src: "/logo-prodmatchai.png", sizes: "192x192", type: "image/png", purpose: "maskable" },
-      { src: "/logo-prodmatchai.png", sizes: "512x512", type: "image/png", purpose: "any" },
+      { src: "/icons/icon-192.png", sizes: "192x192", type: "image/png", purpose: "any" },
+      { src: "/icons/icon-512.png", sizes: "512x512", type: "image/png", purpose: "any" },
+      { src: "/icons/icon-maskable-512.png", sizes: "512x512", type: "image/png", purpose: "maskable" },
     ],
     shortcuts: [
       { name: "Matches",       short_name: "Matches",  url: "/matches",      description: "View your ranked matches" },

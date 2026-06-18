@@ -2,6 +2,11 @@
 
 import { useEffect } from "react";
 import { toast } from "sonner";
+import {
+  PWA_EVENTS,
+  emitPwaState,
+  type BeforeInstallPromptEvent,
+} from "@/lib/pwa/install";
 
 // Registers the service worker (public/sw.js) and drives a *controlled* update
 // flow: when a new SW finishes installing while an old one still controls the
@@ -15,6 +20,14 @@ export function PwaRegister() {
   useEffect(() => {
     if (process.env.NODE_ENV !== "production") return;
     if (typeof window === "undefined" || !("serviceWorker" in navigator)) return;
+
+    const captureInstallPrompt = (event: Event) => {
+      event.preventDefault();
+      window.__prodmatchInstallPrompt = event as BeforeInstallPromptEvent;
+      emitPwaState("available");
+      window.dispatchEvent(new CustomEvent(PWA_EVENTS.available));
+    };
+    window.addEventListener("beforeinstallprompt", captureInstallPrompt);
 
     let reloading = false;
     const onControllerChange = () => {
@@ -38,6 +51,17 @@ export function PwaRegister() {
     const register = async () => {
       try {
         const registration = await navigator.serviceWorker.register("/sw.js", { scope: "/" });
+        await navigator.serviceWorker.ready;
+        const existingSubscription = await registration.pushManager
+          .getSubscription()
+          .catch(() => null);
+        if (existingSubscription) {
+          await fetch("/api/push/subscribe", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(existingSubscription.toJSON()),
+          }).catch(() => undefined);
+        }
 
         // A worker may already be waiting from a previous visit.
         if (registration.waiting && navigator.serviceWorker.controller) {
@@ -60,6 +84,9 @@ export function PwaRegister() {
       }
     };
 
+    const onInstalled = () => emitPwaState("installed");
+    window.addEventListener("appinstalled", onInstalled);
+
     // Defer registration until the page has settled to avoid contending with
     // the critical render path.
     if (document.readyState === "complete") {
@@ -69,6 +96,8 @@ export function PwaRegister() {
     }
 
     return () => {
+      window.removeEventListener("beforeinstallprompt", captureInstallPrompt);
+      window.removeEventListener("appinstalled", onInstalled);
       navigator.serviceWorker.removeEventListener("controllerchange", onControllerChange);
     };
   }, []);

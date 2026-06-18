@@ -1,6 +1,7 @@
 import { createServerClient, type CookieOptions } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 import { clientEnv } from "@/lib/env";
+import { safeInternalPath } from "@/lib/auth/redirect";
 
 // Public routes that bypass the auth-redirect. Three categories:
 //   - Root marketing + auth + health   (legacy)
@@ -21,6 +22,8 @@ const PUBLIC_PATHS = [
   "/icon",
   "/apple-icon",
   "/manifest.webmanifest",
+  "/sw.js",
+  "/offline.html",
   "/robots.txt",
   "/sitemap.xml",
   "/llms.txt",
@@ -146,7 +149,7 @@ export async function middleware(request: NextRequest) {
   if (!user && !isPublic) {
     const url = request.nextUrl.clone();
     url.pathname = "/auth/login";
-    url.searchParams.set("next", pathname);
+    url.searchParams.set("next", `${pathname}${request.nextUrl.search}`);
     return NextResponse.redirect(url);
   }
 
@@ -154,12 +157,8 @@ export async function middleware(request: NextRequest) {
   // mid-session re-auth (e.g. magic-link from another device) returns the
   // user to where they were trying to go.
   if (user && pathname.startsWith("/auth/login")) {
-    const url = request.nextUrl.clone();
-    const next = request.nextUrl.searchParams.get("next");
-    const safeNext = next && next.startsWith("/") && !next.startsWith("//") ? next : "/dashboard";
-    url.pathname = safeNext;
-    url.search = "";
-    return NextResponse.redirect(url);
+    const safeNext = safeInternalPath(request.nextUrl.searchParams.get("next"));
+    return NextResponse.redirect(new URL(safeNext, request.url));
   }
 
   // Redirect authenticated users who haven't completed the consent flow.

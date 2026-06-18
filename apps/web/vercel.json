@@ -1,3 +1,13 @@
 {
-  "$schema": "https://openapi.vercel.sh/vercel.json"
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "crons": [
+    {
+      "path": "/api/cron/push-notifications",
+      "schedule": "30 3 * * *"
+    },
+    {
+      "path": "/api/cron/drain-background-jobs",
+      "schedule": "0 4 * * *"
+    }
+  ]
 }

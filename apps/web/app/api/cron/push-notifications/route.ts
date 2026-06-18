@@ -10,7 +10,7 @@ export const maxDuration = 300; // 5 min — Vercel Pro limit
 // application reminders, job alerts) for every consented, subscribed user.
 // Each category is DPDP-gated, per-category opt-out aware, and watermarked so
 // the same nudge never fires twice. See lib/push/triggers.ts.
-export async function POST(req: NextRequest) {
+async function run(req: NextRequest) {
   const authFailure = requireCronAuth(req);
   if (authFailure) return authFailure;
 
@@ -19,3 +19,6 @@ export async function POST(req: NextRequest) {
 
   return NextResponse.json(result);
 }
+
+export const GET = run;
+export const POST = run;

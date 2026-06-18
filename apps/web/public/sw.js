@@ -17,7 +17,7 @@
  * (see components/pwa-register.tsx) so we never hot-swap assets mid-session.
  */
 
-const VERSION = "v1";
+const VERSION = "v3";
 const STATIC_CACHE = `pm-static-${VERSION}`;
 const RUNTIME_CACHE = `pm-runtime-${VERSION}`;
 const IMAGE_CACHE = `pm-images-${VERSION}`;
@@ -170,12 +170,24 @@ self.addEventListener("push", (event) => {
   const title = payload.title || "ProdMatch.ai";
   const options = {
     body: payload.body || "",
-    icon: "/logo-prodmatchai.png",
-    badge: "/logo-prodmatchai.png",
-    // Coalesce repeats of the same type into one notification, but re-alert.
-    tag: payload.type || "prodmatch",
-    renotify: true,
-    data: { url: payload.url || "/dashboard", ...(payload.data || {}) },
+    icon: "/icons/icon-192.png",
+    badge: "/icons/badge-96.png",
+    tag: payload.tag || `${payload.type || "prodmatch"}:${payload.eventId || "event"}`,
+    renotify: payload.priority === "critical" || payload.priority === "time_sensitive",
+    timestamp: Number(payload.timestamp) || Date.now(),
+    lang: "en-IN",
+    actions: [
+      {
+        action: "open",
+        title: payload.actionLabel || "View in ProdMatch",
+      },
+    ],
+    data: {
+      notificationId: payload.notificationId || null,
+      eventId: payload.eventId || null,
+      url: safeAppPath(payload.url),
+      ...(payload.data || {}),
+    },
   };
 
   event.waitUntil(self.registration.showNotification(title, options));
@@ -184,10 +196,18 @@ self.addEventListener("push", (event) => {
 // Focus an existing tab on the target path if one is open; otherwise open it.
 self.addEventListener("notificationclick", (event) => {
   event.notification.close();
-  const target = (event.notification.data && event.notification.data.url) || "/dashboard";
+  const target = safeAppPath(event.notification.data && event.notification.data.url);
+  const notificationId = event.notification.data && event.notification.data.notificationId;
 
   event.waitUntil(
     (async () => {
+      if (notificationId) {
+        await fetch("/api/notifications/click", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ id: notificationId }),
+        }).catch(() => undefined);
+      }
       const targetUrl = new URL(target, self.location.origin);
       const clientList = await self.clients.matchAll({
         type: "window",
@@ -203,3 +223,37 @@ self.addEventListener("notificationclick", (event) => {
     })(),
   );
 });
+
+self.addEventListener("pushsubscriptionchange", (event) => {
+  event.waitUntil(
+    (async () => {
+      const response = await fetch("/api/push/config").catch(() => null);
+      const config = response && response.ok ? await response.json().catch(() => null) : null;
+      if (!config || !config.vapidPublicKey) return;
+      const subscription = await self.registration.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: urlBase64ToUint8Array(config.vapidPublicKey),
+      });
+      await fetch("/api/push/subscribe", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(subscription.toJSON()),
+      }).catch(() => undefined);
+    })(),
+  );
+});
+
+function safeAppPath(value) {
+  return typeof value === "string" && /^\/(?!\/)[a-zA-Z0-9/_?=&%#.+~-]*$/.test(value)
+    ? value
+    : "/dashboard";
+}
+
+function urlBase64ToUint8Array(base64) {
+  const padding = "=".repeat((4 - (base64.length % 4)) % 4);
+  const normalized = (base64 + padding).replace(/-/g, "+").replace(/_/g, "/");
+  const raw = atob(normalized);
+  const output = new Uint8Array(raw.length);
+  for (let i = 0; i < raw.length; i++) output[i] = raw.charCodeAt(i);
+  return output;
+}

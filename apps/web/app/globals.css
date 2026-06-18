@@ -144,6 +144,57 @@
        Decorative backgrounds belong on hero/auth surfaces only. */
   }
 
+  /*
+   * Some mobile browsers return from a cross-origin OAuth flow with a
+   * desktop-sized layout viewport. The phone marker is set from physical
+   * screen + touch signals, so the authenticated shell remains mobile-first
+   * without changing tablet, laptop, desktop, or zoom behavior.
+   */
+  html[data-mobile-device="phone"],
+  html[data-mobile-device="phone"] body {
+    min-width: 0;
+    max-width: 100%;
+    overflow-x: hidden;
+  }
+
+  html[data-mobile-device="phone"] .app-shell-sidebar {
+    position: fixed !important;
+    transform: translateX(-100%) !important;
+  }
+
+  html[data-mobile-device="phone"] .app-shell-sidebar[data-open="true"] {
+    transform: translateX(0) !important;
+  }
+
+  html[data-mobile-device="phone"] .app-shell-mobile-only,
+  html[data-mobile-device="phone"] .app-shell-mobile-header {
+    display: flex !important;
+  }
+
+  html[data-mobile-device="phone"] .app-shell-mobile-nav {
+    display: grid !important;
+  }
+
+  html[data-mobile-device="phone"] .app-shell-desktop-bell {
+    display: none !important;
+  }
+
+  html[data-mobile-device="phone"] .app-shell-main {
+    padding: 1.25rem 1rem calc(6rem + env(safe-area-inset-bottom)) !important;
+  }
+
+  html[data-mobile-device="phone"] .phone-grid-2 {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+
+  html[data-mobile-device="phone"] .phone-grid-1 {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+
+  html[data-mobile-device="phone"] .phone-desktop-only {
+    display: none !important;
+  }
+
   /* Headlines: tighter tracking, slightly heavier weight in dark mode. */
   h1, h2, h3, h4 {
     font-family: var(--font-display), var(--font-sans), system-ui, sans-serif;

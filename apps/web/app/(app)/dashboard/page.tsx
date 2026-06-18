@@ -407,7 +407,7 @@ export default async function DashboardPage() {
       <TopMatchesMobile matches={topMatchesForMobile} />
 
       {/* ── Stats row — 2 key metrics on mobile, 4 on desktop ────── */}
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+      <div className="phone-grid-2 grid grid-cols-2 gap-3 sm:grid-cols-4">
         <StatCard
           icon={<Target className="h-4 w-4" />}
           label="Readiness"
@@ -455,7 +455,7 @@ export default async function DashboardPage() {
       <SkillCoverageCard data={skillCoverage} />
 
       {/* ── Main content grid ───────────────────────────────────── */}
-      <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
+      <div className="phone-grid-1 grid grid-cols-1 gap-5 lg:grid-cols-2">
 
         {/* Application pipeline OR Stuck apps OR Get-started ladder */}
         {stuckApps.length > 0 ? (
@@ -553,7 +553,7 @@ export default async function DashboardPage() {
 
         {/* Top matches — desktop list (mobile uses the carousel above) */}
         {recentMatches.length > 0 && (
-          <div className="hidden lg:block">
+          <div className="phone-desktop-only hidden lg:block">
             <SectionCard
               title="Top matches"
               subtitle="Ranked by AI fit score"
@@ -675,7 +675,7 @@ export default async function DashboardPage() {
       </div>
 
       {/* ── Quick links ──────────────────────────────────────────── */}
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+      <div className="phone-grid-2 grid grid-cols-2 gap-3 sm:grid-cols-4">
         {[
           { href: "/matches",      icon: <Briefcase className="h-4 w-4" />,   label: "Browse matches" },
           { href: "/coach",        icon: <Compass className="h-4 w-4" />,     label: "AI Coach" },

@@ -464,7 +464,6 @@ export interface Database {
           resume_embedding: number[] | null; resume_embedding_at: string | null;
           last_match_compute_at: string | null;
           suspended_at: string | null; suspension_reason: string | null;
-          notification_prefs: Json;
           created_at: string; updated_at: string;
         };
         Insert: {
@@ -484,7 +483,6 @@ export interface Database {
           resume_embedding?: number[] | null; resume_embedding_at?: string | null;
           last_match_compute_at?: string | null;
           suspended_at?: string | null; suspension_reason?: string | null;
-          notification_prefs?: Json;
           created_at?: string; updated_at?: string;
         };
         Update: {
@@ -504,7 +502,6 @@ export interface Database {
           resume_embedding?: number[] | null; resume_embedding_at?: string | null;
           last_match_compute_at?: string | null;
           suspended_at?: string | null; suspension_reason?: string | null;
-          notification_prefs?: Json;
           updated_at?: string;
         };
         Relationships: [];
@@ -727,32 +724,79 @@ export interface Database {
       push_subscriptions: {
         Row: {
           id: string; user_id: string; endpoint: string; p256dh: string; auth: string;
-          user_agent: string | null; created_at: string; last_used_at: string | null;
-          failure_count: number; disabled_at: string | null;
+          user_agent: string | null; device_name: string | null; environment: string;
+          origin: string | null; created_at: string;
+          updated_at: string; last_used_at: string | null; last_success_at: string | null;
+          last_failure_at: string | null; failure_count: number; disabled_at: string | null;
         };
         Insert: {
           id?: string; user_id: string; endpoint: string; p256dh: string; auth: string;
-          user_agent?: string | null; created_at?: string; last_used_at?: string | null;
-          failure_count?: number; disabled_at?: string | null;
+          user_agent?: string | null; device_name?: string | null; environment?: string;
+          origin?: string | null; created_at?: string;
+          updated_at?: string; last_used_at?: string | null; last_success_at?: string | null;
+          last_failure_at?: string | null; failure_count?: number; disabled_at?: string | null;
         };
         Update: {
-          endpoint?: string; p256dh?: string; auth?: string; user_agent?: string | null;
-          last_used_at?: string | null; failure_count?: number; disabled_at?: string | null;
+          endpoint?: string; p256dh?: string; auth?: string; user_agent?: string | null; device_name?: string | null;
+          environment?: string; origin?: string | null;
+          updated_at?: string; last_used_at?: string | null; last_success_at?: string | null;
+          last_failure_at?: string | null; failure_count?: number; disabled_at?: string | null;
         };
         Relationships: [];
       };
       notifications: {
         Row: {
           id: string; user_id: string; type: string; title: string; body: string | null;
-          url: string | null; data: Json; created_at: string; read_at: string | null;
+          url: string | null; data: Json; priority: string; idempotency_key: string | null;
+          status: string; scheduled_at: string | null; sent_at: string | null;
+          expires_at: string | null; created_at: string; read_at: string | null;
+          clicked_at: string | null; dismissed_at: string | null;
         };
         Insert: {
           id?: string; user_id: string; type: string; title: string; body?: string | null;
-          url?: string | null; data?: Json; created_at?: string; read_at?: string | null;
+          url?: string | null; data?: Json; priority?: string; idempotency_key?: string | null;
+          status?: string; scheduled_at?: string | null; sent_at?: string | null;
+          expires_at?: string | null; created_at?: string; read_at?: string | null;
+          clicked_at?: string | null; dismissed_at?: string | null;
         };
         Update: {
-          read_at?: string | null;
+          status?: string; sent_at?: string | null; read_at?: string | null;
+          clicked_at?: string | null; dismissed_at?: string | null;
         };
+        Relationships: [];
+      };
+      notification_preferences: {
+        Row: {
+          user_id: string; push_enabled: boolean; timezone: string;
+          quiet_hours_enabled: boolean; quiet_hours_start: string; quiet_hours_end: string;
+          detailed_content: boolean; category_frequencies: Json;
+          created_at: string; updated_at: string;
+        };
+        Insert: {
+          user_id: string; push_enabled?: boolean; timezone?: string;
+          quiet_hours_enabled?: boolean; quiet_hours_start?: string; quiet_hours_end?: string;
+          detailed_content?: boolean; category_frequencies?: Json;
+          created_at?: string; updated_at?: string;
+        };
+        Update: {
+          push_enabled?: boolean; timezone?: string; quiet_hours_enabled?: boolean;
+          quiet_hours_start?: string; quiet_hours_end?: string; detailed_content?: boolean;
+          category_frequencies?: Json; updated_at?: string;
+        };
+        Relationships: [];
+      };
+      notification_delivery_attempts: {
+        Row: {
+          id: string; notification_id: string; subscription_id: string | null;
+          attempt_no: number; status: string; provider_status: number | null;
+          failure_class: string | null; attempted_at: string; next_retry_at: string | null;
+        };
+        Insert: {
+          id?: string; notification_id: string; subscription_id?: string | null;
+          attempt_no?: number; status: string; provider_status?: number | null;
+          failure_class?: string | null; attempted_at?: string; next_retry_at?: string | null;
+        };
+        Update: never;
         Relationships: [];
       };
     };

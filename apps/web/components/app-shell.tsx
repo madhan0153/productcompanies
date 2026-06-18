@@ -17,7 +17,10 @@ import { cn } from "@/lib/utils";
 import { CommandPalette } from "@/components/command-palette";
 import { MobileBottomNav } from "@/components/mobile-bottom-nav";
 import { PwaInstallPrompt } from "@/components/pwa-install-prompt";
+import { PwaInstallMenuItem } from "@/components/pwa-install-menu-item";
 import { RecordLastVisit } from "@/components/record-last-visit";
+import { NotificationsProvider } from "@/components/notifications/notifications-provider";
+import { NotificationBell } from "@/components/notifications/notification-bell";
 
 const NAV = [
   { href: "/dashboard",    label: "Dashboard",    icon: LayoutDashboard },
@@ -79,6 +82,18 @@ export function AppShell({ user, navBadges, usage, banner, children }: Props) {
   useEffect(() => { if (!open) menuButtonRef.current?.focus(); }, [open]);
 
   async function signOut() {
+    if ("serviceWorker" in navigator) {
+      const registration = await navigator.serviceWorker.getRegistration().catch(() => undefined);
+      const subscription = await registration?.pushManager.getSubscription().catch(() => null);
+      if (subscription) {
+        await fetch("/api/push/unsubscribe", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ endpoint: subscription.endpoint }),
+        }).catch(() => undefined);
+        await subscription.unsubscribe().catch(() => undefined);
+      }
+    }
     const supabase = createSupabaseBrowserClient();
     await supabase.auth.signOut();
     router.push("/");
@@ -97,7 +112,8 @@ export function AppShell({ user, navBadges, usage, banner, children }: Props) {
     : "text-primary";
 
   return (
-    <div className="flex min-h-screen bg-background">
+    <NotificationsProvider>
+    <div className="app-shell flex min-h-screen bg-background">
       <a
         href="#main-content"
         className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-[100] focus:rounded-lg focus:bg-primary focus:px-4 focus:py-2 focus:text-sm focus:font-medium focus:text-primary-foreground focus:shadow-pop"
@@ -110,9 +126,11 @@ export function AppShell({ user, navBadges, usage, banner, children }: Props) {
         ref={trapRef}
         id="sidebar"
         className={cn(
+          "app-shell-sidebar",
           "fixed inset-y-0 left-0 z-40 flex w-64 flex-col border-r border-border bg-card transition-transform duration-200 ease-standard lg:static lg:translate-x-0",
           open ? "translate-x-0 shadow-pop" : "-translate-x-full",
         )}
+        data-open={open ? "true" : "false"}
         aria-label="Main navigation"
         aria-modal={open ? "true" : undefined}
         role={open ? "dialog" : undefined}
@@ -126,8 +144,12 @@ export function AppShell({ user, navBadges, usage, banner, children }: Props) {
             <LogoMark size={32} />
             <span className="brand-mark text-base">ProdMatch</span>
           </Link>
+          {/* Desktop notification bell (mobile uses the one in the top header) */}
+          <div className="app-shell-desktop-bell ml-auto hidden lg:block">
+            <NotificationBell placement="sidebar" />
+          </div>
           <button
-            className="rounded-md p-2 text-muted-foreground transition hover:bg-secondary hover:text-foreground focus-ring lg:hidden tap-target-sm"
+            className="app-shell-mobile-only rounded-md p-2 text-muted-foreground transition hover:bg-secondary hover:text-foreground focus-ring lg:hidden tap-target-sm"
             onClick={() => setOpen(false)}
             aria-label="Close navigation"
           >
@@ -190,6 +212,7 @@ export function AppShell({ user, navBadges, usage, banner, children }: Props) {
 
         {/* Bottom section */}
         <div className="border-t border-border p-3 space-y-0.5">
+          <PwaInstallMenuItem onOpen={() => setOpen(false)} />
           <Link
             href="/settings/privacy"
             className="flex items-center gap-3 rounded-md px-3 py-2.5 text-sm font-medium text-muted-foreground transition hover:bg-secondary hover:text-foreground focus-ring"
@@ -251,7 +274,7 @@ export function AppShell({ user, navBadges, usage, banner, children }: Props) {
       {/* Mobile backdrop */}
       {open && (
         <div
-          className="fixed inset-0 z-30 bg-background/60 backdrop-blur-sm lg:hidden animate-fade-in"
+          className="app-shell-mobile-only fixed inset-0 z-30 bg-background/60 backdrop-blur-sm lg:hidden animate-fade-in"
           onClick={() => setOpen(false)}
           aria-hidden="true"
         />
@@ -265,7 +288,7 @@ export function AppShell({ user, navBadges, usage, banner, children }: Props) {
         {banner}
 
         {/* Mobile header */}
-        <header className="sticky top-0 z-20 flex h-14 items-center gap-3 border-b border-border bg-background/95 px-4 backdrop-blur-md lg:hidden">
+        <header className="app-shell-mobile-header sticky top-0 z-20 flex h-14 items-center gap-3 border-b border-border bg-background/95 px-4 backdrop-blur-md lg:hidden">
           <button
             ref={menuButtonRef}
             onClick={() => setOpen(true)}
@@ -301,6 +324,7 @@ export function AppShell({ user, navBadges, usage, banner, children }: Props) {
           >
             <Search className="h-5 w-5" aria-hidden />
           </button>
+          <NotificationBell placement="header" />
         </header>
 
         {/* Page transition kept short (130ms) to feel snappy. The previous
@@ -312,7 +336,7 @@ export function AppShell({ user, navBadges, usage, banner, children }: Props) {
           initial={reduce ? false : { opacity: 0, y: 8 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.25, ease: [0.22, 1, 0.36, 1] }}
-          className="flex-1 overflow-y-auto px-4 pb-24 pt-5 sm:px-6 sm:pt-6 lg:px-8 lg:pb-8"
+          className="app-shell-main flex-1 overflow-y-auto px-4 pb-24 pt-5 sm:px-6 sm:pt-6 lg:px-8 lg:pb-8"
           tabIndex={-1}
         >
           {children}
@@ -328,5 +352,6 @@ export function AppShell({ user, navBadges, usage, banner, children }: Props) {
         <RecordLastVisit />
       </Suspense>
     </div>
+    </NotificationsProvider>
   );
 }

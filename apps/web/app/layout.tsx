@@ -4,6 +4,7 @@ import Script from "next/script";
 import { Toaster } from "sonner";
 import { ThemeProvider } from "@/components/theme-provider";
 import { PwaRegister } from "@/components/pwa-register";
+import { MobileViewportGuard } from "@/components/mobile-viewport-guard";
 import { JsonLd, organizationJsonLd, softwareApplicationJsonLd, websiteJsonLd } from "@/lib/seo/json-ld";
 import { siteOrigin } from "@/lib/seo/site";
 import "./globals.css";
@@ -31,7 +32,7 @@ export const metadata: Metadata = {
       { url: "/logo-prodmatchai.png", type: "image/png" },
     ],
     apple: [
-      { url: "/logo-prodmatchai.png", sizes: "180x180", type: "image/png" },
+      { url: "/icons/apple-touch-icon.png", sizes: "180x180", type: "image/png" },
     ],
     shortcut: "/logo-prodmatchai.png",
   },
@@ -79,6 +80,8 @@ export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
   maximumScale: 5,
+  viewportFit: "cover",
+  interactiveWidget: "resizes-content",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
@@ -111,6 +114,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           enableSystem
           disableTransitionOnChange
         >
+          <MobileViewportGuard />
           {children}
           <PwaRegister />
           <Toaster

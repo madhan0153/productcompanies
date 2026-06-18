@@ -2676,13 +2676,27 @@ create table if not exists public.push_subscriptions (
   p256dh        text not null,
   auth          text not null,
   user_agent    text,
+  device_name   text,
+  environment   text not null default 'legacy',
+  origin        text,
   created_at    timestamptz not null default now(),
+  updated_at    timestamptz not null default now(),
   last_used_at  timestamptz,
+  last_success_at timestamptz,
+  last_failure_at timestamptz,
   failure_count integer not null default 0,
   disabled_at   timestamptz
 );
+alter table public.push_subscriptions add column if not exists device_name text;
+alter table public.push_subscriptions add column if not exists environment text not null default 'legacy';
+alter table public.push_subscriptions add column if not exists origin text;
+alter table public.push_subscriptions add column if not exists updated_at timestamptz not null default now();
+alter table public.push_subscriptions add column if not exists last_success_at timestamptz;
+alter table public.push_subscriptions add column if not exists last_failure_at timestamptz;
 create index if not exists idx_push_subscriptions_user_active
   on public.push_subscriptions(user_id) where disabled_at is null;
+create index if not exists idx_push_subscriptions_environment_active
+  on public.push_subscriptions(environment, user_id) where disabled_at is null;
 
 -- (3) notifications — append-only delivery log; doubles as the in-app feed.
 create table if not exists public.notifications (
@@ -2693,15 +2707,113 @@ create table if not exists public.notifications (
   body        text,
   url         text,
   data        jsonb not null default '{}'::jsonb,
+  priority    text not null default 'important',
+  idempotency_key text,
+  status      text not null default 'pending',
+  scheduled_at timestamptz,
+  sent_at     timestamptz,
+  expires_at  timestamptz,
   created_at  timestamptz not null default now(),
-  read_at     timestamptz
+  read_at     timestamptz,
+  clicked_at  timestamptz,
+  dismissed_at timestamptz
 );
+alter table public.notifications add column if not exists priority text not null default 'important';
+alter table public.notifications add column if not exists idempotency_key text;
+alter table public.notifications add column if not exists status text not null default 'pending';
+alter table public.notifications add column if not exists scheduled_at timestamptz;
+alter table public.notifications add column if not exists sent_at timestamptz;
+alter table public.notifications add column if not exists expires_at timestamptz;
+alter table public.notifications add column if not exists clicked_at timestamptz;
+alter table public.notifications add column if not exists dismissed_at timestamptz;
 create index if not exists idx_notifications_user
   on public.notifications(user_id, created_at desc);
+create unique index if not exists ux_notifications_user_idempotency
+  on public.notifications(user_id, idempotency_key)
+  where idempotency_key is not null;
+create index if not exists idx_notifications_pending
+  on public.notifications(status, scheduled_at)
+  where status in ('pending', 'retrying');
+
+create table if not exists public.notification_delivery_attempts (
+  id              uuid primary key default gen_random_uuid(),
+  notification_id uuid not null references public.notifications(id) on delete cascade,
+  subscription_id uuid references public.push_subscriptions(id) on delete set null,
+  attempt_no      integer not null default 1,
+  status          text not null,
+  provider_status integer,
+  failure_class   text,
+  attempted_at    timestamptz not null default now(),
+  next_retry_at   timestamptz,
+  constraint notification_delivery_status_chk
+    check (status in ('sent', 'retryable_failure', 'permanent_failure', 'skipped'))
+);
+create index if not exists idx_notification_delivery_notification
+  on public.notification_delivery_attempts(notification_id, attempted_at desc);
+create index if not exists idx_notification_delivery_retry
+  on public.notification_delivery_attempts(next_retry_at)
+  where status = 'retryable_failure' and next_retry_at is not null;
+
+create table if not exists public.notification_preferences (
+  user_id              uuid primary key references auth.users(id) on delete cascade,
+  push_enabled         boolean not null default true,
+  timezone             text not null default 'Asia/Kolkata',
+  quiet_hours_enabled  boolean not null default false,
+  quiet_hours_start    time not null default '22:00',
+  quiet_hours_end      time not null default '08:00',
+  detailed_content     boolean not null default false,
+  category_frequencies jsonb not null default '{
+    "job_matches":"immediate",
+    "saved_searches":"daily",
+    "application_reminders":"immediate",
+    "interview_reminders":"immediate",
+    "resume_updates":"immediate",
+    "preparation_reminders":"daily",
+    "career_sprint":"weekly",
+    "product_announcements":"disabled",
+    "billing":"immediate",
+    "security":"immediate"
+  }'::jsonb,
+  created_at           timestamptz not null default now(),
+  updated_at           timestamptz not null default now()
+);
+
+update public.notification_preferences
+set category_frequencies = jsonb_set(
+  category_frequencies,
+  '{product_announcements}',
+  '"disabled"'::jsonb,
+  true
+)
+where category_frequencies->>'product_announcements' = 'weekly';
+
+do $$ begin
+  alter table public.notifications
+    add constraint notifications_priority_chk
+    check (priority in ('critical', 'time_sensitive', 'important', 'engagement'));
+exception when duplicate_object then null; end $$;
+
+do $$ begin
+  alter table public.notifications
+    add constraint notifications_status_chk
+    check (status in ('pending', 'retrying', 'sent', 'partially_sent', 'failed', 'in_app_only', 'transport_unconfigured'));
+exception when duplicate_object then null; end $$;
+
+drop trigger if exists trg_push_subscriptions_updated_at on public.push_subscriptions;
+create trigger trg_push_subscriptions_updated_at
+  before update on public.push_subscriptions
+  for each row execute function public.tg_set_updated_at();
+
+drop trigger if exists trg_notification_preferences_updated_at on public.notification_preferences;
+create trigger trg_notification_preferences_updated_at
+  before update on public.notification_preferences
+  for each row execute function public.tg_set_updated_at();
 
 -- (4) RLS.
 alter table public.push_subscriptions enable row level security;
 alter table public.notifications      enable row level security;
+alter table public.notification_preferences enable row level security;
+alter table public.notification_delivery_attempts enable row level security;
 
 -- push_subscriptions: the owner manages their own device rows.
 drop policy if exists "push_subscriptions_select_own" on public.push_subscriptions;
@@ -2725,10 +2837,25 @@ drop policy if exists "notifications_update_own" on public.notifications;
 create policy "notifications_update_own" on public.notifications for update
   to authenticated using (user_id = (select auth.uid())) with check (user_id = (select auth.uid()));
 
+drop policy if exists "notification_preferences_select_own" on public.notification_preferences;
+create policy "notification_preferences_select_own" on public.notification_preferences for select
+  to authenticated using (user_id = (select auth.uid()));
+drop policy if exists "notification_preferences_insert_own" on public.notification_preferences;
+create policy "notification_preferences_insert_own" on public.notification_preferences for insert
+  to authenticated with check (user_id = (select auth.uid()));
+drop policy if exists "notification_preferences_update_own" on public.notification_preferences;
+create policy "notification_preferences_update_own" on public.notification_preferences for update
+  to authenticated using (user_id = (select auth.uid())) with check (user_id = (select auth.uid()));
+
 grant select, insert, update, delete on public.push_subscriptions to authenticated;
 grant all on public.push_subscriptions to service_role;
-grant select, update on public.notifications to authenticated;
+revoke update on public.notifications from authenticated;
+grant select on public.notifications to authenticated;
+grant update(read_at, clicked_at, dismissed_at) on public.notifications to authenticated;
 grant all on public.notifications to service_role;
+grant select, insert, update on public.notification_preferences to authenticated;
+grant all on public.notification_preferences to service_role;
+grant all on public.notification_delivery_attempts to service_role;
 
 -- (5) Re-issue erasure to explicitly clear push data. The auth.users on-delete
 --     cascade already covers both tables, but we delete first so the
@@ -2752,8 +2879,12 @@ begin
   delete from public.user_entitlements where user_id = uid;
   delete from public.subscriptions where user_id = uid;
   delete from public.billing_customers where user_id = uid;
+  delete from public.notification_delivery_attempts where notification_id in (
+    select id from public.notifications where user_id = uid
+  );
   delete from public.notifications where user_id = uid;
   delete from public.push_subscriptions where user_id = uid;
+  delete from public.notification_preferences where user_id = uid;
   delete from public.applications where user_id = uid;
   delete from public.matches where user_id = uid;
   delete from public.stories where user_id = uid;
@@ -2771,18 +2902,40 @@ grant execute on function public.request_user_erasure(uuid) to service_role;
 
 comment on table public.push_subscriptions is 'Web Push transport endpoints, one per browser PushSubscription. Owner-scoped via RLS; dead endpoints soft-retired with disabled_at.';
 comment on table public.notifications is 'Append-only push delivery log + in-app feed. Service-role write only. Stores only self-generated title/body — never resume/PII content.';
+comment on table public.notification_preferences is 'Owner-scoped push category frequency, quiet-hours, timezone, and lock-screen detail preferences.';
+comment on table public.notification_delivery_attempts is 'Service-role-only audit of each device delivery attempt. Subscription endpoints and keys are intentionally not duplicated.';
 
 
--- =============================================================================
--- Phase O — Per-category push notification preferences
---   Product-level mute switches layered on top of the `notifications` consent.
---   Shape: {"job_alerts": false, ...}. An ABSENT key means enabled (opt-out per
---   category). Consent remains the legal basis; this is product preference only.
--- =============================================================================
-alter table public.profiles
-  add column if not exists notification_prefs jsonb not null default '{}'::jsonb;
-
-comment on column public.profiles.notification_prefs is 'Per-category push mute switches, e.g. {"job_alerts": false}. Absent key = enabled. The notifications consent is the legal basis; this is product preference only.';
+-- One-time idempotent migration from the retired profiles.notification_prefs
+-- JSON booleans into the production preference model, then remove dead state.
+do $$
+begin
+  if exists (
+    select 1 from information_schema.columns
+    where table_schema = 'public' and table_name = 'profiles' and column_name = 'notification_prefs'
+  ) then
+    execute $migration$
+      insert into public.notification_preferences (user_id, category_frequencies)
+      select
+        id,
+        jsonb_build_object(
+          'job_matches', case when notification_prefs->>'new_matches' = 'false' then 'disabled' else 'immediate' end,
+          'saved_searches', case when notification_prefs->>'job_alerts' = 'false' then 'disabled' else 'daily' end,
+          'application_reminders', case when notification_prefs->>'application_reminders' = 'false' then 'disabled' else 'immediate' end,
+          'interview_reminders', 'immediate',
+          'resume_updates', 'immediate',
+          'preparation_reminders', 'daily',
+          'career_sprint', 'weekly',
+          'product_announcements', 'weekly',
+          'billing', 'immediate',
+          'security', 'immediate'
+        )
+      from public.profiles
+      on conflict (user_id) do nothing
+    $migration$;
+    alter table public.profiles drop column notification_prefs;
+  end if;
+end $$;
 
 
 -- =============================================================================

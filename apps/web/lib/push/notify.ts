@@ -2,75 +2,184 @@ import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { logEvent } from "@/lib/observability/log";
 import type { Json } from "@/lib/supabase/types";
 import { getWebPush } from "./web-push";
+import { PushPayloadSchema, safeNotificationPath, type PushPayload } from "./payload";
+import { getKindFrequency, NOTIFICATION_KINDS, type NotificationKind } from "./catalog";
 
-// How many consecutive transient failures before we soft-retire an endpoint.
 const FAILURE_RETIRE_THRESHOLD = 5;
-// Push payload TTL — a "new matches" nudge is stale after a day.
-const PUSH_TTL_SECONDS = 60 * 60 * 24;
+const RETRY_BASE_MS = 5 * 60 * 1000;
+const NON_CRITICAL_DAILY_CAP = 4;
 
-export type PushPayload = {
-  type: string;
-  title: string;
-  body?: string;
-  url?: string;
-  data?: Record<string, unknown>;
+export type NotifyResult = {
+  notificationId: string | null;
+  delivered: number;
+  failed: number;
+  pruned: number;
+  logged: boolean;
+  duplicate: boolean;
 };
 
-export type NotifyResult = { delivered: number; pruned: number; logged: boolean };
+function classifyFailure(statusCode: number | undefined) {
+  if (statusCode === 404 || statusCode === 410) return "expired_subscription";
+  if (statusCode === 401 || statusCode === 403) return "provider_auth";
+  if (statusCode === 413) return "payload_too_large";
+  if (statusCode === 429) return "rate_limited";
+  if (statusCode && statusCode >= 500) return "provider_unavailable";
+  return "network_or_unknown";
+}
 
-/**
- * Deliver a notification to a single user across all of their active push
- * subscriptions. The flow is, in order:
- *   1. DPDP gate — bail unless the user consents to the `notifications` purpose.
- *   2. Append to `notifications` (the in-app feed / audit) regardless of whether
- *      a live push endpoint exists.
- *   3. Fan out to each endpoint; prune dead ones (404/410), retire flapping ones.
- *
- * Runs as service role (admin client) — intended for cron/server contexts only.
- */
-export async function notifyUser(userId: string, payload: PushPayload): Promise<NotifyResult> {
+function isSchemaDriftError(error: { code?: string | null } | null | undefined): boolean {
+  return error?.code === "42703" || error?.code === "PGRST204" || error?.code === "PGRST205";
+}
+
+export async function notifyUser(userId: string, input: PushPayload): Promise<NotifyResult> {
+  const payload = PushPayloadSchema.parse(input);
   const admin = createSupabaseAdminClient();
+  const empty = {
+    notificationId: null,
+    delivered: 0,
+    failed: 0,
+    pruned: 0,
+    logged: false,
+    duplicate: false,
+  };
 
-  // 1. Consent is the legal basis. No consent → no notification, full stop.
-  const { data: consent } = await admin
-    .from("consents")
-    .select("granted")
-    .eq("user_id", userId)
-    .eq("purpose", "notifications")
-    .eq("granted", true)
-    .limit(1);
-  if (!consent?.length) return { delivered: 0, pruned: 0, logged: false };
+  const [{ data: consent }, { data: preferences }] = await Promise.all([
+    admin
+      .from("consents")
+      .select("granted")
+      .eq("user_id", userId)
+      .eq("purpose", "notifications")
+      .eq("granted", true)
+      .limit(1),
+    admin
+      .from("notification_preferences")
+      .select("push_enabled, category_frequencies")
+      .eq("user_id", userId)
+      .maybeSingle(),
+  ]);
+  if (!consent?.length) return empty;
 
-  // 2. Always record the notification (in-app feed survives even if the user
-  //    has no live device, e.g. revoked browser permission but kept consent).
-  await admin.from("notifications").insert({
-    user_id: userId,
-    type: payload.type,
-    title: payload.title,
-    body: payload.body ?? null,
-    url: payload.url ?? null,
-    data: (payload.data ?? {}) as Json,
-  });
+  const now = new Date();
+  const transactional = payload.type === "billing" || payload.type === "security";
+  if (!transactional && payload.priority !== "critical" && payload.priority !== "time_sensitive") {
+    const since = new Date(now.getTime() - 24 * 60 * 60 * 1000).toISOString();
+    const { count } = await admin
+      .from("notifications")
+      .select("id", { count: "exact", head: true })
+      .eq("user_id", userId)
+      .in("status", ["sent", "partially_sent"])
+      .gte("created_at", since);
+    if ((count ?? 0) >= NON_CRITICAL_DAILY_CAP) return empty;
+  }
+  const expiresAt = new Date(now.getTime() + payload.ttlSeconds * 1000).toISOString();
+  let { data: notification, error: notificationError } = await admin
+    .from("notifications")
+    .insert({
+      user_id: userId,
+      type: payload.type,
+      title: payload.title,
+      body: payload.body ?? null,
+      url: safeNotificationPath(payload.url),
+      data: (payload.data ?? {}) as Json,
+      priority: payload.priority,
+      idempotency_key: payload.idempotencyKey ?? null,
+      status: "pending",
+      expires_at: expiresAt,
+    })
+    .select("id, status")
+    .maybeSingle();
 
-  const { data: subs } = await admin
+  if (isSchemaDriftError(notificationError)) {
+    const fallback = await admin
+      .from("notifications")
+      .insert({
+        user_id: userId,
+        type: payload.type,
+        title: payload.title,
+        body: payload.body ?? null,
+        url: safeNotificationPath(payload.url),
+        data: (payload.data ?? {}) as Json,
+      })
+      .select("id")
+      .maybeSingle();
+    notification = fallback.data ? { id: fallback.data.id, status: "pending" } : null;
+    notificationError = fallback.error;
+  }
+
+  if (notificationError?.code === "23505" && payload.idempotencyKey) {
+    return { ...empty, logged: true, duplicate: true };
+  }
+  if (notificationError) throw notificationError;
+  if (!notification) {
+    return { ...empty, logged: true, duplicate: true };
+  }
+
+  const category = NOTIFICATION_KINDS.includes(payload.type as NotificationKind)
+    ? (payload.type as NotificationKind)
+    : null;
+  const frequency = category
+    ? getKindFrequency(
+        (preferences?.category_frequencies as Record<string, unknown> | null) ?? null,
+        category,
+      )
+    : "immediate";
+  if (
+    preferences?.push_enabled === false ||
+    (frequency !== "immediate" && payload.deliveryWindow !== "due")
+  ) {
+    await admin.from("notifications").update({ status: "in_app_only" }).eq("id", notification.id);
+    return { ...empty, notificationId: notification.id, logged: true };
+  }
+
+  const productionTransport = process.env.VERCEL_ENV === "production";
+  if (!productionTransport) {
+    await admin.from("notifications").update({ status: "in_app_only" }).eq("id", notification.id);
+    return { ...empty, notificationId: notification.id, logged: true };
+  }
+
+  let { data: subs, error: subscriptionsError } = await admin
     .from("push_subscriptions")
     .select("id, endpoint, p256dh, auth, failure_count")
     .eq("user_id", userId)
+    .eq("environment", "production")
     .is("disabled_at", null);
-  if (!subs?.length) return { delivered: 0, pruned: 0, logged: true };
+  if (isSchemaDriftError(subscriptionsError)) {
+    const fallback = await admin
+      .from("push_subscriptions")
+      .select("id, endpoint, p256dh, auth")
+      .eq("user_id", userId)
+      .is("disabled_at", null);
+    subs = (fallback.data ?? []).map((sub) => ({ ...sub, failure_count: 0 }));
+    subscriptionsError = fallback.error;
+  }
+  if (subscriptionsError) throw subscriptionsError;
+  if (!subs?.length) {
+    await admin.from("notifications").update({ status: "in_app_only" }).eq("id", notification.id);
+    return { ...empty, notificationId: notification.id, logged: true };
+  }
 
   const wp = getWebPush();
-  if (!wp) return { delivered: 0, pruned: 0, logged: true };
+  if (!wp) {
+    await admin.from("notifications").update({ status: "transport_unconfigured" }).eq("id", notification.id);
+    return { ...empty, notificationId: notification.id, logged: true };
+  }
 
   const body = JSON.stringify({
+    notificationId: notification.id,
     title: payload.title,
     body: payload.body ?? "",
-    url: payload.url ?? "/dashboard",
+    url: safeNotificationPath(payload.url),
     type: payload.type,
+    eventId: payload.idempotencyKey ?? notification.id,
+    tag: `${payload.type}:${payload.idempotencyKey ?? notification.id}`,
+    actionLabel: payload.actionLabel,
+    priority: payload.priority,
+    timestamp: now.getTime(),
     data: payload.data ?? {},
   });
 
   let delivered = 0;
+  let failed = 0;
   let pruned = 0;
 
   await Promise.all(
@@ -79,43 +188,84 @@ export async function notifyUser(userId: string, payload: PushPayload): Promise<
         await wp.sendNotification(
           { endpoint: sub.endpoint, keys: { p256dh: sub.p256dh, auth: sub.auth } },
           body,
-          { TTL: PUSH_TTL_SECONDS, urgency: "normal" },
+          {
+            TTL: payload.ttlSeconds,
+            urgency: payload.priority === "critical" ? "high" : payload.priority === "engagement" ? "low" : "normal",
+          },
         );
         delivered++;
-        await admin
-          .from("push_subscriptions")
-          .update({ last_used_at: new Date().toISOString(), failure_count: 0 })
-          .eq("id", sub.id);
-      } catch (err) {
-        const statusCode = (err as { statusCode?: number }).statusCode;
-        // 404/410 = the subscription is gone for good. Retire immediately.
-        if (statusCode === 404 || statusCode === 410) {
-          await admin
-            .from("push_subscriptions")
-            .update({ disabled_at: new Date().toISOString() })
-            .eq("id", sub.id);
-          pruned++;
-          return;
+        const sentAt = new Date().toISOString();
+        const { error: updateError } = await admin.from("push_subscriptions").update({
+            updated_at: sentAt,
+            last_used_at: sentAt,
+            last_success_at: sentAt,
+            failure_count: 0,
+          }).eq("id", sub.id);
+        if (isSchemaDriftError(updateError)) {
+          await admin.from("push_subscriptions").update({ disabled_at: null }).eq("id", sub.id);
         }
-        // Transient (429/5xx/network) — count it; retire after repeated misses.
+        await admin.from("notification_delivery_attempts").insert({
+            notification_id: notification.id,
+            subscription_id: sub.id,
+            status: "sent",
+          }).then(() => undefined);
+      } catch (error) {
+        failed++;
+        const statusCode = (error as { statusCode?: number }).statusCode;
+        const permanent = statusCode === 404 || statusCode === 410;
         const nextCount = (sub.failure_count ?? 0) + 1;
-        await admin
-          .from("push_subscriptions")
-          .update(
-            nextCount >= FAILURE_RETIRE_THRESHOLD
-              ? { failure_count: nextCount, disabled_at: new Date().toISOString() }
-              : { failure_count: nextCount },
-          )
-          .eq("id", sub.id);
-        if (nextCount >= FAILURE_RETIRE_THRESHOLD) pruned++;
+        const retired = permanent || nextCount >= FAILURE_RETIRE_THRESHOLD;
+        const attemptedAt = new Date();
+        const nextRetryAt = permanent || retired
+          ? null
+          : new Date(attemptedAt.getTime() + RETRY_BASE_MS * 2 ** Math.min(nextCount - 1, 5)).toISOString();
+
+        const { error: updateError } = await admin.from("push_subscriptions").update({
+            updated_at: attemptedAt.toISOString(),
+            last_failure_at: attemptedAt.toISOString(),
+            failure_count: nextCount,
+            disabled_at: retired ? attemptedAt.toISOString() : null,
+          }).eq("id", sub.id);
+        if (isSchemaDriftError(updateError) && retired) {
+          await admin.from("push_subscriptions")
+            .update({ disabled_at: attemptedAt.toISOString() })
+            .eq("id", sub.id);
+        }
+        await admin.from("notification_delivery_attempts").insert({
+            notification_id: notification.id,
+            subscription_id: sub.id,
+            attempt_no: nextCount,
+            status: permanent || retired ? "permanent_failure" : "retryable_failure",
+            provider_status: statusCode ?? null,
+            failure_class: classifyFailure(statusCode),
+            next_retry_at: nextRetryAt,
+          }).then(() => undefined);
+        if (retired) pruned++;
         logEvent("warn", "push_send_failed", {
           user_id: userId.slice(0, 8),
           status: statusCode ?? "unknown",
+          failure_class: classifyFailure(statusCode),
           failure_count: nextCount,
         });
       }
     }),
   );
 
-  return { delivered, pruned, logged: true };
+  await admin
+    .from("notifications")
+    .update({
+      status: delivered > 0 ? (failed > 0 ? "partially_sent" : "sent") : "failed",
+      sent_at: delivered > 0 ? new Date().toISOString() : null,
+    })
+    .eq("id", notification.id)
+    .then(() => undefined);
+
+  return {
+    notificationId: notification.id,
+    delivered,
+    failed,
+    pruned,
+    logged: true,
+    duplicate: false,
+  };
 }
