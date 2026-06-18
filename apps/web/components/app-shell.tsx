@@ -81,6 +81,18 @@ export function AppShell({ user, navBadges, usage, banner, children }: Props) {
   useEffect(() => { if (!open) menuButtonRef.current?.focus(); }, [open]);
 
   async function signOut() {
+    if ("serviceWorker" in navigator) {
+      const registration = await navigator.serviceWorker.getRegistration().catch(() => undefined);
+      const subscription = await registration?.pushManager.getSubscription().catch(() => null);
+      if (subscription) {
+        await fetch("/api/push/unsubscribe", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ endpoint: subscription.endpoint }),
+        }).catch(() => undefined);
+        await subscription.unsubscribe().catch(() => undefined);
+      }
+    }
     const supabase = createSupabaseBrowserClient();
     await supabase.auth.signOut();
     router.push("/");

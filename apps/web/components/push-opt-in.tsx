@@ -27,6 +27,7 @@ export function PushOptIn({
 }) {
   const [state, setState] = useState<State>("loading");
   const [busy, setBusy] = useState(false);
+  const [testing, setTesting] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -51,6 +52,13 @@ export function PushOptIn({
         return;
       }
       const existing = await registration.pushManager.getSubscription();
+      if (existing) {
+        await fetch("/api/push/subscribe", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(existing.toJSON()),
+        }).catch(() => undefined);
+      }
       if (!cancelled) setState(existing ? "on" : "off");
     })();
     return () => {
@@ -65,8 +73,11 @@ export function PushOptIn({
       const permission = await Notification.requestPermission();
       if (permission !== "granted") {
         setState(permission === "denied" ? "blocked" : "off");
-        toast.error("Notifications not enabled", {
-          description: "You can allow them anytime from this page.",
+        toast.info(permission === "denied" ? "Notifications are blocked" : "No changes made", {
+          description:
+            permission === "denied"
+              ? "Use your browser's site permissions to re-enable them."
+              : "You can enable notifications here whenever you're ready.",
         });
         return;
       }
@@ -98,6 +109,22 @@ export function PushOptIn({
       });
     } finally {
       setBusy(false);
+    }
+  }
+
+  async function sendTest() {
+    setTesting(true);
+    try {
+      const res = await fetch("/api/push/test", { method: "POST" });
+      const data = (await res.json().catch(() => null)) as { message?: string } | null;
+      if (!res.ok) throw new Error();
+      toast.success(data?.message ?? "Test notification sent.");
+    } catch {
+      toast.error("Test notification could not be sent", {
+        description: "Check this device's browser permission and try again.",
+      });
+    } finally {
+      setTesting(false);
     }
   }
 
@@ -196,26 +223,39 @@ export function PushOptIn({
         </div>
       </div>
 
-      <button
-        type="button"
-        onClick={isOn ? disable : enable}
-        disabled={busy}
-        aria-pressed={isOn}
-        className={`press inline-flex min-h-11 w-full shrink-0 items-center justify-center gap-2 rounded-md px-4 text-sm font-semibold transition focus-ring disabled:opacity-60 sm:w-auto ${
-          isOn
-            ? "border border-border bg-card text-muted-foreground hover:border-primary/40 hover:text-foreground"
-            : "bg-primary text-primary-foreground hover:bg-primary/90"
-        }`}
-      >
-        {busy ? (
-          <Loader2 className="h-4 w-4 animate-spin" />
-        ) : isOn ? (
-          <BellOff className="h-3.5 w-3.5" />
-        ) : (
-          <BellRing className="h-3.5 w-3.5" />
+      <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row">
+        {isOn && (
+          <button
+            type="button"
+            onClick={sendTest}
+            disabled={testing}
+            className="press inline-flex min-h-11 items-center justify-center gap-2 rounded-md border border-border bg-card px-4 text-sm font-semibold text-muted-foreground transition hover:text-foreground focus-ring disabled:opacity-60"
+          >
+            {testing && <Loader2 className="h-4 w-4 animate-spin" />}
+            Send test
+          </button>
         )}
-        {isOn ? "Turn off" : "Enable on this device"}
-      </button>
+        <button
+          type="button"
+          onClick={isOn ? disable : enable}
+          disabled={busy}
+          aria-pressed={isOn}
+          className={`press inline-flex min-h-11 shrink-0 items-center justify-center gap-2 rounded-md px-4 text-sm font-semibold transition focus-ring disabled:opacity-60 ${
+            isOn
+              ? "border border-border bg-card text-muted-foreground hover:border-primary/40 hover:text-foreground"
+              : "bg-primary text-primary-foreground hover:bg-primary/90"
+          }`}
+        >
+          {busy ? (
+            <Loader2 className="h-4 w-4 animate-spin" />
+          ) : isOn ? (
+            <BellOff className="h-3.5 w-3.5" />
+          ) : (
+            <BellRing className="h-3.5 w-3.5" />
+          )}
+          {isOn ? "Turn off" : "Enable on this device"}
+        </button>
+      </div>
     </div>
   );
 }

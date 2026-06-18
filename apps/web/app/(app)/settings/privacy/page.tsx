@@ -1,14 +1,19 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
-import { Download, Trash2, ShieldCheck, Database, FileLock2, BellRing } from "lucide-react";
+import { Download, Trash2, ShieldCheck, Database, FileLock2, BellRing, MonitorSmartphone } from "lucide-react";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { CONSENT_LABELS, getUserConsents, type ConsentPurpose } from "@/lib/dpdp/consent";
 import { submitConsents } from "@/app/consent/actions";
-import { requestDataExport, requestErasure, updateNotificationPrefs } from "./actions";
+import { requestDataExport, requestErasure, revokePushDevice, updateNotificationPrefs } from "./actions";
 import { SectionCard } from "@/components/section-card";
 import { PushOptIn } from "@/components/push-opt-in";
 import { clientEnv } from "@/lib/env";
-import { NOTIFICATION_KINDS, NOTIFICATION_KIND_LABELS, isKindEnabled } from "@/lib/push/catalog";
+import {
+  DEFAULT_NOTIFICATION_FREQUENCIES,
+  NOTIFICATION_KINDS,
+  NOTIFICATION_KIND_LABELS,
+  getKindFrequency,
+} from "@/lib/push/catalog";
 
 export const metadata: Metadata = { title: "Privacy settings" };
 
@@ -26,12 +31,21 @@ export default async function PrivacySettingsPage() {
   ][];
 
   const notificationsOn = current.notifications ?? false;
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("notification_prefs")
-    .eq("id", user.id)
-    .maybeSingle();
-  const notificationPrefs = (profile?.notification_prefs as Record<string, unknown> | null) ?? null;
+  const [{ data: preferenceRow }, { data: devices }] = await Promise.all([
+    supabase
+      .from("notification_preferences")
+      .select("push_enabled, timezone, quiet_hours_enabled, quiet_hours_start, quiet_hours_end, detailed_content, category_frequencies")
+      .eq("user_id", user.id)
+      .maybeSingle(),
+    supabase
+      .from("push_subscriptions")
+      .select("id, device_name, user_agent, created_at, last_success_at, disabled_at")
+      .eq("user_id", user.id)
+      .order("created_at", { ascending: false }),
+  ]);
+  const notificationPrefs =
+    (preferenceRow?.category_frequencies as Record<string, unknown> | null) ??
+    DEFAULT_NOTIFICATION_FREQUENCIES;
 
   return (
     <div className="mx-auto max-w-2xl space-y-5 pb-8">
@@ -115,25 +129,97 @@ export default async function PrivacySettingsPage() {
             action={updateNotificationPrefs}
             className="mt-4 space-y-2.5 border-t border-border/60 pt-4"
           >
-            <p className="text-xs font-semibold text-muted-foreground">What to notify me about</p>
-            {NOTIFICATION_KINDS.map((kind) => (
-              <label
-                key={kind}
-                className="flex cursor-pointer items-start gap-3 rounded-lg border border-border bg-secondary/40 p-3 transition hover:border-primary/30 hover:bg-secondary"
-              >
+            <label className="flex items-start gap-3 rounded-lg border border-border bg-secondary/40 p-3">
+              <input
+                type="checkbox"
+                name="push_enabled"
+                defaultChecked={preferenceRow?.push_enabled ?? true}
+                className="mt-0.5 h-4 w-4 shrink-0 accent-[hsl(var(--primary))]"
+              />
+              <span>
+                <span className="block text-sm font-medium">Master push toggle</span>
+                <span className="mt-0.5 block text-xs text-muted-foreground">
+                  Keeps in-app notifications available while pausing browser delivery.
+                </span>
+              </span>
+            </label>
+
+            <div className="grid gap-3 sm:grid-cols-2">
+              <label className="text-xs font-medium text-muted-foreground">
+                Timezone
                 <input
-                  type="checkbox"
-                  name={kind}
-                  defaultChecked={isKindEnabled(notificationPrefs, kind)}
-                  className="mt-0.5 h-4 w-4 shrink-0 rounded accent-[hsl(var(--primary))]"
+                  name="timezone"
+                  defaultValue={preferenceRow?.timezone ?? "Asia/Kolkata"}
+                  className="mt-1.5 min-h-11 w-full rounded-md border border-border bg-background px-3 text-sm text-foreground focus-ring"
                 />
+              </label>
+              <label className="text-xs font-medium text-muted-foreground">
+                Quiet hours
+                <span className="mt-1.5 flex items-center gap-2">
+                  <input
+                    type="time"
+                    name="quiet_hours_start"
+                    defaultValue={(preferenceRow?.quiet_hours_start ?? "22:00").slice(0, 5)}
+                    className="min-h-11 min-w-0 flex-1 rounded-md border border-border bg-background px-2 text-sm focus-ring"
+                  />
+                  <span aria-hidden>to</span>
+                  <input
+                    type="time"
+                    name="quiet_hours_end"
+                    defaultValue={(preferenceRow?.quiet_hours_end ?? "08:00").slice(0, 5)}
+                    className="min-h-11 min-w-0 flex-1 rounded-md border border-border bg-background px-2 text-sm focus-ring"
+                  />
+                </span>
+              </label>
+            </div>
+            <label className="flex items-center gap-2 text-xs text-muted-foreground">
+              <input
+                type="checkbox"
+                name="quiet_hours_enabled"
+                defaultChecked={preferenceRow?.quiet_hours_enabled ?? false}
+                className="h-4 w-4 accent-[hsl(var(--primary))]"
+              />
+              Pause non-critical notifications during quiet hours
+            </label>
+            <label className="flex items-center gap-2 text-xs text-muted-foreground">
+              <input
+                type="checkbox"
+                name="detailed_content"
+                defaultChecked={preferenceRow?.detailed_content ?? false}
+                className="h-4 w-4 accent-[hsl(var(--primary))]"
+              />
+              Allow detailed notification text on the lock screen
+            </label>
+
+            <p className="pt-2 text-xs font-semibold text-muted-foreground">What to notify me about</p>
+            {NOTIFICATION_KINDS.map((kind) => (
+              <div
+                key={kind}
+                className="flex flex-col gap-3 rounded-lg border border-border bg-secondary/40 p-3 sm:flex-row sm:items-center sm:justify-between"
+              >
                 <div className="min-w-0 flex-1">
                   <div className="text-sm font-medium">{NOTIFICATION_KIND_LABELS[kind].title}</div>
                   <p className="mt-0.5 text-xs leading-relaxed text-muted-foreground">
                     {NOTIFICATION_KIND_LABELS[kind].description}
                   </p>
                 </div>
-              </label>
+                <select
+                  name={kind}
+                  defaultValue={getKindFrequency(notificationPrefs, kind)}
+                  disabled={NOTIFICATION_KIND_LABELS[kind].transactional}
+                  aria-label={`${NOTIFICATION_KIND_LABELS[kind].title} frequency`}
+                  className="min-h-11 rounded-md border border-border bg-background px-3 text-sm capitalize focus-ring disabled:opacity-70"
+                >
+                  {NOTIFICATION_KIND_LABELS[kind].frequencies.map((frequency) => (
+                    <option key={frequency} value={frequency}>
+                      {frequency.replace("_", " ")}
+                    </option>
+                  ))}
+                </select>
+                {NOTIFICATION_KIND_LABELS[kind].transactional && (
+                  <input type="hidden" name={kind} value="immediate" />
+                )}
+              </div>
             ))}
             <button
               type="submit"
@@ -142,6 +228,46 @@ export default async function PrivacySettingsPage() {
               Save notification preferences
             </button>
           </form>
+        )}
+
+        {notificationsOn && (
+          <div className="mt-5 border-t border-border/60 pt-4">
+            <div className="flex items-center gap-2">
+              <MonitorSmartphone className="h-4 w-4 text-muted-foreground" />
+              <p className="text-xs font-semibold text-muted-foreground">Registered devices</p>
+            </div>
+            <div className="mt-2 space-y-2">
+              {(devices ?? []).length === 0 ? (
+                <p className="rounded-lg border border-dashed border-border p-3 text-xs text-muted-foreground">
+                  No browser is currently subscribed.
+                </p>
+              ) : (
+                devices?.map((device) => (
+                  <div key={device.id} className="flex items-center justify-between gap-3 rounded-lg border border-border p-3">
+                    <div className="min-w-0">
+                      <p className="truncate text-sm font-medium">{device.device_name ?? "Web browser"}</p>
+                      <p className="mt-0.5 text-xs text-muted-foreground">
+                        {device.disabled_at
+                          ? "Inactive"
+                          : device.last_success_at
+                            ? `Last delivered ${new Date(device.last_success_at).toLocaleDateString("en-IN")}`
+                            : "Subscribed; awaiting first delivery"}
+                      </p>
+                    </div>
+                    <form action={revokePushDevice}>
+                      <input type="hidden" name="subscription_id" value={device.id} />
+                      <button
+                        type="submit"
+                        className="min-h-11 rounded-md border border-border px-3 text-xs font-medium text-muted-foreground hover:text-destructive focus-ring"
+                      >
+                        Remove
+                      </button>
+                    </form>
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
         )}
       </SectionCard>
 

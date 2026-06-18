@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
+import { createHash } from "node:crypto";
 import { z } from "zod";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { notifyUser } from "@/lib/push/notify";
 
 export const dynamic = "force-dynamic";
 
@@ -37,6 +39,22 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Invalid subscription" }, { status: 400 });
   }
   const { endpoint, keys } = parsed.data;
+  const userAgent = req.headers.get("user-agent")?.slice(0, 300) ?? null;
+  const deviceName = userAgent
+    ? /iPhone|iPad/i.test(userAgent)
+      ? "Safari on iOS"
+      : /Android/i.test(userAgent)
+        ? "Browser on Android"
+        : /Edg\//i.test(userAgent)
+          ? "Microsoft Edge"
+          : /Firefox\//i.test(userAgent)
+            ? "Mozilla Firefox"
+            : /Chrome\//i.test(userAgent)
+              ? "Google Chrome"
+              : /Safari\//i.test(userAgent)
+                ? "Safari"
+                : "Web browser"
+    : "Web browser";
 
   // Upsert on endpoint — re-subscribing the same browser refreshes its keys and
   // re-activates a previously retired row. RLS guarantees user-scoping.
@@ -46,16 +64,27 @@ export async function POST(req: NextRequest) {
       endpoint,
       p256dh: keys.p256dh,
       auth: keys.auth,
-      user_agent: req.headers.get("user-agent")?.slice(0, 300) ?? null,
+      user_agent: userAgent,
+      device_name: deviceName,
       disabled_at: null,
       failure_count: 0,
       last_used_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
     },
     { onConflict: "endpoint" },
   );
   if (error) {
     return NextResponse.json({ error: "Could not save subscription" }, { status: 500 });
   }
+
+  await notifyUser(user.id, {
+    type: "security",
+    title: "Push notifications enabled",
+    body: "A browser was added to your ProdMatch notification devices.",
+    url: "/settings/privacy",
+    priority: "important",
+    idempotencyKey: `push_subscription_added:${createHash("sha256").update(endpoint).digest("hex").slice(0, 24)}`,
+  }).catch(() => undefined);
 
   return NextResponse.json({ ok: true });
 }

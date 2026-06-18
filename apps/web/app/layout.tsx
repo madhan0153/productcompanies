@@ -31,7 +31,7 @@ export const metadata: Metadata = {
       { url: "/logo-prodmatchai.png", type: "image/png" },
     ],
     apple: [
-      { url: "/logo-prodmatchai.png", sizes: "180x180", type: "image/png" },
+      { url: "/icons/apple-touch-icon.png", sizes: "180x180", type: "image/png" },
     ],
     shortcut: "/logo-prodmatchai.png",
   },

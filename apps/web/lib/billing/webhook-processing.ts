@@ -4,6 +4,7 @@ import { CHECKOUT_PRODUCTS, type CheckoutProductId } from "./catalog";
 import { grantCredits } from "./credits";
 import { getDodoProductId } from "./dodo";
 import { refreshEntitlements } from "./entitlements";
+import { notifyUser } from "@/lib/push/notify";
 
 function asRecord(value: unknown): Record<string, unknown> {
   return value && typeof value === "object" ? value as Record<string, unknown> : {};
@@ -123,6 +124,9 @@ export async function processDodoWebhook(input: {
     } else if (input.eventType === "refund.succeeded") {
       await handleRefundSucceeded(data, userId);
     }
+    if (userId) {
+      await notifyBillingEvent(userId, input.eventType, input.webhookId);
+    }
 
     await admin
       .from("payment_events")
@@ -142,6 +146,56 @@ export async function processDodoWebhook(input: {
   }
 
   return { duplicate: false, userId };
+}
+
+async function notifyBillingEvent(userId: string, eventType: string, webhookId: string) {
+  const messages: Record<string, { title: string; body: string; priority?: "critical" | "important" }> = {
+    "payment.succeeded": {
+      title: "Payment successful",
+      body: "Your ProdMatch payment was confirmed. Your receipt is available in billing.",
+    },
+    "payment.failed": {
+      title: "Payment needs attention",
+      body: "We couldn’t complete your payment. Review your billing details when convenient.",
+      priority: "critical",
+    },
+    "subscription.active": {
+      title: "Subscription activated",
+      body: "Your ProdMatch plan is active.",
+    },
+    "subscription.renewed": {
+      title: "Subscription renewed",
+      body: "Your ProdMatch plan renewed successfully.",
+    },
+    "subscription.failed": {
+      title: "Subscription payment failed",
+      body: "Your plan may be affected. Review billing to keep access uninterrupted.",
+      priority: "critical",
+    },
+    "subscription.cancelled": {
+      title: "Subscription cancelled",
+      body: "Your cancellation is recorded. Billing shows when access ends.",
+    },
+    "subscription.canceled": {
+      title: "Subscription cancelled",
+      body: "Your cancellation is recorded. Billing shows when access ends.",
+    },
+    "refund.succeeded": {
+      title: "Refund processed",
+      body: "Your refund was processed. Settlement timing depends on your payment provider.",
+    },
+  };
+  const message = messages[eventType];
+  if (!message) return;
+  await notifyUser(userId, {
+    type: "billing",
+    title: message.title,
+    body: message.body,
+    url: "/settings/billing",
+    priority: message.priority ?? "important",
+    idempotencyKey: `billing:${webhookId}`,
+    ttlSeconds: 3 * 24 * 60 * 60,
+  }).catch(() => undefined);
 }
 
 async function handleSubscriptionEvent(

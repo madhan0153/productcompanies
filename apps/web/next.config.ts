@@ -41,8 +41,8 @@ const securityHeaders = [
     key: "Content-Security-Policy",
     value: [
       "default-src 'self'",
-      // clarity.ms: Clarity loads its own sub-scripts from www.clarity.ms
-      "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://vercel.live https://www.clarity.ms",
+      // Clarity redirects its bootstrap to scripts.clarity.ms.
+      "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://vercel.live https://www.clarity.ms https://scripts.clarity.ms",
       "style-src 'self' 'unsafe-inline'",
       // Images: self + data URIs (avatars) + all HTTPS (company logos from Supabase Storage)
       "img-src 'self' data: blob: https:",
@@ -55,8 +55,8 @@ const securityHeaders = [
         "https://generativelanguage.googleapis.com",
         "https://*.ingest.sentry.io",
         "https://vitals.vercel-insights.com",
-        // Clarity sends telemetry to e.clarity.ms
-        "https://e.clarity.ms",
+        // Clarity uses regional telemetry hosts such as e.clarity.ms and t.clarity.ms.
+        "https://*.clarity.ms",
       ].filter(Boolean).join(" "),
       "font-src 'self' data:",
       // Disallow all plugins and object embeds

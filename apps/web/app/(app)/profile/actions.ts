@@ -25,6 +25,7 @@ import {
   transitionDurableJob,
 } from "@/lib/jobs/state";
 import { logEvent } from "@/lib/observability/log";
+import { notifyUser } from "@/lib/push/notify";
 import { validateResumePdf, verifyPdfPageCount } from "@/lib/security/pdf";
 import { checkRateLimitShared, userActionKey } from "@/lib/security/rate-limit";
 import { parsedResumeToJson } from "@/lib/resume/json-mapper";
@@ -770,6 +771,14 @@ async function uploadAndParseResumeInner(formData: FormData): Promise<UploadResu
         });
       }
       await failDurableJob(admin, jobId, errorCode, durableMessage);
+      await notifyUser(userId, {
+        type: "resume_updates",
+        title: "We couldn’t process your resume",
+        body: "Please review the PDF and try uploading it again.",
+        url: "/profile",
+        priority: "important",
+        idempotencyKey: `resume_parse_failed:${resumeVersionId}`,
+      }).catch(() => undefined);
     }
 
     let parsed: ParsedResume;
@@ -851,6 +860,14 @@ async function uploadAndParseResumeInner(formData: FormData): Promise<UploadResu
       }
 
       await transitionDurableJob(admin, jobId, "succeeded");
+      await notifyUser(userId, {
+        type: "resume_updates",
+        title: "Your resume is ready",
+        body: "We analysed your profile. Review it before computing your latest matches.",
+        url: "/profile/resume",
+        priority: "important",
+        idempotencyKey: `resume_parse_ready:${resumeVersionId}`,
+      }).catch(() => undefined);
     } catch (err) {
       logEvent("warn", "resume_parse_post_processing_failed", {
         user_id: userId.slice(0, 8),

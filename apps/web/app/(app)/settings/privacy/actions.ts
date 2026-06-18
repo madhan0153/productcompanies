@@ -6,13 +6,14 @@ import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { sendErasureConfirmed } from "@/lib/email";
 import { logEvent } from "@/lib/observability/log";
-import { NOTIFICATION_KINDS } from "@/lib/push/catalog";
+import {
+  NOTIFICATION_FREQUENCIES,
+  NOTIFICATION_KINDS,
+  NOTIFICATION_KIND_LABELS,
+  type NotificationFrequency,
+} from "@/lib/push/catalog";
 import type { DpdpEventType } from "@/lib/supabase/types";
 
-// Per-category push preferences. The `notifications` consent is the legal gate
-// (handled in the consent form); this only tunes which categories fire. Stored
-// as explicit booleans so an unchecked box mutes that category (false), while
-// any category left out of the map stays enabled by default.
 export async function updateNotificationPrefs(formData: FormData) {
   const supabase = await createSupabaseServerClient();
   const {
@@ -20,12 +21,51 @@ export async function updateNotificationPrefs(formData: FormData) {
   } = await supabase.auth.getUser();
   if (!user) redirect("/auth/login");
 
-  const prefs: Record<string, boolean> = {};
+  const frequencies: Record<string, NotificationFrequency> = {};
   for (const kind of NOTIFICATION_KINDS) {
-    prefs[kind] = formData.get(kind) === "on";
+    const allowed = NOTIFICATION_KIND_LABELS[kind].frequencies;
+    const requested = String(formData.get(kind) ?? "");
+    frequencies[kind] =
+      NOTIFICATION_FREQUENCIES.includes(requested as NotificationFrequency) &&
+      allowed.includes(requested as NotificationFrequency)
+        ? (requested as NotificationFrequency)
+        : allowed[0];
   }
 
-  await supabase.from("profiles").update({ notification_prefs: prefs }).eq("id", user.id);
+  const timezone = String(formData.get("timezone") ?? "Asia/Kolkata").slice(0, 80);
+  try {
+    new Intl.DateTimeFormat("en", { timeZone: timezone }).format();
+  } catch {
+    throw new Error("Invalid timezone");
+  }
+
+  await supabase.from("notification_preferences").upsert(
+    {
+      user_id: user.id,
+      push_enabled: formData.get("push_enabled") === "on",
+      timezone,
+      quiet_hours_enabled: formData.get("quiet_hours_enabled") === "on",
+      quiet_hours_start: String(formData.get("quiet_hours_start") ?? "22:00"),
+      quiet_hours_end: String(formData.get("quiet_hours_end") ?? "08:00"),
+      detailed_content: formData.get("detailed_content") === "on",
+      category_frequencies: frequencies,
+      updated_at: new Date().toISOString(),
+    },
+    { onConflict: "user_id" },
+  );
+  revalidatePath("/settings/privacy");
+}
+
+export async function revokePushDevice(formData: FormData) {
+  const supabase = await createSupabaseServerClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) redirect("/auth/login");
+
+  const id = String(formData.get("subscription_id") ?? "");
+  if (!/^[0-9a-f-]{36}$/i.test(id)) return;
+  await supabase.from("push_subscriptions").delete().eq("id", id).eq("user_id", user.id);
   revalidatePath("/settings/privacy");
 }
 

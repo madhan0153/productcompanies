@@ -14,6 +14,7 @@ import {
   transitionDurableJob,
 } from "@/lib/jobs/state";
 import { logEvent } from "@/lib/observability/log";
+import { notifyUser } from "@/lib/push/notify";
 
 interface EnqueueOptions {
   /** Force a full recompute, for example after resume upload. */
@@ -64,6 +65,18 @@ async function runTrackedRecompute(
       },
     });
     if (!published) await transitionDurableJob(admin, jobId, "succeeded");
+    await notifyUser(userId, {
+      type: "resume_updates",
+      title: "Your latest matches are ready",
+      body:
+        result.new_matches > 0
+          ? `We found ${result.new_matches} new relevant role${result.new_matches === 1 ? "" : "s"}.`
+          : "Your role rankings are up to date.",
+      url: "/matches",
+      data: { count: result.new_matches },
+      priority: "important",
+      idempotencyKey: `match_compute_ready:${jobId}`,
+    }).catch(() => undefined);
     return result;
   } catch (err) {
     if (jobId && !published) {
