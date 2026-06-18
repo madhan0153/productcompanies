@@ -26,6 +26,10 @@ function classifyFailure(statusCode: number | undefined) {
   return "network_or_unknown";
 }
 
+function isSchemaDriftError(error: { code?: string | null } | null | undefined): boolean {
+  return error?.code === "42703" || error?.code === "PGRST204" || error?.code === "PGRST205";
+}
+
 export async function notifyUser(userId: string, input: PushPayload): Promise<NotifyResult> {
   const payload = PushPayloadSchema.parse(input);
   const admin = createSupabaseAdminClient();
@@ -56,7 +60,7 @@ export async function notifyUser(userId: string, input: PushPayload): Promise<No
 
   const now = new Date();
   const expiresAt = new Date(now.getTime() + payload.ttlSeconds * 1000).toISOString();
-  const { data: notification, error: notificationError } = await admin
+  let { data: notification, error: notificationError } = await admin
     .from("notifications")
     .insert({
       user_id: userId,
@@ -72,6 +76,23 @@ export async function notifyUser(userId: string, input: PushPayload): Promise<No
     })
     .select("id, status")
     .maybeSingle();
+
+  if (isSchemaDriftError(notificationError)) {
+    const fallback = await admin
+      .from("notifications")
+      .insert({
+        user_id: userId,
+        type: payload.type,
+        title: payload.title,
+        body: payload.body ?? null,
+        url: safeNotificationPath(payload.url),
+        data: (payload.data ?? {}) as Json,
+      })
+      .select("id")
+      .maybeSingle();
+    notification = fallback.data ? { id: fallback.data.id, status: "pending" } : null;
+    notificationError = fallback.error;
+  }
 
   if (notificationError?.code === "23505" && payload.idempotencyKey) {
     return { ...empty, logged: true, duplicate: true };
@@ -98,11 +119,21 @@ export async function notifyUser(userId: string, input: PushPayload): Promise<No
     return { ...empty, notificationId: notification.id, logged: true };
   }
 
-  const { data: subs } = await admin
+  let { data: subs, error: subscriptionsError } = await admin
     .from("push_subscriptions")
     .select("id, endpoint, p256dh, auth, failure_count")
     .eq("user_id", userId)
     .is("disabled_at", null);
+  if (isSchemaDriftError(subscriptionsError)) {
+    const fallback = await admin
+      .from("push_subscriptions")
+      .select("id, endpoint, p256dh, auth")
+      .eq("user_id", userId)
+      .is("disabled_at", null);
+    subs = (fallback.data ?? []).map((sub) => ({ ...sub, failure_count: 0 }));
+    subscriptionsError = fallback.error;
+  }
+  if (subscriptionsError) throw subscriptionsError;
   if (!subs?.length) {
     await admin.from("notifications").update({ status: "in_app_only" }).eq("id", notification.id);
     return { ...empty, notificationId: notification.id, logged: true };
@@ -142,19 +173,20 @@ export async function notifyUser(userId: string, input: PushPayload): Promise<No
         );
         delivered++;
         const sentAt = new Date().toISOString();
-        await Promise.all([
-          admin.from("push_subscriptions").update({
+        const { error: updateError } = await admin.from("push_subscriptions").update({
             updated_at: sentAt,
             last_used_at: sentAt,
             last_success_at: sentAt,
             failure_count: 0,
-          }).eq("id", sub.id),
-          admin.from("notification_delivery_attempts").insert({
+          }).eq("id", sub.id);
+        if (isSchemaDriftError(updateError)) {
+          await admin.from("push_subscriptions").update({ disabled_at: null }).eq("id", sub.id);
+        }
+        await admin.from("notification_delivery_attempts").insert({
             notification_id: notification.id,
             subscription_id: sub.id,
             status: "sent",
-          }),
-        ]);
+          }).then(() => undefined);
       } catch (error) {
         failed++;
         const statusCode = (error as { statusCode?: number }).statusCode;
@@ -166,14 +198,18 @@ export async function notifyUser(userId: string, input: PushPayload): Promise<No
           ? null
           : new Date(attemptedAt.getTime() + RETRY_BASE_MS * 2 ** Math.min(nextCount - 1, 5)).toISOString();
 
-        await Promise.all([
-          admin.from("push_subscriptions").update({
+        const { error: updateError } = await admin.from("push_subscriptions").update({
             updated_at: attemptedAt.toISOString(),
             last_failure_at: attemptedAt.toISOString(),
             failure_count: nextCount,
             disabled_at: retired ? attemptedAt.toISOString() : null,
-          }).eq("id", sub.id),
-          admin.from("notification_delivery_attempts").insert({
+          }).eq("id", sub.id);
+        if (isSchemaDriftError(updateError) && retired) {
+          await admin.from("push_subscriptions")
+            .update({ disabled_at: attemptedAt.toISOString() })
+            .eq("id", sub.id);
+        }
+        await admin.from("notification_delivery_attempts").insert({
             notification_id: notification.id,
             subscription_id: sub.id,
             attempt_no: nextCount,
@@ -181,8 +217,7 @@ export async function notifyUser(userId: string, input: PushPayload): Promise<No
             provider_status: statusCode ?? null,
             failure_class: classifyFailure(statusCode),
             next_retry_at: nextRetryAt,
-          }),
-        ]);
+          }).then(() => undefined);
         if (retired) pruned++;
         logEvent("warn", "push_send_failed", {
           user_id: userId.slice(0, 8),
@@ -200,7 +235,8 @@ export async function notifyUser(userId: string, input: PushPayload): Promise<No
       status: delivered > 0 ? (failed > 0 ? "partially_sent" : "sent") : "failed",
       sent_at: delivered > 0 ? new Date().toISOString() : null,
     })
-    .eq("id", notification.id);
+    .eq("id", notification.id)
+    .then(() => undefined);
 
   return {
     notificationId: notification.id,

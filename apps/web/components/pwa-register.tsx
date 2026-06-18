@@ -3,6 +3,17 @@
 import { useEffect } from "react";
 import { toast } from "sonner";
 
+interface BeforeInstallPromptEvent extends Event {
+  prompt: () => Promise<void>;
+  userChoice: Promise<{ outcome: "accepted" | "dismissed" }>;
+}
+
+declare global {
+  interface Window {
+    __prodmatchInstallPrompt?: BeforeInstallPromptEvent;
+  }
+}
+
 // Registers the service worker (public/sw.js) and drives a *controlled* update
 // flow: when a new SW finishes installing while an old one still controls the
 // page, we surface a sonner toast instead of silently hot-swapping assets. The
@@ -15,6 +26,13 @@ export function PwaRegister() {
   useEffect(() => {
     if (process.env.NODE_ENV !== "production") return;
     if (typeof window === "undefined" || !("serviceWorker" in navigator)) return;
+
+    const captureInstallPrompt = (event: Event) => {
+      event.preventDefault();
+      window.__prodmatchInstallPrompt = event as BeforeInstallPromptEvent;
+      window.dispatchEvent(new CustomEvent("prodmatch:install-available"));
+    };
+    window.addEventListener("beforeinstallprompt", captureInstallPrompt);
 
     let reloading = false;
     const onControllerChange = () => {
@@ -69,6 +87,7 @@ export function PwaRegister() {
     }
 
     return () => {
+      window.removeEventListener("beforeinstallprompt", captureInstallPrompt);
       navigator.serviceWorker.removeEventListener("controllerchange", onControllerChange);
     };
   }, []);

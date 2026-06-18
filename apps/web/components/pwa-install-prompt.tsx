@@ -7,7 +7,6 @@ import { LogoMark } from "@/components/logo-mark";
 import { useEscapeKey } from "@/hooks/use-escape-key";
 
 const DISMISSED_KEY = "prodmatch.pwa.install.dismissed_until";
-const INSTALLED_KEY = "prodmatch.pwa.installed";
 const VISITS_KEY = "prodmatch.pwa.engaged_sessions";
 const SESSION_KEY = "prodmatch.pwa.session_counted";
 const COOLDOWN_MS = 14 * 24 * 60 * 60 * 1000;
@@ -15,6 +14,12 @@ const COOLDOWN_MS = 14 * 24 * 60 * 60 * 1000;
 interface BeforeInstallPromptEvent extends Event {
   prompt: () => Promise<void>;
   userChoice: Promise<{ outcome: "accepted" | "dismissed" }>;
+}
+
+declare global {
+  interface Window {
+    __prodmatchInstallPrompt?: BeforeInstallPromptEvent;
+  }
 }
 
 type ManualInstall = "ios" | "mac-safari" | null;
@@ -62,7 +67,7 @@ export function PwaInstallPrompt() {
   });
 
   useEffect(() => {
-    if (isStandalone() || localStorage.getItem(INSTALLED_KEY) === "true") return;
+    if (isStandalone()) return;
     if (Date.now() < Number(localStorage.getItem(DISMISSED_KEY) ?? 0)) return;
 
     if (!sessionStorage.getItem(SESSION_KEY)) {
@@ -86,18 +91,33 @@ export function PwaInstallPrompt() {
   }, [pathname]);
 
   useEffect(() => {
-    const handler = (event: Event) => {
-      event.preventDefault();
-      setDeferred(event as BeforeInstallPromptEvent);
+    const remember = (event?: Event) => {
+      const prompt = event
+        ? event as BeforeInstallPromptEvent
+        : window.__prodmatchInstallPrompt;
+      if (!prompt) return;
+      prompt.preventDefault();
+      window.__prodmatchInstallPrompt = prompt;
+      setDeferred(prompt);
     };
-    window.addEventListener("beforeinstallprompt", handler);
-    return () => window.removeEventListener("beforeinstallprompt", handler);
+    const nativeHandler = (event: Event) => {
+      event.preventDefault();
+      remember(event);
+    };
+    const capturedHandler = () => remember();
+    remember();
+    window.addEventListener("beforeinstallprompt", nativeHandler);
+    window.addEventListener("prodmatch:install-available", capturedHandler);
+    return () => {
+      window.removeEventListener("beforeinstallprompt", nativeHandler);
+      window.removeEventListener("prodmatch:install-available", capturedHandler);
+    };
   }, []);
 
   useEffect(() => {
     const handler = () => {
-      localStorage.setItem(INSTALLED_KEY, "true");
       trackClarity("pwa_install", "true");
+      delete window.__prodmatchInstallPrompt;
       setDeferred(null);
       setDismissed(true);
     };
@@ -109,6 +129,7 @@ export function PwaInstallPrompt() {
     localStorage.setItem(DISMISSED_KEY, String(Date.now() + COOLDOWN_MS));
     trackClarity("pwa_dismiss", "true");
     setDeferred(null);
+    delete window.__prodmatchInstallPrompt;
     setManual(null);
     setDismissed(true);
   }

@@ -30,7 +30,7 @@ export function ParseStatusBanner({
   useEffect(() => {
     if (!parsing) return;
     let cancelled = false;
-    const HARD_CAP_MS = 3 * 60 * 1000;
+    const HARD_CAP_MS = 16 * 60 * 1000;
     const startMs = Date.now();
 
     async function tick() {
@@ -84,7 +84,7 @@ export function ParseStatusBanner({
             Resume parse in progress
           </p>
           <p className="mt-0.5 text-xs text-muted-foreground">
-            Our AI is reading your PDF. This page will update automatically when it&apos;s done — usually 15–30 seconds.
+            Your PDF is queued for secure extraction and profile analysis. You can leave this page; retries continue safely.
           </p>
         </div>
       </motion.div>

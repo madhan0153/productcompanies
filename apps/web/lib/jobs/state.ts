@@ -50,6 +50,68 @@ export interface DurableJob {
   queued_at: string;
   started_at: string | null;
   finished_at: string | null;
+  attempts?: number;
+  payload?: Record<string, unknown>;
+}
+
+export async function claimDurableJob(
+  admin: AdminClient,
+  jobId: string,
+): Promise<{ attempts: number } | null> {
+  const { data: current, error: readError } = await admin
+    .from("background_jobs")
+    .select("attempts, queued_at")
+    .eq("id", jobId)
+    .eq("status", "queued")
+    .maybeSingle() as {
+      data: { attempts: number | null; queued_at: string | null } | null;
+      error: SupabaseError;
+    };
+  assertNoSupabaseError(readError, "Could not read queued background job");
+  if (!current) return null;
+  if (current.queued_at && new Date(current.queued_at).getTime() > Date.now()) return null;
+
+  const attempts = (current.attempts ?? 0) + 1;
+  const { data, error } = await admin
+    .from("background_jobs")
+    .update({
+      status: "running",
+      attempts,
+      started_at: new Date().toISOString(),
+      finished_at: null,
+      error_code: null,
+      error_message: null,
+    } as any)
+    .eq("id", jobId)
+    .eq("status", "queued")
+    .select("id")
+    .maybeSingle() as { data: { id: string } | null; error: SupabaseError };
+  assertNoSupabaseError(error, "Could not claim background job");
+  return data ? { attempts } : null;
+}
+
+export async function requeueDurableJob(
+  admin: AdminClient,
+  jobId: string,
+  input: {
+    errorCode: string;
+    errorMessage: string;
+    delayMs: number;
+  },
+): Promise<void> {
+  const { error } = await admin
+    .from("background_jobs")
+    .update({
+      status: "queued",
+      queued_at: new Date(Date.now() + input.delayMs).toISOString(),
+      started_at: null,
+      finished_at: null,
+      error_code: input.errorCode,
+      error_message: input.errorMessage,
+    } as any)
+    .eq("id", jobId)
+    .eq("status", "running");
+  assertNoSupabaseError(error as SupabaseError, "Could not requeue background job");
 }
 
 export function assertNoSupabaseError(error: SupabaseError, message: string): void {
@@ -80,7 +142,7 @@ export async function createDurableJob(
       idempotency_key: input.idempotencyKey ?? null,
       payload: input.payload ?? {},
     } as any)
-    .select("id, user_id, job_type, status, resume_version_id, source, error_code, error_message, queued_at, started_at, finished_at")
+    .select("id, user_id, job_type, status, resume_version_id, source, error_code, error_message, queued_at, started_at, finished_at, attempts, payload")
     .maybeSingle() as { data: DurableJob | null; error: SupabaseError };
 
   assertNoSupabaseError(error, "Could not create background job");
@@ -174,7 +236,7 @@ export async function findActiveJob(
 ): Promise<DurableJob | null> {
   let query = admin
     .from("background_jobs")
-    .select("id, user_id, job_type, status, resume_version_id, source, error_code, error_message, queued_at, started_at, finished_at")
+    .select("id, user_id, job_type, status, resume_version_id, source, error_code, error_message, queued_at, started_at, finished_at, attempts, payload")
     .eq("user_id", input.userId)
     .eq("job_type", input.type)
     .in("status", [...ACTIVE_JOB_STATUSES])

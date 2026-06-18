@@ -220,7 +220,7 @@ export function ResumeUpload({ hasExisting, existingRole, existingDnaScore, isPa
   useEffect(() => {
     if (!pollingStartedAt) return;
     let cancelled = false;
-    const HARD_CAP_MS = 3 * 60 * 1000;
+    const HARD_CAP_MS = 16 * 60 * 1000;
     const startMs = Date.now();
 
     async function tick() {
@@ -257,7 +257,7 @@ export function ResumeUpload({ hasExisting, existingRole, existingDnaScore, isPa
         resetFileInput();
         setResult({
           ok: false,
-          error: "Parsing is taking unusually long. Refresh the page in a minute to see if it finished, or re-upload.",
+          error: "Resume processing did not finish after its retry window. Refresh once, then replace the PDF if it still shows as failed.",
           retryable: true,
         });
         return;

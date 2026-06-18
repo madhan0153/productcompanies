@@ -45,8 +45,12 @@ export function PushOptIn({
         if (!cancelled) setState("blocked");
         return;
       }
-      // The SW only registers in production; without it there's no push manager.
-      const registration = await navigator.serviceWorker.getRegistration();
+      // Registration is deferred until page load. Wait briefly instead of
+      // incorrectly declaring push inactive while the worker is still booting.
+      const registration = await Promise.race([
+        navigator.serviceWorker.ready,
+        new Promise<undefined>((resolve) => window.setTimeout(() => resolve(undefined), 8_000)),
+      ]);
       if (!registration) {
         if (!cancelled) setState("inactive");
         return;

@@ -29,9 +29,13 @@ export async function POST(req: NextRequest) {
     ttlSeconds: 10 * 60,
   });
 
-  return NextResponse.json({
-    ok: result.delivered > 0,
-    delivered: result.delivered,
-    message: result.delivered > 0 ? "Test notification sent." : "No active device accepted the test.",
-  });
+  const delivered = result.delivered > 0;
+  return NextResponse.json(
+    {
+      ok: delivered,
+      delivered: result.delivered,
+      message: delivered ? "Test notification sent." : "No active device accepted the test.",
+    },
+    { status: delivered ? 200 : 503 },
+  );
 }

@@ -20,7 +20,7 @@ export const metadata: Metadata = { title: "My Profile" };
 // Bumped from 60→90s so a cold start doesn't time out before the parse
 // completes. The resume-score + embedding work runs in after() and
 // therefore doesn't count against this budget.
-export const maxDuration = 90;
+export const maxDuration = 300;
 
 export default async function ProfilePage() {
   const supabase = await createSupabaseServerClient();

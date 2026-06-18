@@ -6,8 +6,6 @@ import { after } from "next/server";
 import { createHash } from "node:crypto";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
-import { parseResumePdf } from "@/lib/llm/prompts/resume-parse";
-import { LlmRunError } from "@/lib/llm/gemini";
 import { getUserConsents } from "@/lib/dpdp/consent";
 import { computeResumeScore } from "@/lib/matching/resume-score";
 import { computeDnaBreakdown } from "@/lib/matching/dna-breakdown";
@@ -21,17 +19,20 @@ import {
   failDurableJob,
   findActiveJob,
   reapStaleComputeJobs,
+  requeueDurableJob,
   supersedeActiveJobs,
-  transitionDurableJob,
 } from "@/lib/jobs/state";
 import { logEvent } from "@/lib/observability/log";
 import { notifyUser } from "@/lib/push/notify";
 import { validateResumePdf, verifyPdfPageCount } from "@/lib/security/pdf";
 import { checkRateLimitShared, userActionKey } from "@/lib/security/rate-limit";
-import { parsedResumeToJson } from "@/lib/resume/json-mapper";
 import type { ParsedResume } from "@/lib/llm/prompts/resume-parse";
 import type { SeniorityLevel } from "@/lib/supabase/types";
 import type { Json } from "@/lib/supabase/types";
+import {
+  MAX_RESUME_PARSE_ATTEMPTS,
+  processResumeParseJob,
+} from "@/lib/resume/process-job";
 
 // Content-only signature for the parsed resume — drives the Fit-Card cache.
 // Fields chosen to match what the Fit Card prompt reads. Stable across PDF
@@ -128,18 +129,6 @@ export async function refreshResumeScore(): Promise<{ ok: true; score: number } 
   revalidatePath("/dashboard");
   revalidatePath("/matches");
   return { ok: true, score: result.score };
-}
-
-// Upper bound on the background parse. Kept well under the /profile route's
-// maxDuration (90s) so failProcessing + cleanup always run before Vercel can
-// terminate the function. See the Promise.race in the upload after() block.
-const PARSE_TIMEOUT_MS = 55_000;
-
-class ResumeParseTimeout extends Error {
-  constructor() {
-    super("resume_parse_timeout");
-    this.name = "ResumeParseTimeout";
-  }
 }
 
 const INDIA_HUBS = ["Bengaluru", "Hyderabad", "Pune", "Gurugram", "Noida", "Delhi NCR", "Mumbai", "Chennai", "Remote-India"];
@@ -251,37 +240,6 @@ type PromotionResult =
 export type ComputeMatchesResult =
   | { ok: true; queuedAt: string }
   | { ok: false; error: string };
-
-function friendlyParseError(err: unknown): { message: string; retryable: boolean } {
-  if (err instanceof LlmRunError) {
-    switch (err.detail.kind) {
-      case "rate_limited":
-        return {
-          message: "We're a bit busy right now. Please try again in about a minute.",
-          retryable: true,
-        };
-      case "quota_disabled":
-        return {
-          message: "Resume processing is temporarily unavailable. Please try again later.",
-          retryable: true,
-        };
-      case "auth":
-        return {
-          message: "Resume processing is temporarily unavailable. Please try again later.",
-          retryable: false,
-        };
-      default:
-        return {
-          message: "We couldn't read your resume just now. Please try again.",
-          retryable: true,
-        };
-    }
-  }
-  return {
-    message: "We couldn't read your resume just now. Please try again.",
-    retryable: true,
-  };
-}
 
 async function buildActiveResumePatch(
   admin: ReturnType<typeof createSupabaseAdminClient>,
@@ -733,154 +691,18 @@ async function uploadAndParseResumeInner(formData: FormData): Promise<UploadResu
   // ("could not refresh your profile after starting the new parse")
   // even though the DB writes above succeeded. The page reads fresh data
   // from the DB on every load AND the client calls router.refresh() after
-  // a successful action, so the cache stays correct without it. We still
-  // revalidate from inside after() once the parse lands so other surfaces
-  // (/matches, /dashboard, /coach, /insights) see the new state.
+  // a successful action, so the cache stays correct without it. The worker
+  // persists canonical state, and later server renders read those rows.
 
-  // Encode bytes once on the request thread — buffers don't survive into
-  // after() reliably across edge/node boundaries.
-  const base64 = uploadBuffer.toString("base64");
-
+  // The worker reloads the private PDF from Storage. The upload request can
+  // finish immediately, and a retry never depends on request-local buffers.
   after(async () => {
-    await transitionDurableJob(admin, jobId, "running", { incrementAttempts: true });
-
-    async function failProcessing(errorCode: string, message: string): Promise<void> {
-      try {
-        await removeUploadedResume(admin, path);
-      } catch (cleanupErr) {
-        logEvent("warn", "resume_parse_cleanup_failed", {
-          user_id: userId.slice(0, 8),
-          resume_version_id: resumeVersionId,
-          error: cleanupErr instanceof Error ? cleanupErr.name : "unknown",
-        });
-      }
-      const { error } = await (admin.from("profiles") as any).update({
-        resume_parsing_at: null,
-        resume_parse_error: message,
-        pending_resume_version_id: null,
-      })
-        .eq("id", userId)
-        .eq("pending_resume_version_id", resumeVersionId);
-      const durableMessage = error
-        ? `${message} Support detail: profile failure state could not be saved.`
-        : message;
-      if (error) {
-        logEvent("warn", "resume_parse_failure_state_write_failed", {
-          user_id: userId.slice(0, 8),
-          resume_version_id: resumeVersionId,
-        });
-      }
-      await failDurableJob(admin, jobId, errorCode, durableMessage);
-      await notifyUser(userId, {
-        type: "resume_updates",
-        title: "We couldn’t process your resume",
-        body: "Please review the PDF and try uploading it again.",
-        url: "/profile",
-        priority: "important",
-        idempotencyKey: `resume_parse_failed:${resumeVersionId}`,
-      }).catch(() => undefined);
-    }
-
-    let parsed: ParsedResume;
-    try {
-      // Hard cap on the parse. runWithRetry can back off up to ~60s per model
-      // on rate-limited Gemini keys, and parseResumePdf runs a second full
-      // cascade on the text fallback — together that can exceed the serverless
-      // function budget. If Vercel kills the function mid-retry, resume_parsing_at
-      // is never cleared and the user is pinned on the "parsing" spinner until
-      // the staleness sweep. Racing a timeout guarantees we always reach
-      // failProcessing (which clears the row) inside the budget.
-      parsed = await Promise.race([
-        parseResumePdf(base64),
-        new Promise<never>((_, reject) =>
-          setTimeout(() => reject(new ResumeParseTimeout()), PARSE_TIMEOUT_MS),
-        ),
-      ]);
-    } catch (err) {
-      const isTimeout = err instanceof ResumeParseTimeout;
-      const message = isTimeout
-        ? "Parsing took too long and was stopped. Please try again — this usually clears within a minute."
-        : friendlyParseError(err).message;
-      logEvent("warn", "resume_parse_failed", {
-        user_id: userId.slice(0, 8),
-        resume_version_id: resumeVersionId,
-        error: isTimeout ? "parse_timeout" : err instanceof LlmRunError ? err.detail.kind : "parse_error",
-      });
-      await failProcessing(isTimeout ? "parse_timeout" : "parse_failed", message);
-      return;
-    }
-
-    try {
-      const { data: currentProfile, error: currentError } = await (admin
-        .from("profiles")
-        .select("pending_resume_version_id")
-        .eq("id", userId)
-        .maybeSingle() as any) as { data: { pending_resume_version_id: string | null } | null; error: { message: string } | null };
-      assertNoSupabaseError(currentError, "Could not verify pending resume version");
-      if (currentProfile?.pending_resume_version_id !== resumeVersionId) {
-        await removeUploadedResume(admin, path);
-        await transitionDurableJob(admin, jobId, "superseded", {
-          errorCode: "superseded",
-          errorMessage: "A newer resume upload superseded this parse.",
-        });
-        return;
-      }
-
-      const draftDnaBreakdown = computeDnaBreakdown(parsed);
-      const { error: draftError } = await (admin.from("resume_versions") as any).upsert({
-        id: resumeVersionId,
-        user_id: userId,
-        resume_parsed: parsed as unknown as Json,
-        resume_json: parsedResumeToJson(parsed) as unknown as Json,
-        resume_storage_path: path,
-        product_dna_score: draftDnaBreakdown.total,
-        dna_breakdown: draftDnaBreakdown as unknown as Json,
-        resume_signature: computeResumeSignature(parsed),
-        source: "overwrite",
-      }, { onConflict: "id" });
-      assertNoSupabaseError(draftError, "Could not save parsed resume draft");
-
-      const { data: queued, error: queuedError } = await (admin.from("profiles") as any).update({
-        resume_parsing_at: null,
-        resume_parse_error: null,
-        pending_resume_version_id: resumeVersionId,
-      })
-        .eq("id", userId)
-        .eq("pending_resume_version_id", resumeVersionId)
-        .select("id")
-        .maybeSingle();
-      assertNoSupabaseError(queuedError, "Could not mark parsed resume ready for review");
-      if (!queued) {
-        await removeUploadedResume(admin, path);
-        await transitionDurableJob(admin, jobId, "superseded", {
-          errorCode: "superseded",
-          errorMessage: "A newer resume upload superseded this parse.",
-        });
-        return;
-      }
-
-      await transitionDurableJob(admin, jobId, "succeeded");
-      await notifyUser(userId, {
-        type: "resume_updates",
-        title: "Your resume is ready",
-        body: "We analysed your profile. Review it before computing your latest matches.",
-        url: "/profile/resume",
-        priority: "important",
-        idempotencyKey: `resume_parse_ready:${resumeVersionId}`,
-      }).catch(() => undefined);
-    } catch (err) {
-      logEvent("warn", "resume_parse_post_processing_failed", {
-        user_id: userId.slice(0, 8),
-        resume_version_id: resumeVersionId,
-        error: err instanceof Error ? err.name : "unknown",
-      });
-      await failProcessing("post_processing_failed", "Resume processing failed after parsing. Please re-upload your PDF.");
-      return;
-    }
-
-    revalidatePath("/profile");
-    revalidatePath("/profile/resume");
-    revalidatePath("/dashboard");
+    await processResumeParseJob({
+      jobId,
+      userId,
+      resumeVersionId,
+      storagePath: path,
+    });
   });
 
   return { ok: true, processing: true, startedAt };
@@ -928,30 +750,72 @@ export async function getParseStatus(): Promise<ParseStatus> {
   const row = data as unknown as ProfileRow;
 
   if (row.resume_parsing_at) {
+    const admin = createSupabaseAdminClient();
+    const activeParse = await findActiveJob(admin, { userId: user.id, type: "resume_parse" });
+    if (
+      activeParse?.status === "running" &&
+      activeParse.started_at &&
+      Date.now() - new Date(activeParse.started_at).getTime() > 5 * 60 * 1000
+    ) {
+      if ((activeParse.attempts ?? 0) >= MAX_RESUME_PARSE_ATTEMPTS) {
+        const timeoutError = "Resume processing stopped before it could finish. Please upload the PDF again.";
+        await failDurableJob(admin, activeParse.id, "worker_interrupted", timeoutError);
+        await (admin.from("profiles") as any).update({
+          resume_parsing_at: null,
+          resume_parse_error: timeoutError,
+          pending_resume_version_id: null,
+        })
+          .eq("id", user.id)
+          .eq("pending_resume_version_id", activeParse.resume_version_id);
+        const storagePath = activeParse.payload?.storage_path;
+        if (typeof storagePath === "string") {
+          await admin.storage.from("resumes").remove([storagePath]);
+        }
+        await notifyUser(user.id, {
+          type: "resume_updates",
+          title: "We couldn't process your resume",
+          body: "Your previous resume is still safe. Please upload the PDF again.",
+          url: "/profile",
+          priority: "important",
+          idempotencyKey: `resume_parse_failed:${activeParse.resume_version_id ?? activeParse.id}`,
+        }).catch(() => undefined);
+        return { state: "failed", error: timeoutError };
+      }
+      await requeueDurableJob(admin, activeParse.id, {
+        errorCode: "worker_interrupted",
+        errorMessage: "The previous worker stopped before finishing. Retrying.",
+        delayMs: 0,
+      });
+    }
+    if (
+      activeParse?.status === "queued" &&
+      activeParse.resume_version_id &&
+      typeof activeParse.payload?.storage_path === "string" &&
+      new Date(activeParse.queued_at).getTime() <= Date.now()
+    ) {
+      after(async () => {
+        await processResumeParseJob({
+          jobId: activeParse.id,
+          userId: user.id,
+          resumeVersionId: activeParse.resume_version_id!,
+          storagePath: activeParse.payload!.storage_path as string,
+        });
+      });
+    }
     const startedMs = new Date(row.resume_parsing_at).getTime();
-    // Self-heal threshold. The in-function parse is hard-capped at
-    // PARSE_TIMEOUT_MS (55s) + DB writes, so a healthy parse always resolves
-    // well under 2 minutes. If the row is still "parsing" past 2.5 min, the
-    // background after() was killed or never ran (Vercel terminated the
-    // function) — clear the row so the user gets a retry instead of an endless
-    // spinner. Was 10 min, which left users stuck for that whole window.
-    const isStale = Number.isFinite(startedMs) && (Date.now() - startedMs) > 150 * 1000;
+    // A full multimodal + text-provider cascade can legitimately take several
+    // minutes. Only fail the profile after all durable retries have stopped.
+    const isStale = Number.isFinite(startedMs) &&
+      (Date.now() - startedMs) > 15 * 60 * 1000 &&
+      !activeParse;
     if (isStale) {
       const timeoutError = "Resume parsing timed out. Please re-upload your PDF.";
-      // Clear stale "in progress" state so the UI can recover instead of
-      // being pinned to an endless spinner when background execution dies.
-      const admin = createSupabaseAdminClient();
-
       const { error } = await (admin.from("profiles") as any).update({
         resume_parsing_at: null,
         resume_parse_error: timeoutError,
         pending_resume_version_id: null,
       }).eq("id", user.id);
       assertNoSupabaseError(error, "Could not clear stale resume parsing state");
-      const activeParse = await findActiveJob(admin, { userId: user.id, type: "resume_parse" });
-      if (activeParse) {
-        await failDurableJob(admin, activeParse.id, "timeout", timeoutError);
-      }
       return { state: "failed", error: timeoutError };
     }
     return { state: "parsing", startedAt: row.resume_parsing_at };

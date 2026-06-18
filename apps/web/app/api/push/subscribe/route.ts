@@ -57,22 +57,37 @@ export async function POST(req: NextRequest) {
     : "Web browser";
 
   // Upsert on endpoint — re-subscribing the same browser refreshes its keys and
-  // re-activates a previously retired row. RLS guarantees user-scoping.
-  const { error } = await supabase.from("push_subscriptions").upsert(
-    {
-      user_id: user.id,
-      endpoint,
-      p256dh: keys.p256dh,
-      auth: keys.auth,
-      user_agent: userAgent,
-      device_name: deviceName,
-      disabled_at: null,
-      failure_count: 0,
-      last_used_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
-    },
+  // re-activates a previously retired row. Keep this on the authenticated
+  // client so RLS prevents an endpoint owned by another user being reassigned.
+  const fullRow = {
+    user_id: user.id,
+    endpoint,
+    p256dh: keys.p256dh,
+    auth: keys.auth,
+    user_agent: userAgent,
+    device_name: deviceName,
+    disabled_at: null,
+    failure_count: 0,
+    last_used_at: new Date().toISOString(),
+    updated_at: new Date().toISOString(),
+  };
+  let { error } = await supabase.from("push_subscriptions").upsert(
+    fullRow,
     { onConflict: "endpoint" },
   );
+  if (error?.code === "42703" || error?.code === "PGRST204") {
+    ({ error } = await supabase.from("push_subscriptions").upsert(
+      {
+        user_id: user.id,
+        endpoint,
+        p256dh: keys.p256dh,
+        auth: keys.auth,
+        user_agent: userAgent,
+        disabled_at: null,
+      },
+      { onConflict: "endpoint" },
+    ));
+  }
   if (error) {
     return NextResponse.json({ error: "Could not save subscription" }, { status: 500 });
   }
