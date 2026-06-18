@@ -1,11 +1,12 @@
 import { NextResponse } from "next/server";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { serverEnv } from "@/lib/env";
+import { safeInternalPath } from "@/lib/auth/redirect";
 
 export async function GET(request: Request) {
   const url = new URL(request.url);
   const code = url.searchParams.get("code");
-  const next = url.searchParams.get("next") ?? "/dashboard";
+  const next = safeInternalPath(url.searchParams.get("next"));
   const origin = url.origin;
 
   if (!code) {
@@ -62,7 +63,7 @@ export async function GET(request: Request) {
 
   const redirectPath = needsConsent
     ? `/consent?next=${encodeURIComponent(next)}`
-    : next.startsWith("/") ? next : "/dashboard";
+    : next;
 
-  return NextResponse.redirect(`${origin}${redirectPath}`);
+  return NextResponse.redirect(new URL(redirectPath, origin));
 }

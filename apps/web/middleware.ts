@@ -1,6 +1,7 @@
 import { createServerClient, type CookieOptions } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 import { clientEnv } from "@/lib/env";
+import { safeInternalPath } from "@/lib/auth/redirect";
 
 // Public routes that bypass the auth-redirect. Three categories:
 //   - Root marketing + auth + health   (legacy)
@@ -156,8 +157,7 @@ export async function middleware(request: NextRequest) {
   // mid-session re-auth (e.g. magic-link from another device) returns the
   // user to where they were trying to go.
   if (user && pathname.startsWith("/auth/login")) {
-    const next = request.nextUrl.searchParams.get("next");
-    const safeNext = next && next.startsWith("/") && !next.startsWith("//") ? next : "/dashboard";
+    const safeNext = safeInternalPath(request.nextUrl.searchParams.get("next"));
     return NextResponse.redirect(new URL(safeNext, request.url));
   }
 

@@ -6,6 +6,8 @@ import { use, useEffect, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { signInWithEmail } from "./actions";
 import { createSupabaseBrowserClient } from "@/lib/supabase/browser";
+import { clientEnv } from "@/lib/env";
+import { oauthCallbackUrl, safeInternalPath } from "@/lib/auth/redirect";
 
 const GoogleIcon = () => (
   <svg viewBox="0 0 24 24" className="h-4 w-4" aria-hidden>
@@ -44,7 +46,7 @@ export function LoginForm({ searchParams }: Props) {
           setGoogleError("Could not complete sign in. Please request a new link.");
           return;
         }
-        router.replace(params.next ?? "/dashboard");
+        router.replace(safeInternalPath(params.next));
       });
 
     return () => {
@@ -63,20 +65,32 @@ export function LoginForm({ searchParams }: Props) {
     setGoogleError(null);
     try {
       const supabase = createSupabaseBrowserClient();
-      const next = params.next ?? "/dashboard";
-      // window.location.origin guarantees the redirect URL matches the actual deployment.
-      const { error } = await supabase.auth.signInWithOAuth({
+      const callback = oauthCallbackUrl(
+        window.location.origin,
+        clientEnv.NEXT_PUBLIC_APP_URL,
+        params.next,
+      );
+      const { data, error } = await supabase.auth.signInWithOAuth({
         provider: "google",
         options: {
-          redirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent(next)}`,
-          queryParams: { access_type: "offline", prompt: "consent" },
+          redirectTo: callback,
+          skipBrowserRedirect: true,
+          queryParams: { prompt: "select_account" },
         },
       });
       if (error) {
         setGoogleError(error.message);
         setGooglePending(false);
+        return;
       }
-      // On success the browser is being redirected to Google — no need to reset state.
+      if (!data.url) {
+        setGoogleError("Google sign-in could not be started. Please try again.");
+        setGooglePending(false);
+        return;
+      }
+      // Keep OAuth in the current top-level tab so mobile browsers retain the
+      // phone user agent instead of opening a popup/webview with desktop layout.
+      window.location.assign(data.url);
     } catch (e) {
       setGoogleError(e instanceof Error ? e.message : "Google sign-in failed");
       setGooglePending(false);
