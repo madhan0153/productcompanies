@@ -3,6 +3,7 @@ import Link from "next/link";
 import { ArrowRight, Gift, Stethoscope, TrendingUp, Users, Wallet } from "lucide-react";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { Badge, Card, KPI, ListRow, SectionHeader } from "@/components/admin/pm";
+import { serverEnv } from "@/lib/env";
 
 export const metadata: Metadata = { title: "Admin · Billing" };
 export const dynamic = "force-dynamic";
@@ -18,23 +19,32 @@ export default async function AdminBillingPage() {
     activeGrantsResult,
     activePromosResult,
     recentInvoicesResult,
+    verificationPaymentsResult,
+    failedWebhooksResult,
   ] = await Promise.all([
-    admin.from("subscriptions").select("id", { count: "exact", head: true }).eq("status", "active"),
-    admin.from("invoices").select("amount").gte("created_at", since30d).eq("status", "paid") as never,
+    admin.from("subscriptions").select("id", { count: "exact", head: true })
+      .eq("environment", serverEnv.DODO_PAYMENTS_ENVIRONMENT).eq("status", "active"),
+    admin.from("invoices").select("amount").eq("environment", serverEnv.DODO_PAYMENTS_ENVIRONMENT)
+      .eq("is_verification", false).gte("created_at", since30d).eq("status", "paid") as never,
     admin.from("entitlement_grants").select("id", { count: "exact", head: true }).is("revoked_at", null),
     admin.from("promo_codes").select("id", { count: "exact", head: true }).eq("is_active", true),
     admin
       .from("invoices")
-      .select("amount, currency, status, created_at")
+      .select("amount, currency, status, is_verification, created_at")
+      .eq("environment", serverEnv.DODO_PAYMENTS_ENVIRONMENT)
       .order("created_at", { ascending: false })
       .limit(10) as never,
+    admin.from("invoices").select("id", { count: "exact", head: true })
+      .eq("environment", serverEnv.DODO_PAYMENTS_ENVIRONMENT).eq("is_verification", true).eq("status", "paid"),
+    admin.from("payment_events").select("id", { count: "exact", head: true })
+      .eq("environment", serverEnv.DODO_PAYMENTS_ENVIRONMENT).eq("processing_status", "failed"),
   ]);
 
   const revenue30d = ((paidInvoicesResult as { data: Array<{ amount: number }> | null }).data ?? [])
     .reduce((s, r) => s + (r.amount ?? 0), 0);
 
   const recentInvoices = ((recentInvoicesResult as {
-    data: Array<{ amount: number; currency: string; status: string; created_at: string }> | null;
+    data: Array<{ amount: number; currency: string; status: string; is_verification: boolean; created_at: string }> | null;
   }).data) ?? [];
 
   return (
@@ -59,6 +69,12 @@ export default async function AdminBillingPage() {
           label="Revenue (30d)"
           value={`₹${(revenue30d / 100).toLocaleString("en-IN", { maximumFractionDigits: 0 })}`}
           hint="Paid invoices"
+        />
+        <KPI label="₹10 verifications" value={String(verificationPaymentsResult.count ?? 0)} hint="Excluded from revenue" />
+        <KPI
+          label="Webhook failures"
+          value={String(failedWebhooksResult.count ?? 0)}
+          hint="Retryable events"
         />
       </div>
 
@@ -128,6 +144,7 @@ export default async function AdminBillingPage() {
                 trailing={
                   <span style={{ display: "inline-flex", alignItems: "center", gap: 10 }}>
                     <Badge tone={inv.status === "paid" ? "ok" : "err"}>{inv.status}</Badge>
+                    {inv.is_verification && <Badge tone="warn">verification</Badge>}
                     <span className="pm-num" style={{ fontWeight: 600 }}>
                       {(inv.currency ?? "INR") === "INR" ? "₹" : inv.currency}
                       {(inv.amount / 100).toLocaleString("en-IN")}

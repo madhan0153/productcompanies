@@ -6,9 +6,10 @@ export type CheckoutProductId =
   | "pro_yearly"
   | "career_sprint_monthly"
   | "career_sprint_yearly"
-  | "tailor_credits_50";
+  | "tailor_credits_50"
+  | "payment_test_10_inr";
 
-export type PaidCheckoutProduct = Exclude<CheckoutProductId, "tailor_credits_50">;
+export type PaidCheckoutProduct = Exclude<CheckoutProductId, "tailor_credits_50" | "payment_test_10_inr">;
 
 export interface PlanLimits {
   tailoredResumeLimit:   number;
@@ -102,6 +103,9 @@ export const PRICING = {
   credit_pack_50: {
     once:           99_900,                // ₹999 for 50 credits
   },
+  payment_test: {
+    once:            1_000,                // ₹10; verification only, never grants access
+  },
 } as const;
 
 // ─── Display copy with per-day framing for ALL plans ──────────────────────────
@@ -158,30 +162,37 @@ export const CHECKOUT_PRODUCTS: Record<CheckoutProductId, {
   amountInPaise: number;
   creditGrant?: { kind: CreditKind; amount: number };
   envKey: string;
+  public: boolean;
+  temporary?: boolean;
+  verificationOnly?: boolean;
 }> = {
   pro_monthly: {
     plan: "pro",
     interval: "monthly",
     amountInPaise: PRICING.pro.monthly,
     envKey: "DODO_PRODUCT_PRO_MONTHLY_ID",
+    public: true,
   },
   pro_yearly: {
     plan: "pro",
     interval: "yearly",
     amountInPaise: PRICING.pro.yearly,
     envKey: "DODO_PRODUCT_PRO_YEARLY_ID",
+    public: true,
   },
   career_sprint_monthly: {
     plan: "career_sprint",
     interval: "monthly",
     amountInPaise: PRICING.career_sprint.monthly,
     envKey: "DODO_PRODUCT_CAREER_SPRINT_MONTHLY_ID",
+    public: true,
   },
   career_sprint_yearly: {
     plan: "career_sprint",
     interval: "yearly",
     amountInPaise: PRICING.career_sprint.yearly,
     envKey: "DODO_PRODUCT_CAREER_SPRINT_YEARLY_ID",
+    public: true,
   },
   tailor_credits_50: {
     plan: null,
@@ -189,6 +200,16 @@ export const CHECKOUT_PRODUCTS: Record<CheckoutProductId, {
     amountInPaise: PRICING.credit_pack_50.once,
     creditGrant: { kind: "tailored_resume", amount: 50 },
     envKey: "DODO_PRODUCT_TAILOR_CREDITS_50_ID",
+    public: true,
+  },
+  payment_test_10_inr: {
+    plan: null,
+    interval: "one_time",
+    amountInPaise: PRICING.payment_test.once,
+    envKey: "DODO_PRODUCT_PAYMENT_TEST_10_INR_ID",
+    public: false,
+    temporary: true,
+    verificationOnly: true,
   },
 };
 

@@ -32,7 +32,8 @@ export async function resolveEntitlements(userId: string): Promise<EntitlementSt
     admin
       .from("subscriptions")
       .select("plan, status, current_period_end")
-      .eq("user_id", userId),
+      .eq("user_id", userId)
+      .or(`provider.neq.dodo,environment.eq.${serverEnv.DODO_PAYMENTS_ENVIRONMENT}`),
     admin
       .from("entitlement_grants")
       .select("grant_type, plan, expires_at, source, revoked_at")

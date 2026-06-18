@@ -18,7 +18,22 @@ function dodoBaseUrl(): string {
   if (serverEnv.DODO_PAYMENTS_BASE_URL) return serverEnv.DODO_PAYMENTS_BASE_URL.replace(/\/$/, "");
   return serverEnv.DODO_PAYMENTS_ENVIRONMENT === "test_mode"
     ? "https://test.dodopayments.com"
-    : "https://api.dodopayments.com";
+    : "https://live.dodopayments.com";
+}
+
+export function assertDodoEnvironmentConfiguration(): void {
+  const baseUrl = dodoBaseUrl();
+  const appUrl = new URL(clientEnv.NEXT_PUBLIC_APP_URL);
+  if (serverEnv.DODO_PAYMENTS_ENVIRONMENT === "live_mode") {
+    if (baseUrl.includes("test.dodopayments.com")) {
+      throw new Error("Live billing cannot use the Dodo test API.");
+    }
+    if (appUrl.protocol !== "https:" || appUrl.hostname === "localhost" || appUrl.hostname === "127.0.0.1") {
+      throw new Error("Live billing requires an HTTPS production app URL.");
+    }
+  } else if (baseUrl.includes("live.dodopayments.com")) {
+    throw new Error("Test billing cannot use the Dodo live API.");
+  }
 }
 
 export function getDodoProductId(product: CheckoutProductId): string {
@@ -29,6 +44,7 @@ export function getDodoProductId(product: CheckoutProductId): string {
     case "DODO_PRODUCT_CAREER_SPRINT_MONTHLY_ID": return serverEnv.DODO_PRODUCT_CAREER_SPRINT_MONTHLY_ID ?? "";
     case "DODO_PRODUCT_CAREER_SPRINT_YEARLY_ID": return serverEnv.DODO_PRODUCT_CAREER_SPRINT_YEARLY_ID ?? "";
     case "DODO_PRODUCT_TAILOR_CREDITS_50_ID": return serverEnv.DODO_PRODUCT_TAILOR_CREDITS_50_ID ?? "";
+    case "DODO_PRODUCT_PAYMENT_TEST_10_INR_ID": return serverEnv.DODO_PRODUCT_PAYMENT_TEST_10_INR_ID ?? "";
     default: return "";
   }
 }
@@ -40,17 +56,19 @@ export async function createDodoCheckoutSession(input: {
   name?: string | null;
   /** Where to send the user after successful activation. Must be a same-origin path. */
   returnTo?: string;
+  idempotencyKey: string;
+  returnNonce: string;
 }): Promise<DodoCheckoutSession> {
+  assertDodoEnvironmentConfiguration();
   const apiKey = serverEnv.DODO_PAYMENTS_API_KEY;
   if (!apiKey) throw new Error("DODO_PAYMENTS_API_KEY is not configured.");
 
   const productId = getDodoProductId(input.product);
   if (!productId) throw new Error(`${CHECKOUT_PRODUCTS[input.product].envKey} is not configured.`);
 
-  const sessionNonce = crypto.randomUUID();
   const returnUrl = new URL("/billing/success", clientEnv.NEXT_PUBLIC_APP_URL);
   returnUrl.searchParams.set("product", input.product);
-  returnUrl.searchParams.set("session", sessionNonce);
+  returnUrl.searchParams.set("session", input.returnNonce);
   if (input.returnTo && input.returnTo.startsWith("/")) {
     returnUrl.searchParams.set("return_to", input.returnTo);
   }
@@ -63,6 +81,7 @@ export async function createDodoCheckoutSession(input: {
     headers: {
       "Authorization": `Bearer ${apiKey}`,
       "Content-Type": "application/json",
+      "Idempotency-Key": input.idempotencyKey,
     },
     body: JSON.stringify({
       product_cart: [{ product_id: productId, quantity: 1 }],
@@ -76,7 +95,8 @@ export async function createDodoCheckoutSession(input: {
         app: "prodmatch",
         user_id: input.userId,
         checkout_product: input.product,
-        session_nonce: sessionNonce,
+        session_nonce: input.returnNonce,
+        billing_environment: serverEnv.DODO_PAYMENTS_ENVIRONMENT,
       },
     }),
   });
@@ -94,6 +114,7 @@ export async function createDodoCheckoutSession(input: {
 }
 
 export function verifyDodoWebhook(rawBody: string, headers: Headers): DodoWebhookEvent {
+  assertDodoEnvironmentConfiguration();
   const webhookKey = serverEnv.DODO_PAYMENTS_WEBHOOK_KEY;
   if (!webhookKey) throw new Error("DODO_PAYMENTS_WEBHOOK_KEY is not configured.");
 

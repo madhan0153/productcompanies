@@ -23,11 +23,17 @@ export async function POST(req: NextRequest) {
 
   let body: { reason?: string; immediate?: boolean };
   try { body = await req.json(); } catch { body = {}; }
+  if (body.immediate === true) {
+    return NextResponse.json(
+      { error: "Immediate cancellation is not supported. Access remains active until period end." },
+      { status: 400 },
+    );
+  }
 
   const result = await cancelActiveSubscription({
     userId:    user.id,
     reason:    body.reason,
-    immediate: body.immediate === true,
+    immediate: false,
   });
 
   if (!result.ok) {

@@ -78,6 +78,7 @@ export async function GET(req: NextRequest) {
       career_sprint_monthly: mask(serverEnv.DODO_PRODUCT_CAREER_SPRINT_MONTHLY_ID),
       career_sprint_yearly:  mask(serverEnv.DODO_PRODUCT_CAREER_SPRINT_YEARLY_ID),
       tailor_credits_50:     mask(serverEnv.DODO_PRODUCT_TAILOR_CREDITS_50_ID),
+      payment_test_10_inr:   mask(serverEnv.DODO_PRODUCT_PAYMENT_TEST_10_INR_ID),
     },
     notes: [
       "If returnUrl is localhost, NEXT_PUBLIC_APP_URL is misconfigured in Vercel.",

@@ -24,6 +24,9 @@ const serverSchema = z.object({
   DODO_PRODUCT_CAREER_SPRINT_MONTHLY_ID: optStr,
   DODO_PRODUCT_CAREER_SPRINT_YEARLY_ID: optStr,
   DODO_PRODUCT_TAILOR_CREDITS_50_ID: optStr,
+  DODO_PRODUCT_PAYMENT_TEST_10_INR_ID: optStr,
+  ENABLE_PAYMENT_TEST_PLAN: z.enum(["true", "false"]).default("false"),
+  PAYMENT_TEST_ALLOWED_EMAILS: optStr,
   // Comma-separated allowlist of staff emails. Listed addresses can access
   // /admin/* AND act as superusers — they get full Career Sprint entitlements
   // across the entire app (no paywalls anywhere), applied at read time via
@@ -90,5 +93,8 @@ export const serverEnv = parseEnv(serverSchema, {
   DODO_PRODUCT_CAREER_SPRINT_MONTHLY_ID: process.env.DODO_PRODUCT_CAREER_SPRINT_MONTHLY_ID,
   DODO_PRODUCT_CAREER_SPRINT_YEARLY_ID: process.env.DODO_PRODUCT_CAREER_SPRINT_YEARLY_ID,
   DODO_PRODUCT_TAILOR_CREDITS_50_ID: process.env.DODO_PRODUCT_TAILOR_CREDITS_50_ID,
+  DODO_PRODUCT_PAYMENT_TEST_10_INR_ID: process.env.DODO_PRODUCT_PAYMENT_TEST_10_INR_ID,
+  ENABLE_PAYMENT_TEST_PLAN: process.env.ENABLE_PAYMENT_TEST_PLAN,
+  PAYMENT_TEST_ALLOWED_EMAILS: process.env.PAYMENT_TEST_ALLOWED_EMAILS,
   ADMIN_EMAILS: process.env.ADMIN_EMAILS,
 });

@@ -31,12 +31,17 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Invalid signature" }, { status: 401 });
   }
 
-  const webhookId = req.headers.get("webhook-id") ?? `${event.type}:${Date.now()}`;
+  const webhookId = req.headers.get("webhook-id");
+  if (!webhookId) {
+    return NextResponse.json({ error: "Missing webhook id" }, { status: 400 });
+  }
 
   try {
+    const parsedEventAt = event.timestamp ? new Date(event.timestamp) : null;
     const result = await processDodoWebhook({
       webhookId,
       eventType:  event.type,
+      eventAt: parsedEventAt && Number.isFinite(parsedEventAt.getTime()) ? parsedEventAt.toISOString() : null,
       payload:    event as unknown as Json,
     });
 

@@ -102,6 +102,7 @@ function planFromProductId(productId: string | null): BillingPlan | null {
     ["career_sprint_monthly",  serverEnv.DODO_PRODUCT_CAREER_SPRINT_MONTHLY_ID],
     ["career_sprint_yearly",   serverEnv.DODO_PRODUCT_CAREER_SPRINT_YEARLY_ID],
     ["tailor_credits_50",      serverEnv.DODO_PRODUCT_TAILOR_CREDITS_50_ID],
+    ["payment_test_10_inr",    serverEnv.DODO_PRODUCT_PAYMENT_TEST_10_INR_ID],
   ];
   for (const [key, envValue] of entries) {
     if (envValue && envValue === productId) return CHECKOUT_PRODUCTS[key].plan;
@@ -168,6 +169,7 @@ export async function POST(req: NextRequest) {
     .from("subscriptions")
     .select("id, user_id, plan, status")
     .eq("provider", "dodo")
+    .eq("environment", serverEnv.DODO_PAYMENTS_ENVIRONMENT)
     .eq("provider_subscription_id", subscriptionId)
     .maybeSingle();
 
@@ -265,6 +267,7 @@ export async function POST(req: NextRequest) {
       .from("billing_customers")
       .select("user_id")
       .eq("dodo_customer_id", customerId)
+      .eq("dodo_environment", serverEnv.DODO_PAYMENTS_ENVIRONMENT)
       .maybeSingle();
     ownsByExistingCustomer = existingCustomer?.user_id === user.id;
   }
@@ -313,6 +316,7 @@ export async function POST(req: NextRequest) {
     await admin.from("billing_customers").upsert({
       user_id:           user.id,
       dodo_customer_id:  customerId,
+      dodo_environment:  serverEnv.DODO_PAYMENTS_ENVIRONMENT,
       billing_email:     customerEmail ?? user.email ?? null,
       currency:          deepStr(dodoData, ["currency"]) ?? "INR",
       updated_at:        new Date().toISOString(),
@@ -323,6 +327,7 @@ export async function POST(req: NextRequest) {
   await admin.from("subscriptions").upsert({
     user_id:                  user.id,
     provider:                 "dodo",
+    environment:              serverEnv.DODO_PAYMENTS_ENVIRONMENT,
     provider_customer_id:     customerId,
     provider_subscription_id: subscriptionId,
     provider_product_id:      productId,
@@ -332,9 +337,13 @@ export async function POST(req: NextRequest) {
     current_period_end:       isoVal(dodoData, ["current_period_end", "period_end", "next_billing_date", "expires_at"]),
     cancel_at_period_end:     Boolean(dodoData.cancel_at_period_end ?? dodoData.cancel_at_next_billing_date),
     cancelled_at:             isoVal(dodoData, ["cancelled_at", "canceled_at"]),
-    metadata:                 dodoData as unknown as Json,
+    metadata: {
+      source: "authenticated_direct_sync",
+      provider_status: statusRaw,
+      product_id: productId,
+    } as Json,
     updated_at:               new Date().toISOString(),
-  }, { onConflict: "provider,provider_subscription_id" });
+  }, { onConflict: "provider,environment,provider_subscription_id" });
 
   const entitlement = await refreshEntitlements(user.id);
   logEvent("info", "billing_sync_success", {

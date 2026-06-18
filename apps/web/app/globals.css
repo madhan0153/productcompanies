@@ -157,6 +157,17 @@
     overflow-x: hidden;
   }
 
+  /*
+   * Chrome's per-site "Desktop site" mode can deliberately ignore the
+   * viewport meta tag and expose a ~980px layout viewport on a phone. The
+   * guard derives the real device width from touch/coarse-pointer signals and
+   * compensates only for that mismatch, so the app remains physically readable.
+   */
+  html[data-mobile-desktop-viewport="phone"] body {
+    zoom: var(--phone-viewport-zoom);
+    width: var(--phone-viewport-width);
+  }
+
   html[data-mobile-device="phone"] .app-shell-sidebar {
     position: fixed !important;
     transform: translateX(-100%) !important;

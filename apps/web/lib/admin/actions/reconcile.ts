@@ -60,6 +60,7 @@ function planFromProductId(productId: string | null): BillingPlan | null {
     ["career_sprint_monthly",  serverEnv.DODO_PRODUCT_CAREER_SPRINT_MONTHLY_ID],
     ["career_sprint_yearly",   serverEnv.DODO_PRODUCT_CAREER_SPRINT_YEARLY_ID],
     ["tailor_credits_50",      serverEnv.DODO_PRODUCT_TAILOR_CREDITS_50_ID],
+    ["payment_test_10_inr",    serverEnv.DODO_PRODUCT_PAYMENT_TEST_10_INR_ID],
   ];
   for (const [key, envValue] of entries) {
     if (envValue && envValue === productId) return CHECKOUT_PRODUCTS[key].plan;
@@ -175,6 +176,7 @@ export async function reconcileSubscription(
     await supabaseAdmin.from("billing_customers").upsert({
       user_id:           target.id,
       dodo_customer_id:  customerId,
+      dodo_environment:  serverEnv.DODO_PAYMENTS_ENVIRONMENT,
       billing_email:     customerEmail ?? target.email,
       currency:          deepStr(dodoData, ["currency"]) ?? "INR",
       updated_at:        new Date().toISOString(),
@@ -184,6 +186,7 @@ export async function reconcileSubscription(
   await supabaseAdmin.from("subscriptions").upsert({
     user_id:                  target.id,
     provider:                 "dodo",
+    environment:              serverEnv.DODO_PAYMENTS_ENVIRONMENT,
     provider_customer_id:     customerId,
     provider_subscription_id: subscriptionId,
     provider_product_id:      productId,
@@ -193,9 +196,13 @@ export async function reconcileSubscription(
     current_period_end:       isoVal(dodoData, ["current_period_end", "period_end", "next_billing_date", "expires_at"]),
     cancel_at_period_end:     Boolean(dodoData.cancel_at_period_end ?? dodoData.cancel_at_next_billing_date),
     cancelled_at:             isoVal(dodoData, ["cancelled_at", "canceled_at"]),
-    metadata:                 dodoData as unknown as Json,
+    metadata: {
+      source: "admin_reconciliation",
+      provider_status: statusRaw,
+      product_id: productId,
+    } as Json,
     updated_at:               new Date().toISOString(),
-  }, { onConflict: "provider,provider_subscription_id" });
+  }, { onConflict: "provider,environment,provider_subscription_id" });
 
   await refreshEntitlements(target.id);
 

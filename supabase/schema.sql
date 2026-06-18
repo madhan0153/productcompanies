@@ -2338,6 +2338,9 @@ create unique index if not exists ux_billing_customers_razorpay
   on public.billing_customers(razorpay_customer_id) where razorpay_customer_id is not null;
 create unique index if not exists ux_billing_customers_stripe
   on public.billing_customers(stripe_customer_id) where stripe_customer_id is not null;
+alter table public.billing_customers add column if not exists dodo_environment text not null default 'test_mode';
+alter table public.billing_customers alter column dodo_environment set default 'test_mode';
+update public.billing_customers set dodo_environment = 'test_mode' where dodo_environment = 'legacy';
 
 create table if not exists public.subscriptions (
   id                       uuid primary key default gen_random_uuid(),
@@ -2357,8 +2360,14 @@ create table if not exists public.subscriptions (
   updated_at               timestamptz not null default now()
 );
 
-create unique index if not exists ux_subscriptions_provider_subscription
-  on public.subscriptions(provider, provider_subscription_id)
+alter table public.subscriptions add column if not exists environment text not null default 'test_mode';
+alter table public.subscriptions alter column environment set default 'test_mode';
+update public.subscriptions set environment = 'test_mode' where environment = 'legacy';
+alter table public.subscriptions add column if not exists last_provider_event_at timestamptz;
+
+drop index if exists public.ux_subscriptions_provider_subscription;
+create unique index if not exists ux_subscriptions_provider_environment_subscription
+  on public.subscriptions(provider, environment, provider_subscription_id)
   where provider_subscription_id is not null;
 create index if not exists idx_subscriptions_user_status
   on public.subscriptions(user_id, status, current_period_end desc);
@@ -2408,8 +2417,28 @@ create table if not exists public.payment_events (
   unique(provider, provider_event_id)
 );
 
+alter table public.payment_events add column if not exists environment text not null default 'test_mode';
+alter table public.payment_events alter column environment set default 'test_mode';
+update public.payment_events set environment = 'test_mode' where environment = 'legacy';
+alter table public.payment_events add column if not exists processing_status text not null default 'received';
+alter table public.payment_events add column if not exists retry_count integer not null default 0;
+alter table public.payment_events add column if not exists received_at timestamptz not null default now();
+alter table public.payment_events add column if not exists provider_event_at timestamptz;
+alter table public.payment_events add column if not exists related_customer_id text;
+alter table public.payment_events add column if not exists related_subscription_id text;
+alter table public.payment_events add column if not exists related_payment_id text;
+alter table public.payment_events drop constraint if exists payment_events_provider_provider_event_id_key;
+create unique index if not exists ux_payment_events_provider_environment_event
+  on public.payment_events(provider, environment, provider_event_id);
+alter table public.payment_events drop constraint if exists payment_events_processing_status_chk;
+alter table public.payment_events add constraint payment_events_processing_status_chk
+  check (processing_status in ('received', 'processing', 'processed', 'failed', 'ignored'));
+
 create index if not exists idx_payment_events_user
   on public.payment_events(user_id, created_at desc);
+create index if not exists idx_payment_events_retry
+  on public.payment_events(processing_status, received_at)
+  where processing_status in ('received', 'failed');
 
 create table if not exists public.invoices (
   id                   uuid primary key default gen_random_uuid(),
@@ -2429,8 +2458,17 @@ create table if not exists public.invoices (
   updated_at            timestamptz not null default now()
 );
 
+alter table public.invoices add column if not exists environment text not null default 'test_mode';
+alter table public.invoices alter column environment set default 'test_mode';
+update public.invoices set environment = 'test_mode' where environment = 'legacy';
+alter table public.invoices add column if not exists is_verification boolean not null default false;
+alter table public.invoices add column if not exists checkout_product text;
+alter table public.invoices add column if not exists checkout_nonce text;
+drop index if exists public.ux_invoices_provider_invoice;
 create unique index if not exists ux_invoices_provider_invoice
-  on public.invoices(provider, provider_invoice_id) where provider_invoice_id is not null;
+  on public.invoices(provider, environment, provider_invoice_id) where provider_invoice_id is not null;
+create unique index if not exists ux_invoices_provider_payment
+  on public.invoices(provider, environment, provider_payment_id) where provider_payment_id is not null;
 create index if not exists idx_invoices_user_created
   on public.invoices(user_id, created_at desc);
 
@@ -2449,8 +2487,45 @@ create table if not exists public.refunds (
   updated_at           timestamptz not null default now()
 );
 
+alter table public.refunds add column if not exists environment text not null default 'test_mode';
+alter table public.refunds alter column environment set default 'test_mode';
+update public.refunds set environment = 'test_mode' where environment = 'legacy';
+create unique index if not exists ux_refunds_provider_refund
+  on public.refunds(provider, environment, provider_refund_id) where provider_refund_id is not null;
 create index if not exists idx_refunds_user_requested
   on public.refunds(user_id, requested_at desc);
+
+create table if not exists public.billing_checkout_sessions (
+  id                    uuid primary key default gen_random_uuid(),
+  user_id               uuid not null references auth.users(id) on delete cascade,
+  provider              billing_provider not null default 'dodo',
+  environment           text not null,
+  checkout_product      text not null,
+  return_nonce          text not null,
+  idempotency_key       text not null,
+  provider_session_id   text,
+  checkout_url          text,
+  status                text not null default 'creating',
+  expires_at            timestamptz not null,
+  completed_at          timestamptz,
+  created_at            timestamptz not null default now(),
+  updated_at            timestamptz not null default now(),
+  unique(provider, environment, idempotency_key)
+);
+
+alter table public.billing_checkout_sessions add column if not exists return_nonce text;
+update public.billing_checkout_sessions
+set return_nonce = gen_random_uuid()::text
+where return_nonce is null;
+alter table public.billing_checkout_sessions alter column return_nonce set not null;
+
+create unique index if not exists ux_billing_checkout_sessions_return_nonce
+  on public.billing_checkout_sessions(user_id, environment, return_nonce);
+create index if not exists idx_billing_checkout_sessions_user
+  on public.billing_checkout_sessions(user_id, checkout_product, created_at desc);
+alter table public.billing_checkout_sessions drop constraint if exists billing_checkout_sessions_status_chk;
+alter table public.billing_checkout_sessions add constraint billing_checkout_sessions_status_chk
+  check (status in ('creating', 'open', 'completed', 'expired', 'failed'));
 
 create table if not exists public.promo_codes (
   id               uuid primary key default gen_random_uuid(),
@@ -2514,7 +2589,7 @@ declare
   tables text[] := array[
     'billing_customers', 'subscriptions', 'user_entitlements',
     'invoices', 'refunds', 'promo_redemptions', 'entitlement_grants',
-    'credit_ledger', 'payment_events', 'promo_codes'
+    'credit_ledger', 'payment_events', 'promo_codes', 'billing_checkout_sessions'
   ];
 begin
   foreach t in array tables loop
@@ -2563,7 +2638,8 @@ declare
   t text;
   tables text[] := array[
     'billing_customers', 'subscriptions', 'user_entitlements',
-    'invoices', 'refunds', 'promo_codes', 'entitlement_grants'
+    'invoices', 'refunds', 'promo_codes', 'entitlement_grants',
+    'billing_checkout_sessions'
   ];
 begin
   foreach t in array tables loop
@@ -2590,6 +2666,7 @@ begin
   delete from public.refunds where user_id = uid;
   delete from public.invoices where user_id = uid;
   delete from public.credit_ledger where user_id = uid;
+  delete from public.billing_checkout_sessions where user_id = uid;
   delete from public.entitlement_grants where user_id = uid;
   delete from public.promo_redemptions where user_id = uid;
   delete from public.payment_events where user_id = uid;
@@ -2873,6 +2950,7 @@ begin
   delete from public.refunds where user_id = uid;
   delete from public.invoices where user_id = uid;
   delete from public.credit_ledger where user_id = uid;
+  delete from public.billing_checkout_sessions where user_id = uid;
   delete from public.entitlement_grants where user_id = uid;
   delete from public.promo_redemptions where user_id = uid;
   delete from public.payment_events where user_id = uid;

@@ -38,6 +38,8 @@ function BillingSuccessContent() {
   // Guard against open redirect: only accept same-origin relative paths
   const rawReturnTo = params.get("return_to") ?? "";
   const returnTo = rawReturnTo.startsWith("/") && !rawReturnTo.startsWith("//") ? rawReturnTo : "/dashboard";
+  const productInfo = product && product in CHECKOUT_PRODUCTS ? CHECKOUT_PRODUCTS[product] : null;
+  const verificationOnly = productInfo?.verificationOnly === true;
 
   const [phase, setPhase] = useState<"polling" | "activated" | "timeout">("polling");
   const [plan, setPlan]   = useState<string | null>(null);
@@ -103,12 +105,18 @@ function BillingSuccessContent() {
     // failed (e.g. Dodo API down) but the webhook eventually arrives.
     async function refresh() {
       try {
-        const res = await fetch("/api/billing/refresh", { method: "POST", cache: "no-store" });
+        if (!product) return;
+        const res = await fetch("/api/billing/status", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          cache: "no-store",
+          body: JSON.stringify({ product, session }),
+        });
         if (!res.ok || cancelled) return;
-        const data = await res.json() as { plan?: string };
-        if (data.plan && data.plan !== "free") {
+        const data = await res.json() as { confirmed?: boolean; plan?: string };
+        if (data.confirmed) {
           if (pollRef.current) clearInterval(pollRef.current);
-          setPlan(data.plan);
+          setPlan(data.plan ?? "free");
           setPhase("activated");
         }
       } catch { /* keep polling */ }
@@ -132,7 +140,7 @@ function BillingSuccessContent() {
       cancelled = true;
       if (pollRef.current) clearInterval(pollRef.current);
     };
-  }, [onWrongHost, subId, product, email]);
+  }, [onWrongHost, subId, product, email, session]);
 
   // Auto-redirect to return_to once activated (with brief celebration window)
   useEffect(() => {
@@ -141,7 +149,6 @@ function BillingSuccessContent() {
     return () => clearTimeout(t);
   }, [phase, returnTo]);
 
-  const productInfo = product && product in CHECKOUT_PRODUCTS ? CHECKOUT_PRODUCTS[product] : null;
   const planLimits  = productInfo?.plan ? PLAN_LIMITS[productInfo.plan] : null;
 
   async function copySupport() {
@@ -188,9 +195,11 @@ function BillingSuccessContent() {
         <div className="max-w-md space-y-4 text-center">
           <Loader2 className="mx-auto h-10 w-10 animate-spin text-primary" />
           <div>
-            <h1 className="font-display text-xl font-bold">Activating your plan…</h1>
+            <h1 className="font-display text-xl font-bold">
+              {verificationOnly ? "Confirming your payment…" : "Activating your plan…"}
+            </h1>
             <p className="mt-1 text-sm text-muted-foreground">
-              Waiting for the payment confirmation from your bank — usually under 10 seconds.
+              Waiting for the verified payment event from Dodo — usually under 10 seconds.
             </p>
             <p className="mt-2 text-[11px] text-muted-foreground">{secondsLeft}s remaining</p>
           </div>
@@ -217,10 +226,20 @@ function BillingSuccessContent() {
     return (
       <Centered>
         <div className="max-w-md space-y-5">
-          <CelebrationOverlay
-            plan={(plan ?? "pro") as "pro" | "career_sprint" | "free"}
-            active
-          />
+          {verificationOnly ? (
+            <div className="text-center">
+              <CheckCircle2 className="mx-auto h-14 w-14 text-success" />
+              <h1 className="mt-4 font-display text-2xl font-bold">₹10 payment verified</h1>
+              <p className="mt-2 text-sm text-muted-foreground">
+                The live transaction was recorded successfully. No paid plan or permanent entitlement was granted.
+              </p>
+            </div>
+          ) : (
+            <CelebrationOverlay
+              plan={(plan ?? "pro") as "pro" | "career_sprint" | "free"}
+              active
+            />
+          )}
 
           {planLimits && (
             <div className="space-y-2 rounded-xl border border-border bg-card p-4 text-left">
@@ -257,10 +276,9 @@ function BillingSuccessContent() {
       <div className="max-w-md space-y-4 text-center">
         <CheckCircle2 className="mx-auto h-12 w-12 text-success" />
         <div>
-          <h1 className="font-display text-2xl font-bold">Payment received ✅</h1>
+          <h1 className="font-display text-2xl font-bold">Confirmation pending</h1>
           <p className="mt-1 text-sm text-muted-foreground">
-            Your plan is being activated — this can take up to a minute on a busy day.
-            We'll email a receipt either way.
+            Dodo has not yet delivered a verified final event. Refresh shortly; access is never granted from this URL alone.
           </p>
         </div>
         <div className="flex flex-col gap-2 sm:flex-row sm:justify-center">

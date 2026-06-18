@@ -57,6 +57,89 @@ export function BillingActions({ plan, hasSubscription, cancelPending }: Props) 
   );
 }
 
+export function PaymentVerificationButton() {
+  const [pending, setPending] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function start() {
+    setPending(true);
+    setError(null);
+    try {
+      const response = await fetch("/api/billing/checkout", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          product: "payment_test_10_inr",
+          returnTo: "/settings/billing",
+        }),
+      });
+      const data = await response.json() as { checkoutUrl?: string; error?: string };
+      if (!response.ok || !data.checkoutUrl) {
+        setError(data.error ?? "Could not start verification checkout.");
+        return;
+      }
+      window.location.assign(data.checkoutUrl);
+    } catch {
+      setError("Network error. Please try again.");
+    } finally {
+      setPending(false);
+    }
+  }
+
+  return (
+    <div>
+      <button
+        type="button"
+        onClick={start}
+        disabled={pending}
+        className="inline-flex h-10 w-full items-center justify-center gap-2 rounded-lg bg-primary px-4 text-sm font-semibold text-primary-foreground hover:bg-primary/90 disabled:opacity-60"
+      >
+        {pending && <Loader2 className="h-4 w-4 animate-spin" />}
+        {pending ? "Opening secure checkout…" : "Pay ₹10 verification charge"}
+      </button>
+      {error && <p className="mt-2 text-xs text-destructive">{error}</p>}
+    </div>
+  );
+}
+
+export function ManageBillingButton() {
+  const [pending, setPending] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function openPortal() {
+    setPending(true);
+    setError(null);
+    try {
+      const response = await fetch("/api/billing/portal", { method: "POST" });
+      const data = await response.json() as { url?: string; error?: string };
+      if (!response.ok || !data.url) {
+        setError(data.error ?? "Could not open billing management.");
+        return;
+      }
+      window.location.assign(data.url);
+    } catch {
+      setError("Network error. Please try again.");
+    } finally {
+      setPending(false);
+    }
+  }
+
+  return (
+    <div>
+      <button
+        type="button"
+        onClick={openPortal}
+        disabled={pending}
+        className="inline-flex h-9 items-center gap-2 rounded-lg border border-border bg-background px-3 text-xs font-medium hover:bg-secondary disabled:opacity-60"
+      >
+        {pending && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
+        {pending ? "Opening…" : "Manage billing"}
+      </button>
+      {error && <p className="mt-1 text-[11px] text-destructive">{error}</p>}
+    </div>
+  );
+}
+
 function CancelButton() {
   const router = useRouter();
   const reduce = useReducedMotion();

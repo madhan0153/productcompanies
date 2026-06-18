@@ -288,7 +288,7 @@ export function AppShell({ user, navBadges, usage, banner, children }: Props) {
         {banner}
 
         {/* Mobile header */}
-        <header className="app-shell-mobile-header sticky top-0 z-20 flex h-14 items-center gap-3 border-b border-border bg-background/95 px-4 backdrop-blur-md lg:hidden">
+        <header className="app-shell-mobile-header sticky top-0 z-20 flex h-14 items-center gap-1.5 border-b border-border bg-background/95 px-3 backdrop-blur-md sm:gap-3 sm:px-4 lg:hidden">
           <button
             ref={menuButtonRef}
             onClick={() => setOpen(true)}
@@ -301,10 +301,10 @@ export function AppShell({ user, navBadges, usage, banner, children }: Props) {
           </button>
           <Link href="/dashboard" className="flex items-center gap-2 focus-ring rounded-md">
             <LogoMark size={28} />
-            <span className="brand-mark text-sm">ProdMatch</span>
+            <span className="brand-mark hidden text-sm min-[360px]:inline">ProdMatch</span>
           </Link>
           {usage && (
-            <div className="ml-auto">
+            <div className="ml-auto hidden min-[340px]:block">
               <UsageChip
                 plan={usage.plan}
                 tailorUsed={usage.tailorUsed}
@@ -318,7 +318,7 @@ export function AppShell({ user, navBadges, usage, banner, children }: Props) {
             onClick={() => setPaletteOpen(true)}
             className={cn(
               "inline-flex items-center justify-center rounded-md p-2 text-muted-foreground transition hover:bg-secondary hover:text-foreground focus-ring tap-target-sm",
-              !usage && "ml-auto",
+              usage ? "max-[339px]:ml-auto" : "ml-auto",
             )}
             aria-label="Search"
           >

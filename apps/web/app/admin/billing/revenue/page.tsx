@@ -8,6 +8,7 @@ import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import {
   Badge, Card, KPI, ListRow, SectionHeader, Spark, StatusDot,
 } from "@/components/admin/pm";
+import { serverEnv } from "@/lib/env";
 
 export const metadata: Metadata = { title: "Admin · Revenue & Retention" };
 export const dynamic = "force-dynamic";
@@ -50,22 +51,28 @@ export default async function AdminRevenuePage() {
   ] = await Promise.all([
     admin.from("subscriptions")
       .select("id, user_id, plan, status, current_period_end, created_at")
+      .eq("environment", serverEnv.DODO_PAYMENTS_ENVIRONMENT)
       .order("created_at", { ascending: false })
       .limit(500) as never,
     admin.from("invoices")
       .select("amount, currency, status, created_at")
+      .eq("environment", serverEnv.DODO_PAYMENTS_ENVIRONMENT).eq("is_verification", false)
       .gte("created_at", since30d).eq("status", "paid") as never,
     admin.from("invoices")
       .select("amount, currency, status, created_at")
+      .eq("environment", serverEnv.DODO_PAYMENTS_ENVIRONMENT).eq("is_verification", false)
       .gte("created_at", since60d).lt("created_at", since30d).eq("status", "paid") as never,
     admin.from("refunds")
       .select("amount, requested_at")
+      .eq("environment", serverEnv.DODO_PAYMENTS_ENVIRONMENT)
       .gte("requested_at", since30d) as never,
     admin.from("subscriptions")
       .select("id", { count: "exact", head: true })
+      .eq("environment", serverEnv.DODO_PAYMENTS_ENVIRONMENT)
       .gte("cancelled_at", since30d) as never,
     admin.from("subscriptions")
       .select("id", { count: "exact", head: true })
+      .eq("environment", serverEnv.DODO_PAYMENTS_ENVIRONMENT)
       .in("status", ["active", "trialing"]) as never,
   ]);
 

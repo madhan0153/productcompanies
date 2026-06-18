@@ -230,17 +230,17 @@ export interface Database {
         Row: {
           user_id: string; dodo_customer_id: string | null; razorpay_customer_id: string | null;
           stripe_customer_id: string | null; billing_email: string | null;
-          country: string | null; currency: string; created_at: string; updated_at: string;
+          dodo_environment: string; country: string | null; currency: string; created_at: string; updated_at: string;
         };
         Insert: {
           user_id: string; dodo_customer_id?: string | null; razorpay_customer_id?: string | null;
           stripe_customer_id?: string | null; billing_email?: string | null;
-          country?: string | null; currency?: string; created_at?: string; updated_at?: string;
+          dodo_environment?: string; country?: string | null; currency?: string; created_at?: string; updated_at?: string;
         };
         Update: {
           user_id?: string; dodo_customer_id?: string | null; razorpay_customer_id?: string | null;
           stripe_customer_id?: string | null; billing_email?: string | null;
-          country?: string | null; currency?: string; updated_at?: string;
+          dodo_environment?: string; country?: string | null; currency?: string; updated_at?: string;
         };
         Relationships: [];
       };
@@ -251,6 +251,7 @@ export interface Database {
           provider_product_id: string | null; plan: BillingPlan; status: SubscriptionStatus;
           current_period_start: string | null; current_period_end: string | null;
           cancel_at_period_end: boolean; cancelled_at: string | null;
+          environment: string; last_provider_event_at: string | null;
           metadata: Json; created_at: string; updated_at: string;
         };
         Insert: {
@@ -259,6 +260,7 @@ export interface Database {
           provider_product_id?: string | null; plan: BillingPlan; status?: SubscriptionStatus;
           current_period_start?: string | null; current_period_end?: string | null;
           cancel_at_period_end?: boolean; cancelled_at?: string | null;
+          environment?: string; last_provider_event_at?: string | null;
           metadata?: Json; created_at?: string; updated_at?: string;
         };
         Update: {
@@ -267,6 +269,7 @@ export interface Database {
           provider_product_id?: string | null; plan?: BillingPlan; status?: SubscriptionStatus;
           current_period_start?: string | null; current_period_end?: string | null;
           cancel_at_period_end?: boolean; cancelled_at?: string | null;
+          environment?: string; last_provider_event_at?: string | null;
           metadata?: Json; updated_at?: string;
         };
         Relationships: [];
@@ -305,14 +308,26 @@ export interface Database {
         Row: {
           id: string; provider: BillingProvider; provider_event_id: string; event_type: string;
           user_id: string | null; processed_at: string | null; processing_error: string | null;
-          payload: Json; created_at: string;
+          environment: string; processing_status: string; retry_count: number;
+          received_at: string; provider_event_at: string | null;
+          related_customer_id: string | null; related_subscription_id: string | null;
+          related_payment_id: string | null; payload: Json; created_at: string;
         };
         Insert: {
           id?: string; provider: BillingProvider; provider_event_id: string; event_type: string;
           user_id?: string | null; processed_at?: string | null; processing_error?: string | null;
+          environment?: string; processing_status?: string; retry_count?: number;
+          received_at?: string; provider_event_at?: string | null;
+          related_customer_id?: string | null; related_subscription_id?: string | null;
+          related_payment_id?: string | null;
           payload?: Json; created_at?: string;
         };
-        Update: { processed_at?: string | null; processing_error?: string | null; user_id?: string | null; payload?: Json };
+        Update: {
+          processed_at?: string | null; processing_error?: string | null; user_id?: string | null;
+          processing_status?: string; retry_count?: number; provider_event_at?: string | null;
+          related_customer_id?: string | null; related_subscription_id?: string | null;
+          related_payment_id?: string | null; payload?: Json;
+        };
         Relationships: [];
       };
       invoices: {
@@ -320,16 +335,23 @@ export interface Database {
           id: string; user_id: string; provider: BillingProvider; provider_invoice_id: string | null;
           provider_payment_id: string | null; subscription_id: string | null; amount: number;
           currency: string; status: string; hosted_invoice_url: string | null; receipt_url: string | null;
-          tax_amount: number | null; metadata: Json; created_at: string; updated_at: string;
+          tax_amount: number | null; environment: string; is_verification: boolean;
+          checkout_product: string | null; checkout_nonce: string | null;
+          metadata: Json; created_at: string; updated_at: string;
         };
         Insert: {
           id?: string; user_id: string; provider: BillingProvider; provider_invoice_id?: string | null;
           provider_payment_id?: string | null; subscription_id?: string | null; amount: number;
           currency?: string; status: string; hosted_invoice_url?: string | null; receipt_url?: string | null;
+          environment?: string; is_verification?: boolean; checkout_product?: string | null; checkout_nonce?: string | null;
           tax_amount?: number | null; metadata?: Json; created_at?: string; updated_at?: string;
         };
         Update: {
+          user_id?: string; provider?: BillingProvider; environment?: string;
+          provider_invoice_id?: string | null; provider_payment_id?: string | null;
+          subscription_id?: string | null; amount?: number; currency?: string;
           status?: string; hosted_invoice_url?: string | null; receipt_url?: string | null;
+          is_verification?: boolean; checkout_product?: string | null; checkout_nonce?: string | null;
           tax_amount?: number | null; metadata?: Json; updated_at?: string;
         };
         Relationships: [];
@@ -338,14 +360,18 @@ export interface Database {
         Row: {
           id: string; user_id: string; invoice_id: string | null; provider: BillingProvider;
           provider_refund_id: string | null; amount: number | null; currency: string;
-          status: string; reason: string | null; metadata: Json; requested_at: string; updated_at: string;
+          environment: string; status: string; reason: string | null;
+          metadata: Json; requested_at: string; updated_at: string;
         };
         Insert: {
           id?: string; user_id: string; invoice_id?: string | null; provider: BillingProvider;
           provider_refund_id?: string | null; amount?: number | null; currency?: string;
+          environment?: string;
           status?: string; reason?: string | null; metadata?: Json; requested_at?: string; updated_at?: string;
         };
         Update: {
+          user_id?: string; invoice_id?: string | null; provider?: BillingProvider;
+          environment?: string; currency?: string;
           provider_refund_id?: string | null; amount?: number | null; status?: string;
           reason?: string | null; metadata?: Json; updated_at?: string;
         };
@@ -741,6 +767,26 @@ export interface Database {
           environment?: string; origin?: string | null;
           updated_at?: string; last_used_at?: string | null; last_success_at?: string | null;
           last_failure_at?: string | null; failure_count?: number; disabled_at?: string | null;
+        };
+        Relationships: [];
+      };
+      billing_checkout_sessions: {
+        Row: {
+          id: string; user_id: string; provider: BillingProvider; environment: string;
+          checkout_product: string; return_nonce: string; idempotency_key: string; provider_session_id: string | null;
+          checkout_url: string | null; status: string; expires_at: string;
+          completed_at: string | null; created_at: string; updated_at: string;
+        };
+        Insert: {
+          id?: string; user_id: string; provider?: BillingProvider; environment: string;
+          checkout_product: string; return_nonce: string; idempotency_key: string; provider_session_id?: string | null;
+          checkout_url?: string | null; status?: string; expires_at: string;
+          completed_at?: string | null; created_at?: string; updated_at?: string;
+        };
+        Update: {
+          return_nonce?: string;
+          provider_session_id?: string | null; checkout_url?: string | null; status?: string;
+          expires_at?: string; completed_at?: string | null; updated_at?: string;
         };
         Relationships: [];
       };

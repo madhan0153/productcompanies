@@ -88,6 +88,12 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="en-IN" className={`${inter.variable} ${outfit.variable}`} suppressHydrationWarning>
       <head>
+        <script
+          id="prodmatch-mobile-viewport-bootstrap"
+          dangerouslySetInnerHTML={{
+            __html: `(()=>{try{const d=document.documentElement,n=navigator,s=screen,w=window,t=(n.maxTouchPoints||0)>0,c=matchMedia("(pointer:coarse)").matches,r=Math.min(s.width,s.height),p=w.devicePixelRatio||1,o=Math.min(w.outerWidth||0,w.outerHeight||0),i=p>1&&o>0?o/p:0,m=t&&(r>0&&r<=600||c&&i>=280&&i<=600);if(!m)return;d.dataset.mobileDevice="phone";const v=document.querySelector('meta[name="viewport"]');if(v)v.setAttribute("content","width=device-width, initial-scale=1, maximum-scale=5, viewport-fit=cover, interactive-widget=resizes-content");if(w.innerWidth>=700&&i>=280&&i<=600){const z=Math.min(3.5,Math.max(1,w.innerWidth/i));if(z>=1.35){d.dataset.mobileDesktopViewport="phone";d.style.setProperty("--phone-viewport-zoom",z.toFixed(4));d.style.setProperty("--phone-viewport-width",(100/z).toFixed(4)+"%")}}}catch{}})();`,
+          }}
+        />
         {/* SEO baseline: Organization + WebSite + SoftwareApplication on
             every page. All three target the same `@graph` so they crosslink
             correctly. The SoftwareApplication entry is what unlocks

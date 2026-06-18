@@ -9,7 +9,9 @@ import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { getUserUsage, resetsInWords } from "@/lib/billing/usage";
 import { planLabel } from "@/lib/billing/catalog";
-import { BillingActions } from "./client";
+import { isPaymentVerificationEnabledForEmail } from "@/lib/billing/verification";
+import { BillingActions, ManageBillingButton, PaymentVerificationButton } from "./client";
+import { serverEnv } from "@/lib/env";
 
 export const metadata: Metadata = { title: "Billing & Usage" };
 export const dynamic = "force-dynamic";
@@ -21,26 +23,44 @@ export default async function BillingSettingsPage() {
   if (!user) redirect("/auth/login?next=/settings/billing");
 
   const admin = createSupabaseAdminClient();
-  const [usage, subResult, invoicesResult] = await Promise.all([
+  const [usage, subResult, invoicesResult, refundsResult, customerResult] = await Promise.all([
     getUserUsage(user.id),
     admin
       .from("subscriptions")
       .select("id, plan, status, current_period_end, cancel_at_period_end, provider, created_at")
       .eq("user_id", user.id)
+      .or(`provider.neq.dodo,environment.eq.${serverEnv.DODO_PAYMENTS_ENVIRONMENT}`)
       .in("status", ["active", "trialing", "on_hold", "past_due"])
       .order("created_at", { ascending: false })
       .maybeSingle(),
     admin
       .from("invoices")
-      .select("id, amount, currency, status, hosted_invoice_url, receipt_url, created_at")
+      .select("id, amount, currency, status, is_verification, hosted_invoice_url, receipt_url, created_at")
       .eq("user_id", user.id)
+      .eq("environment", serverEnv.DODO_PAYMENTS_ENVIRONMENT)
       .order("created_at", { ascending: false })
       .limit(20),
+    admin
+      .from("refunds")
+      .select("id, amount, currency, status, requested_at")
+      .eq("user_id", user.id)
+      .eq("environment", serverEnv.DODO_PAYMENTS_ENVIRONMENT)
+      .order("requested_at", { ascending: false })
+      .limit(20),
+    admin
+      .from("billing_customers")
+      .select("dodo_customer_id")
+      .eq("user_id", user.id)
+      .eq("dodo_environment", serverEnv.DODO_PAYMENTS_ENVIRONMENT)
+      .maybeSingle(),
   ]);
 
   const sub      = subResult.data;
   const invoices = invoicesResult.data ?? [];
+  const refunds = refundsResult.data ?? [];
   const isCancelPending = sub?.cancel_at_period_end === true;
+  const showPaymentVerification = isPaymentVerificationEnabledForEmail(user.email);
+  const hasBillingCustomer = Boolean(customerResult.data?.dodo_customer_id);
 
   return (
     <div className="mx-auto w-full max-w-4xl px-4 py-6 pb-24 sm:px-6">
@@ -102,8 +122,22 @@ export default async function BillingSettingsPage() {
             hasSubscription={Boolean(sub?.id)}
             cancelPending={isCancelPending}
           />
+          {hasBillingCustomer && <ManageBillingButton />}
         </div>
       </section>
+
+      {showPaymentVerification && (
+        <section className="mb-5 rounded-xl border border-amber-500/30 bg-amber-500/5 p-5 shadow-elev1">
+          <p className="text-sm font-semibold">Live payment verification</p>
+          <p className="mt-1 text-xs text-muted-foreground">
+            Restricted ₹10 one-time charge for production validation. It records the payment normally
+            but never grants Pro or Career Sprint access.
+          </p>
+          <div className="mt-4">
+            <PaymentVerificationButton />
+          </div>
+        </section>
+      )}
 
       {/* ── Usage — Tailored Resumes only (simplified per user feedback) ──── */}
       {(() => {
@@ -200,6 +234,11 @@ export default async function BillingSettingsPage() {
                   }`}>
                     {inv.status}
                   </span>
+                  {inv.is_verification && (
+                    <span className="rounded-full bg-amber-500/10 px-2 py-0.5 text-[10px] font-semibold text-amber-700 dark:text-amber-400">
+                      verification
+                    </span>
+                  )}
                   {(inv.hosted_invoice_url ?? inv.receipt_url) && (
                     <a
                       href={(inv.hosted_invoice_url ?? inv.receipt_url)!}
@@ -216,6 +255,33 @@ export default async function BillingSettingsPage() {
           </ul>
         )}
       </section>
+
+      {refunds.length > 0 && (
+        <section className="mb-5 rounded-xl border border-border bg-card p-5 shadow-elev1">
+          <div className="mb-3 flex items-center gap-2">
+            <Receipt className="h-4 w-4 text-muted-foreground" />
+            <p className="text-sm font-semibold">Refunds</p>
+          </div>
+          <ul className="divide-y divide-border/50">
+            {refunds.map((refund) => (
+              <li key={refund.id} className="flex items-center justify-between gap-3 py-2.5 text-sm">
+                <div>
+                  <p className="font-medium tabular-nums">
+                    {(refund.currency ?? "INR") === "INR" ? "₹" : refund.currency}
+                    {((refund.amount ?? 0) / 100).toLocaleString("en-IN")}
+                  </p>
+                  <p className="text-[11px] text-muted-foreground">
+                    {new Date(refund.requested_at).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" })}
+                  </p>
+                </div>
+                <span className="rounded-full bg-secondary px-2 py-0.5 text-[10px] font-semibold">
+                  {refund.status}
+                </span>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
 
       {/* ── Trust / DPDP footer ───────────────────────────────────────────── */}
       <section className="rounded-xl border border-border bg-secondary/30 p-4 text-xs text-muted-foreground">

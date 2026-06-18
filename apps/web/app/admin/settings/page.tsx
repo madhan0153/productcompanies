@@ -51,6 +51,7 @@ export default async function AdminSettingsPage() {
     { key: "NEXT_PUBLIC_APP_URL", label: "App URL", set: Boolean(process.env.NEXT_PUBLIC_APP_URL), detail: process.env.NEXT_PUBLIC_APP_URL ?? "Unset — absolute links in emails will break." },
     { key: "DODO_PAYMENTS_API_KEY", label: "Dodo Payments API key", set: Boolean(process.env.DODO_PAYMENTS_API_KEY), detail: "Required for billing integration." },
     { key: "DODO_PAYMENTS_ENVIRONMENT", label: "Dodo environment", set: true, detail: `Mode: ${process.env.DODO_PAYMENTS_ENVIRONMENT ?? "test_mode (default)"}` },
+    { key: "ENABLE_PAYMENT_TEST_PLAN", label: "₹10 verification plan", set: process.env.ENABLE_PAYMENT_TEST_PLAN === "true", detail: process.env.ENABLE_PAYMENT_TEST_PLAN === "true" ? "Enabled — disable immediately after live validation." : "Disabled (safe default)." },
   ];
 
   const healthy  = checks.filter((c) => (c.inverted ? !c.set : c.set)).length;
