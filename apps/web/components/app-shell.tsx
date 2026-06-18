@@ -18,6 +18,8 @@ import { CommandPalette } from "@/components/command-palette";
 import { MobileBottomNav } from "@/components/mobile-bottom-nav";
 import { PwaInstallPrompt } from "@/components/pwa-install-prompt";
 import { RecordLastVisit } from "@/components/record-last-visit";
+import { NotificationsProvider } from "@/components/notifications/notifications-provider";
+import { NotificationBell } from "@/components/notifications/notification-bell";
 
 const NAV = [
   { href: "/dashboard",    label: "Dashboard",    icon: LayoutDashboard },
@@ -97,6 +99,7 @@ export function AppShell({ user, navBadges, usage, banner, children }: Props) {
     : "text-primary";
 
   return (
+    <NotificationsProvider>
     <div className="flex min-h-screen bg-background">
       <a
         href="#main-content"
@@ -126,6 +129,10 @@ export function AppShell({ user, navBadges, usage, banner, children }: Props) {
             <LogoMark size={32} />
             <span className="brand-mark text-base">ProdMatch</span>
           </Link>
+          {/* Desktop notification bell (mobile uses the one in the top header) */}
+          <div className="ml-auto hidden lg:block">
+            <NotificationBell placement="sidebar" />
+          </div>
           <button
             className="rounded-md p-2 text-muted-foreground transition hover:bg-secondary hover:text-foreground focus-ring lg:hidden tap-target-sm"
             onClick={() => setOpen(false)}
@@ -301,6 +308,7 @@ export function AppShell({ user, navBadges, usage, banner, children }: Props) {
           >
             <Search className="h-5 w-5" aria-hidden />
           </button>
+          <NotificationBell placement="header" />
         </header>
 
         {/* Page transition kept short (130ms) to feel snappy. The previous
@@ -328,5 +336,6 @@ export function AppShell({ user, navBadges, usage, banner, children }: Props) {
         <RecordLastVisit />
       </Suspense>
     </div>
+    </NotificationsProvider>
   );
 }
