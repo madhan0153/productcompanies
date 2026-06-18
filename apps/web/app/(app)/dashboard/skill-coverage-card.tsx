@@ -91,7 +91,7 @@ export function SkillCoverageCard({ data }: { data: SkillCoverageOutput }) {
         </Link>
       </header>
 
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+      <div className="phone-grid-1 grid grid-cols-1 gap-4 md:grid-cols-3">
         {/* Have */}
         <div className="rounded-md border border-success/20 bg-success/5 px-3 py-2.5">
           <p className="mb-2 text-[10px] font-semibold uppercase tracking-wider text-success">
