@@ -19,6 +19,7 @@ export const PushPayloadSchema = z.object({
   priority: z.enum(["critical", "time_sensitive", "important", "engagement"]).default("important"),
   deliveryWindow: z.enum(["respect", "due"]).default("respect"),
   idempotencyKey: z.string().trim().min(1).max(180).optional(),
+  actionLabel: z.string().trim().min(1).max(32).default("View in ProdMatch"),
   ttlSeconds: z.number().int().min(60).max(60 * 60 * 24 * 7).default(60 * 60 * 24),
 });
 

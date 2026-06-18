@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { Bell, BellOff, BellRing, Loader2 } from "lucide-react";
 import { toast } from "sonner";
+import { PWA_EVENTS } from "@/lib/pwa/install";
 
 // Decodes the URL-safe base64 VAPID public key into the Uint8Array the
 // PushManager expects as applicationServerKey.
@@ -74,6 +75,7 @@ export function PushOptIn({
     if (!vapidPublicKey) return;
     setBusy(true);
     try {
+      window.dispatchEvent(new CustomEvent(PWA_EVENTS.notificationStarted));
       const permission = await Notification.requestPermission();
       if (permission !== "granted") {
         setState(permission === "denied" ? "blocked" : "off");

@@ -17,6 +17,7 @@ import { cn } from "@/lib/utils";
 import { CommandPalette } from "@/components/command-palette";
 import { MobileBottomNav } from "@/components/mobile-bottom-nav";
 import { PwaInstallPrompt } from "@/components/pwa-install-prompt";
+import { PwaInstallMenuItem } from "@/components/pwa-install-menu-item";
 import { RecordLastVisit } from "@/components/record-last-visit";
 import { NotificationsProvider } from "@/components/notifications/notifications-provider";
 import { NotificationBell } from "@/components/notifications/notification-bell";
@@ -211,6 +212,7 @@ export function AppShell({ user, navBadges, usage, banner, children }: Props) {
 
         {/* Bottom section */}
         <div className="border-t border-border p-3 space-y-0.5">
+          <PwaInstallMenuItem onOpen={() => setOpen(false)} />
           <Link
             href="/settings/privacy"
             className="flex items-center gap-3 rounded-md px-3 py-2.5 text-sm font-medium text-muted-foreground transition hover:bg-secondary hover:text-foreground focus-ring"

@@ -1,8 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createHash } from "node:crypto";
 import { z } from "zod";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
-import { notifyUser } from "@/lib/push/notify";
 
 export const dynamic = "force-dynamic";
 
@@ -40,6 +38,13 @@ export async function POST(req: NextRequest) {
   }
   const { endpoint, keys } = parsed.data;
   const userAgent = req.headers.get("user-agent")?.slice(0, 300) ?? null;
+  const origin = req.headers.get("origin")?.slice(0, 300) ?? null;
+  const environment =
+    process.env.VERCEL_ENV === "production"
+      ? "production"
+      : process.env.VERCEL_ENV === "preview"
+        ? "preview"
+        : "development";
   const deviceName = userAgent
     ? /iPhone|iPad/i.test(userAgent)
       ? "Safari on iOS"
@@ -66,11 +71,19 @@ export async function POST(req: NextRequest) {
     auth: keys.auth,
     user_agent: userAgent,
     device_name: deviceName,
+    environment,
+    origin,
     disabled_at: null,
     failure_count: 0,
     last_used_at: new Date().toISOString(),
     updated_at: new Date().toISOString(),
   };
+  await supabase
+    .from("push_subscriptions")
+    .delete()
+    .eq("user_id", user.id)
+    .eq("p256dh", keys.p256dh)
+    .neq("endpoint", endpoint);
   let { error } = await supabase.from("push_subscriptions").upsert(
     fullRow,
     { onConflict: "endpoint" },
@@ -91,15 +104,6 @@ export async function POST(req: NextRequest) {
   if (error) {
     return NextResponse.json({ error: "Could not save subscription" }, { status: 500 });
   }
-
-  await notifyUser(user.id, {
-    type: "security",
-    title: "Push notifications enabled",
-    body: "A browser was added to your ProdMatch notification devices.",
-    url: "/settings/privacy",
-    priority: "important",
-    idempotencyKey: `push_subscription_added:${createHash("sha256").update(endpoint).digest("hex").slice(0, 24)}`,
-  }).catch(() => undefined);
 
   return NextResponse.json({ ok: true });
 }

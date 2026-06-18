@@ -88,7 +88,7 @@ export const DEFAULT_NOTIFICATION_FREQUENCIES: Record<NotificationKind, Notifica
   resume_updates: "immediate",
   preparation_reminders: "daily",
   career_sprint: "weekly",
-  product_announcements: "weekly",
+  product_announcements: "disabled",
   billing: "immediate",
   security: "immediate",
 };

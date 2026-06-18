@@ -17,7 +17,7 @@
  * (see components/pwa-register.tsx) so we never hot-swap assets mid-session.
  */
 
-const VERSION = "v2";
+const VERSION = "v3";
 const STATIC_CACHE = `pm-static-${VERSION}`;
 const RUNTIME_CACHE = `pm-runtime-${VERSION}`;
 const IMAGE_CACHE = `pm-images-${VERSION}`;
@@ -172,13 +172,19 @@ self.addEventListener("push", (event) => {
     body: payload.body || "",
     icon: "/icons/icon-192.png",
     badge: "/icons/badge-96.png",
-    tag: payload.data && payload.data.jobId
-      ? `${payload.type || "prodmatch"}:${payload.data.jobId}`
-      : payload.type || "prodmatch",
+    tag: payload.tag || `${payload.type || "prodmatch"}:${payload.eventId || "event"}`,
     renotify: payload.priority === "critical" || payload.priority === "time_sensitive",
     timestamp: Number(payload.timestamp) || Date.now(),
+    lang: "en-IN",
+    actions: [
+      {
+        action: "open",
+        title: payload.actionLabel || "View in ProdMatch",
+      },
+    ],
     data: {
       notificationId: payload.notificationId || null,
+      eventId: payload.eventId || null,
       url: safeAppPath(payload.url),
       ...(payload.data || {}),
     },

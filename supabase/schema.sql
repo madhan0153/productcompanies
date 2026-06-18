@@ -2677,6 +2677,8 @@ create table if not exists public.push_subscriptions (
   auth          text not null,
   user_agent    text,
   device_name   text,
+  environment   text not null default 'legacy',
+  origin        text,
   created_at    timestamptz not null default now(),
   updated_at    timestamptz not null default now(),
   last_used_at  timestamptz,
@@ -2686,11 +2688,15 @@ create table if not exists public.push_subscriptions (
   disabled_at   timestamptz
 );
 alter table public.push_subscriptions add column if not exists device_name text;
+alter table public.push_subscriptions add column if not exists environment text not null default 'legacy';
+alter table public.push_subscriptions add column if not exists origin text;
 alter table public.push_subscriptions add column if not exists updated_at timestamptz not null default now();
 alter table public.push_subscriptions add column if not exists last_success_at timestamptz;
 alter table public.push_subscriptions add column if not exists last_failure_at timestamptz;
 create index if not exists idx_push_subscriptions_user_active
   on public.push_subscriptions(user_id) where disabled_at is null;
+create index if not exists idx_push_subscriptions_environment_active
+  on public.push_subscriptions(environment, user_id) where disabled_at is null;
 
 -- (3) notifications — append-only delivery log; doubles as the in-app feed.
 create table if not exists public.notifications (
@@ -2764,13 +2770,22 @@ create table if not exists public.notification_preferences (
     "resume_updates":"immediate",
     "preparation_reminders":"daily",
     "career_sprint":"weekly",
-    "product_announcements":"weekly",
+    "product_announcements":"disabled",
     "billing":"immediate",
     "security":"immediate"
   }'::jsonb,
   created_at           timestamptz not null default now(),
   updated_at           timestamptz not null default now()
 );
+
+update public.notification_preferences
+set category_frequencies = jsonb_set(
+  category_frequencies,
+  '{product_announcements}',
+  '"disabled"'::jsonb,
+  true
+)
+where category_frequencies->>'product_announcements' = 'weekly';
 
 do $$ begin
   alter table public.notifications

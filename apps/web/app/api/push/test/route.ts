@@ -22,7 +22,7 @@ export async function POST(req: NextRequest) {
   const result = await notifyUser(user.id, {
     type: "security",
     title: "ProdMatch notifications are working",
-    body: "This device is ready for useful, privacy-safe alerts.",
+    body: "You'll receive alerts for resume results, strong matches and reminders you enable.",
     url: "/settings/privacy",
     priority: "important",
     idempotencyKey: `push_test:${user.id}:${Math.floor(Date.now() / 60_000)}`,

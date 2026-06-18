@@ -7,6 +7,7 @@ import { getKindFrequency, NOTIFICATION_KINDS, type NotificationKind } from "./c
 
 const FAILURE_RETIRE_THRESHOLD = 5;
 const RETRY_BASE_MS = 5 * 60 * 1000;
+const NON_CRITICAL_DAILY_CAP = 4;
 
 export type NotifyResult = {
   notificationId: string | null;
@@ -59,6 +60,17 @@ export async function notifyUser(userId: string, input: PushPayload): Promise<No
   if (!consent?.length) return empty;
 
   const now = new Date();
+  const transactional = payload.type === "billing" || payload.type === "security";
+  if (!transactional && payload.priority !== "critical" && payload.priority !== "time_sensitive") {
+    const since = new Date(now.getTime() - 24 * 60 * 60 * 1000).toISOString();
+    const { count } = await admin
+      .from("notifications")
+      .select("id", { count: "exact", head: true })
+      .eq("user_id", userId)
+      .in("status", ["sent", "partially_sent"])
+      .gte("created_at", since);
+    if ((count ?? 0) >= NON_CRITICAL_DAILY_CAP) return empty;
+  }
   const expiresAt = new Date(now.getTime() + payload.ttlSeconds * 1000).toISOString();
   let { data: notification, error: notificationError } = await admin
     .from("notifications")
@@ -119,10 +131,17 @@ export async function notifyUser(userId: string, input: PushPayload): Promise<No
     return { ...empty, notificationId: notification.id, logged: true };
   }
 
+  const productionTransport = process.env.VERCEL_ENV === "production";
+  if (!productionTransport) {
+    await admin.from("notifications").update({ status: "in_app_only" }).eq("id", notification.id);
+    return { ...empty, notificationId: notification.id, logged: true };
+  }
+
   let { data: subs, error: subscriptionsError } = await admin
     .from("push_subscriptions")
     .select("id, endpoint, p256dh, auth, failure_count")
     .eq("user_id", userId)
+    .eq("environment", "production")
     .is("disabled_at", null);
   if (isSchemaDriftError(subscriptionsError)) {
     const fallback = await admin
@@ -151,6 +170,9 @@ export async function notifyUser(userId: string, input: PushPayload): Promise<No
     body: payload.body ?? "",
     url: safeNotificationPath(payload.url),
     type: payload.type,
+    eventId: payload.idempotencyKey ?? notification.id,
+    tag: `${payload.type}:${payload.idempotencyKey ?? notification.id}`,
+    actionLabel: payload.actionLabel,
     priority: payload.priority,
     timestamp: now.getTime(),
     data: payload.data ?? {},

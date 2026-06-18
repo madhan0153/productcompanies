@@ -11,6 +11,7 @@ test("push payload accepts safe app-relative deep links", () => {
     data: { count: 1 },
   });
   assert.equal(payload.url, "/jobs/123?from=push");
+  assert.equal(payload.actionLabel, "View in ProdMatch");
 });
 
 test("push payload rejects external and protocol-relative links", () => {
@@ -32,6 +33,7 @@ test("push payload rejects sensitive arbitrary data fields", () => {
 
 test("notification frequency defaults and explicit opt-out are stable", () => {
   assert.equal(getKindFrequency(null, "job_matches"), "immediate");
+  assert.equal(getKindFrequency(null, "product_announcements"), "disabled");
   assert.equal(getKindFrequency({ job_matches: "disabled" }, "job_matches"), "disabled");
   assert.equal(getKindFrequency({ job_matches: "unexpected" }, "job_matches"), "immediate");
 });

@@ -724,18 +724,21 @@ export interface Database {
       push_subscriptions: {
         Row: {
           id: string; user_id: string; endpoint: string; p256dh: string; auth: string;
-          user_agent: string | null; device_name: string | null; created_at: string;
+          user_agent: string | null; device_name: string | null; environment: string;
+          origin: string | null; created_at: string;
           updated_at: string; last_used_at: string | null; last_success_at: string | null;
           last_failure_at: string | null; failure_count: number; disabled_at: string | null;
         };
         Insert: {
           id?: string; user_id: string; endpoint: string; p256dh: string; auth: string;
-          user_agent?: string | null; device_name?: string | null; created_at?: string;
+          user_agent?: string | null; device_name?: string | null; environment?: string;
+          origin?: string | null; created_at?: string;
           updated_at?: string; last_used_at?: string | null; last_success_at?: string | null;
           last_failure_at?: string | null; failure_count?: number; disabled_at?: string | null;
         };
         Update: {
           endpoint?: string; p256dh?: string; auth?: string; user_agent?: string | null; device_name?: string | null;
+          environment?: string; origin?: string | null;
           updated_at?: string; last_used_at?: string | null; last_success_at?: string | null;
           last_failure_at?: string | null; failure_count?: number; disabled_at?: string | null;
         };
