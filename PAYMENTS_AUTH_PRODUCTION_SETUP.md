@@ -29,6 +29,14 @@ Production webhook URL:
 
 Use Dodo's live key and live product IDs only in Vercel Production. Preview deployments must remain in `test_mode`.
 
+## Required Dodo live configuration
+
+1. Configure every live product with the exact INR amount shown below. The application catalog does not override a price configured incorrectly in Dodo.
+2. Enable Adaptive Currency for the business. Checkout requests explicitly set `billing_currency: INR` and `adaptive_currency_fees_inclusive: true`.
+3. If the customer must pay exactly the advertised amount, configure the Dodo product/tax behavior so taxes are included in that amount. Otherwise applicable tax can still increase the final charge.
+4. Confirm the live webhook endpoint subscribes to both `payment.succeeded` and `subscription.active` in addition to the lifecycle events listed below.
+5. A USD value in Dodo's revenue dashboard can be the dashboard reporting or settlement currency. The checkout and invoice currency recorded for Indian customers must still be INR.
+
 ## Dodo product mapping
 
 | Internal key | Display | Type | INR amount | Interval | Product env variable | Visible |
@@ -61,6 +69,20 @@ The current Dodo Checkout Sessions API uses product IDs; this codebase has no se
 6. Complete the “Live payment verification” checkout.
 7. Confirm one verification invoice, no Pro/Sprint entitlement, successful webhook processing, billing-history visibility, duplicate-webhook safety, and refund synchronization.
 8. Immediately set `ENABLE_PAYMENT_TEST_PLAN=false` and redeploy. Historical financial records remain intact.
+
+## Repair a paid account that still shows Free
+
+After deploying the activation fix:
+
+1. Open `/admin/billing/reconcile` while signed in with an email listed in `ADMIN_EMAILS`.
+2. Enter the Dodo subscription ID and the customer's ProdMatch account email.
+3. For the reported June 19, 2026 incident, use subscription `sub_0NhMw1ft9UxuJCilN0YMj` and verify the target email against the Dodo customer before submitting.
+4. Leave the plan override empty when the live Dodo product ID is mapped correctly. Otherwise select the plan matching the paid product.
+5. Submit reconciliation and require a successful result. Do not manually grant access without persisting the provider subscription.
+6. Verify `/settings/billing` shows the paid plan, then refresh `/dashboard` and confirm the header is no longer `Free`.
+7. In `/admin/billing`, verify there are no failed `payment.succeeded` or `subscription.active` events for the customer.
+8. In Supabase, confirm one live-mode `subscriptions` row, one corresponding paid `invoices` row, and a matching `user_entitlements` row for the same user.
+9. Redeliver the original Dodo webhooks once and confirm the rows remain single and idempotent.
 
 ## Google sign-in branding
 

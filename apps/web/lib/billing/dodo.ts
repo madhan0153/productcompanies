@@ -118,6 +118,8 @@ export async function createDodoCheckoutSession(input: {
     },
     body: JSON.stringify({
       product_cart: [{ product_id: productId, quantity: 1 }],
+      billing_currency: "INR",
+      adaptive_currency_fees_inclusive: true,
       customer: {
         email: input.email,
         name: input.name ?? input.email.split("@")[0],

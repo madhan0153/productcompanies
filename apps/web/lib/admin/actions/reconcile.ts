@@ -85,7 +85,7 @@ function statusMap(s: string | null): SubscriptionStatus {
     case "canceled":  return "cancelled";
     case "expired":   return "expired";
     case "failed":    return "failed";
-    default:          return "active";
+    default:          return "incomplete";
   }
 }
 
@@ -173,7 +173,7 @@ export async function reconcileSubscription(
   const mappedStatus = statusMap(statusRaw);
 
   if (customerId) {
-    await supabaseAdmin.from("billing_customers").upsert({
+    const customerUpsert = await supabaseAdmin.from("billing_customers").upsert({
       user_id:           target.id,
       dodo_customer_id:  customerId,
       dodo_environment:  serverEnv.DODO_PAYMENTS_ENVIRONMENT,
@@ -181,9 +181,12 @@ export async function reconcileSubscription(
       currency:          deepStr(dodoData, ["currency"]) ?? "INR",
       updated_at:        new Date().toISOString(),
     });
+    if (customerUpsert.error) {
+      return { ok: false, message: "Could not save the Dodo customer record." };
+    }
   }
 
-  await supabaseAdmin.from("subscriptions").upsert({
+  const subscriptionUpsert = await supabaseAdmin.from("subscriptions").upsert({
     user_id:                  target.id,
     provider:                 "dodo",
     environment:              serverEnv.DODO_PAYMENTS_ENVIRONMENT,
@@ -203,8 +206,18 @@ export async function reconcileSubscription(
     } as Json,
     updated_at:               new Date().toISOString(),
   }, { onConflict: "provider,environment,provider_subscription_id" });
+  if (subscriptionUpsert.error) {
+    return { ok: false, message: "Could not save the subscription record." };
+  }
 
-  await refreshEntitlements(target.id);
+  try {
+    const entitlement = await refreshEntitlements(target.id);
+    if ((mappedStatus === "active" || mappedStatus === "trialing") && entitlement.plan !== plan) {
+      return { ok: false, message: "Subscription was saved, but entitlement activation did not complete." };
+    }
+  } catch {
+    return { ok: false, message: "Subscription was saved, but entitlement refresh failed." };
+  }
 
   await recordAdminAction({
     actionType:   "grant_entitlement",

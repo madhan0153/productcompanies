@@ -176,12 +176,13 @@ export async function POST(req: NextRequest) {
       idempotencyKey,
       returnNonce,
     });
-    await admin.from("billing_checkout_sessions").update({
+    const checkoutUpdate = await admin.from("billing_checkout_sessions").update({
       provider_session_id: session.session_id,
       checkout_url: session.checkout_url,
       status: "open",
       updated_at: new Date().toISOString(),
     }).eq("id", checkoutRecordId);
+    if (checkoutUpdate.error) throw checkoutUpdate.error;
     logEvent("info", "billing_checkout_created", {
       user_id_prefix: user.id.slice(0, 8),
       checkout_product: checkoutProduct,
@@ -190,10 +191,18 @@ export async function POST(req: NextRequest) {
     });
     return NextResponse.json({ checkoutUrl: session.checkout_url });
   } catch (err) {
-    await admin.from("billing_checkout_sessions").update({
+    const failedUpdate = await admin.from("billing_checkout_sessions").update({
       status: "failed",
       updated_at: new Date().toISOString(),
     }).eq("id", checkoutRecordId);
+    if (failedUpdate.error) {
+      logEvent("error", "billing_checkout_failure_status_update_failed", {
+        user_id_prefix: user.id.slice(0, 8),
+        checkout_product: checkoutProduct,
+        environment,
+        error_code: failedUpdate.error.code,
+      });
+    }
     // Distinguish "env not wired yet" from generic checkout failures. The
     // client uses the code to dim that specific plan for the rest of the
     // session and swap copy to "Coming soon" instead of a scary banner.

@@ -28,7 +28,7 @@ export async function resolveEntitlements(userId: string): Promise<EntitlementSt
   const admin = createSupabaseAdminClient();
   const now = new Date().toISOString();
 
-  const [{ data: subscriptions }, { data: grants }] = await Promise.all([
+  const [subscriptionsResult, grantsResult] = await Promise.all([
     admin
       .from("subscriptions")
       .select("plan, status, current_period_end")
@@ -40,6 +40,10 @@ export async function resolveEntitlements(userId: string): Promise<EntitlementSt
       .eq("user_id", userId)
       .lte("starts_at", now),
   ]);
+  if (subscriptionsResult.error) throw subscriptionsResult.error;
+  if (grantsResult.error) throw grantsResult.error;
+  const subscriptions = subscriptionsResult.data;
+  const grants = grantsResult.data;
 
   let plan: BillingPlan = "free";
   let source = "free";
@@ -88,7 +92,7 @@ export async function refreshEntitlements(userId: string): Promise<EntitlementSt
   const entitlements = await resolveEntitlements(userId);
   const now = new Date().toISOString();
 
-  await admin.from("user_entitlements").upsert({
+  const upsert = await admin.from("user_entitlements").upsert({
     user_id: userId,
     plan: entitlements.plan,
     source: entitlements.source,
@@ -99,6 +103,7 @@ export async function refreshEntitlements(userId: string): Promise<EntitlementSt
     refreshed_at: now,
     updated_at: now,
   });
+  if (upsert.error) throw upsert.error;
 
   return entitlements;
 }
@@ -112,11 +117,12 @@ export const getEntitlements = cache(async (userId: string): Promise<Entitlement
 
 async function readEntitlements(userId: string): Promise<EntitlementState> {
   const admin = createSupabaseAdminClient();
-  const { data } = await admin
+  const { data, error } = await admin
     .from("user_entitlements")
     .select("plan, source, active_until, tailored_resume_limit, priority_level, feature_flags, refreshed_at")
     .eq("user_id", userId)
     .maybeSingle();
+  if (error) throw error;
 
   if (!data) return refreshEntitlements(userId);
 

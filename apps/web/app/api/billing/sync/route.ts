@@ -90,7 +90,7 @@ function statusMap(dodoStatus: string | null): SubscriptionStatus {
     case "canceled":  return "cancelled";
     case "expired":   return "expired";
     case "failed":    return "failed";
-    default:          return "active";
+    default:          return "incomplete";
   }
 }
 
@@ -136,11 +136,14 @@ export async function POST(req: NextRequest) {
   });
   if (userLimit) return userLimit;
 
-  let body: { subscription_id?: string; product?: string; emailHint?: string };
+  let body: { subscription_id?: string; product?: string; session?: string; emailHint?: string };
   try { body = await req.json(); } catch { body = {}; }
 
   const subscriptionId   = body.subscription_id?.trim();
-  const fallbackProduct  = (body.product ?? "") as CheckoutProductId;
+  const fallbackProduct  = body.product && body.product in CHECKOUT_PRODUCTS
+    ? body.product as CheckoutProductId
+    : null;
+  const checkoutNonce    = body.session?.trim() ?? null;
   const emailHint        = body.emailHint?.trim().toLowerCase() ?? null;
   if (!subscriptionId) {
     logEvent("info", "billing_sync_missing_subscription_id", {
@@ -148,11 +151,18 @@ export async function POST(req: NextRequest) {
     });
     return NextResponse.json({ error: "subscription_id required" }, { status: 400 });
   }
+  if (body.product && !fallbackProduct) {
+    return NextResponse.json({ error: "Invalid product" }, { status: 400 });
+  }
+  if (checkoutNonce && !/^[0-9a-f-]{36}$/i.test(checkoutNonce)) {
+    return NextResponse.json({ error: "Invalid checkout session" }, { status: 400 });
+  }
 
   logEvent("info", "billing_sync_start", {
     user_id_prefix:         user.id.slice(0, 8),
     subscription_id_prefix: shortId(subscriptionId),
-    fallback_product:       fallbackProduct || null,
+    fallback_product:       fallbackProduct,
+    has_checkout_nonce:     Boolean(checkoutNonce),
     has_email_hint:         Boolean(emailHint),
   });
 
@@ -165,13 +175,20 @@ export async function POST(req: NextRequest) {
   const admin = createSupabaseAdminClient();
 
   // Short-circuit: if we already have an active sub on this user, just refresh
-  const { data: existing } = await admin
+  const existingResult = await admin
     .from("subscriptions")
     .select("id, user_id, plan, status")
     .eq("provider", "dodo")
     .eq("environment", serverEnv.DODO_PAYMENTS_ENVIRONMENT)
     .eq("provider_subscription_id", subscriptionId)
     .maybeSingle();
+  if (existingResult.error) {
+    logEvent("error", "billing_sync_existing_subscription_lookup_failed", {
+      error_code: existingResult.error.code,
+    });
+    return NextResponse.json({ error: "Could not verify billing state." }, { status: 500 });
+  }
+  const existing = existingResult.data;
 
   if (existing && existing.user_id === user.id && existing.status === "active") {
     await refreshEntitlements(user.id);
@@ -260,19 +277,47 @@ export async function POST(req: NextRequest) {
   const ownsByEmail      = !!customerEmail && customerEmail.toLowerCase() === userEmail;
   const ownsByEmailHint  = !!emailHint && !!customerEmail && customerEmail.toLowerCase() === emailHint && emailHint === userEmail;
 
+  let checkoutProduct: CheckoutProductId | null = null;
+  if (checkoutNonce) {
+    let checkoutQuery = admin
+      .from("billing_checkout_sessions")
+      .select("checkout_product")
+      .eq("user_id", user.id)
+      .eq("provider", "dodo")
+      .eq("environment", serverEnv.DODO_PAYMENTS_ENVIRONMENT)
+      .eq("return_nonce", checkoutNonce);
+    if (fallbackProduct) checkoutQuery = checkoutQuery.eq("checkout_product", fallbackProduct);
+    const checkoutResult = await checkoutQuery.maybeSingle();
+    if (checkoutResult.error) {
+      logEvent("error", "billing_sync_checkout_lookup_failed", {
+        error_code: checkoutResult.error.code,
+      });
+      return NextResponse.json({ error: "Could not verify checkout ownership." }, { status: 500 });
+    }
+    checkoutProduct = checkoutResult.data?.checkout_product as CheckoutProductId | null ?? null;
+  }
+  const ownsByCheckoutSession = checkoutProduct !== null;
+
   // Fallback: existing billing_customer row with this customer_id already belongs to this user
   let ownsByExistingCustomer = false;
   if (customerId) {
-    const { data: existingCustomer } = await admin
+    const existingCustomerResult = await admin
       .from("billing_customers")
       .select("user_id")
       .eq("dodo_customer_id", customerId)
       .eq("dodo_environment", serverEnv.DODO_PAYMENTS_ENVIRONMENT)
       .maybeSingle();
+    if (existingCustomerResult.error) {
+      logEvent("error", "billing_sync_customer_lookup_failed", {
+        error_code: existingCustomerResult.error.code,
+      });
+      return NextResponse.json({ error: "Could not verify billing customer." }, { status: 500 });
+    }
+    const existingCustomer = existingCustomerResult.data;
     ownsByExistingCustomer = existingCustomer?.user_id === user.id;
   }
 
-  if (!ownsByMeta && !ownsByEmail && !ownsByEmailHint && !ownsByExistingCustomer) {
+  if (!ownsByMeta && !ownsByEmail && !ownsByEmailHint && !ownsByCheckoutSession && !ownsByExistingCustomer) {
     logEvent("warn", "billing_sync_ownership_mismatch", {
       user_id_prefix:         user.id.slice(0, 8),
       subscription_id_prefix: shortId(subscriptionId),
@@ -294,14 +339,14 @@ export async function POST(req: NextRequest) {
 
   // Determine plan
   let plan: BillingPlan | null = planFromProductId(productId);
-  if (!plan && fallbackProduct && fallbackProduct in CHECKOUT_PRODUCTS) {
-    plan = CHECKOUT_PRODUCTS[fallbackProduct].plan;
+  if (!plan && checkoutProduct) {
+    plan = CHECKOUT_PRODUCTS[checkoutProduct].plan;
   }
   if (!plan || plan === "free") {
     logEvent("warn", "billing_sync_unknown_plan", {
       subscription_id_prefix: shortId(subscriptionId),
       product_id_prefix:      shortId(productId),
-      fallback_product:       fallbackProduct || null,
+      fallback_product:       fallbackProduct,
     });
     return NextResponse.json({
       error: "Could not determine your plan from Dodo product. Contact support with subscription id.",
@@ -313,7 +358,7 @@ export async function POST(req: NextRequest) {
 
   // Upsert customer
   if (customerId) {
-    await admin.from("billing_customers").upsert({
+    const customerUpsert = await admin.from("billing_customers").upsert({
       user_id:           user.id,
       dodo_customer_id:  customerId,
       dodo_environment:  serverEnv.DODO_PAYMENTS_ENVIRONMENT,
@@ -321,10 +366,16 @@ export async function POST(req: NextRequest) {
       currency:          deepStr(dodoData, ["currency"]) ?? "INR",
       updated_at:        new Date().toISOString(),
     });
+    if (customerUpsert.error) {
+      logEvent("error", "billing_sync_customer_upsert_failed", {
+        error_code: customerUpsert.error.code,
+      });
+      return NextResponse.json({ error: "Could not save billing customer." }, { status: 500 });
+    }
   }
 
   // Upsert subscription
-  await admin.from("subscriptions").upsert({
+  const subscriptionUpsert = await admin.from("subscriptions").upsert({
     user_id:                  user.id,
     provider:                 "dodo",
     environment:              serverEnv.DODO_PAYMENTS_ENVIRONMENT,
@@ -344,8 +395,31 @@ export async function POST(req: NextRequest) {
     } as Json,
     updated_at:               new Date().toISOString(),
   }, { onConflict: "provider,environment,provider_subscription_id" });
+  if (subscriptionUpsert.error) {
+    logEvent("error", "billing_sync_subscription_upsert_failed", {
+      error_code: subscriptionUpsert.error.code,
+    });
+    return NextResponse.json({ error: "Could not activate subscription." }, { status: 500 });
+  }
 
-  const entitlement = await refreshEntitlements(user.id);
+  let entitlement;
+  try {
+    entitlement = await refreshEntitlements(user.id);
+  } catch (error) {
+    logEvent("error", "billing_sync_entitlement_refresh_failed", {
+      error_kind: errorKind(error),
+    });
+    return NextResponse.json({ error: "Could not refresh plan access." }, { status: 500 });
+  }
+  if (mappedStatus === "active" || mappedStatus === "trialing") {
+    if (entitlement.plan !== plan) {
+      logEvent("error", "billing_sync_entitlement_mismatch", {
+        expected_plan: plan,
+        actual_plan: entitlement.plan,
+      });
+      return NextResponse.json({ error: "Payment was found but plan activation is still pending." }, { status: 409 });
+    }
+  }
   logEvent("info", "billing_sync_success", {
     user_id_prefix:         user.id.slice(0, 8),
     subscription_id_prefix: shortId(subscriptionId),

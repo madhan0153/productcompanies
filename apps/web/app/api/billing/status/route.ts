@@ -46,6 +46,9 @@ export async function POST(req: NextRequest) {
       .limit(1)
       .maybeSingle(),
   ]);
+  if (invoiceResult.error) {
+    return NextResponse.json({ error: "Could not verify payment status." }, { status: 500 });
+  }
 
   const paymentStatus = invoiceResult.data?.status ?? null;
   const confirmed = config.plan

@@ -14,7 +14,7 @@ import { CelebrationOverlay } from "./celebration";
 // after a completed checkout. We poll /api/billing/refresh until the webhook
 // activates the subscription, then send the user back to where they were.
 
-const MAX_POLL_MS      = 12_000;
+const MAX_POLL_MS      = 90_000;
 const POLL_INTERVAL_MS = 1_500;
 
 export default function BillingSuccessPage() {
@@ -46,6 +46,7 @@ function BillingSuccessContent() {
   const [secondsLeft, setSecondsLeft] = useState(Math.ceil(MAX_POLL_MS / 1000));
   const [copied, setCopied] = useState(false);
   const [syncError, setSyncError] = useState<string | null>(null);
+  const [retryAttempt, setRetryAttempt] = useState(0);
 
   const pollRef  = useRef<ReturnType<typeof setInterval> | null>(null);
   const startRef = useRef(Date.now());
@@ -73,6 +74,7 @@ function BillingSuccessContent() {
           body:    JSON.stringify({
             subscription_id: subId,
             product,
+            session,
             emailHint: email || undefined,
           }),
         });
@@ -140,7 +142,7 @@ function BillingSuccessContent() {
       cancelled = true;
       if (pollRef.current) clearInterval(pollRef.current);
     };
-  }, [onWrongHost, subId, product, email, session]);
+  }, [onWrongHost, subId, product, email, session, retryAttempt]);
 
   // Auto-redirect to return_to once activated (with brief celebration window)
   useEffect(() => {
@@ -199,7 +201,7 @@ function BillingSuccessContent() {
               {verificationOnly ? "Confirming your payment…" : "Activating your plan…"}
             </h1>
             <p className="mt-1 text-sm text-muted-foreground">
-              Waiting for the verified payment event from Dodo — usually under 10 seconds.
+              Waiting for Dodo and securely linking the payment to your account.
             </p>
             <p className="mt-2 text-[11px] text-muted-foreground">{secondsLeft}s remaining</p>
           </div>
@@ -274,27 +276,36 @@ function BillingSuccessContent() {
   return (
     <Centered>
       <div className="max-w-md space-y-4 text-center">
-        <CheckCircle2 className="mx-auto h-12 w-12 text-success" />
+        <AlertTriangle className="mx-auto h-12 w-12 text-amber-500" />
         <div>
           <h1 className="font-display text-2xl font-bold">Confirmation pending</h1>
           <p className="mt-1 text-sm text-muted-foreground">
-            Dodo has not yet delivered a verified final event. Refresh shortly; access is never granted from this URL alone.
+            Your payment may be complete, but your plan is not active in ProdMatch yet. Keep this page open and check activation again.
           </p>
         </div>
         <div className="flex flex-col gap-2 sm:flex-row sm:justify-center">
-          <Link
-            href={returnTo || "/dashboard"}
+          <button
+            onClick={() => {
+              startRef.current = Date.now();
+              setSyncError(null);
+              setPhase("polling");
+              setSecondsLeft(Math.ceil(MAX_POLL_MS / 1000));
+              setRetryAttempt((attempt) => attempt + 1);
+            }}
             className="inline-flex h-10 items-center justify-center gap-2 rounded-lg bg-primary px-4 text-sm font-semibold text-primary-foreground hover:bg-primary/90"
           >
-            Continue <ArrowRight className="h-4 w-4" />
-          </Link>
-          <button
-            onClick={() => { startRef.current = Date.now(); setPhase("polling"); setSecondsLeft(Math.ceil(MAX_POLL_MS / 1000)); }}
-            className="rounded-lg border border-border bg-background px-4 py-2 text-sm font-medium hover:bg-secondary"
-          >
-            Try again
+            Check activation again <ArrowRight className="h-4 w-4" />
           </button>
+          <Link
+            href="/settings/billing"
+            className="inline-flex h-10 items-center justify-center rounded-lg border border-border bg-background px-4 text-sm font-medium hover:bg-secondary"
+          >
+            View billing status
+          </Link>
         </div>
+        <Link href="/dashboard" className="text-xs text-muted-foreground hover:text-foreground">
+          Return to dashboard without activation
+        </Link>
 
         {/* Support fallback — copy session identifiers */}
         <div className="mt-6 rounded-lg border border-border bg-card p-4 text-left">

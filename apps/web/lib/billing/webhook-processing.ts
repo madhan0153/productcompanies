@@ -39,6 +39,10 @@ function metadataFrom(data: Record<string, unknown>): Record<string, unknown> {
   return asRecord(data.metadata ?? data.custom_data ?? data.custom_fields);
 }
 
+function throwOnBillingError(result: { error: unknown }): void {
+  if (result.error) throw result.error;
+}
+
 function planFromProductId(productId: string | null): BillingPlan | null {
   if (!productId) return null;
   for (const [key, product] of Object.entries(CHECKOUT_PRODUCTS) as Array<[CheckoutProductId, typeof CHECKOUT_PRODUCTS[CheckoutProductId]]>) {
@@ -106,16 +110,35 @@ async function userIdFromPayload(data: Record<string, unknown>): Promise<string 
   const userId = stringValue(metadata, ["user_id"]);
   if (userId) return userId;
 
+  const sessionNonce = stringValue(metadata, ["session_nonce"]);
+  const checkoutProduct = stringValue(metadata, ["checkout_product"]);
+  if (sessionNonce) {
+    let checkoutQuery = createSupabaseAdminClient()
+      .from("billing_checkout_sessions")
+      .select("user_id")
+      .eq("provider", "dodo")
+      .eq("environment", serverEnv.DODO_PAYMENTS_ENVIRONMENT)
+      .eq("return_nonce", sessionNonce);
+    if (checkoutProduct && checkoutProduct in CHECKOUT_PRODUCTS) {
+      checkoutQuery = checkoutQuery.eq("checkout_product", checkoutProduct);
+    }
+    const checkoutResult = await checkoutQuery.maybeSingle();
+    throwOnBillingError(checkoutResult);
+    if (checkoutResult.data?.user_id) return checkoutResult.data.user_id;
+  }
+
   const customerId = stringValue(data, ["customer_id", "customerId", "customer"]);
   if (!customerId) return null;
 
   const admin = createSupabaseAdminClient();
-  const { data: row } = await admin
+  const customerResult = await admin
     .from("billing_customers")
     .select("user_id")
     .eq("dodo_customer_id", customerId)
     .eq("dodo_environment", serverEnv.DODO_PAYMENTS_ENVIRONMENT)
     .maybeSingle();
+  throwOnBillingError(customerResult);
+  const row = customerResult.data;
   return row?.user_id ?? null;
 }
 
@@ -148,13 +171,15 @@ async function claimEvent(input: {
   if (!insert.error) return "claimed";
   if (insert.error.code !== "23505") throw insert.error;
 
-  const { data: existing } = await admin
+  const existingResult = await admin
     .from("payment_events")
     .select("processing_status, retry_count")
     .eq("provider", "dodo")
     .eq("environment", environment)
     .eq("provider_event_id", input.webhookId)
     .maybeSingle();
+  throwOnBillingError(existingResult);
+  const existing = existingResult.data;
 
   if (!existing || !["received", "failed"].includes(existing.processing_status)) return "duplicate";
 
@@ -172,6 +197,7 @@ async function claimEvent(input: {
     .in("processing_status", ["received", "failed"])
     .select("id")
     .maybeSingle();
+  throwOnBillingError(retry);
 
   return retry.data ? "claimed" : "duplicate";
 }
@@ -213,7 +239,7 @@ export async function processDodoWebhook(input: {
 
     if (userId) await notifyBillingEvent(userId, input.eventType, input.webhookId);
 
-    await admin
+    const processedUpdate = await admin
       .from("payment_events")
       .update({
         processed_at: new Date().toISOString(),
@@ -224,8 +250,9 @@ export async function processDodoWebhook(input: {
       .eq("provider", "dodo")
       .eq("environment", serverEnv.DODO_PAYMENTS_ENVIRONMENT)
       .eq("provider_event_id", input.webhookId);
+    throwOnBillingError(processedUpdate);
   } catch (error) {
-    await admin
+    const failedUpdate = await admin
       .from("payment_events")
       .update({
         processing_status: "failed",
@@ -235,6 +262,11 @@ export async function processDodoWebhook(input: {
       .eq("provider", "dodo")
       .eq("environment", serverEnv.DODO_PAYMENTS_ENVIRONMENT)
       .eq("provider_event_id", input.webhookId);
+    if (failedUpdate.error) {
+      console.error("[billing-webhook] failed to persist processing failure", {
+        code: failedUpdate.error.code,
+      });
+    }
     throw error;
   }
 
@@ -283,18 +315,20 @@ async function handleSubscriptionEvent(
   if (!subscriptionId) throw new Error("Subscription event is missing subscription_id.");
 
   const environment = serverEnv.DODO_PAYMENTS_ENVIRONMENT;
-  const { data: existing } = await admin
+  const existingResult = await admin
     .from("subscriptions")
     .select("last_provider_event_at")
     .eq("provider", "dodo")
     .eq("environment", environment)
     .eq("provider_subscription_id", subscriptionId)
     .maybeSingle();
+  throwOnBillingError(existingResult);
+  const existing = existingResult.data;
   if (eventAt && existing?.last_provider_event_at && eventAt < existing.last_provider_event_at) return;
 
   const customerId = stringValue(data, ["customer_id", "customerId", "customer"]);
   if (customerId) {
-    await admin.from("billing_customers").upsert({
+    const customerUpsert = await admin.from("billing_customers").upsert({
       user_id: userId,
       dodo_customer_id: customerId,
       dodo_environment: environment,
@@ -302,9 +336,10 @@ async function handleSubscriptionEvent(
       currency: stringValue(data, ["currency"]) ?? "INR",
       updated_at: new Date().toISOString(),
     });
+    throwOnBillingError(customerUpsert);
   }
 
-  await admin.from("subscriptions").upsert({
+  const subscriptionUpsert = await admin.from("subscriptions").upsert({
     user_id: userId,
     provider: "dodo",
     environment,
@@ -321,6 +356,7 @@ async function handleSubscriptionEvent(
     metadata: eventSnapshot(data),
     updated_at: new Date().toISOString(),
   }, { onConflict: "provider,environment,provider_subscription_id" });
+  throwOnBillingError(subscriptionUpsert);
 
   await refreshEntitlements(userId);
 }
@@ -357,17 +393,19 @@ async function handlePayment(
     updated_at: new Date().toISOString(),
   };
 
-  const { data: existing } = await admin
+  const existingResult = await admin
     .from("invoices")
     .select("id, status")
     .eq("provider", "dodo")
     .eq("environment", environment)
     .eq("provider_payment_id", paymentId)
     .maybeSingle();
+  throwOnBillingError(existingResult);
+  const existing = existingResult.data;
   if (existing) {
-    await admin.from("invoices").update(invoiceValues).eq("id", existing.id);
+    throwOnBillingError(await admin.from("invoices").update(invoiceValues).eq("id", existing.id));
   } else {
-    await admin.from("invoices").insert(invoiceValues);
+    throwOnBillingError(await admin.from("invoices").insert(invoiceValues));
   }
 
   if (status === "paid" && checkoutProduct && product?.creditGrant) {
@@ -382,13 +420,16 @@ async function handlePayment(
   }
 
   if (status === "paid" && checkoutProduct) {
-    await admin
+    const checkoutNonce = stringValue(metadataFrom(data), ["session_nonce"]);
+    let checkoutUpdate = admin
       .from("billing_checkout_sessions")
       .update({ status: "completed", completed_at: new Date().toISOString(), updated_at: new Date().toISOString() })
       .eq("user_id", userId)
       .eq("environment", environment)
       .eq("checkout_product", checkoutProduct)
       .in("status", ["creating", "open"]);
+    if (checkoutNonce) checkoutUpdate = checkoutUpdate.eq("return_nonce", checkoutNonce);
+    throwOnBillingError(await checkoutUpdate);
   }
 }
 
