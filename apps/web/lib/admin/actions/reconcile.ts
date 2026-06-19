@@ -7,17 +7,41 @@ import { refreshEntitlements } from "@/lib/billing/entitlements";
 import { CHECKOUT_PRODUCTS, type BillingPlan, type CheckoutProductId } from "@/lib/billing/catalog";
 import type { Json, SubscriptionStatus } from "@/lib/supabase/types";
 import { requireAdmin } from "../auth";
-import { resolveUser } from "../lookup";
+import { resolveUserResult, type ResolvedUser } from "../lookup";
 import { recordAdminAction } from "../audit";
 
 export interface ReconcileFormState {
   ok:       boolean;
   message:  string;
+  input?: {
+    subscriptionId: string;
+    emailOrId: string;
+    planOverride: string;
+  };
   details?: {
     dodoShape?:   Record<string, unknown>;
     productId?:   string | null;
     plan?:        BillingPlan;
     status?:      SubscriptionStatus;
+  };
+}
+
+interface UserCandidate {
+  source: string;
+  user: ResolvedUser;
+}
+
+function pickTarget(candidates: UserCandidate[]): {
+  target: ResolvedUser | null;
+  conflict: boolean;
+  sources: string[];
+} {
+  const unique = new Map<string, UserCandidate>();
+  for (const candidate of candidates) unique.set(candidate.user.id, candidate);
+  return {
+    target: unique.size === 1 ? [...unique.values()][0].user : null,
+    conflict: unique.size > 1,
+    sources: candidates.map((candidate) => candidate.source),
   };
 }
 
@@ -118,19 +142,17 @@ export async function reconcileSubscription(
 
   const subscriptionId = String(formData.get("subscriptionId") ?? "").trim();
   const emailOrId      = String(formData.get("emailOrId") ?? "").trim();
-  const planOverride   = (String(formData.get("planOverride") ?? "") || null) as BillingPlan | null;
+  const planOverrideValue = String(formData.get("planOverride") ?? "");
+  const planOverride   = (planOverrideValue || null) as BillingPlan | null;
+  const input = { subscriptionId, emailOrId, planOverride: planOverrideValue };
 
-  if (!subscriptionId) return { ok: false, message: "subscription_id is required." };
-  if (!emailOrId)      return { ok: false, message: "Email or user id is required." };
+  if (!subscriptionId) return { ok: false, message: "subscription_id is required.", input };
 
   const apiKey = serverEnv.DODO_PAYMENTS_API_KEY;
-  if (!apiKey) return { ok: false, message: "DODO_PAYMENTS_API_KEY is not configured." };
+  if (!apiKey) return { ok: false, message: "DODO_PAYMENTS_API_KEY is not configured.", input };
 
-  // Resolve target user
-  const target = await resolveUser(emailOrId);
-  if (!target) return { ok: false, message: "No user found for that identifier." };
-
-  // Fetch from Dodo
+  // Fetch Dodo first so account detection can use checkout metadata and the
+  // provider customer instead of depending on a manually typed email.
   let dodoData: Record<string, unknown>;
   try {
     const url = `${dodoBaseUrl()}/subscriptions/${subscriptionId}`;
@@ -143,33 +165,103 @@ export async function reconcileSubscription(
         status: "failed",
         metadata: { reason: "dodo_lookup_failed", http: res.status },
       });
-      return { ok: false, message: `Dodo lookup failed with HTTP ${res.status}.` };
+      return { ok: false, message: `Dodo lookup failed with HTTP ${res.status}.`, input };
     }
     try {
       dodoData = asRecord(JSON.parse(txt));
     } catch {
-      return { ok: false, message: "Dodo returned non-JSON response." };
+      return { ok: false, message: "Dodo returned non-JSON response.", input };
     }
   } catch {
-    return { ok: false, message: "Network error reaching Dodo." };
+    return { ok: false, message: "Network error reaching Dodo.", input };
   }
 
   const customerObj = deepObj(dodoData, "customer");
+  const metadata      = {
+    ...deepObj(dodoData, "custom_data"),
+    ...deepObj(dodoData, "metadata"),
+  };
   const customerEmail = deepStr(customerObj, ["email"]) ?? deepStr(dodoData, ["customer_email", "email"]);
   const customerId    = deepStr(dodoData, ["customer_id", "customerId"]) ?? deepStr(customerObj, ["id", "customer_id"]);
   const productId     = deepStr(dodoData, ["product_id", "productId"]);
   const statusRaw     = deepStr(dodoData, ["status"]);
+  const metadataUserId = deepStr(metadata, ["user_id", "userId"]);
+  const sessionNonce   = deepStr(metadata, ["session_nonce"]);
+
+  const supabaseAdmin = createSupabaseAdminClient();
+  const candidates: UserCandidate[] = [];
+
+  async function addAuthCandidate(source: string, identifier: string | null) {
+    if (!identifier) return;
+    const result = await resolveUserResult(identifier);
+    if (result.error) throw new Error(`Supabase Auth lookup failed (${source}): ${result.error}`);
+    if (result.user) candidates.push({ source, user: result.user });
+  }
+
+  try {
+    await addAuthCandidate("Dodo metadata", metadataUserId);
+    await addAuthCandidate("entered identifier", emailOrId || null);
+    await addAuthCandidate("Dodo customer email", customerEmail);
+
+    if (sessionNonce) {
+      const checkoutResult = await supabaseAdmin
+        .from("billing_checkout_sessions")
+        .select("user_id")
+        .eq("provider", "dodo")
+        .eq("environment", serverEnv.DODO_PAYMENTS_ENVIRONMENT)
+        .eq("return_nonce", sessionNonce)
+        .maybeSingle();
+      if (checkoutResult.error) throw checkoutResult.error;
+      await addAuthCandidate("checkout session", checkoutResult.data?.user_id ?? null);
+    }
+
+    if (customerId) {
+      const customerResult = await supabaseAdmin
+        .from("billing_customers")
+        .select("user_id")
+        .eq("dodo_customer_id", customerId)
+        .eq("dodo_environment", serverEnv.DODO_PAYMENTS_ENVIRONMENT)
+        .maybeSingle();
+      if (customerResult.error) throw customerResult.error;
+      await addAuthCandidate("existing billing customer", customerResult.data?.user_id ?? null);
+    }
+  } catch (error) {
+    return {
+      ok: false,
+      message: error instanceof Error ? error.message : "Could not query Supabase for the customer account.",
+      input,
+    };
+  }
+
+  const selection = pickTarget(candidates);
+  if (selection.conflict) {
+    return {
+      ok: false,
+      message: "Account mismatch: Dodo and the entered identifier point to different ProdMatch users. Verify the customer's sign-in email before continuing.",
+      input,
+    };
+  }
+  const target = selection.target;
+  if (!target) {
+    return {
+      ok: false,
+      message: customerEmail
+        ? `Dodo reports ${customerEmail}, but no matching ProdMatch account exists. Ask the customer which email they used to sign in, then enter it here.`
+        : "Dodo did not provide account metadata or a customer email. Enter the exact ProdMatch sign-in email or user id.",
+      input,
+    };
+  }
 
   const plan = planOverride ?? planFromProductId(productId);
   if (!plan || plan === "free") {
     return {
       ok: false,
       message: "Could not infer plan from the Dodo product id. Pick a plan override and try again.",
+      input,
       details: { dodoShape: dodoShape(dodoData), productId: shortId(productId) },
     };
   }
 
-  const supabaseAdmin = createSupabaseAdminClient();
   const mappedStatus = statusMap(statusRaw);
 
   if (customerId) {
@@ -182,7 +274,7 @@ export async function reconcileSubscription(
       updated_at:        new Date().toISOString(),
     });
     if (customerUpsert.error) {
-      return { ok: false, message: "Could not save the Dodo customer record." };
+      return { ok: false, message: "Could not save the Dodo customer record.", input };
     }
   }
 
@@ -207,16 +299,16 @@ export async function reconcileSubscription(
     updated_at:               new Date().toISOString(),
   }, { onConflict: "provider,environment,provider_subscription_id" });
   if (subscriptionUpsert.error) {
-    return { ok: false, message: "Could not save the subscription record." };
+    return { ok: false, message: "Could not save the subscription record.", input };
   }
 
   try {
     const entitlement = await refreshEntitlements(target.id);
     if ((mappedStatus === "active" || mappedStatus === "trialing") && entitlement.plan !== plan) {
-      return { ok: false, message: "Subscription was saved, but entitlement activation did not complete." };
+      return { ok: false, message: "Subscription was saved, but entitlement activation did not complete.", input };
     }
   } catch {
-    return { ok: false, message: "Subscription was saved, but entitlement refresh failed." };
+    return { ok: false, message: "Subscription was saved, but entitlement refresh failed.", input };
   }
 
   await recordAdminAction({
@@ -229,6 +321,7 @@ export async function reconcileSubscription(
       hasCustomerEmail: Boolean(customerEmail),
       customerId: shortId(customerId),
       productId: shortId(productId),
+      identitySources: selection.sources,
     },
   });
 
@@ -237,7 +330,8 @@ export async function reconcileSubscription(
 
   return {
     ok:      true,
-    message: `${plan === "career_sprint" ? "Career Sprint" : "Pro"} (${mappedStatus}) reconciled to ${target.email}.`,
+    message: `${plan === "career_sprint" ? "Career Sprint" : "Pro"} (${mappedStatus}) reconciled to ${target.email}. Account verified via ${selection.sources.join(", ")}.`,
+    input,
     details: { plan, status: mappedStatus },
   };
 }

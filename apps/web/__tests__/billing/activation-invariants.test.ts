@@ -35,3 +35,15 @@ test("pending confirmation does not imply activation succeeded", () => {
   assert.match(successPage, /Return to dashboard without activation/);
   assert.match(successPage, /setRetryAttempt\(\(attempt\) => attempt \+ 1\)/);
 });
+
+test("admin reconciliation auto-detects the paid account before requiring manual identity", () => {
+  const reconcile = source("lib/admin/actions/reconcile.ts");
+  const form = source("app/admin/billing/reconcile/client.tsx");
+  assert.match(reconcile, /Fetch Dodo first/);
+  assert.match(reconcile, /addAuthCandidate\("Dodo metadata"/);
+  assert.match(reconcile, /addAuthCandidate\("Dodo customer email"/);
+  assert.match(reconcile, /\.from\("billing_checkout_sessions"\)/);
+  assert.match(reconcile, /Account mismatch:/);
+  assert.match(form, /ProdMatch email or user id \(optional\)/);
+  assert.doesNotMatch(form, /name="emailOrId" required/);
+});

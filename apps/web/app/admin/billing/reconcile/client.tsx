@@ -8,19 +8,20 @@ const initialState: ReconcileFormState = { ok: false, message: "" };
 
 export function ReconcileForm() {
   const [state, action, pending] = useActionState(reconcileSubscription, initialState);
+  const inputKey = `${state.input?.subscriptionId ?? ""}:${state.input?.emailOrId ?? ""}:${state.input?.planOverride ?? ""}`;
 
   return (
-    <form action={action} style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+    <form key={inputKey} action={action} style={{ display: "flex", flexDirection: "column", gap: 12 }}>
       <Field label="Dodo subscription_id" hint="Looks like sub_… — copy from Dodo dashboard or the return URL.">
-        <input type="text" name="subscriptionId" required placeholder="sub_0Nfkzok…" className="pm-input pm-mono" autoComplete="off" />
+        <input type="text" name="subscriptionId" required defaultValue={state.input?.subscriptionId} placeholder="sub_0Nfkzok…" className="pm-input pm-mono" autoComplete="off" />
       </Field>
 
-      <Field label="User email or id" hint="The ProdMatch account that should receive the plan.">
-        <input type="text" name="emailOrId" required placeholder="user@example.com" className="pm-input" autoComplete="off" />
+      <Field label="ProdMatch email or user id (optional)" hint="Usually leave blank. We auto-detect the account from Dodo metadata, checkout records, and customer email.">
+        <input type="text" name="emailOrId" defaultValue={state.input?.emailOrId} placeholder="Only enter if auto-detection needs help" className="pm-input" autoComplete="off" />
       </Field>
 
       <Field label="Override plan (optional)" hint="Only set this if Dodo's product_id doesn't match any DODO_PRODUCT_*_ID env var.">
-        <select name="planOverride" defaultValue="" className="pm-select">
+        <select name="planOverride" defaultValue={state.input?.planOverride ?? ""} className="pm-select">
           <option value="">Auto-detect from product_id</option>
           <option value="pro">Pro</option>
           <option value="career_sprint">Career Sprint</option>
