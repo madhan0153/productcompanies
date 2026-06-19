@@ -25,48 +25,6 @@ export class DodoApiError extends Error {
   }
 }
 
-export async function getDodoProductCatalogDiagnostic(): Promise<{
-  status: number;
-  summary: string;
-}> {
-  const apiKey = serverEnv.DODO_PAYMENTS_API_KEY;
-  if (!apiKey) return { status: 0, summary: "API key is not configured" };
-
-  const response = await fetch(`${dodoBaseUrl()}/products?limit=100`, {
-    headers: {
-      "Authorization": `Bearer ${apiKey}`,
-      "Accept": "application/json",
-    },
-    cache: "no-store",
-  });
-  const text = await response.text();
-  let summary = text.replace(/\s+/g, " ").slice(0, 2_000);
-  try {
-    const payload = JSON.parse(text) as { items?: unknown[] };
-    if (Array.isArray(payload.items)) {
-      summary = JSON.stringify(payload.items.map((item) => {
-        const product = item as Record<string, unknown>;
-        const metadata = typeof product.metadata === "object" && product.metadata
-          ? product.metadata as Record<string, unknown>
-          : null;
-        return {
-          id: product.product_id,
-          name: product.name,
-          price: product.price,
-          recurring: product.is_recurring,
-          internal_key: metadata?.internal_key,
-        };
-      }));
-    }
-  } catch {
-    // Keep the bounded raw response when the provider returns a non-JSON error.
-  }
-  return {
-    status: response.status,
-    summary: summary.slice(0, 2_000),
-  };
-}
-
 function parseDodoError(status: number, text: string): DodoApiError {
   let providerCode: string | null = null;
   let providerMessage = "Unknown provider error";

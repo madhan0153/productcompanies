@@ -1,12 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createHash, timingSafeEqual } from "node:crypto";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
-import {
-  createDodoCheckoutSession,
-  DodoApiError,
-  getDodoProductCatalogDiagnostic,
-} from "@/lib/billing/dodo";
+import { createDodoCheckoutSession, DodoApiError } from "@/lib/billing/dodo";
 import { CHECKOUT_PRODUCTS, type CheckoutProductId } from "@/lib/billing/catalog";
 import { rateLimitRoute } from "@/lib/security/route-rate-limit";
 import { logEvent } from "@/lib/observability/log";
@@ -16,17 +11,6 @@ import { isPaymentVerificationEnabledForEmail } from "@/lib/billing/verification
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
-
-const BILLING_DIAGNOSTIC_TOKEN_HASH =
-  "e3ea9d135929244cf48963555bd394aad82e351ba59d2b503fc422f84e87a064";
-
-function hasBillingDiagnosticAccess(req: NextRequest): boolean {
-  const token = req.headers.get("x-billing-diagnostic");
-  if (!token) return false;
-  const actual = Buffer.from(createHash("sha256").update(token).digest("hex"));
-  const expected = Buffer.from(BILLING_DIAGNOSTIC_TOKEN_HASH);
-  return actual.length === expected.length && timingSafeEqual(actual, expected);
-}
 
 export async function POST(req: NextRequest) {
   const ipLimit = await rateLimitRoute(req, "billing_checkout_ip", { limit: 20, windowMs: 10 * 60_000 });
@@ -210,25 +194,6 @@ export async function POST(req: NextRequest) {
       status: "failed",
       updated_at: new Date().toISOString(),
     }).eq("id", checkoutRecordId);
-    let catalogDiagnostic: { status: number; summary: string } | null = null;
-    if (
-      err instanceof DodoApiError &&
-      err.status === 422 &&
-      err.providerMessage.includes("does not exist")
-    ) {
-      try {
-        const catalog = await getDodoProductCatalogDiagnostic();
-        catalogDiagnostic = catalog;
-        logEvent("warn", "billing_dodo_catalog_mismatch", {
-          provider_status: catalog.status,
-          catalog_summary: catalog.summary,
-        });
-      } catch (catalogError) {
-        logEvent("warn", "billing_dodo_catalog_lookup_failed", {
-          error_kind: catalogError instanceof Error ? catalogError.name : "unknown",
-        });
-      }
-    }
     // Distinguish "env not wired yet" from generic checkout failures. The
     // client uses the code to dim that specific plan for the rest of the
     // session and swap copy to "Coming soon" instead of a scary banner.
@@ -249,9 +214,6 @@ export async function POST(req: NextRequest) {
           ? "This plan isn't available yet. Please pick another or check back soon."
           : "We couldn't start checkout. Please try again in a moment.",
         code: isUnavailable ? "unavailable" : "checkout_failed",
-        diagnostic: catalogDiagnostic && hasBillingDiagnosticAccess(req)
-          ? catalogDiagnostic
-          : undefined,
       },
       { status: isUnavailable ? 503 : 500 },
     );
