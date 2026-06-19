@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { serverEnv } from "@/lib/env";
 import { refreshEntitlements } from "@/lib/billing/entitlements";
+import { persistProviderSubscription } from "@/lib/billing/subscriptions";
 import { CHECKOUT_PRODUCTS, type BillingPlan, type CheckoutProductId } from "@/lib/billing/catalog";
 import type { Json, SubscriptionStatus } from "@/lib/supabase/types";
 import { requireAdmin } from "../auth";
@@ -278,28 +279,32 @@ export async function reconcileSubscription(
     }
   }
 
-  const subscriptionUpsert = await supabaseAdmin.from("subscriptions").upsert({
-    user_id:                  target.id,
-    provider:                 "dodo",
-    environment:              serverEnv.DODO_PAYMENTS_ENVIRONMENT,
-    provider_customer_id:     customerId,
-    provider_subscription_id: subscriptionId,
-    provider_product_id:      productId,
-    plan,
-    status:                   mappedStatus,
-    current_period_start:     isoVal(dodoData, ["current_period_start", "period_start", "created_at"]),
-    current_period_end:       isoVal(dodoData, ["current_period_end", "period_end", "next_billing_date", "expires_at"]),
-    cancel_at_period_end:     Boolean(dodoData.cancel_at_period_end ?? dodoData.cancel_at_next_billing_date),
-    cancelled_at:             isoVal(dodoData, ["cancelled_at", "canceled_at"]),
-    metadata: {
-      source: "admin_reconciliation",
-      provider_status: statusRaw,
-      product_id: productId,
-    } as Json,
-    updated_at:               new Date().toISOString(),
-  }, { onConflict: "provider,environment,provider_subscription_id" });
-  if (subscriptionUpsert.error) {
-    return { ok: false, message: "Could not save the subscription record.", input };
+  try {
+    await persistProviderSubscription({
+      user_id:                  target.id,
+      provider:                 "dodo",
+      environment:              serverEnv.DODO_PAYMENTS_ENVIRONMENT,
+      provider_customer_id:     customerId,
+      provider_subscription_id: subscriptionId,
+      provider_product_id:      productId,
+      plan,
+      status:                   mappedStatus,
+      current_period_start:     isoVal(dodoData, ["current_period_start", "period_start", "created_at"]),
+      current_period_end:       isoVal(dodoData, ["current_period_end", "period_end", "next_billing_date", "expires_at"]),
+      cancel_at_period_end:     Boolean(dodoData.cancel_at_period_end ?? dodoData.cancel_at_next_billing_date),
+      cancelled_at:             isoVal(dodoData, ["cancelled_at", "canceled_at"]),
+      metadata: {
+        source: "admin_reconciliation",
+        provider_status: statusRaw,
+        product_id: productId,
+      } as Json,
+      updated_at:               new Date().toISOString(),
+    });
+  } catch (error) {
+    const code = error && typeof error === "object" && "code" in error
+      ? String(error.code)
+      : "unknown";
+    return { ok: false, message: `Could not save the subscription record (database code ${code}).`, input };
   }
 
   try {

@@ -4,6 +4,7 @@ import { CHECKOUT_PRODUCTS, type CheckoutProductId } from "./catalog";
 import { grantCredits } from "./credits";
 import { getDodoProductId } from "./dodo";
 import { refreshEntitlements } from "./entitlements";
+import { persistProviderSubscription } from "./subscriptions";
 import { notifyUser } from "@/lib/push/notify";
 import { serverEnv } from "@/lib/env";
 
@@ -339,7 +340,7 @@ async function handleSubscriptionEvent(
     throwOnBillingError(customerUpsert);
   }
 
-  const subscriptionUpsert = await admin.from("subscriptions").upsert({
+  await persistProviderSubscription({
     user_id: userId,
     provider: "dodo",
     environment,
@@ -355,8 +356,7 @@ async function handleSubscriptionEvent(
     last_provider_event_at: eventAt,
     metadata: eventSnapshot(data),
     updated_at: new Date().toISOString(),
-  }, { onConflict: "provider,environment,provider_subscription_id" });
-  throwOnBillingError(subscriptionUpsert);
+  });
 
   await refreshEntitlements(userId);
 }

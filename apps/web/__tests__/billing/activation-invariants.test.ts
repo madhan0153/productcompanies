@@ -47,3 +47,17 @@ test("admin reconciliation auto-detects the paid account before requiring manual
   assert.match(form, /ProdMatch email or user id \(optional\)/);
   assert.doesNotMatch(form, /name="emailOrId" required/);
 });
+
+test("subscription persistence avoids PostgREST partial-index conflict inference", () => {
+  const persistence = source("lib/billing/subscriptions.ts");
+  const reconcile = source("lib/admin/actions/reconcile.ts");
+  const sync = source("app/api/billing/sync/route.ts");
+  const webhook = source("lib/billing/webhook-processing.ts");
+  assert.match(persistence, /select\("id"\)/);
+  assert.match(persistence, /\.update\(values\)/);
+  assert.match(persistence, /\.insert\(values\)/);
+  assert.doesNotMatch(persistence, /onConflict/);
+  assert.match(reconcile, /persistProviderSubscription/);
+  assert.match(sync, /persistProviderSubscription/);
+  assert.match(webhook, /persistProviderSubscription/);
+});

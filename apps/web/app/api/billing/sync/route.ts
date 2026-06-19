@@ -22,6 +22,7 @@ import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { serverEnv } from "@/lib/env";
 import { refreshEntitlements } from "@/lib/billing/entitlements";
+import { persistProviderSubscription } from "@/lib/billing/subscriptions";
 import { CHECKOUT_PRODUCTS, type BillingPlan, type CheckoutProductId } from "@/lib/billing/catalog";
 import { logEvent } from "@/lib/observability/log";
 import { rateLimitRoute } from "@/lib/security/route-rate-limit";
@@ -375,29 +376,30 @@ export async function POST(req: NextRequest) {
   }
 
   // Upsert subscription
-  const subscriptionUpsert = await admin.from("subscriptions").upsert({
-    user_id:                  user.id,
-    provider:                 "dodo",
-    environment:              serverEnv.DODO_PAYMENTS_ENVIRONMENT,
-    provider_customer_id:     customerId,
-    provider_subscription_id: subscriptionId,
-    provider_product_id:      productId,
-    plan,
-    status:                   mappedStatus,
-    current_period_start:     isoVal(dodoData, ["current_period_start", "period_start", "created_at"]),
-    current_period_end:       isoVal(dodoData, ["current_period_end", "period_end", "next_billing_date", "expires_at"]),
-    cancel_at_period_end:     Boolean(dodoData.cancel_at_period_end ?? dodoData.cancel_at_next_billing_date),
-    cancelled_at:             isoVal(dodoData, ["cancelled_at", "canceled_at"]),
-    metadata: {
-      source: "authenticated_direct_sync",
-      provider_status: statusRaw,
-      product_id: productId,
-    } as Json,
-    updated_at:               new Date().toISOString(),
-  }, { onConflict: "provider,environment,provider_subscription_id" });
-  if (subscriptionUpsert.error) {
+  try {
+    await persistProviderSubscription({
+      user_id:                  user.id,
+      provider:                 "dodo",
+      environment:              serverEnv.DODO_PAYMENTS_ENVIRONMENT,
+      provider_customer_id:     customerId,
+      provider_subscription_id: subscriptionId,
+      provider_product_id:      productId,
+      plan,
+      status:                   mappedStatus,
+      current_period_start:     isoVal(dodoData, ["current_period_start", "period_start", "created_at"]),
+      current_period_end:       isoVal(dodoData, ["current_period_end", "period_end", "next_billing_date", "expires_at"]),
+      cancel_at_period_end:     Boolean(dodoData.cancel_at_period_end ?? dodoData.cancel_at_next_billing_date),
+      cancelled_at:             isoVal(dodoData, ["cancelled_at", "canceled_at"]),
+      metadata: {
+        source: "authenticated_direct_sync",
+        provider_status: statusRaw,
+        product_id: productId,
+      } as Json,
+      updated_at:               new Date().toISOString(),
+    });
+  } catch (error) {
     logEvent("error", "billing_sync_subscription_upsert_failed", {
-      error_code: subscriptionUpsert.error.code,
+      error_code: error && typeof error === "object" && "code" in error ? String(error.code) : "unknown",
     });
     return NextResponse.json({ error: "Could not activate subscription." }, { status: 500 });
   }

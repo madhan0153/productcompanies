@@ -2366,9 +2366,9 @@ update public.subscriptions set environment = 'test_mode' where environment = 'l
 alter table public.subscriptions add column if not exists last_provider_event_at timestamptz;
 
 drop index if exists public.ux_subscriptions_provider_subscription;
-create unique index if not exists ux_subscriptions_provider_environment_subscription
-  on public.subscriptions(provider, environment, provider_subscription_id)
-  where provider_subscription_id is not null;
+drop index if exists public.ux_subscriptions_provider_environment_subscription;
+create unique index ux_subscriptions_provider_environment_subscription
+  on public.subscriptions(provider, environment, provider_subscription_id);
 create index if not exists idx_subscriptions_user_status
   on public.subscriptions(user_id, status, current_period_end desc);
 
