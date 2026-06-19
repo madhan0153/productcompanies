@@ -14,6 +14,39 @@ export interface DodoWebhookEvent {
   data: Record<string, unknown>;
 }
 
+export class DodoApiError extends Error {
+  constructor(
+    readonly status: number,
+    readonly providerCode: string | null,
+    readonly providerMessage: string,
+  ) {
+    super(`Dodo checkout failed with status ${status}.`);
+    this.name = "DodoApiError";
+  }
+}
+
+function parseDodoError(status: number, text: string): DodoApiError {
+  let providerCode: string | null = null;
+  let providerMessage = "Unknown provider error";
+
+  try {
+    const payload = JSON.parse(text) as Record<string, unknown>;
+    const detail = typeof payload.detail === "object" && payload.detail
+      ? payload.detail as Record<string, unknown>
+      : null;
+    const rawCode = payload.code ?? detail?.code ?? payload.type;
+    const rawMessage = payload.message ?? detail?.message ?? payload.error;
+    providerCode = typeof rawCode === "string" ? rawCode.slice(0, 80) : null;
+    if (typeof rawMessage === "string") {
+      providerMessage = rawMessage.slice(0, 160);
+    }
+  } catch {
+    if (text.trim()) providerMessage = text.trim().slice(0, 160);
+  }
+
+  return new DodoApiError(status, providerCode, providerMessage);
+}
+
 function dodoBaseUrl(): string {
   if (serverEnv.DODO_PAYMENTS_BASE_URL) return serverEnv.DODO_PAYMENTS_BASE_URL.replace(/\/$/, "");
   return serverEnv.DODO_PAYMENTS_ENVIRONMENT === "test_mode"
@@ -103,7 +136,7 @@ export async function createDodoCheckoutSession(input: {
 
   if (!response.ok) {
     const text = await response.text();
-    throw new Error(`Dodo checkout failed: ${response.status} ${text.slice(0, 160)}`);
+    throw parseDodoError(response.status, text);
   }
 
   const payload = await response.json() as Partial<DodoCheckoutSession>;

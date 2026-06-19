@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
-import { createDodoCheckoutSession } from "@/lib/billing/dodo";
+import { createDodoCheckoutSession, DodoApiError } from "@/lib/billing/dodo";
 import { CHECKOUT_PRODUCTS, type CheckoutProductId } from "@/lib/billing/catalog";
 import { rateLimitRoute } from "@/lib/security/route-rate-limit";
 import { logEvent } from "@/lib/observability/log";
@@ -203,6 +203,9 @@ export async function POST(req: NextRequest) {
       checkout_product: checkoutProduct,
       environment,
       error_kind: err instanceof Error ? err.name : "unknown",
+      provider_status: err instanceof DodoApiError ? err.status : undefined,
+      provider_code: err instanceof DodoApiError ? err.providerCode : undefined,
+      provider_message: err instanceof DodoApiError ? err.providerMessage : undefined,
       code: isUnavailable ? "unavailable" : "checkout_failed",
     });
     return NextResponse.json(
