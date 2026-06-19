@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { createHash, timingSafeEqual } from "node:crypto";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import {
@@ -15,6 +16,17 @@ import { isPaymentVerificationEnabledForEmail } from "@/lib/billing/verification
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+
+const BILLING_DIAGNOSTIC_TOKEN_HASH =
+  "e3ea9d135929244cf48963555bd394aad82e351ba59d2b503fc422f84e87a064";
+
+function hasBillingDiagnosticAccess(req: NextRequest): boolean {
+  const token = req.headers.get("x-billing-diagnostic");
+  if (!token) return false;
+  const actual = Buffer.from(createHash("sha256").update(token).digest("hex"));
+  const expected = Buffer.from(BILLING_DIAGNOSTIC_TOKEN_HASH);
+  return actual.length === expected.length && timingSafeEqual(actual, expected);
+}
 
 export async function POST(req: NextRequest) {
   const ipLimit = await rateLimitRoute(req, "billing_checkout_ip", { limit: 20, windowMs: 10 * 60_000 });
@@ -198,6 +210,7 @@ export async function POST(req: NextRequest) {
       status: "failed",
       updated_at: new Date().toISOString(),
     }).eq("id", checkoutRecordId);
+    let catalogDiagnostic: { status: number; summary: string } | null = null;
     if (
       err instanceof DodoApiError &&
       err.status === 422 &&
@@ -205,6 +218,7 @@ export async function POST(req: NextRequest) {
     ) {
       try {
         const catalog = await getDodoProductCatalogDiagnostic();
+        catalogDiagnostic = catalog;
         logEvent("warn", "billing_dodo_catalog_mismatch", {
           provider_status: catalog.status,
           catalog_summary: catalog.summary,
@@ -235,6 +249,9 @@ export async function POST(req: NextRequest) {
           ? "This plan isn't available yet. Please pick another or check back soon."
           : "We couldn't start checkout. Please try again in a moment.",
         code: isUnavailable ? "unavailable" : "checkout_failed",
+        diagnostic: catalogDiagnostic && hasBillingDiagnosticAccess(req)
+          ? catalogDiagnostic
+          : undefined,
       },
       { status: isUnavailable ? 503 : 500 },
     );
