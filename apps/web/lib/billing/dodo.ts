@@ -40,9 +40,30 @@ export async function getDodoProductCatalogDiagnostic(): Promise<{
     cache: "no-store",
   });
   const text = await response.text();
+  let summary = text.replace(/\s+/g, " ").slice(0, 2_000);
+  try {
+    const payload = JSON.parse(text) as { items?: unknown[] };
+    if (Array.isArray(payload.items)) {
+      summary = JSON.stringify(payload.items.map((item) => {
+        const product = item as Record<string, unknown>;
+        const metadata = typeof product.metadata === "object" && product.metadata
+          ? product.metadata as Record<string, unknown>
+          : null;
+        return {
+          id: product.product_id,
+          name: product.name,
+          price: product.price,
+          recurring: product.is_recurring,
+          internal_key: metadata?.internal_key,
+        };
+      }));
+    }
+  } catch {
+    // Keep the bounded raw response when the provider returns a non-JSON error.
+  }
   return {
     status: response.status,
-    summary: text.replace(/\s+/g, " ").slice(0, 2_000),
+    summary: summary.slice(0, 2_000),
   };
 }
 
