@@ -25,6 +25,27 @@ export class DodoApiError extends Error {
   }
 }
 
+export async function getDodoProductCatalogDiagnostic(): Promise<{
+  status: number;
+  summary: string;
+}> {
+  const apiKey = serverEnv.DODO_PAYMENTS_API_KEY;
+  if (!apiKey) return { status: 0, summary: "API key is not configured" };
+
+  const response = await fetch(`${dodoBaseUrl()}/products?limit=100`, {
+    headers: {
+      "Authorization": `Bearer ${apiKey}`,
+      "Accept": "application/json",
+    },
+    cache: "no-store",
+  });
+  const text = await response.text();
+  return {
+    status: response.status,
+    summary: text.replace(/\s+/g, " ").slice(0, 2_000),
+  };
+}
+
 function parseDodoError(status: number, text: string): DodoApiError {
   let providerCode: string | null = null;
   let providerMessage = "Unknown provider error";

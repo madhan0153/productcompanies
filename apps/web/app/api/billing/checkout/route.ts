@@ -1,7 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
-import { createDodoCheckoutSession, DodoApiError } from "@/lib/billing/dodo";
+import {
+  createDodoCheckoutSession,
+  DodoApiError,
+  getDodoProductCatalogDiagnostic,
+} from "@/lib/billing/dodo";
 import { CHECKOUT_PRODUCTS, type CheckoutProductId } from "@/lib/billing/catalog";
 import { rateLimitRoute } from "@/lib/security/route-rate-limit";
 import { logEvent } from "@/lib/observability/log";
@@ -194,6 +198,23 @@ export async function POST(req: NextRequest) {
       status: "failed",
       updated_at: new Date().toISOString(),
     }).eq("id", checkoutRecordId);
+    if (
+      err instanceof DodoApiError &&
+      err.status === 422 &&
+      err.providerMessage.includes("does not exist")
+    ) {
+      try {
+        const catalog = await getDodoProductCatalogDiagnostic();
+        logEvent("warn", "billing_dodo_catalog_mismatch", {
+          provider_status: catalog.status,
+          catalog_summary: catalog.summary,
+        });
+      } catch (catalogError) {
+        logEvent("warn", "billing_dodo_catalog_lookup_failed", {
+          error_kind: catalogError instanceof Error ? catalogError.name : "unknown",
+        });
+      }
+    }
     // Distinguish "env not wired yet" from generic checkout failures. The
     // client uses the code to dim that specific plan for the rest of the
     // session and swap copy to "Coming soon" instead of a scary banner.
